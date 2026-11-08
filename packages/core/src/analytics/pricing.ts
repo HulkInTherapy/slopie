@@ -56,8 +56,14 @@ export class PriceBook {
     usable.sort((a, b) => rank(a.provider) - rank(b.provider));
     for (const entry of usable) { const id = entry.id.toLowerCase(); if (!this.exact.has(id)) this.exact.set(id, entry); }
     const canonicalOrder = [...usable].sort((a, b) => Number(REGIONAL.test(a.id.toLowerCase())) - Number(REGIONAL.test(b.id.toLowerCase())));
-    for (const entry of canonicalOrder) { const id = normalizeModel(entry.id); if (!this.canonical.has(id)) this.canonical.set(id, entry); }
-    this.ids = [...this.canonical.keys()];
+    const family = new Set<string>();
+    for (const entry of canonicalOrder) {
+      const id = normalizeModel(entry.id);
+      if (!this.canonical.has(id)) this.canonical.set(id, entry);
+      // Floating aliases ('~provider/x-latest') are exact names only, never a family stand-in.
+      if (!/^~|-latest$/.test(entry.id.toLowerCase())) family.add(id);
+    }
+    this.ids = [...family].filter(id => this.canonical.has(id));
   }
 
   private price(entry: CatalogEntry, estimated: boolean): ModelPrice {
