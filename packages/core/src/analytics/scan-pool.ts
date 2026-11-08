@@ -10,7 +10,10 @@ import {extractFile, stripText, type NativeHarness, type SourceFacts} from './ex
 
 export interface ScanJob {
   file: string;
-  harness: NativeHarness;
+  /** 'auto': a compressed archive copy whose harness is read from its content. */
+  harness: NativeHarness | 'auto';
+  /** A potsherd archive copy. */
+  archive?: boolean;
   /** Bytes, used to schedule the largest files first. */
   size: number;
   /** Time zone for story counters. */
@@ -18,7 +21,7 @@ export interface ScanJob {
 }
 
 /** Facts as they leave a reader: story fields kept, prompt text dropped. */
-export const readFacts = (job: ScanJob): SourceFacts => stripText(extractFile(job.file, job.harness, {timezone: job.timezone}));
+export const readFacts = (job: ScanJob): SourceFacts => stripText(extractFile(job.file, job.harness, {timezone: job.timezone, ...(job.archive ? {archive: true} : {})}));
 
 export type ScanResult = {job: ScanJob; facts: SourceFacts} | {job: ScanJob; error: string};
 

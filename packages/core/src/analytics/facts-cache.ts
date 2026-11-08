@@ -13,7 +13,7 @@ const FILE = `facts-v${FACTS_VERSION}.bin`;
 
 export class FactsCache {
   private entries = new Map<string, SourceFacts>();
-  private historyEntry: {file: string; size: number; mtimeMs: number; tz: string; data: HistoryData} | null = null;
+  private historyEntries = new Map<string, {file: string; size: number; mtimeMs: number; tz: string; data: HistoryData}>();
   /** Dictionary lookups of the typo fingerprint (word -> in dictionary). */
   dictionary = new Map<string, boolean>();
   private dirty = false;
@@ -23,10 +23,10 @@ export class FactsCache {
   load(): void {
     if (!this.dir) return;
     try {
-      const value = deserialize(fs.readFileSync(path.join(this.dir, FILE))) as {version: number; entries: SourceFacts[]; history?: FactsCache['historyEntry']; dictionary?: Map<string, boolean>};
+      const value = deserialize(fs.readFileSync(path.join(this.dir, FILE))) as {version: number; entries: SourceFacts[]; history?: {file: string; size: number; mtimeMs: number; tz: string; data: HistoryData}[]; dictionary?: Map<string, boolean>};
       if (value?.version !== FACTS_VERSION || !Array.isArray(value.entries)) return;
       for (const facts of value.entries) this.entries.set(facts.file, facts);
-      this.historyEntry = value.history ?? null;
+      for (const h of Array.isArray(value.history) ? value.history : []) this.historyEntries.set(h.file, h);
       if (value.dictionary instanceof Map) this.dictionary = value.dictionary;
       this.dictionarySize = this.dictionary.size;
     } catch {
@@ -60,11 +60,11 @@ export class FactsCache {
   history(file: string, tz: string, read: (file: string, previous: {data: HistoryData; size: number} | null) => HistoryData): HistoryData {
     let stat: fs.Stats;
     try { stat = fs.statSync(file); } catch { return {entries: [], counters: new Map()}; }
-    const h = this.historyEntry;
-    if (h && h.file === file && h.tz === tz && h.size === stat.size && h.mtimeMs === stat.mtimeMs) return h.data;
-    const data = read(file, h && h.file === file && h.tz === tz && h.size > 0 && h.size < stat.size ? {data: h.data, size: h.data.bytes ?? h.size} : null);
+    const h = this.historyEntries.get(file);
+    if (h && h.tz === tz && h.size === stat.size && h.mtimeMs === stat.mtimeMs) return h.data;
+    const data = read(file, h && h.tz === tz && h.size > 0 && h.size < stat.size ? {data: h.data, size: h.data.bytes ?? h.size} : null);
     for (const e of data.entries) e.text = '';
-    this.historyEntry = {file, size: stat.size, mtimeMs: stat.mtimeMs, tz, data};
+    this.historyEntries.set(file, {file, size: stat.size, mtimeMs: stat.mtimeMs, tz, data});
     this.dirty = true;
     return data;
   }
@@ -74,12 +74,12 @@ export class FactsCache {
     if (!this.dir) return;
     let removed = false;
     for (const [file, facts] of this.entries) if (!keep(facts)) { this.entries.delete(file); removed = true; }
-    if (this.historyEntry) {
-      const {data} = this.historyEntry;
+    for (const [file, entry] of this.historyEntries) {
+      const {data} = entry;
       const kept = data.entries.filter(keepHistory);
       if (kept.length !== data.entries.length) {
         const counters = new Map([...data.counters].filter(([session, c]) => keepHistory({sessionId: session || null, at: null, project: c.project, kind: 'human', text: ''})));
-        this.historyEntry = {...this.historyEntry, size: -1, data: {entries: kept, counters}};
+        this.historyEntries.set(file, {...entry, size: -1, data: {entries: kept, counters}});
         removed = true;
       }
     }
@@ -87,7 +87,7 @@ export class FactsCache {
     try {
       fs.mkdirSync(this.dir, {recursive: true, mode: 0o700});
       const target = path.join(this.dir, FILE), temp = `${target}.${process.pid}.tmp`;
-      fs.writeFileSync(temp, serialize({version: FACTS_VERSION, entries: [...this.entries.values()], history: this.historyEntry, dictionary: this.dictionary}), {mode: 0o600});
+      fs.writeFileSync(temp, serialize({version: FACTS_VERSION, entries: [...this.entries.values()], history: [...this.historyEntries.values()], dictionary: this.dictionary}), {mode: 0o600});
       fs.renameSync(temp, target);
       for (const old of fs.readdirSync(this.dir)) if (/^facts-v\d+\.bin$/.test(old) && old !== FILE) fs.rmSync(path.join(this.dir, old), {force: true});
       this.dirty = false;

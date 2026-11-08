@@ -17,13 +17,14 @@ import {openDatabase} from '../sqlite-driver.js';
 import {sourceId} from '../memory/source-identity.js';
 import {NORMALIZATION_VERSION} from '../memory/privacy.js';
 import {clock, digest} from './source.js';
-import {extractFile, finishExternalFacts, parseHistory, readHistory, stripText, type HistoryData, type HistoryEntry, type NativeHarness, type SourceFacts} from './extract.js';
+import {extractFile, finishExternalFacts, parseHistory, readHistory, sniffHarness, stripText, zstdSupport, type HistoryData, type HistoryEntry, type NativeHarness, type SourceFacts} from './extract.js';
 import {buildStoryTable} from './story-table.js';
 import {buildStory} from './story.js';
+import {buildSpend, readStatsCache} from './story-spend.js';
 import {DictionaryLookup} from './story-dictionary.js';
 import {enrichStory} from './story-enrich.js';
 import type {AuditProgressDetail, AuditStory} from './story-contracts.js';
-import {aggregate, projectName, type Aggregate} from './aggregate.js';
+import {aggregate, dayFormatter, projectName, type Aggregate} from './aggregate.js';
 import {PriceBook} from './pricing.js';
 import {bundledModelCatalog} from './model-catalog.js';
 import {cachedPublicCatalog, refreshPublicCatalog} from './catalog-service.js';
@@ -117,8 +118,15 @@ interface Discovered {
   jobs: ScanJob[];
   opencodeDatabases: string[];
   opencodeJson: string[];
-  historyFile: string | null;
+  /** Every Claude root's history.jsonl (first = primary for text rehydration). */
+  historyFiles: string[];
+  /** Codex thread ids imported from another agent. */
+  codexImported: Set<string>;
+  /** Every Claude root's stats-cache.json (Claude Code's own per-model token totals). */
+  statsFiles: string[];
   census: Map<AuditHarness, {files: number; bytes: number; roots: number}>;
+  /** Compressed sources that cannot be read on this machine (no zstd). */
+  zstdUnsupported: number;
 }
 
 function listFiles(root: string, accept: (file: string) => boolean): string[] {
@@ -129,14 +137,58 @@ function listFiles(root: string, accept: (file: string) => boolean): string[] {
   return out;
 }
 
-function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOptions, onHarness?: (harness: AuditHarness, row: {files: number; bytes: number}) => void): Discovered {
-  const result: Discovered = {jobs: [], opencodeDatabases: [], opencodeJson: [], historyFile: null, census: new Map()};
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+/**
+ * `~/.codex/external_agent_session_imports.json`: threads Codex imported from another agent (Claude Code).
+ * The exact shape is not documented, so every UUID in it is collected; only Codex sessions with that id
+ * are affected (their replayed prompts are not new human prompts).
+ */
+export function readCodexImports(file: string): Set<string> {
+  const out = new Set<string>();
+  try { for (const m of fs.readFileSync(file, 'utf8').matchAll(UUID)) out.add(m[0].toLowerCase()); } catch { /* absent */ }
+  return out;
+}
+
+/** potsherd's rescue archive: content-addressed raw copies of sessions (archive/evidence/<sha256>.jsonl). */
+export function archiveEvidenceDir(options: AuditOverviewOptions): string | null {
+  if (process.env['SLOPIE_AUDIT_ARCHIVE'] === '0') return null;
+  const dir = path.join(paths.potsherdDir(options.potsherdDir), 'archive', 'evidence');
+  return fs.existsSync(dir) ? dir : null;
+}
+
+const isZstdName = (f: string) => f.endsWith('.jsonl.zst');
+function sniffFile(file: string): NativeHarness | 'auto' | null {
+  let fd: number;
+  try { fd = fs.openSync(file, 'r'); } catch { return null; }
+  try {
+    const head = Buffer.alloc(64 * 1024);
+    const n = fs.readSync(fd, head, 0, head.length, 0);
+    if (n >= 4 && head.readUInt32LE(0) === 0xfd2fb528) return 'auto';
+    return sniffHarness(head.subarray(0, n));
+  } finally { fs.closeSync(fd); }
+}
+
+function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOptions, onHarness?: (harness: AuditHarness, row: {files: number; bytes: number}) => void, known?: (file: string, size: number, mtimeMs: number) => AuditHarness | null): Discovered {
+  const result: Discovered = {jobs: [], opencodeDatabases: [], opencodeJson: [], historyFiles: [], codexImported: new Set(), statsFiles: [], census: new Map(), zstdUnsupported: 0};
   const seen = new Set<string>();
+  const zstd = zstdSupport() !== null;
+  // Archive copies are classified first so each harness row's census includes them.
+  const archive: {file: string; harness: NativeHarness | 'auto'; size: number; mtimeMs: number}[] = [];
+  const evidence = archiveEvidenceDir(options);
+  if (evidence) {
+    for (const file of listFiles(evidence, f => f.endsWith('.jsonl') || isZstdName(f))) {
+      let stat: fs.Stats;
+      try { stat = fs.statSync(file); } catch { continue; }
+      if (!stat.isFile() || stat.size === 0) continue;
+      const cached = known?.(file, stat.size, stat.mtimeMs);
+      const harness = cached && cached !== 'opencode' ? cached as NativeHarness : sniffFile(file);
+      if (harness) archive.push({file, harness, size: stat.size, mtimeMs: stat.mtimeMs});
+    }
+  }
   for (const harness of harnesses) {
     const roots = nativeAuditRoots(harness, options);
-    const row = {files: 0, bytes: 0, roots: roots.length};
+    const row = {files: 0, bytes: 0, roots: roots.length + (evidence ? 1 : 0)};
     result.census.set(harness, row);
-    const relSeen = new Set<string>();
     for (const root of roots) {
       if (harness === 'opencode') {
         for (const file of listFiles(root, f => /\.(?:db|sqlite|sqlite3)$/i.test(f) || (f.endsWith('.json') && /[\\/]storage[\\/](?:session|message|part)[\\/]/.test(f)))) {
@@ -147,25 +199,75 @@ function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOpti
         }
         continue;
       }
-      if (harness === 'claude' && !result.historyFile) {
+      if (harness === 'claude') {
+        // Every Claude root keeps its own typed-prompt log.
         const history = path.join(path.dirname(root), 'history.jsonl');
-        if (fs.existsSync(history)) result.historyFile = history;
+        if (fs.existsSync(history) && !result.historyFiles.includes(history)) result.historyFiles.push(history);
+        const stats = path.join(path.dirname(root), 'stats-cache.json');
+        if (fs.existsSync(stats) && !result.statsFiles.includes(stats)) result.statsFiles.push(stats);
       }
-      for (const file of listFiles(root, f => f.endsWith('.jsonl') && (harness !== 'codex' || path.basename(f).startsWith('rollout-')))) {
+      if (harness === 'codex') for (const f of readCodexImports(path.join(path.dirname(root), 'external_agent_session_imports.json'))) result.codexImported.add(f);
+      // Codex: sessions/ and archived_sessions/ copies (and compressed .jsonl.zst rollouts) are all read;
+      // aggregation counts each session once by its native identity, keeping the most complete copy.
+      for (const file of listFiles(root, f => harness === 'codex' ? path.basename(f).startsWith('rollout-') && (f.endsWith('.jsonl') || isZstdName(f)) : f.endsWith('.jsonl'))) {
         if (seen.has(file)) continue;
         seen.add(file);
-        // Codex: the same rollout in sessions/ and archived_sessions/ is one session.
-        if (harness === 'codex') { const rel = path.relative(root, file); if (relSeen.has(rel)) continue; relSeen.add(rel); }
         let stat: fs.Stats;
         try { stat = fs.statSync(file); } catch { continue; }
         if (!stat.isFile()) continue;
+        if (isZstdName(file) && !zstd) { result.zstdUnsupported++; continue; }
         row.files++; row.bytes += stat.size;
         result.jobs.push({file, harness: harness as NativeHarness, size: stat.size, mtimeMs: stat.mtimeMs} as ScanJob & {mtimeMs: number});
       }
     }
+    for (const a of archive) {
+      // Compressed archive copies can only be Codex rollouts; extraction verifies from the content.
+      if ((a.harness === 'auto' ? 'codex' : a.harness) !== harness || seen.has(a.file)) continue;
+      seen.add(a.file);
+      if (a.harness === 'auto' && !zstd) { result.zstdUnsupported++; continue; }
+      row.files++; row.bytes += a.size;
+      result.jobs.push({file: a.file, harness: a.harness, size: a.size, mtimeMs: a.mtimeMs, archive: true} as ScanJob & {mtimeMs: number});
+    }
     onHarness?.(harness, row);
   }
   return result;
+}
+
+/** history.jsonl of every Claude root, merged; an identical copy in two roots counts once. */
+export interface MergedHistory extends HistoryData {
+  /** Per entry: the file it came from and its index there (evidence key `history:<index>`). */
+  origins: {file: string; index: number}[];
+}
+export function mergeHistories(parts: readonly {file: string; data: HistoryData}[]): MergedHistory {
+  if (parts.length === 1) { const {file, data} = parts[0]!; return {...data, origins: data.entries.map((_, index) => ({file, index}))}; }
+  const out: MergedHistory = {entries: [], counters: new Map(), origins: []};
+  const seen = new Set<string>();
+  const perSession = new Map<string, {n: number; counters: HistoryData['counters'] extends Map<string, infer C> ? C : never}>();
+  for (const {file, data} of parts) {
+    const added = new Map<string, number>();
+    data.entries.forEach((e, index) => {
+      const key = `${e.sessionId ?? ''}|${e.at ?? ''}|${e.kind}|${e.f?.w ?? ''}|${e.q ?? ''}|${e.at === null ? `${file}:${index}` : ''}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.entries.push(e); out.origins.push({file, index});
+      added.set(e.sessionId ?? '', (added.get(e.sessionId ?? '') ?? 0) + 1);
+    });
+    // Word counters are per session: keep the copy that contributed the most entries for it.
+    for (const [session, c] of data.counters) {
+      const n = added.get(session) ?? 0, old = perSession.get(session);
+      if (!old || n > old.n) perSession.set(session, {n, counters: c});
+    }
+  }
+  for (const [session, {counters}] of perSession) out.counters.set(session, counters);
+  return out;
+}
+
+/** Local-date filter for the story's word counters, matching the audit's event range. */
+function dateScope(scope: AuditSnapshot['scope']): {dateAllowed?: (date: string) => boolean; undatedAllowed?: boolean} {
+  if (!scope.eventFrom && !scope.asOf) return {};
+  const day = dayFormatter(scope.timezone);
+  const from = scope.eventFrom ? day(Date.parse(scope.eventFrom)) : null, to = scope.asOf ? day(Date.parse(scope.asOf)) : null;
+  return {dateAllowed: d => (from === null || d >= from) && (to === null || d <= to), undatedAllowed: false};
 }
 
 /* --------------------------------------------------------------- policy --- */
@@ -331,20 +433,21 @@ class LocalAuditSession implements AuditSession {
         harnesses: harnesses.map(h => ({harness: h, files: 0, bytes: 0, filesDone: 0, firstAt: null, lastAt: null, discovered: false, absent: false, chats: 0, prompts: 0})),
         counts: {files: 0, filesDone: 0, bytes: 0, bytesDone: 0, messages: 0, chats: 0, prompts: 0}, elapsedMs: 0,
       };
+      // The facts cache is loaded first: it already knows the harness of immutable archive copies.
+      const cache = new FactsCache(this.derived ? this.derived.directory : null);
+      cache.load();
+      this.cache = cache;
+      t = lap('cacheLoadMs', t);
       // One progress event per harness as soon as its roots are listed, so the loading story lights rows up one by one.
       const found = discover(harnesses, this.options, (harness, row) => {
         if (!this.detail) return;
         this.detail = {...this.detail, harnesses: this.detail.harnesses.map(h => h.harness === harness ? {...h, files: row.files, bytes: row.bytes, discovered: true, absent: row.files === 0} : h),
           counts: {...this.detail.counts, files: this.detail.counts.files + row.files, bytes: this.detail.counts.bytes + row.bytes}};
         this.progress('discovering', 'Finding your agents', 0, null);
-      });
+      }, (file, size, mtimeMs) => cache.get(file, size, mtimeMs)?.harness ?? null);
       t = lap('discoverMs', t);
       this.policy = loadPolicy(this.root);
       t = lap('policyMs', t);
-      const cache = new FactsCache(this.derived ? this.derived.directory : null);
-      cache.load();
-      this.cache = cache;
-      t = lap('cacheLoadMs', t);
       this.detail = {...this.detail, stage: 'reading'};
       this.publish({sources: this.current.sources.map(s => {
         const c = found.census.get(s.harness)!;
@@ -361,10 +464,11 @@ class LocalAuditSession implements AuditSession {
         if (hit) { facts.push(hit); this.count(hit, job.size); continue; }
         const previous = cache.previous(job.file);
         if (previous?.resume && previous.tz === tz && previous.size < job.size && job.size - previous.size <= RESUME_MAX_BYTES) resumable.push({job, previous});
-        else toRead.push({file: job.file, harness: job.harness, size: job.size, timezone: tz});
+        else toRead.push({file: job.file, harness: job.harness, size: job.size, timezone: tz, ...(job.archive ? {archive: true} : {})});
       }
-      const cacheHits = facts.length, total = found.jobs.length;
+      const cacheHits = facts.length, total = found.jobs.length + found.zstdUnsupported;
       const failures: string[] = [];
+      for (let i = 0; i < found.zstdUnsupported; i++) failures.push('zstd_unsupported');
       this.progress('parsing', 'Reading history', cacheHits, total);
       let scanning: Promise<void> = Promise.resolve();
       const readOne = (job: ScanJob) => { toRead.push(job); };
@@ -392,8 +496,7 @@ class LocalAuditSession implements AuditSession {
         try { extra.push(...extractOpenCodeJson(found.opencodeJson).map(f => stripText(finishExternalFacts(f, {timezone: tz})))); } catch { failures.push('opencode_storage_unreadable'); }
       }
       for (const f of extra) this.count(f, 0);
-      const historyData: HistoryData = found.historyFile && harnesses.includes('claude')
-        ? cache.history(found.historyFile, tz, (file, previous) => readHistory(file, {timezone: tz}, previous)) : {entries: [], counters: new Map()};
+      const historyData = mergeHistories(harnesses.includes('claude') ? found.historyFiles.map(file => ({file, data: cache.history(file, tz, (f, previous) => readHistory(f, {timezone: tz}, previous))})) : []);
       this.historyData = historyData;
       if (this.detail && historyData.entries.length) {
         // Claude's typed-prompt log reaches back further than surviving transcripts.
@@ -420,9 +523,11 @@ class LocalAuditSession implements AuditSession {
       this.setStage('aggregating');
       const scope = this.current.scope;
       const policy = this.policy;
-      this.historyFile = found.historyFile;
+      this.historyFile = found.historyFiles[0] ?? null;
+      this.historyFiles = found.historyFiles;
+      this.statsFiles = harnesses.includes('claude') ? found.statsFiles : [];
       this.result = aggregate({
-        sources: facts, history, historyFile: found.historyFile,
+        sources: facts, history, historyFile: this.historyFile, historyOrigins: historyData.origins, codexImported: found.codexImported,
         scope: {harnesses, project: scope.project, eventFrom: scope.eventFrom ? Date.parse(scope.eventFrom) : null, asOf: scope.asOf ? Date.parse(scope.asOf) : null, timezone: scope.timezone},
         policy: {ignored: policy.ignored, forgotten: policy.forgotten},
         book: this.book, codexFastDefault: codexFastDefault(this.options), snapshotId: this.id,
@@ -459,8 +564,10 @@ class LocalAuditSession implements AuditSession {
   private detail: AuditProgressDetail | null = null;
   private lastTick = 0;
   private cache: FactsCache | null = null;
-  private historyData: HistoryData | null = null;
+  private historyData: MergedHistory | null = null;
   private historyFile: string | null = null;
+  private historyFiles: string[] = [];
+  private statsFiles: string[] = [];
   private dictionary: DictionaryLookup | null = null;
 
   /** Running counts for the loading story (cheap: a few additions per file). */
@@ -548,11 +655,11 @@ class LocalAuditSession implements AuditSession {
 
     const failures = [...new Set(run.failures)];
     const warnings = [...failures.map(code => `unreadable_source:${code}`), ...(run.policyError ? [run.policyError] : []),
-      ...(a.estimatedCostUsd > 0 ? ['estimated_prices'] : [])];
+      ...(a.estimatedCostUsd > 0 ? ['estimated_prices'] : []), ...(a.unpricedResponses ? [`unpriced_models:${a.unpricedResponses}`] : [])];
     const coverage: AuditCoverage = {
       state: failures.length ? 'partial' : 'complete_snapshot', knownSources: run.total, parsedSources: run.total - run.failures.length,
       unknownOriginEvents: 0, excludedEvents: Object.values(a.harness).reduce((n, h) => n + Object.values(h.excluded).reduce((x, y) => x + y, 0), 0),
-      omittedSources: run.failures.length, gapCodes: failures,
+      omittedSources: run.failures.length, gapCodes: [...failures, ...(a.unpricedResponses ? ['unpriced_model_usage'] : [])],
     };
     const userMessages = Object.values(a.harness).reduce((n, h) => n + h.userMessages, 0);
     const facts = this.launchFacts(a);
@@ -566,11 +673,16 @@ class LocalAuditSession implements AuditSession {
       const table = buildStoryTable({
         aggregate: a, history: this.historyData?.entries ?? [], historyCounters: this.historyData?.counters ?? new Map(), historyFile: this.historyFile, timezone: scope.timezone,
         allowed: (project, session) => !policy?.ignored(project) && !(session && policy?.forgotten.has(sourceId('claude', session))) && (scope.project === null || project === scope.project),
+        ...dateScope(scope),
       });
       this.timings['storyTableMs'] = Math.round(performance.now() - ts);
       const dictionary = this.dictionary ?? new DictionaryLookup(this.cache?.dictionary);
-      const built = buildStory({table, timezone: scope.timezone, alias: p => aliases.get(p ?? '(unknown)') ?? 'a project', dictionary, tokens: a.tokens.input + a.tokens.output + a.tokens.cacheRead + a.tokens.cacheWrite, offline: offline()});
+      const built = buildStory({table, timezone: scope.timezone, alias: p => aliases.get(p ?? '(unknown)') ?? 'a project', dictionary, tokens: a.tokens.input + a.tokens.output + a.tokens.cacheRead + a.tokens.cacheWrite, offline: offline(), automatedRuns: a.automatedRuns});
       story = built.story;
+      const spent = buildSpend({aggregate: a, table, book: this.book, priceVersion: this.catalog.basis.sha256, timezone: scope.timezone,
+        statsCaches: this.statsFiles.map(readStatsCache).filter(c => c !== null), projectScoped: scope.project !== null, ...dateScope(scope)});
+      story.spend = spent.spend;
+      story.modelShare = spent.modelShare;
       story.timings.featuresMs = this.timings['storyTableMs'];
       this.timings['detectorsMs'] = Math.round(built.detectorsMs);
       this.timings['dictionaryLoaded'] = dictionary.loaded ? 1 : 0;
@@ -616,7 +728,7 @@ class LocalAuditSession implements AuditSession {
       funnel: {
         nativeFilesDiscovered: run.total, nativeFilesParsed: run.total - run.failures.length, retainedSources: 0,
         selectedSources: a.conversations.length, responsesObserved: a.responses, responsesDeduplicated: 0, responsesExcluded: 0,
-        responsesPriced: a.responses, excludedReasons: {forgotten_or_ignored_source: a.excludedSources}, gaps: failures,
+        responsesPriced: a.responses - a.unpricedResponses, excludedReasons: {forgotten_or_ignored_source: a.excludedSources}, gaps: failures,
       },
     });
   }
@@ -630,10 +742,10 @@ class LocalAuditSession implements AuditSession {
     return {
       records: [], recordsIncluded: false, models, favourite: favourite ? models.find(m => m.id === favourite.id)! : null,
       valueUsd: a.costUsd, referenceValueUsd: null, pricing: this.catalog.basis,
-      recordedResponses: a.responses, knownTokenResponses: a.responses, pricedResponses: a.responses,
-      referencePricedResponses: 0, equivalentPricedResponses: a.responses, referenceProviders: [],
-      unknownModelResponses: a.inferredModelResponses,
-      gaps: a.estimatedCostUsd > 0 ? ['price_estimated_from_model_family'] : [],
+      recordedResponses: a.responses, knownTokenResponses: a.responses, pricedResponses: a.responses - a.unpricedResponses,
+      referencePricedResponses: 0, equivalentPricedResponses: a.responses - a.unpricedResponses, referenceProviders: [],
+      unknownModelResponses: a.inferredModelResponses + a.unpricedResponses, unpricedResponses: a.unpricedResponses, unpricedTokens: a.unpricedTokens,
+      gaps: [...(a.estimatedCostUsd > 0 ? ['price_estimated_from_model_family'] : []), ...(a.unpricedResponses ? ['unpriced_model_usage'] : [])],
       costByHarness, estimatedValueUsd: a.estimatedCostUsd, compactionResponses: a.compactionResponses,
       cacheReadTokens: a.tokens.cacheRead, cacheWriteTokens: a.tokens.cacheWrite,
     } as LaunchFacts;
@@ -697,7 +809,7 @@ class LocalAuditSession implements AuditSession {
     for (const [file, list] of byFile) {
       try {
         const texts = new Map<string, string>();
-        if (file === this.historyFile) {
+        if (this.historyFiles.includes(file)) {
           parseHistory(fs.readFileSync(file, 'utf8'), {timezone: tz}).entries.forEach((e, i) => { if (e.kind === 'human') texts.set(`history:${i}`, e.text); });
         } else {
           const conv = this.result?.conversations.find(c => c.file === file);

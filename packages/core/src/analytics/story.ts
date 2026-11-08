@@ -2,7 +2,7 @@
  * Builds `launch.story` from the feature table: detectors, rhythm, model
  * moods, projects, highlights, awards, cold open, archetype and peak time.
  */
-import type {AuditStory, StoryAward, StoryHarness, StoryHighlights, StoryModelMood, StoryPeakTime, StoryProject} from './story-contracts.js';
+import type {AuditStory, StoryModelShare, StorySpend, StoryAward, StoryHarness, StoryHighlights, StoryModelMood, StoryPeakTime, StoryProject} from './story-contracts.js';
 import {STORY_VERSION} from './story-contracts.js';
 import type {StoryRow, StoryTable} from './story-table.js';
 import {runDetectors, modelComparison, modelLabel, base, median, pct, defectionOf, lateNight, longestStreak, longestStretch, homeDir, type Draft} from './story-detectors.js';
@@ -21,6 +21,8 @@ export interface StoryInput {
   tokens: number;
   offline: boolean;
   now?: Date;
+  /** Non-interactive runs (codex exec / SDK): cost counted, not chats. */
+  automatedRuns?: number;
 }
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -37,7 +39,10 @@ export function buildStory(input: StoryInput): {story: AuditStory; detectorsMs: 
     version: STORY_VERSION,
     state: rows.length === 0 ? 'empty' : rows.length < 200 ? 'thin' : 'ready',
     timezone: input.timezone, generatedAt: (input.now ?? new Date()).toISOString(),
-    totals: totals(rows, input.tokens),
+    totals: {...totals(rows, input.tokens),
+      // Headline counts include prompts without a timestamp; time charts use dated rows only.
+      prompts: input.table.headline?.prompts ?? rows.length, sessions: input.table.headline?.sessions ?? new Set(rows.map(r => r.conv)).size,
+      undatedPrompts: input.table.headline?.undated ?? 0, automatedRuns: input.automatedRuns ?? 0},
     rhythm: rhythm(rows, shifted),
     swearTimeline: swearTimeline(rows),
     models: models(rows),
@@ -50,6 +55,7 @@ export function buildStory(input: StoryInput): {story: AuditStory; detectorsMs: 
     peakTime: peakTime(rows),
     enrichment: {state: input.offline ? 'offline' : 'not_run', model: null, code: null, quotesSent: 0},
     timings: {featuresMs: 0, detectorsMs: 0, byDetector: ms},
+    spend: emptySpend(), modelShare: emptyModelShare(),
   };
   const detectorsMs = Math.round((performance.now() - t0) * 10) / 10;
   story.timings.detectorsMs = detectorsMs;
@@ -68,7 +74,7 @@ function totals(rows: readonly StoryRow[], tokens: number): AuditStory['totals']
     spanDays: first && last ? daysBetween(first.day, last.day) : 0,
     costUsd: r2(rows.reduce((n, r) => n + (r.costTotalUsd ?? 0), 0)),
     subagents: rows.reduce((n, r) => n + (r.subs ?? 0), 0), words: rows.reduce((n, r) => n + r.f.w, 0),
-    longestStreakDays: longestStreak(rows)?.days ?? 0, longestStretchHours: stretch ? r1(stretch.ms / 3_600_000) : 0, tokens, byHarness,
+    longestStreakDays: longestStreak(rows)?.days ?? 0, longestStretchHours: stretch ? r1(stretch.ms / 3_600_000) : 0, tokens, byHarness, automatedRuns: 0,
   };
 }
 
@@ -231,3 +237,10 @@ export function peakNarratives(label: string, hour: number, hourShare: number, d
 }
 
 export {median};
+
+export function emptySpend(): StorySpend {
+  return {measuredUsd: 0, recoveredUsd: 0, estimated: null, unpricedTokens: 0, byHarness: [], monthly: [], daily: [], thisMonthUsd: 0, perActiveDayUsd: 0, priciestDay: null, priceVersion: ''};
+}
+export function emptyModelShare(): StoryModelShare {
+  return {basis: 'output_tokens', rows: [], unknownModelPrompts: 0, last30d: [], timeline: []};
+}

@@ -8,6 +8,7 @@
  */
 import {bundledModelCatalog, type CatalogEntry, type ModelCatalog} from './model-catalog.js';
 import type {UsageFact} from './extract.js';
+import {canonicalModel} from './model-names.js';
 
 export interface Rates {input: number; output: number; cacheRead: number; cacheWrite: number}
 export interface ModelPrice {
@@ -33,23 +34,19 @@ function toRates(raw: Readonly<Record<string, number>>, base?: Rates): Rates {
   };
 }
 
-/** Lower-case, drop provider prefixes, bracket/at suffixes and date stamps. */
-export function normalizeModel(model: string): string {
-  let m = model.trim().toLowerCase();
-  m = m.replace(/\[[^\]]*\]$/, '');
-  if (m.includes('/')) m = m.slice(m.lastIndexOf('/') + 1);
-  m = m.replace(/@.*$/, '');
-  m = m.replace(/^(?:anthropic|openai|us|eu|apac|global)\./, '');
-  m = m.replace(/-v\d+(?::\d+)?$/, '');
-  m = m.replace(/-(?:20\d{6}|\d{4}-\d{2}-\d{2})$/, '');
-  m = m.replace(/-latest$/, '');
-  return m;
-}
+/** Lower-case, drop provider/region prefixes, revision, bracket/at suffixes and date stamps. */
+export const normalizeModel = canonicalModel;
+
+/** Regional endpoints (Bedrock `eu.`, `us.`, ...) are priced separately and never stand in for the canonical id. */
+const REGIONAL = /^(?:us|eu|apac|jp|au|ca|us-gov)\./;
 
 const tokens = (id: string) => id.split(/[-.]/).filter(Boolean);
 
 export class PriceBook {
+  /** Exact endpoint ids (lower-case), first-party provider first. */
   private readonly exact = new Map<string, CatalogEntry>();
+  /** Canonical aliases: non-regional entries win, then provider order. */
+  private readonly canonical = new Map<string, CatalogEntry>();
   private readonly ids: string[];
   private readonly memo = new Map<string, ModelPrice | null>();
 
@@ -57,10 +54,16 @@ export class PriceBook {
     const rank = (p: string) => { const i = PROVIDER_ORDER.indexOf(p); return i < 0 ? PROVIDER_ORDER.length : i; };
     const usable = catalog.models.filter(m => typeof m.rates.input === 'number' && m.rates.input > 0);
     usable.sort((a, b) => rank(a.provider) - rank(b.provider));
-    for (const entry of usable) {
-      for (const id of [entry.id.toLowerCase(), normalizeModel(entry.id)]) if (!this.exact.has(id)) this.exact.set(id, entry);
+    for (const entry of usable) { const id = entry.id.toLowerCase(); if (!this.exact.has(id)) this.exact.set(id, entry); }
+    const canonicalOrder = [...usable].sort((a, b) => Number(REGIONAL.test(a.id.toLowerCase())) - Number(REGIONAL.test(b.id.toLowerCase())));
+    const family = new Set<string>();
+    for (const entry of canonicalOrder) {
+      const id = normalizeModel(entry.id);
+      if (!this.canonical.has(id)) this.canonical.set(id, entry);
+      // Floating aliases ('~provider/x-latest') are exact names only, never a family stand-in.
+      if (!/^~|-latest$/.test(entry.id.toLowerCase())) family.add(id);
     }
-    this.ids = [...this.exact.keys()];
+    this.ids = [...family].filter(id => this.canonical.has(id));
   }
 
   private price(entry: CatalogEntry, estimated: boolean): ModelPrice {
@@ -80,7 +83,8 @@ export class PriceBook {
 
   private resolve(model: string): ModelPrice | null {
     const raw = model.trim().toLowerCase(), norm = normalizeModel(model);
-    const hit = this.exact.get(raw) ?? this.exact.get(norm);
+    // Exact endpoint, then the same endpoint without a Bedrock revision (':0'), then the canonical alias.
+    const hit = this.exact.get(raw) ?? this.exact.get(raw.replace(/:\d+$/, '')) ?? this.canonical.get(norm);
     if (hit) return this.price(hit, false);
     // Closest family member: the longest shared leading run of name tokens,
     // then the nearest version among those.
@@ -94,7 +98,7 @@ export class PriceBook {
       const distance = Math.abs(have.length - want.length) + versionDistance(want.slice(shared), have.slice(shared));
       if (!best || shared > best.shared || (shared === best.shared && (distance < best.distance || (distance === best.distance && id < best.id)))) best = {id, shared, distance};
     }
-    if (best) return this.price(this.exact.get(best.id)!, true);
+    if (best) return this.price(this.canonical.get(best.id)!, true);
     return null;
   }
 }
