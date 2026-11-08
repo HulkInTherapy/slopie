@@ -40,3 +40,20 @@ describe('sharded facts cache', () => {
     expect(fs.readdirSync(dir).filter(f => f !== 'index.bin')).toHaveLength(1);
   });
 });
+
+describe('loading-screen progress detail (fields added, shape kept)', () => {
+  it('reports cached and resumed files and automated runs', async () => {
+    const {dirs, options, write} = home();
+    for (let i = 0; i < 5; i++) write(path.join(dirs.claude, 'projects', 'p', `s${i}.jsonl`), [claudeUser(`u${i}`, `synthetic prompt ${i}`, i, `s${i}`), claudeAssistant(`m${i}`, i + 1, `s${i}`)]);
+    await run(options);
+    const events: import('../../packages/core/src/analytics/contracts.js').AuditEvent[] = [];
+    await run(options, events);
+    const details = events.flatMap(e => (e.type === 'progress' && e.progress.detail ? [e.progress.detail] : []));
+    const last = details.at(-1)!;
+    expect(last.stage).toBe('ready');
+    expect(last.counts.filesCached).toBe(5);
+    expect(last.counts.automatedRuns).toBe(0);
+    expect(last.harnesses.find(h => h.harness === 'claude')!.filesCached).toBe(5);
+    expect(Object.keys(last).sort()).toEqual(['counts', 'elapsedMs', 'harnesses', 'stage']);
+  });
+});

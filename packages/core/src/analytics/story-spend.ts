@@ -19,12 +19,11 @@
  */
 import fs from 'node:fs';
 import type {Aggregate} from './aggregate.js';
-import type {UsageFact} from './extract.js';
 import {canonicalModel, largestRemainder, modelLabel} from './model-names.js';
 import type {PriceBook} from './pricing.js';
 import type {StoryHarness, StoryModelShare, StorySpend} from './story-contracts.js';
 import type {StoryRow, StoryTable} from './story-table.js';
-import {localClock, localDayMonth} from './story-time.js';
+import {localClock} from './story-time.js';
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const MILLION = 1_000_000;
@@ -112,19 +111,7 @@ export interface SpendInput {
   now?: Date;
 }
 
-interface KeptUsage {u: UsageFact; harness: StoryHarness; cost: number | null; day: string | null; month: string | null; model: string | null}
-
-const keptUsage = (a: Aggregate, timezone: string): KeptUsage[] => {
-  const clock = localDayMonth(timezone);
-  const out: KeptUsage[] = [];
-  for (const s of a.story.sources) for (const u of s.usage) {
-    if (!a.story.kept.has(u)) continue;
-    const local = u.at === null ? null : clock(u.at);
-    out.push({u, harness: s.harness as StoryHarness, cost: a.story.costOf.get(u) ?? null, day: local?.day ?? null, month: local?.month ?? null,
-      model: u.model && !u.inferredModel ? canonicalModel(u.model) : null});
-  }
-  return out;
-};
+type UsageSummary = Aggregate['story']['usage'];
 
 export interface RecoveredSpend {
   usd: number;
@@ -138,17 +125,17 @@ export interface RecoveredSpend {
 }
 
 /** Residual of each stats cache over the request logs, priced at base rates (5m cache writes). */
-export function recoveredSpend(caches: readonly StatsCache[], kept: readonly KeptUsage[], book: PriceBook, dateAllowed: (d: string) => boolean): RecoveredSpend {
+export function recoveredSpend(caches: readonly StatsCache[], claudeObserved: UsageSummary['claudeObserved'], book: PriceBook, dateAllowed: (d: string) => boolean): RecoveredSpend {
   const out: RecoveredSpend = {usd: 0, unpricedTokens: 0, byMonth: new Map(), byModel: new Map(), coveredDays: () => false};
   const covered: StatsCache[] = [];
   for (const cache of caches) {
     covered.push(cache);
+    // Request-log tokens of the same model up to the cache's last day.
     const observed = new Map<string, StatsCacheModel>();
-    for (const k of kept) {
-      if (k.harness !== 'claude' || !k.model || k.day === null || k.day > cache.lastDate) continue;
-      const o = observed.get(k.model) ?? {input: 0, output: 0, cacheRead: 0, cacheWrite: 0};
-      o.input += k.u.input; o.output += k.u.output; o.cacheRead += k.u.cacheRead; o.cacheWrite += k.u.cacheWrite;
-      observed.set(k.model, o);
+    for (const [model, days] of claudeObserved) {
+      const o = {input: 0, output: 0, cacheRead: 0, cacheWrite: 0};
+      for (const [day, t] of days) if (day <= cache.lastDate) { o.input += t[0]; o.output += t[1]; o.cacheRead += t[2]; o.cacheWrite += t[3]; }
+      observed.set(model, o);
     }
     for (const [model, total] of cache.models) {
       const o = observed.get(model) ?? {input: 0, output: 0, cacheRead: 0, cacheWrite: 0};
@@ -190,9 +177,9 @@ export function buildSpend(input: SpendInput): {spend: StorySpend; modelShare: S
   const dateAllowed = input.dateAllowed ?? (() => true);
   const now = input.now ?? new Date();
   const clock = localClock(input.timezone);
-  const kept = keptUsage(a, input.timezone);
+  const summary = a.story.usage;
   const recovered = input.projectScoped ? {usd: 0, unpricedTokens: 0, byMonth: new Map<string, number>(), byModel: new Map(), coveredDays: () => false} as RecoveredSpend
-    : recoveredSpend(input.statsCaches, kept, input.book, dateAllowed);
+    : recoveredSpend(input.statsCaches, summary.claudeObserved, input.book, dateAllowed);
 
   // ---- measured, per day / month / harness
   const daily = new Map<string, {usd: number; prompts: number}>();
@@ -201,14 +188,10 @@ export function buildSpend(input: SpendInput): {spend: StorySpend; modelShare: S
   const D = (d: string) => { let x = daily.get(d); if (!x) { x = {usd: 0, prompts: 0}; daily.set(d, x); } return x; };
   const harnessRows = new Map<StoryHarness, {usd: number; recovered: number; prompts: number; tokens: number}>();
   const H = (h: StoryHarness) => { const k: StoryHarness = h === 'claude_hist' ? 'claude' : h; let x = harnessRows.get(k); if (!x) { x = {usd: 0, recovered: 0, prompts: 0, tokens: 0}; harnessRows.set(k, x); } return x; };
-  let measured = 0;
-  for (const k of kept) {
-    const cost = k.cost ?? 0;
-    measured += cost;
-    const h = H(k.harness);
-    h.usd += cost; h.tokens += k.u.input + k.u.output + k.u.cacheRead + k.u.cacheWrite;
-    if (k.day && k.month) { D(k.day).usd += cost; M(k.month).measured += cost; }
-  }
+  const measured = summary.measured;
+  for (const [harness, x] of summary.byHarness) { const h = H(harness as StoryHarness); h.usd += x.usd; h.tokens += x.tokens; }
+  for (const [day, x] of summary.byDay) D(day).usd += x.usd;
+  for (const [month, x] of summary.byMonth) M(month).measured += x.usd;
   if (recovered.usd > 0) H('claude').recovered += recovered.usd;
   for (const [m, x] of recovered.byMonth) M(m).recovered += x;
 
@@ -277,22 +260,21 @@ export function buildSpend(input: SpendInput): {spend: StorySpend; modelShare: S
     priciestDay: priciest,
     priceVersion: input.priceVersion,
   };
-  return {spend, modelShare: modelShare(kept, rows, recovered, input.table.headline?.prompts ?? rows.length, now)};
+  return {spend, modelShare: modelShare(summary.models, rows, recovered, input.table.headline?.prompts ?? rows.length, now)};
 }
 
 /* -------------------------------------------------------- model share --- */
 
-function modelShare(kept: readonly KeptUsage[], rows: readonly StoryRow[], recovered: RecoveredSpend, headlinePrompts: number, now: Date): StoryModelShare {
+function modelShare(observed: UsageSummary['models'], rows: readonly StoryRow[], recovered: RecoveredSpend, headlinePrompts: number, now: Date): StoryModelShare {
   const models = new Map<string, {output: number; usd: number; prompts: number; recoveredOutput: number; harness: Map<StoryHarness, number>; months: Map<string, number>}>();
   const R = (m: string) => { let x = models.get(m); if (!x) { x = {output: 0, usd: 0, prompts: 0, recoveredOutput: 0, harness: new Map(), months: new Map()}; models.set(m, x); } return x; };
   const monthTotals = new Map<string, Map<string, number>>();
   const addMonth = (month: string, model: string, n: number) => { const t = monthTotals.get(month) ?? new Map<string, number>(); t.set(model, (t.get(model) ?? 0) + n); monthTotals.set(month, t); };
-  for (const k of kept) {
-    if (!k.model) continue;
-    const x = R(k.model);
-    x.output += k.u.output; x.usd += k.cost ?? 0;
-    x.harness.set(k.harness, (x.harness.get(k.harness) ?? 0) + k.u.output);
-    if (k.month) addMonth(k.month, k.model, k.u.output);
+  for (const [model, o] of observed) {
+    const x = R(model);
+    x.output += o.output; x.usd += o.usd;
+    for (const [h, n] of o.harness) x.harness.set(h as StoryHarness, (x.harness.get(h as StoryHarness) ?? 0) + n);
+    for (const [month, n] of o.months) addMonth(month, model, n);
   }
   for (const [model, r] of recovered.byModel) {
     const x = R(model);
