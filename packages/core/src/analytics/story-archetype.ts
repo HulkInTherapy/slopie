@@ -453,3 +453,17 @@ export function storyAwards(rows: readonly StoryRow[], drafts: Map<string, Draft
   return out.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id)).slice(0, 6)
     .map((a, i) => ({...a, score: Math.round(a.score * 10) / 10, tier: i < 2 ? 'gold' as const : 'silver' as const}));
 }
+
+/**
+ * The priciest-day award must quote the same day and dollars as the spend card. Awards bucket each
+ * prompt's whole turn (subagents included) on the prompt's day, while spend buckets by response time,
+ * so a turn crossing midnight could make the two disagree. Spend is the source of truth.
+ */
+export function reconcilePriciestDay<T extends StoryAward>(awards: readonly T[], priciest: {day: string; usd: number} | null): T[] {
+  const i = awards.findIndex(a => a.id === 'priciest_day');
+  if (i < 0) return [...awards];
+  if (!priciest || priciest.usd <= 0) return awards.filter((_, j) => j !== i);
+  const friday = new Date(priciest.day + 'T12:00:00Z').getUTCDay() === 5;
+  const receipt = `${dayName(priciest.day)}: ${money0(priciest.usd)}`;
+  return awards.map((a, j) => (j === i ? {...a, title: friday ? 'Black Friday' : 'Bad Day at the Bank', receipt, publicReceipt: receipt} : a));
+}

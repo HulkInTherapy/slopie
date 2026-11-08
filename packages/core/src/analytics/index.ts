@@ -22,6 +22,7 @@ import {probeFile, pruneCopies, type PrefixRelation, type Probe} from './copy-pr
 import {buildStoryTable} from './story-table.js';
 import {buildStory} from './story.js';
 import {buildSpend, readStatsCache} from './story-spend.js';
+import {reconcilePriciestDay} from './story-archetype.js';
 import {DictionaryLookup} from './story-dictionary.js';
 import {enrichStory} from './story-enrich.js';
 import type {AuditProgressDetail, AuditStory} from './story-contracts.js';
@@ -794,6 +795,7 @@ class LocalAuditSession implements AuditSession {
       const spent = buildSpend({aggregate: a, table, book: this.book, priceVersion: this.catalog.basis.sha256, timezone: scope.timezone,
         statsCaches: this.statsFiles.map(readStatsCache).filter(c => c !== null), projectScoped: scope.project !== null, ...dateScope(scope)});
       story.spend = spent.spend;
+      story.awards = reconcilePriciestDay(story.awards, spent.spend.priciestDay);
       story.modelShare = spent.modelShare;
       story.timings.featuresMs = this.timings['storyTableMs'];
       this.timings['detectorsMs'] = Math.round(built.detectorsMs);
