@@ -601,6 +601,8 @@ function awards(story: AuditStory | null): DeckCard | null {
   if (list.length < 3) return null;
   const trophies: Trophy[] = list.slice(0, 6).map(award => {
     const split = (text: string): [string, string] => {
+      const dot = text.indexOf(' · ');
+      if (dot > 0) return [text.slice(0, dot).trim(), text.slice(dot + 3).trim()];
       const colon = text.indexOf(': ');
       if (colon > 0) return [text.slice(colon + 2).trim(), text.slice(0, colon).trim()];
       const comma = text.indexOf(', ');
@@ -608,11 +610,12 @@ function awards(story: AuditStory | null): DeckCard | null {
     };
     const [value, sub] = split(mask(award.receipt));
     const [publicValue] = split(mask(award.publicReceipt));
-    return { title: mask(award.title), value, sub, publicValue } as Trophy;
+    const tier = (award as { tier?: unknown }).tier;
+    return { title: mask(award.title), value, sub, publicValue, tier: tier === 'gold' || tier === 'silver' ? tier : undefined } as Trophy;
   });
   return {
     kind: 'awards', id: 'awards', kicker: 'THE AWARDS', expression: 'proud',
-    headline: `${trophies.length} awards nobody asked for.`, support: 'Every one is real. Receipts on the shelf.',
+    headline: `${trophies.length} awards nobody asked for.`, support: 'Every one is real, ranked by how unusual it is for you. Receipts on the shelf.',
     notes: ['Every award comes from a detector that fired on your history and carries its receipt; none are participation trophies.'],
     data: { trophies },
   };

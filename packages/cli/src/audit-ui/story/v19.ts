@@ -6,36 +6,12 @@
  */
 import type { AuditStory } from './types.js';
 
-export type V19Harness = 'claude' | 'claude_hist' | 'codex' | 'pi' | 'opencode' | 'cursor' | 'gemini' | 'copilot';
+import type { StoryHarness, StoryModelShare, StorySpend } from './types.js';
 
-export interface Spend {
-  measuredUsd: number;
-  recoveredUsd: number;
-  estimated: { lowUsd: number; highUsd: number; prompts: number; basis: string } | null;
-  unpricedTokens: number;
-  byHarness: readonly { harness: V19Harness; usd: number; prompts: number; tokens: number; sharePct: number }[];
-  monthly: readonly { month: string; measuredUsd: number; recoveredUsd: number; estimatedUsd: number; prompts: number }[];
-  daily: readonly { day: string; usd: number; prompts: number }[];
-  thisMonthUsd: number;
-  perActiveDayUsd: number;
-  priciestDay: { day: string; usd: number } | null;
-  priceVersion: string;
-}
-
-export interface ModelShareRow {
-  model: string; label: string; harness: V19Harness;
-  outputTokens: number; tokenSharePct: number;
-  prompts: number; promptSharePct: number;
-  usd: number; spendSharePct: number;
-}
-
-export interface ModelShare {
-  basis: 'output_tokens';
-  rows: readonly ModelShareRow[];
-  unknownModelPrompts: number;
-  last30d: readonly { model: string; label: string; promptSharePct: number }[];
-  timeline: readonly { month: string; model: string; label: string; tokenSharePct: number }[];
-}
+export type V19Harness = StoryHarness;
+export type Spend = StorySpend;
+export type ModelShare = StoryModelShare;
+export type ModelShareRow = StoryModelShare['rows'][number];
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const arr = <T,>(v: unknown): readonly T[] => (Array.isArray(v) ? v as T[] : []);
