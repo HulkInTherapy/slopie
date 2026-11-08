@@ -31,7 +31,7 @@ import {bundledModelCatalog} from './model-catalog.js';
 import {cachedPublicCatalog, refreshPublicCatalog} from './catalog-service.js';
 import {FactsCache} from './facts-cache.js';
 import {inlineScanExecutor, type ScanExecutor, type ScanJob, type ScanResult} from './scan-pool.js';
-import {nativeAuditRoots} from './native-census.js';
+import {claudeDesktopRoots, nativeAuditRoots} from './native-census.js';
 import {ADAPTER_HARNESSES, adapterKey, discoverAdapter, readAdapterSources, type AdapterHarness} from './adapter-facts.js';
 import type {SessionSource} from '../adapters/types.js';
 import {extractOpenCodeDatabase, extractOpenCodeJson} from './opencode-facts.js';
@@ -195,7 +195,8 @@ function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOpti
       onHarness?.(harness, row);
       continue;
     }
-    const roots = nativeAuditRoots(harness, options);
+    const desktop = harness === 'claude' ? claudeDesktopRoots(options) : [];
+    const roots = [...nativeAuditRoots(harness, options), ...desktop];
     const row = {files: 0, bytes: 0, roots: roots.length + (evidence ? 1 : 0)};
     result.census.set(harness, row);
     for (const root of roots) {
@@ -208,7 +209,7 @@ function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOpti
         }
         continue;
       }
-      if (harness === 'claude') {
+      if (harness === 'claude' && !desktop.includes(root)) {
         // Every Claude root keeps its own typed-prompt log.
         const history = path.join(path.dirname(root), 'history.jsonl');
         if (fs.existsSync(history) && !result.historyFiles.includes(history)) result.historyFiles.push(history);

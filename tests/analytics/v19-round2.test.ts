@@ -253,3 +253,22 @@ describe('compressed rollouts are decompressed as a stream', () => {
     expect(z.copyHashes).toEqual({head: sha(bytes.subarray(0, 4096)), at: checks.filter(c => c <= bytes.length).map(c => [c, sha(bytes.subarray(c - 4096, c))])});
   });
 });
+
+describe('Claude desktop agent-mode sessions', () => {
+  it('reads their transcripts as extra Claude roots, counting a session also present live once', async () => {
+    const {dirs, options, write} = home();
+    const desktop = path.join(dirs.root, 'desktop-sessions');
+    write(path.join(dirs.claude, 'projects', 'p', 'live.jsonl'), claudeSession('live', 4));
+    write(path.join(desktop, 'org', 'sess-1', '.claude', 'projects', 'q', 'agent.jsonl'), claudeSession('agent', 3));
+    // The same live session copied into a desktop home is not counted twice.
+    write(path.join(desktop, 'org', 'sess-2', '.claude', 'projects', 'p', 'live.jsonl'), claudeSession('live', 4));
+    const before = await run(options);
+    expect(before.metrics.humanPrompts.value).toBe(4);
+    process.env['POTSHERD_CLAUDE_DESKTOP_DIR'] = desktop;
+    try {
+      const s = await run(options);
+      expect(s.metrics.humanPrompts.value).toBe(7);
+      expect(s.launch!.facts!.recordedResponses).toBe(7);
+    } finally { delete process.env['POTSHERD_CLAUDE_DESKTOP_DIR']; }
+  });
+});
