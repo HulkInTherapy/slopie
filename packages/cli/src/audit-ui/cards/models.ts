@@ -62,8 +62,13 @@ export function guessBody(s: Scene, data: Data<'guess'>, r: Rect): boolean {
   const barW = Math.max(6, r.w - nameW - 20);
   const rowGap = r.h >= 12 ? 2 : 1;
   let busy = tg < 1600;
+  // Once the bars have landed, the rows slide into share order (biggest first).
+  const order = data.options.map((o, i) => [o.share, i] as const).sort((a, b) => b[0] - a[0] || a[1] - b[1]).map(([, i]) => i);
+  const rank = data.options.map((_, i) => order.indexOf(i));
+  const sortK = s.caps.motion ? seg(tg, 950, 450, easeOutCubic) : 1;
+  busy ||= sortK < 1;
   data.options.forEach((option, i) => {
-    const y = r.y + i * rowGap;
+    const y = r.y + Math.round((i + (rank[i]! - i) * sortK) * rowGap);
     const correct = i === data.answer;
     const mine = i === state.guess;
     const k = s.caps.motion ? Math.min(1.08, spring((tg - i * 60) / 1000, 2.2, 0.5)) : 1;

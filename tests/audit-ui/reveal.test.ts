@@ -27,13 +27,15 @@ describe('archetype ceremony', () => {
     expect(early).toContain('the evidence');
     expect(early).not.toContain('╔');
     const roll = reveal(120, 40, T.roll + 500).text;
-    expect(roll).toMatch(/0\.\d\d\?/); // a real runner-up score, shown as the slot spins
+    expect(roll).toMatch(/so close…|maybe…/); // the slot spins through real runners-up, no raw scores
+    expect(roll).not.toMatch(/0\.\d\d/);
     const slam = reveal(120, 40, T.shimmer + 200).text;
     expect(slam).toContain('╔');
     const done = reveal(120, 40, T.settle);
     expect(done.busy).toBe(false);
     expect(done.text).toContain('★ EPIC ★');
-    expect(done.text).toContain('almost: The Architect 0.71');
+    expect(done.text).toContain('also close: The Model Sommelier'); // the sub-role already names The Architect
+    expect(done.text).not.toMatch(/\b0\.\d\d\b/);
     expect(done.text).toContain('your code');
     expect(done.text).toContain('night · spec · roaming · hot-headed');
   });

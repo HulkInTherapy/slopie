@@ -143,7 +143,7 @@ export function archetypeBody(s: Scene, data: Data, r: Rect, mascot: Rect): bool
       const lift = Math.round((1 - easeOutCubic(local)) * 2);
       const alpha = 0.35 + 0.25 * Math.sin(Math.PI * local);
       drawTitle(s, tx, ty, name, useBig ? scale : 0, titleW, (_px, py) => fade(mix(C.slate, C.gray, py / 4), alpha), lift);
-      c.text(tx, frame.y + frame.h, `${steps[idx]!.score.toFixed(2)}?`, { fg: C.slate, alpha: alpha });
+      c.text(tx, frame.y + frame.h, idx === steps.length - 1 ? 'so close…' : 'maybe…', { fg: C.slate, alpha: alpha });
     }
   } else if (t >= T.slam || !s.caps.motion) {
     const slam = s.caps.motion ? seg(t, T.slam, 380, easeOutBack) : 1;
@@ -196,9 +196,13 @@ export function archetypeBody(s: Scene, data: Data, r: Rect, mascot: Rect): bool
       const sa = seg(t, T.stamp + 150, 300);
       let x = r.x + bw + 3;
       if (data.subRole) x += c.text(x, y, data.subRole, { fg: C.peach, italic: true, alpha: sa }, r.x + r.w - x) + 3;
-      const almost = data.runners.slice(0, 2).map(a => `${a.title} ${a.score.toFixed(2)}`).join(' · ');
+      // Words, not raw scores: the closest other archetype.
+      // When the sub-role already names the runner-up, the next one down is "also close".
+      const [first, second] = data.runners;
+      const named = !!first && !!data.subRole?.includes(first.title);
+      const almost = named ? (second ? `also close: ${second.title}` : '') : first ? `runner-up: ${first.title}` : '';
       if (almost && x + 10 < r.x + r.w) {
-        const text2 = `almost: ${almost}`;
+        const text2 = almost;
         if (x + textWidth(text2) <= r.x + r.w) textRight(c, r.x + r.w, y, text2, { fg: C.slate, alpha: sa });
       }
     }
