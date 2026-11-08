@@ -84,9 +84,25 @@ export interface StoryPromptRef {
   history: boolean;
 }
 
+type Tokens4 = [number, number, number, number];
+export interface UsageSummary {
+  measured: number;
+  byDay: Map<string, {usd: number}>;
+  byMonth: Map<string, {usd: number}>;
+  byHarness: Map<AuditHarness, {usd: number; tokens: number}>;
+  /** Claude, observed model -> local day -> [input, output, cacheRead, cacheWrite] (stats-cache subtraction). */
+  claudeObserved: Map<string, Map<string, Tokens4>>;
+  /** Observed (not inferred) canonical model -> output, usd, per-harness and per-month output. */
+  models: Map<string, {output: number; usd: number; harness: Map<AuditHarness, number>; months: Map<string, number>}>;
+}
+
 export interface Aggregate {
   /** Story inputs: prompts with their facts, priced kept usage, sources in scope; `primary` is one copy per session (word counters). */
-  story: {refs: StoryPromptRef[]; costOf: Map<UsageFact, number>; sources: SourceFacts[]; primary: ReadonlySet<SourceFacts>; kept: ReadonlySet<UsageFact>};
+  story: {refs: StoryPromptRef[]; costOf: Map<UsageFact, number>; sources: SourceFacts[]; primary: ReadonlySet<SourceFacts>;
+    /** Kept (deduplicated, in-scope) responses with their source. */
+    rows: readonly {u: UsageFact; s: SourceFacts}[];
+    /** Per local day/month/harness/model sums of the kept responses (spend and model share). */
+    usage: UsageSummary};
   /** Non-interactive runs (codex exec / SDK): their usage is counted, they are not chats. */
   automatedRuns: number;
   conversations: Conversation[];
@@ -173,6 +189,8 @@ export function aggregate(input: AggregateInput): Aggregate {
   const sources = input.sources
     .filter(s => harnessSet.has(s.harness))
     .sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? '') || (a.firstAt ?? 0) - (b.firstAt ?? 0)
+      // Parents before children and originals before forks, so a replayed copy never claims the original's identity.
+      || Number(a.child) - Number(b.child) || Number(!!a.forkedFrom) - Number(!!b.forkedFrom)
       || (a.sessionId === b.sessionId ? completeness(b) - completeness(a) || b.size - a.size || Number(!!a.archived) - Number(!!b.archived) : 0) || a.file.localeCompare(b.file))
     .filter(s => {
       if (policy.forgotten.has(sid(s.harness, s.sessionId)) || (s.parentId && policy.forgotten.has(sid(s.harness, s.parentId)))) { excludedSources++; return false; }
@@ -201,13 +219,19 @@ export function aggregate(input: AggregateInput): Aggregate {
 
   // ---- usage
   const claudeRows: {u: UsageFact; s: SourceFacts}[] = [], otherRows: {u: UsageFact; s: SourceFacts}[] = [];
-  const seenKeys = new Set<string>();
+  // Event identities, one set per scope (Codex/pi: fork lineage; others: global) — no per-response key strings.
+  const seenByScope = new Map<string, Set<string>>();
+  const unscoped = scope.eventFrom === null && scope.asOf === null;
   for (const s of sources) {
     harness[s.harness].files++;
+    if (!projectAllowed(s.project)) continue;
+    if (s.harness === 'claude') { for (const u of s.usage) if (unscoped || inRange(u.at)) claudeRows.push({u, s}); continue; }
+    const scopeKey = s.harness === 'codex' || s.harness === 'pi' ? `${s.harness}:${lineage(s)}` : '';
+    let seen = seenByScope.get(scopeKey);
+    if (!seen) { seen = new Set(); seenByScope.set(scopeKey, seen); }
     for (const u of s.usage) {
-      if (!inRange(u.at) || !projectAllowed(s.project)) continue;
-      if (s.harness === 'claude') { claudeRows.push({u, s}); continue; }
-      if (u.key) { const k = scopedKey(s, u.key); if (seenKeys.has(k)) continue; seenKeys.add(k); }
+      if (!unscoped && !inRange(u.at)) continue;
+      if (u.key) { if (seen.has(u.key)) continue; seen.add(u.key); }
       otherRows.push({u, s});
     }
   }
@@ -221,6 +245,10 @@ export function aggregate(input: AggregateInput): Aggregate {
   const conversationOf = (s: SourceFacts) => { let id = convMemo.get(s); if (id === undefined) { id = sid(s.harness, s.child && s.parentId ? s.parentId : s.sessionId); convMemo.set(s, id); } return id; };
   const selfId = (s: SourceFacts) => { let id = selfMemo.get(s); if (id === undefined) { id = sid(s.harness, s.sessionId); selfMemo.set(s, id); } return id; };
   const costOf = new Map<UsageFact, number>();
+  const summary: UsageSummary = {measured: 0, byDay: new Map(), byMonth: new Map(), byHarness: new Map(), claudeObserved: new Map(), models: new Map()};
+  let lastSource: SourceFacts | null = null, lastHarness: {usd: number; tokens: number} | undefined, lastSlot = NaN, lastDay = '', lastMonth = '';
+  let lastDayAcc: {usd: number} | undefined, lastMonthAcc: {usd: number} | undefined, lastModelKey: string | null = null;
+  let lastModel: UsageSummary['models'] extends Map<string, infer M> ? M | undefined : never, lastTuple: Tokens4 | null = null;
   for (const {u, s} of usageRows) {
     const price = book.lookup(u.model);
     const fast = u.tier === 'fast' || (s.harness === 'codex' && u.tier === undefined && input.codexFastDefault);
@@ -228,6 +256,44 @@ export function aggregate(input: AggregateInput): Aggregate {
     if (price) costOf.set(u, cost); else { unpricedResponses++; unpricedTokens += total(u); }
     // Rows group aliases of one model (date stamps, provider/region prefixes); pricing above used the raw endpoint.
     const name = u.model ? canonicalModel(u.model) : 'unknown';
+    {
+      // Consecutive responses usually share source, quarter hour and model: reuse the accumulators.
+      summary.measured += cost;
+      if (s !== lastSource) { lastSource = s; lastHarness = summary.byHarness.get(s.harness); if (!lastHarness) { lastHarness = {usd: 0, tokens: 0}; summary.byHarness.set(s.harness, lastHarness); } }
+      lastHarness!.usd += cost; lastHarness!.tokens += total(u);
+      let day: string | null = null, month: string | null = null;
+      if (u.at !== null) {
+        const slot = Math.floor(u.at / 900_000);
+        if (slot !== lastSlot) {
+          lastSlot = slot; lastDay = dayOf(u.at); lastMonth = lastDay.slice(0, 7);
+          lastDayAcc = summary.byDay.get(lastDay); if (!lastDayAcc) { lastDayAcc = {usd: 0}; summary.byDay.set(lastDay, lastDayAcc); }
+          lastMonthAcc = summary.byMonth.get(lastMonth); if (!lastMonthAcc) { lastMonthAcc = {usd: 0}; summary.byMonth.set(lastMonth, lastMonthAcc); }
+          lastModelKey = null;
+        }
+        day = lastDay; month = lastMonth;
+        lastDayAcc!.usd += cost; lastMonthAcc!.usd += cost;
+      }
+      if (u.model && !u.inferredModel) {
+        const key = `${name}\0${s.harness}\0${day ?? ''}`;
+        if (key !== lastModelKey) {
+          lastModelKey = key;
+          lastModel = summary.models.get(name);
+          if (!lastModel) { lastModel = {output: 0, usd: 0, harness: new Map(), months: new Map()}; summary.models.set(name, lastModel); }
+          lastTuple = null;
+          if (s.harness === 'claude' && day) {
+            let byDay = summary.claudeObserved.get(name);
+            if (!byDay) { byDay = new Map(); summary.claudeObserved.set(name, byDay); }
+            lastTuple = byDay.get(day) ?? null;
+            if (!lastTuple) { lastTuple = [0, 0, 0, 0]; byDay.set(day, lastTuple); }
+          }
+        }
+        const m = lastModel!;
+        m.output += u.output; m.usd += cost;
+        m.harness.set(s.harness, (m.harness.get(s.harness) ?? 0) + u.output);
+        if (month) m.months.set(month, (m.months.get(month) ?? 0) + u.output);
+        if (lastTuple) { lastTuple[0] += u.input; lastTuple[1] += u.output; lastTuple[2] += u.cacheRead; lastTuple[3] += u.cacheWrite; }
+      }
+    }
     let row = models.get(name);
     if (!row) {
       const provider = u.provider && !u.provider.includes('vertex') ? u.provider : s.harness === 'codex' ? 'openai' : name.startsWith('claude') ? 'anthropic' : u.provider;
@@ -418,7 +484,7 @@ export function aggregate(input: AggregateInput): Aggregate {
   }).sort((a, b) => (b.valueUsd ?? 0) - (a.valueUsd ?? 0) || a.id.localeCompare(b.id));
 
   return {
-    story: {refs, costOf, sources, primary, kept: new Set(usageRows.map(r => r.u))}, automatedRuns,
+    story: {refs, costOf, sources, primary, rows: usageRows, usage: summary}, automatedRuns,
     conversations: list, prompts, around, models: modelRows, harness, tokens, costUsd, estimatedCostUsd,
     responses: usageRows.length, unpricedResponses, unpricedTokens, inferredModelResponses, compactionResponses,
     topLevelConversations: top, childConversations: children, historyOnlyConversations,

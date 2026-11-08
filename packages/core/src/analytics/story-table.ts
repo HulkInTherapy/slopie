@@ -99,14 +99,19 @@ export function buildStoryTable(input: StoryTableInput): StoryTable {
   }
 
   // ---- spend per conversation: main thread and subagents (kept, deduplicated responses only)
-  const kept = a.story.kept;
   const main = new Map<string, Spend[]>(), sub = new Map<string, Spend[]>();
-  for (const s of sources) {
-    const conv = sid(s.harness, s.child && s.parentId ? s.parentId : s.sessionId);
+  // Only conversations with a human prompt get turn windows (automated runs never do).
+  const promptConvs = new Set<string>();
+  for (const ref of refs) promptConvs.add(ref.prompt.conversationId);
+  const convOf = new Map<SourceFacts, string | null>();
+  for (const {u, s} of a.story.rows) {
+    if (u.at === null) continue;
+    let conv = convOf.get(s);
+    if (conv === undefined) { const c = sid(s.harness, s.child && s.parentId ? s.parentId : s.sessionId); conv = promptConvs.has(c) ? c : null; convOf.set(s, conv); }
+    if (conv === null) continue;
     const target = s.child ? sub : main;
     let list = target.get(conv);
-    for (const u of s.usage) {
-      if (u.at === null || !kept.has(u)) continue;
+    {
       if (!list) { list = []; target.set(conv, list); }
       // Unpriced responses still tell which model answered; their cost is unknown, not $0.
       list.push({at: u.at, cost: costOf.get(u) ?? 0, out: u.output, model: u.model && !u.inferredModel ? canonicalModel(u.model) : null});

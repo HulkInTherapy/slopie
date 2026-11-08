@@ -318,8 +318,12 @@ export interface AuditProgressDetail {
     /** Running top-level chats and human prompts of this harness (pre-dedupe while reading). */
     chats: number;
     prompts: number;
+    /** v19: files of this harness answered from the derived cache. */
+    filesCached?: number;
   }[];
   /** Running counts while reading (pre-dedupe for prompts; final after aggregation). */
-  counts: {files: number; filesDone: number; bytes: number; bytesDone: number; messages: number; chats: number; prompts: number};
+  counts: {files: number; filesDone: number; bytes: number; bytesDone: number; messages: number; chats: number; prompts: number;
+    /** v19: files answered from the derived cache / resumed from their previous end; automated (exec) runs once aggregated. */
+    filesCached?: number; filesResumed?: number; automatedRuns?: number};
   elapsedMs: number;
 }

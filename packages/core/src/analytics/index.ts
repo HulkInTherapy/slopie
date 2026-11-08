@@ -443,7 +443,7 @@ class LocalAuditSession implements AuditSession {
       this.detail = {
         stage: 'discovering',
         harnesses: harnesses.map(h => ({harness: h, files: 0, bytes: 0, filesDone: 0, firstAt: null, lastAt: null, discovered: false, absent: false, chats: 0, prompts: 0})),
-        counts: {files: 0, filesDone: 0, bytes: 0, bytesDone: 0, messages: 0, chats: 0, prompts: 0}, elapsedMs: 0,
+        counts: {files: 0, filesDone: 0, bytes: 0, bytesDone: 0, messages: 0, chats: 0, prompts: 0, filesCached: 0, filesResumed: 0, automatedRuns: 0}, elapsedMs: 0,
       };
       // The facts cache is loaded first: it already knows the harness of immutable archive copies.
       const cache = new FactsCache(this.derived ? this.derived.directory : null);
@@ -471,9 +471,13 @@ class LocalAuditSession implements AuditSession {
       const facts: SourceFacts[] = [];
       const toRead: ScanJob[] = [];
       const resumable: {job: ScanJob & {mtimeMs: number}; previous: SourceFacts}[] = [];
+      const jobsTotal = found.jobs.length + found.zstdUnsupported;
+      let checked = 0;
       for (const job of found.jobs as (ScanJob & {mtimeMs: number})[]) {
+        // Loading cached shards takes a while on big machines: keep the loading screen moving.
+        if ((++checked & 31) === 0 && performance.now() - this.lastTick >= 50) { this.tick(facts.length, jobsTotal); await new Promise(resolve => setImmediate(resolve)); }
         const hit = cache.get(job.file, job.size, job.mtimeMs, tz);
-        if (hit) { facts.push(hit); this.count(hit, job.size); continue; }
+        if (hit) { facts.push(hit); this.count(hit, job.size, true); continue; }
         const previous = cache.previous(job.file);
         if (previous?.resume && previous.tz === tz && previous.size < job.size && job.size - previous.size <= RESUME_MAX_BYTES) resumable.push({job, previous});
         else toRead.push({file: job.file, harness: job.harness, size: job.size, timezone: tz, ...(job.archive ? {archive: true} : {})});
@@ -488,7 +492,7 @@ class LocalAuditSession implements AuditSession {
       let resumed = 0;
       for (const {job, previous} of resumable) {
         const merged = resumeFacts(previous, job, tz);
-        if (merged) { facts.push(merged); cache.set(merged); this.count(merged, job.size); resumed++; } else readOne({file: job.file, harness: job.harness, size: job.size, timezone: tz});
+        if (merged) { facts.push(merged); cache.set(merged); this.count(merged, job.size); resumed++; if (this.detail) (this.detail.counts as {filesResumed?: number}).filesResumed = resumed; } else readOne({file: job.file, harness: job.harness, size: job.size, timezone: tz});
       }
       this.timings['filesResumed'] = resumed;
       if (toRead.length && !this.controller.signal.aborted) {
@@ -587,15 +591,17 @@ class LocalAuditSession implements AuditSession {
   private dictionary: DictionaryLookup | null = null;
 
   /** Running counts for the loading story (cheap: a few additions per file). */
-  private count(f: SourceFacts | null, bytes: number): void {
+  private count(f: SourceFacts | null, bytes: number, cached = false): void {
     const d = this.detail;
     if (!d) return;
-    const c = d.counts as {-readonly [K in keyof AuditProgressDetail['counts']]: number};
+    const c = d.counts as {-readonly [K in keyof AuditProgressDetail['counts']]-?: number};
     c.filesDone++; c.bytesDone += bytes;
+    if (cached) c.filesCached = (c.filesCached ?? 0) + 1;
     if (!f) return;
     const row = d.harnesses.find(h => h.harness === f.harness) as {-readonly [K in keyof AuditProgressDetail['harnesses'][number]]: AuditProgressDetail['harnesses'][number][K]} | undefined;
     if (row) {
       row.filesDone++;
+      if (cached) (row as {filesCached?: number}).filesCached = ((row as {filesCached?: number}).filesCached ?? 0) + 1;
       if (f.firstAt !== null) { const iso = new Date(f.firstAt).toISOString(); if (!row.firstAt || iso < row.firstAt) row.firstAt = iso; }
       if (f.lastAt !== null) { const iso = new Date(f.lastAt).toISOString(); if (!row.lastAt || iso > row.lastAt) row.lastAt = iso; }
     }
@@ -684,7 +690,7 @@ class LocalAuditSession implements AuditSession {
     const facts = this.launchFacts(a);
     let story: AuditStory | undefined;
     if (this.current.launch) {
-      if (this.detail) this.detail = {...this.detail, stage: 'detecting', counts: {...this.detail.counts, messages: a.responses + userMessages, chats: a.topLevelConversations, prompts: human},
+      if (this.detail) this.detail = {...this.detail, stage: 'detecting', counts: {...this.detail.counts, messages: a.responses + userMessages, chats: a.topLevelConversations, prompts: human, automatedRuns: a.automatedRuns},
         harnesses: this.detail.harnesses.map(h => ({...h, chats: a.harness[h.harness].conversations, prompts: a.harness[h.harness].humanPrompts}))};
       const aliases = new Map(projects.map(p => [p.path ?? '(unknown)', p.alias]));
       const policy = this.policy;

@@ -32,6 +32,24 @@ describe('A#1 Codex counters are scoped to the session lineage', () => {
   });
 });
 
+describe('Codex subagents', () => {
+  it('a fresh subagent thread counts its own usage once; a forked one does not re-count the parent', async () => {
+    const {dirs, options, write} = home();
+    const parent = '11111111-0000-4000-8000-0000000000b1';
+    write(rollout(dirs.codex, 'rollout-p.jsonl'), codexRollout({id: parent, turns: 2}));
+    // Fresh child: its own counters from zero (same numbers as the parent's first turn, still a separate request).
+    write(rollout(dirs.codex, 'rollout-c1.jsonl'), codexRollout({id: '11111111-0000-4000-8000-0000000000b2', turns: 1, source: {subagent: {thread_spawn: {parent_thread_id: parent}}}}));
+    // Forked child: replays the parent's two turns, then one of its own.
+    const replay = codexRollout({id: parent, turns: 2}).slice(1);
+    const own = codexRollout({id: 'x', turns: 1, from: 7, startTotal: -5});
+    write(rollout(dirs.codex, 'rollout-c2.jsonl'), [codexRollout({id: '11111111-0000-4000-8000-0000000000b3', turns: 0, source: {subagent: {thread_spawn: {parent_thread_id: parent}}}, forkedFrom: parent})[0], ...replay, ...own]);
+    const s = await run(options);
+    expect(s.launch!.facts!.recordedResponses).toBe(4);
+    expect(s.metrics.linkedChildren.value).toBe(2);
+    expect(s.sources.find(x => x.harness === 'codex')!.humanPrompts).toBe(2);
+  });
+});
+
 describe('A#2 copies of one Codex session: most complete wins, divergent tails merge', () => {
   it('a longer archived copy is not hidden by a shorter live copy with the same relative path', async () => {
     const {dirs, options, write} = home();
