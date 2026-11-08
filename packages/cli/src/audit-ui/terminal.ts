@@ -23,6 +23,8 @@ import { applyAuditEvent, applyPreviewInvalidation, applyPrivacyEvent, type Priv
 import { storyShareSvg } from './share.js';
 import { buildDeck, type DeckCard } from './story/deck.js';
 import { sanitize } from './text.js';
+import { baseline, digestOf, historyDir, readHistory, sinceLast, writeDigest, type Since } from './history.js';
+import { wentOnline } from './story/source.js';
 import { detailLines } from './view-model.js';
 
 export interface TerminalIo {
@@ -42,6 +44,8 @@ export interface TerminalOptions {
   shareDir?: string;
   /** Injected clock for tests. */
   now?: () => number;
+  /** Run-history directory; false disables it (default: ~/.potsherd/audit-history, off with injected io). */
+  historyDir?: string | false;
 }
 
 export interface TerminalResult {
@@ -317,7 +321,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
       const card = deck[index];
       if (card) {
         const scene: Scene = {
-          c: canvas, w, h, tier, caps, blink, state: stateOf(card), index, total: deck.length,
+          c: canvas, w, h, tier, caps, blink, state: stateOf(card), index, total: deck.length, online: wentOnline(view.snapshot, transfers.length),
           t: caps.motion ? (now - enteredAt) * CARD_SPEED : Infinity,
         };
         busy = renderCard(scene, card);
@@ -393,13 +397,45 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
     paint();
   }
 
+  /* ── run history ── */
+  const histDir = options.historyDir !== undefined ? options.historyDir : options.io ? false : historyDir();
+  let history: { since: Since | null; firstRun: boolean } | null = null;
+  let digestWritten = false;
+  let openedOnBoard = false;
+
+  function loadHistory(snapshot: AuditSnapshot): void {
+    if (history || histDir === false) return;
+    const digest = digestOf(snapshot);
+    if (!digest) return;
+    const past = readHistory(snapshot, histDir);
+    const prev = baseline(past);
+    history = { since: prev ? sinceLast(prev, digest, past) : null, firstRun: !past.length };
+    if (!digestWritten && (snapshot.status === 'ready' || snapshot.status === 'partial')) digestWritten = writeDigest(snapshot, digest, histDir);
+  }
+
+  /** The deck with this run's history folded into the board (ticker, records, replay hint). */
+  function decorate(cards: DeckCard[]): DeckCard[] {
+    const last = cards.at(-1);
+    if (!last || last.kind !== 'board' || !history) return cards;
+    const since = history.since;
+    const records = since?.records ?? [];
+    const awards = records.length
+      ? [{ title: 'New Personal Best', value: `${records[0]!.metric}: ${records[0]!.to}`, publicValue: `${records[0]!.metric}: ${records[0]!.to}`, tier: 'gold' as const }, ...last.data.awards].slice(0, 6)
+      : last.data.awards;
+    const board = { ...last, data: { ...last.data, sinceLast: since?.line ?? null, firstRun: history.firstRun, replay: openedOnBoard, awards } };
+    return [...cards.slice(0, -1), board];
+  }
+
   /* ── navigation ── */
 
   function startDeck(now: number): void {
     deckSnapshot = view.snapshot;
-    deck = buildDeck(view.snapshot);
+    loadHistory(view.snapshot);
+    // Re-runs open on the verdict; ← replays the story.
+    openedOnBoard = !!history && !history.firstRun;
+    deck = decorate(buildDeck(view.snapshot));
     mode = 'deck';
-    index = 0;
+    index = openedOnBoard ? deck.length - 1 : 0;
     enteredAt = now;
     needsClear = false;
   }
@@ -436,7 +472,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
       queue.length = 0;
       lingering = null;
       session.cancel();
-      if (mode === 'deck') { deck = buildDeck(view.snapshot); index = Math.min(index, deck.length - 1); }
+      if (mode === 'deck') { deck = decorate(buildDeck(view.snapshot)); index = Math.min(index, deck.length - 1); }
       flash('Cleared by your privacy settings');
       return;
     }
@@ -460,7 +496,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
     if (mode === 'deck' && view.snapshot !== deckSnapshot) {
       const id = deck[index]?.id;
       deckSnapshot = view.snapshot;
-      deck = buildDeck(view.snapshot);
+      deck = decorate(buildDeck(view.snapshot));
       const found = deck.findIndex(card => card.id === id);
       index = found >= 0 ? found : Math.min(index, deck.length - 1);
     }
@@ -502,7 +538,10 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
       case 'back': return;
       case 'board': go(deck.length - 1); return;
       case 'share': share(); return;
-      case 'left': go(index - 1); return;
+      case 'left':
+        if (openedOnBoard && card.kind === 'board') { openedOnBoard = false; deck = decorate(buildDeck(view.snapshot)); go(0); return; }
+        go(index - 1);
+        return;
       case 'right': case 'enter': {
         // The archetype ceremony is skippable: the first key jumps to its final frame.
         if (card.kind === 'archetype' && caps.motion && !revealDone((now - enteredAt) * CARD_SPEED)) {

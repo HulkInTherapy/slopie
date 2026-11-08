@@ -210,7 +210,7 @@ export function storySnapshot(): AuditSnapshot {
   story.models.best = story.models.rows[2]!;
   return {
     ...base,
-    status: 'complete' as AuditSnapshot['status'],
+    status: 'ready' as AuditSnapshot['status'],
     launch: { ...base.launch!, facts: { ...base.launch!.facts!, costByHarness: { claude: 4100.4, codex: 2290.1, pi: 21.9 } }, story } as AuditSnapshot['launch'],
   };
 }

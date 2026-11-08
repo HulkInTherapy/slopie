@@ -61,6 +61,8 @@ export interface BoardSummary {
   sinceLast: string | null;
   /** First run with history support: plant the weekly habit. */
   firstRun: boolean;
+  /** Opened straight on the board (re-run): ← replays the story. */
+  replay?: boolean;
 }
 
 const SHORT_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

@@ -280,7 +280,7 @@ class BoardCtx {
     if (d.sinceLast) {
       const w = c.text(mx + 1, y, 'SINCE LAST RUN ', { fg: C.orange, bold: true, alpha: a });
       c.text(mx + 1 + w, y, d.sinceLast, { fg: C.cream, alpha: a }, s.w - mx * 2 - w - 2);
-    } else {
+    } else if (!s.share) {
       c.text(mx + 1, y, d.firstRun ? 'first run · run it again next week to see what changed' : 'no earlier run on record · run it again next week to see what changed', { fg: C.slate, alpha: a }, s.w - mx * 2 - 2);
     }
   }
@@ -307,7 +307,7 @@ class BoardCtx {
       return;
     }
     const arrows = this.uni ? '←' : '<';
-    const keys: [string, string][] = [[arrows, 'story'], ['s', 'share'], ['?', 'how'], ['q', 'quit']];
+    const keys: [string, string][] = [[arrows, this.d.replay ? 'replay your story' : 'story'], ['s', 'share'], ['?', 'how'], ['q', 'quit']];
     let x = mx;
     for (const [k, label] of keys) {
       if (x + textWidth(k) + 1 + textWidth(label) + 3 > rx) break;
