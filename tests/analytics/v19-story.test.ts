@@ -110,16 +110,17 @@ describe('spend: measured, recovered, estimated', () => {
   it('estimates history-only prompts from the nearest months with token logs, as a labelled range', async () => {
     const {dirs, options, write} = home();
     const rows: unknown[] = [];
-    for (let i = 0; i < 25; i++) rows.push(claudeUser(`u${i}`, `synthetic logged prompt ${i}`, i * 10), claudeAssistant(`m${i}`, i * 10 + 1, 's1', 'claude-sonnet-4-6', {input_tokens: 100_000, output_tokens: 10_000}));
+    for (let i = 0; i < 55; i++) rows.push(claudeUser(`u${i}`, `synthetic logged prompt ${i}`, i * 10), claudeAssistant(`m${i}`, i * 10 + 1, 's1', 'claude-sonnet-4-6', {input_tokens: 100_000, output_tokens: 10_000}));
     write(path.join(dirs.claude, 'projects', 'p', 's1.jsonl'), rows);
     write(path.join(dirs.claude, 'history.jsonl'), Array.from({length: 10}, (_, i) => ({display: `synthetic history-only prompt ${i}`, timestamp: Date.parse('2026-12-03T10:00:00Z') + i * 60_000, project: '/work/x', sessionId: 'gone'})));
     const s = await run(options);
     const spend = s.launch!.story!.spend;
-    const perPrompt = spend.measuredUsd / 25;
+    const perPrompt = spend.measuredUsd / 55;
     expect(spend.estimated).not.toBeNull();
     expect(spend.estimated!.prompts).toBe(10);
     expect(spend.estimated!.lowUsd).toBeCloseTo(perPrompt * 10, 1);
     expect(spend.estimated!.highUsd).toBeCloseTo(perPrompt * 10, 1);
+    expect(spend.estimated!.midUsd).toBeCloseTo(perPrompt * 10, 1);
     expect(spend.estimated!.basis).toContain('2026-10');
     expect(spend.monthly.find(m => m.month === '2026-12')!.estimatedUsd).toBeCloseTo(perPrompt * 10, 1);
     expect(spend.monthly.find(m => m.month === '2026-11')!.prompts).toBe(0);

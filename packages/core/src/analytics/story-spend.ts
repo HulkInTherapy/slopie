@@ -9,9 +9,10 @@
  *               the same model up to that date; only positive residuals are priced, cache
  *               writes at the 5-minute rate (the cache has no TTL split: the cheaper rate is
  *               the conservative one). Spread over months by `dailyModelTokens` weight.
- *  - estimated: human prompts whose token logs no longer exist (history-only, on days the
- *               stats cache does not cover) × the all-in cost per human prompt of the nearest
- *               months that have token logs. A low–high range, always labelled.
+ *  - estimated: human prompts whose token logs no longer exist (history-only Claude prompts, on
+ *               days the stats cache does not cover) × the per-prompt turn cost of Claude prompts
+ *               with logs in the nearest months: median as the central scenario, p25–p75 as the
+ *               range. Always labelled.
  *
  * Model share is observed only: models recorded on responses (and the stats cache's
  * per-model totals, which are recorded by Claude Code, not inferred). Prompts without an
@@ -27,8 +28,8 @@ import {localClock} from './story-time.js';
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const MILLION = 1_000_000;
-/** A month is a usable estimate basis with at least this many priced human prompts. */
-const BASIS_MIN_PROMPTS = 20;
+/** A month is a usable estimate basis with at least this many priced Claude human prompts. */
+const BASIS_MIN_PROMPTS = 50;
 const BASIS_MONTHS = 3;
 
 /* ------------------------------------------------------- stats-cache --- */
@@ -171,6 +172,12 @@ export function recoveredSpend(caches: readonly StatsCache[], claudeObserved: Us
 const monthIndex = (m: string) => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7)) - 1;
 const monthOf = (i: number) => `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`;
 const usd = (x: number) => `$${x.toFixed(2)}`;
+/** Linear-interpolated quantile of an ascending list. */
+function quantile(sorted: readonly number[], q: number): number {
+  if (!sorted.length) return 0;
+  const at = (sorted.length - 1) * q, lo = Math.floor(at), hi = Math.ceil(at);
+  return sorted[lo]! + (sorted[hi]! - sorted[lo]!) * (at - lo);
+}
 
 export function buildSpend(input: SpendInput): {spend: StorySpend; modelShare: StoryModelShare} {
   const a = input.aggregate, rows = input.table.rows;
@@ -207,34 +214,41 @@ export function buildSpend(input: SpendInput): {spend: StorySpend; modelShare: S
   }
   for (const ref of a.story.refs) if (ref.prompt.eventAt === null) { H(ref.history ? 'claude_hist' : (ref.source?.harness as StoryHarness ?? 'claude')).prompts++; if (ref.history) unloggedUndated++; }
 
-  // ---- estimate for unlogged prompts from the nearest months with token logs
-  const basis = [...monthly].filter(([, x]) => x.priced >= BASIS_MIN_PROMPTS && x.measured + x.recovered > 0)
-    .map(([m, x]) => ({m, i: monthIndex(m), rate: (x.measured + x.recovered) / x.priced})).sort((p, q) => p.i - q.i);
+  // ---- estimate for unlogged prompts. They are history-only Claude prompts, so the basis is Claude
+  // transcript prompts only: in each of the BASIS_MONTHS months nearest to the prompt's month that have
+  // >=BASIS_MIN_PROMPTS priced Claude prompts, the cost of each prompt's turn (its responses and its
+  // subagents'). The pooled distribution's median is the central scenario, p25-p75 the range.
+  const claudeCosts = new Map<string, number[]>();
+  for (const r of rows) if (r.harness === 'claude' && r.costTotalUsd !== null) { const l = claudeCosts.get(r.month) ?? []; l.push(r.costTotalUsd); claudeCosts.set(r.month, l); }
+  const basis = [...claudeCosts].filter(([, l]) => l.length >= BASIS_MIN_PROMPTS).map(([m, costs]) => ({m, i: monthIndex(m), costs})).sort((p, q) => p.i - q.i);
   let estimated: StorySpend['estimated'] = null;
   const unloggedTotal = [...unloggedMonths.values()].reduce((x, y) => x + y, 0) + unloggedUndated;
   if (unloggedTotal && basis.length) {
-    let low = 0, high = 0;
+    let low = 0, mid = 0, high = 0;
     const used = new Set<string>();
-    const nearest = (i: number) => [...basis].sort((p, q) => Math.abs(p.i - i) - Math.abs(q.i - i) || p.i - q.i).slice(0, BASIS_MONTHS);
-    const rates: number[] = [];
+    const lows: number[] = [], highs: number[] = [];
     const apply = (i: number, n: number, month: string | null) => {
-      const near = nearest(i);
-      const lo = Math.min(...near.map(b => b.rate)), hi = Math.max(...near.map(b => b.rate));
+      const near = [...basis].sort((p, q) => Math.abs(p.i - i) - Math.abs(q.i - i) || p.i - q.i).slice(0, BASIS_MONTHS);
+      const costs = near.flatMap(b => b.costs).sort((x, y) => x - y);
       for (const b of near) used.add(b.m);
-      rates.push(lo, hi);
-      low += n * lo; high += n * hi;
-      if (month) M(month).estimated += n * (lo + hi) / 2;
+      const p25 = quantile(costs, 0.25), p50 = quantile(costs, 0.5), p75 = quantile(costs, 0.75);
+      lows.push(p25); highs.push(p75);
+      low += n * p25; mid += n * p50; high += n * p75;
+      if (month) M(month).estimated += n * p50;
     };
     const dated = [...unloggedMonths].sort((x, y) => (x[0] < y[0] ? -1 : 1));
     for (const [m, n] of dated) apply(monthIndex(m), n, m);
     if (unloggedUndated) {
       // Undated prompts: the months around the middle of the dated unlogged ones, else the latest basis months.
-      const mid = dated.length ? monthIndex(dated[Math.floor(dated.length / 2)]![0]) : basis.at(-1)!.i;
-      apply(mid, unloggedUndated, null);
+      const middle = dated.length ? monthIndex(dated[Math.floor(dated.length / 2)]![0]) : basis.at(-1)!.i;
+      apply(middle, unloggedUndated, null);
     }
     const months = [...used].sort();
-    estimated = {lowUsd: r2(low), highUsd: r2(high), prompts: unloggedTotal,
-      basis: `${unloggedTotal.toLocaleString('en-US')} human prompts with no surviving token logs × ${usd(Math.min(...rates))}–${usd(Math.max(...rates))} per prompt: the all-in cost per human prompt (measured + recovered ÷ prompts with logs) of the ${BASIS_MONTHS} nearest months with ≥${BASIS_MIN_PROMPTS} priced prompts (${months.join(', ')}).`};
+    estimated = {lowUsd: r2(low), midUsd: r2(mid), highUsd: r2(high), prompts: unloggedTotal,
+      basis: `${unloggedTotal.toLocaleString('en-US')} Claude prompts survive only in history.jsonl, on days with no token logs and no stats-cache coverage. `
+        + `Each is valued at what one Claude prompt with surviving logs cost (its turn, including subagents) in the ${BASIS_MONTHS} nearest months with at least ${BASIS_MIN_PROMPTS} such prompts (${months.join(', ')}): `
+        + `the median turn cost (about ${usd(mid / unloggedTotal)} per prompt) gives ${usd(mid)}; the 25th to 75th percentile turn costs `
+        + `(${usd(Math.min(...lows))} to ${usd(Math.max(...highs))} per prompt) give ${usd(low)} to ${usd(high)}. A scenario, not a measurement.`};
   }
 
   // ---- series

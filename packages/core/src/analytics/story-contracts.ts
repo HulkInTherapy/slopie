@@ -25,7 +25,8 @@ export interface StorySpend {
    *  residuals after subtracting what request logs already cover). Shown as "recovered". */
   recoveredUsd: number;
   /** Estimate for human prompts whose token logs no longer exist (history-only). null when none. Always labelled "est.". */
-  estimated: {lowUsd: number; highUsd: number; prompts: number; basis: string} | null;
+  /** midUsd is the central (median) scenario; lowUsd–highUsd the 25th–75th percentile scenarios. */
+  estimated: {lowUsd: number; midUsd: number; highUsd: number; prompts: number; basis: string} | null;
   /** Tokens with no known price (unknown model ids). Never priced at $0 silently. */
   unpricedTokens: number;
   /** usd and sharePct are measured; `claude_hist` prompts are folded into `claude`; recoveredUsd (optional) is the stats-cache part. */
