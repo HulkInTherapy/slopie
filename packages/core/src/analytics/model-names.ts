@@ -8,7 +8,13 @@
  */
 
 /** Provider/region prefixes, revision and context suffixes, date stamps removed; lower-case. */
+const canonicalMemo = new Map<string, string>();
 export function canonicalModel(model: string): string {
+  let hit = canonicalMemo.get(model);
+  if (hit === undefined) { hit = canonicalize(model); if (canonicalMemo.size < 10_000) canonicalMemo.set(model, hit); }
+  return hit;
+}
+function canonicalize(model: string): string {
   let m = model.trim().toLowerCase();
   m = m.replace(/\[[^\]]*\]$/, '');
   if (m.includes('/')) m = m.slice(m.lastIndexOf('/') + 1);

@@ -62,9 +62,12 @@ describe('story in the audit pipeline', () => {
     expect(story.state).toBe('thin');
     expect(story.rhythm.weekdayHour).toHaveLength(7);
     expect(story.archetype?.id).toBe('fresh_install');
-    const file = path.join(dirs.cache, fs.readdirSync(dirs.cache).find(f => f.startsWith('facts-'))!);
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600);
-    expect(fs.readFileSync(file).toString('latin1')).not.toContain('DEEP-MARKER-TEXT');
+    const dir = path.join(dirs.cache, fs.readdirSync(dirs.cache).find(f => f.startsWith('facts-'))!);
+    expect(fs.statSync(dir).mode & 0o777).toBe(0o700);
+    for (const f of fs.readdirSync(dir)) {
+      expect(fs.statSync(path.join(dir, f)).mode & 0o777).toBe(0o600);
+      expect(fs.readFileSync(path.join(dir, f)).toString('latin1')).not.toContain('DEEP-MARKER-TEXT');
+    }
   });
 
   it('prefers the typed text from history.jsonl over a transcript with an expanded paste', async () => {

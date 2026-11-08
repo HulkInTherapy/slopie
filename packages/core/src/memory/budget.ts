@@ -13,8 +13,9 @@ export const TOKENIZER_ASSET_HASH = createHash('sha256').update(JSON.stringify(r
 export const TOKENIZER_ID = `cl100k-base/js-tiktoken@1.0.21/${TOKENIZER_ASSET_HASH}`;
 export const DEFAULT_RESPONSE_TOKENS = 4096;
 export const DEFAULT_RESPONSE_BYTES = 65536;
-const tokenizer = new Tiktoken(ranks);
-export function countTokens(text: string): number { return tokenizer.encode(text, [], []).length; }
+/** Built on first use: constructing it costs ~0.2–0.3 s and the audit path never counts tokens. */
+let tokenizer: Tiktoken | undefined;
+export function countTokens(text: string): number { return (tokenizer ??= new Tiktoken(ranks)).encode(text, [], []).length; }
 export type Transport = 'json'|'mcp'|'cli_json'|'human'|{kind:'human';width:number;ascii?:boolean};
 /** Structurally compatible with MCP, without a dependency on its SDK. */
 export type McpTextResult = { content: {type:'text';text:string}[] };

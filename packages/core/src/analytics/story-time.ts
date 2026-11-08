@@ -31,6 +31,18 @@ export function localClock(timezone: string): (at: number) => LocalParts {
   };
 }
 
+/** Local day and month only, memoized per 15 minutes, no per-call allocation (hot loops over usage). */
+export function localDayMonth(timezone: string): (at: number) => {readonly day: string; readonly month: string} {
+  const format = new Intl.DateTimeFormat('en-CA', {timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit'});
+  const memo = new Map<number, {day: string; month: string}>();
+  return at => {
+    const slot = Math.floor(at / 900_000);
+    let hit = memo.get(slot);
+    if (!hit) { const day = format.format(new Date(slot * 900_000)); hit = {day, month: day.slice(0, 7)}; memo.set(slot, hit); }
+    return hit;
+  };
+}
+
 export const HOUR_NAME = (h: number) => `${h % 12 || 12}${h < 12 ? 'am' : 'pm'}`;
 export const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

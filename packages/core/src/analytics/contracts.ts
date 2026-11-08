@@ -5,7 +5,7 @@ import type {LaunchAudit,AuditTone,SemanticPeriod} from './launch-contracts.js';
 export type * from './story-contracts.js';
 export {STORY_VERSION} from './story-contracts.js';
 
-export type AuditHarness = Extract<Harness, 'claude'|'codex'|'pi'|'opencode'>;
+export type AuditHarness = Extract<Harness, 'claude'|'codex'|'pi'|'opencode'|'cursor'|'gemini'|'copilot'>;
 export const AUDIT_INTENTS = ['feature_build','bug_fix','ui_design','tests','refactor','code_review','pr_management','research','explanation_learning','planning_architecture','deploy_operations','documentation_writing','agent_coordination','other','mixed','insufficient_context'] as const;
 export type AuditIntent = typeof AUDIT_INTENTS[number];
 export type AuditState = 'discovering'|'parsing'|'normalizing'|'ready'|'partial'|'cancelled'|'error';
@@ -75,6 +75,8 @@ export interface AuditOverviewOptions {
   /** Internal parent/worker identity handoff; never a CLI input or authority token. */
   sessionIdentity?:string;
   claudeDir?: string; codexDir?: string; piDir?: string; opencodeDir?: string; potsherdDir?: string;
+  /** v19: prompt-only sources (no priced usage). */
+  cursorDir?: string; geminiDir?: string; copilotDir?: string;
   harnesses?: readonly AuditHarness[]; project?: string; since?: string; until?: string; timezone?: string;
   signal?: AbortSignal; maxSourceBytes?: number; maxCandidates?: number; maxTotalBytes?:number; maxPrompts?:number; maxRecordsPerSource?:number;
   /** Bounded private snapshot disk allowance; default/max4GiB, streaming memory bounded separately. */

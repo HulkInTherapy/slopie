@@ -167,8 +167,10 @@ describe('conversations, history and opt-outs', () => {
     const snapshot = await run(options);
     expect(snapshot.metrics.humanPrompts.value).toBe(1);
     expect(snapshot.launch!.facts!.recordedResponses).toBe(1);
-    const cache = fs.readdirSync(path.join(dirs.potsherd, 'audit-derived')).filter(f => f.startsWith('facts-'));
-    const bytes = fs.readFileSync(path.join(dirs.potsherd, 'audit-derived', cache[0]!)).toString('latin1');
+    // Sharded cache: every file under facts-v*/ (index, shards, history).
+    const root = path.join(dirs.potsherd, 'audit-derived', fs.readdirSync(path.join(dirs.potsherd, 'audit-derived')).find(f => f.startsWith('facts-'))!);
+    const bytes = fs.readdirSync(root).map(f => fs.readFileSync(path.join(root, f)).toString('latin1')).join('');
+    expect(bytes.length).toBeGreaterThan(0);
     expect(bytes).not.toContain('IGNORED-PROJECT-TEXT');
     expect(bytes).not.toContain('FORGOTTEN-TEXT');
   });

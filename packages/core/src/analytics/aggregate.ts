@@ -162,7 +162,7 @@ export function aggregate(input: AggregateInput): Aggregate {
   const dayOf = dayFormatter(scope.timezone);
   const inRange = (at: number | null) => (scope.eventFrom === null || (at !== null && at >= scope.eventFrom)) && (scope.asOf === null || (at !== null && at <= scope.asOf));
   const projectAllowed = (p: string | null) => !policy.ignored(p) && (scope.project === null || normProject(p) === normProject(scope.project));
-  const harness = {claude: emptyHarness(), codex: emptyHarness(), pi: emptyHarness(), opencode: emptyHarness()} as Record<AuditHarness, HarnessTotals>;
+  const harness = {claude: emptyHarness(), codex: emptyHarness(), pi: emptyHarness(), opencode: emptyHarness(), cursor: emptyHarness(), gemini: emptyHarness(), copilot: emptyHarness()} as Record<AuditHarness, HarnessTotals>;
 
   // ---- sources in scope, ordered so parents come before children and, among copies of one session
   // (live, archived_sessions/, compressed, potsherd archive), the most complete copy comes first.
@@ -216,7 +216,10 @@ export function aggregate(input: AggregateInput): Aggregate {
   const models = new Map<string, ModelRow & {convs: Set<string>}>();
   const tokens = {input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0};
   let costUsd = 0, estimatedCostUsd = 0, inferredModelResponses = 0, compactionResponses = 0, unpricedResponses = 0, unpricedTokens = 0;
-  const conversationOf = (s: SourceFacts) => sid(s.harness, s.child && s.parentId ? s.parentId : s.sessionId);
+  // Per-source ids are hashes: compute them once per source, not once per response.
+  const convMemo = new Map<SourceFacts, string>(), selfMemo = new Map<SourceFacts, string>();
+  const conversationOf = (s: SourceFacts) => { let id = convMemo.get(s); if (id === undefined) { id = sid(s.harness, s.child && s.parentId ? s.parentId : s.sessionId); convMemo.set(s, id); } return id; };
+  const selfId = (s: SourceFacts) => { let id = selfMemo.get(s); if (id === undefined) { id = sid(s.harness, s.sessionId); selfMemo.set(s, id); } return id; };
   const costOf = new Map<UsageFact, number>();
   for (const {u, s} of usageRows) {
     const price = book.lookup(u.model);
@@ -265,7 +268,7 @@ export function aggregate(input: AggregateInput): Aggregate {
     rawStart: null, rawEnd: null, startUtf16: 0, endUtf16: text.length, snapshotId: input.snapshotId,
   });
   const originBasis = (h: AuditHarness): AuditPrompt['originBasis'] =>
-    h === 'claude' ? 'claude_prompt_id' : h === 'codex' ? 'codex_human_marker' : h === 'pi' ? 'pi_user_projection' : 'opencode_user_projection';
+    h === 'claude' ? 'claude_prompt_id' : h === 'codex' ? 'codex_human_marker' : h === 'pi' ? 'pi_user_projection' : h === 'opencode' ? 'opencode_user_projection' : 'unknown';
 
   const conversationFor = (h: AuditHarness, nativeId: string, parent: string | null, title: string | null, project: string | null, file: string | null): Conversation => {
     const id = sid(h, nativeId);
@@ -319,7 +322,7 @@ export function aggregate(input: AggregateInput): Aggregate {
   for (const s of input.sources) if (s.harness === 'claude' && !s.child) for (const sid of s.sessionIds ?? [s.sessionId]) transcriptSessions.add(sid);
   const scoped = scope.project !== null || scope.eventFrom !== null || scope.asOf !== null;
   const activeIds = new Set<string>();
-  for (const {s} of usageRows) activeIds.add(sid(s.harness, s.sessionId));
+  for (const {s} of usageRows) activeIds.add(selfId(s));
   const imported = input.codexImported ?? new Set<string>();
   let automatedRuns = 0;
   const automatedSeen = new Set<string>();
@@ -338,7 +341,7 @@ export function aggregate(input: AggregateInput): Aggregate {
     const importedSession = s.harness === 'codex' && imported.has(s.sessionId);
     for (const p of s.prompts) {
       if (!inRange(p.at) || !projectAllowed(p.project ?? s.project)) continue;
-      const unique = s.harness === 'claude' ? p.key : s.harness === 'opencode' ? `${s.harness}:${p.key}` : scopedKey(s, p.key);
+      const unique = s.harness === 'claude' ? p.key : s.harness === 'codex' || s.harness === 'pi' ? scopedKey(s, p.key) : `${s.harness}:${p.key}`;
       if (seenPrompts.has(unique)) continue;
       seenPrompts.add(unique);
       if (importedSession && p.imp && p.kind !== 'excluded') { countPrompt(s.harness, {kind: 'excluded', reason: 'imported_from_claude_transcript'}); continue; }
@@ -378,7 +381,7 @@ export function aggregate(input: AggregateInput): Aggregate {
   }
   // A Claude transcript can carry more than one session id; count distinct ids.
   harness.claude.conversations = topClaudeSessions.size + historyOnlyConversations;
-  const top = harness.claude.conversations + harness.codex.conversations + harness.pi.conversations + harness.opencode.conversations;
+  const top = Object.values(harness).reduce((n, t) => n + t.conversations, 0);
   list.sort((a, b) => (a.conversation.eventFrom ?? '').localeCompare(b.conversation.eventFrom ?? '') || a.conversation.id.localeCompare(b.conversation.id));
   list.forEach((c, i) => {
     c.conversation.alias = `Conversation ${i + 1}`;
