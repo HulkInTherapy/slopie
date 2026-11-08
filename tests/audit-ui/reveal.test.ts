@@ -62,7 +62,7 @@ describe('archetype ceremony', () => {
 
   it('falls back to a spaced text title in ASCII / colourless terminals', () => {
     const { text } = reveal(100, 30, Infinity, { ascii: true, color: 'none' });
-    expect(text).toContain('T H E   N I G H T');
+    expect(text).toContain('T H E   2 A M');
     expect(text).toContain('* EPIC *');
     for (const ch of text) if (ch !== '\n') expect(ch.charCodeAt(0) < 128 || '…’“”'.includes(ch)).toBe(true);
   });

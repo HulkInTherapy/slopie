@@ -12,7 +12,8 @@
  *   B  card     a framed trading card with stat chips and ability lines
  *   C  receipt  a paper receipt with dot leaders and a barcode
  *
- * The variant is an internal flag: SLOPIE_BOARD_VARIANT=A|B|C.
+ * The variant is an internal flag: SLOPIE_BOARD_VARIANT=A|B|C|M1|M2|M3 (M1, the merged receipt in
+ * poster-v3.ts, is the default).
  */
 import type { Canvas } from '../gfx/canvas.js';
 import { C, fade, hx, mix, type Rgb } from '../gfx/color.js';
@@ -22,14 +23,17 @@ import { easeOutCubic, seg } from '../gfx/motion.js';
 import { drawMascot } from '../mascot.js';
 import type { BoardSummary } from '../story/board-data.js';
 import { factText, type FactPart, type FunFact } from '../story/fun-facts.js';
+import { mergedPoster, type Merged } from './poster-v3.js';
 import type { Scene } from './scene.js';
 
-export type Variant = 'A' | 'B' | 'C';
-export const DEFAULT_VARIANT: Variant = 'A';
+export type Variant = 'A' | 'B' | 'C' | Merged;
+const VARIANTS: readonly Variant[] = ['A', 'B', 'C', 'M1', 'M2', 'M3'];
+/** Round 3: the merged receipt is the default; A/B/C and M2/M3 stay reachable until the owner picks. */
+export const DEFAULT_VARIANT: Variant = 'M1';
 
 export function boardVariant(): Variant {
   const v = (process.env['SLOPIE_BOARD_VARIANT'] ?? '').trim().toUpperCase();
-  return v === 'B' || v === 'C' ? v : v === 'A' ? 'A' : DEFAULT_VARIANT;
+  return (VARIANTS as readonly string[]).includes(v) ? (v as Variant) : DEFAULT_VARIANT;
 }
 
 export const INSTALL = 'npx slopie audit';
@@ -673,6 +677,7 @@ export function metalGlyph(tier: 'gold' | 'silver' | 'bronze', uni: boolean): st
 export function posterBody(s: Scene, d: BoardSummary, variant: Variant = boardVariant()): boolean {
   if (variant === 'B') return posterB(s, d);
   if (variant === 'C') return posterC(s, d);
-  return posterA(s, d);
+  if (variant === 'A') return posterA(s, d);
+  return mergedPoster(s, d, variant);
 }
 

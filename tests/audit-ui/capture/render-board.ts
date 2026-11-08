@@ -1,6 +1,7 @@
 /**
  * Render the final board (any variant, any size) straight to ANSI for headless captures, without a pty.
- * `tsx render-board.ts out.ansi [variant A|B|C] [cols] [rows] [share]`
+ * `tsx render-board.ts out.ansi [variant A|B|C|M1|M2|M3] [cols] [rows] [share] [t ms|Infinity] [title] [tier] [subRole]`
+ * A finite `t` renders that frame of the entry animation (motion on); Infinity is the static frame.
  */
 import fs from 'node:fs';
 import { renderCard } from '../../../packages/cli/src/audit-ui/cards/index.js';
@@ -10,14 +11,21 @@ import { C, hex } from '../../../packages/cli/src/audit-ui/gfx/color.js';
 import { buildDeck } from '../../../packages/cli/src/audit-ui/story/deck.js';
 import { storySnapshot } from '../story-fixture.js';
 
-const [out = 'board.ansi', variant = 'A', cols = '120', rows = '40', share = ''] = process.argv.slice(2);
+const [out = 'board.ansi', variant = 'M1', cols = '120', rows = '40', share = '', time = 'Infinity', title = '', tier = '', subRole = ''] = process.argv.slice(2);
 process.env['SLOPIE_BOARD_VARIANT'] = variant;
 const w = Number(cols), h = Number(rows);
-const deck = buildDeck(storySnapshot());
+const snapshot = storySnapshot();
+const story = (snapshot.launch as unknown as { story: { archetype: { title: string; rarity: string; subRole: unknown; tagline: string } } }).story;
+if (title) story.archetype.title = title;
+if (tier) story.archetype.rarity = tier;
+if (subRole === 'none') story.archetype.subRole = null;
+else if (subRole) story.archetype.subRole = { id: 'x', title: subRole, label: `with a streak of ${subRole}` };
+const deck = buildDeck(snapshot);
 const board = deck.at(-1)!;
 const c = new Canvas(w, h, C.ink);
 c.fill(0, 0, w, h, ' ', { bg: C.ink });
-renderCard({ c, w, h, t: Infinity, tier: tierFor(w, h)!, caps: { color: 'truecolor', motion: false, unicode: true }, blink: false, state: {}, index: deck.length - 1, total: deck.length, share: share === 'share' }, board);
+const t = Number(time);
+renderCard({ c, w, h, t, tier: tierFor(w, h)!, caps: { color: 'truecolor', motion: Number.isFinite(t), unicode: true }, blink: false, state: {}, index: deck.length - 1, total: deck.length, share: share === 'share' }, board);
 const rgb = (v: number) => { const x = hex(v).slice(1); return [0, 2, 4].map(i => parseInt(x.slice(i, i + 2), 16)).join(';'); };
 let ansi = '\x1b[2J\x1b[H';
 for (let y = 0; y < h; y++) {

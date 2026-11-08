@@ -24,7 +24,8 @@ function boardText(snapshot: AuditSnapshot, w: number, h: number, opts: { color?
 
 const lineWith = (text: string, needle: string) => text.split('\n').find(line => line.includes(needle)) ?? '';
 const SIZES = [[120, 40], [100, 30], [80, 24]] as const;
-const VARIANTS = ['A', 'B', 'C'] as const;
+const VARIANTS = ['A', 'B', 'C', 'M1', 'M2', 'M3'] as const;
+const CORE_LABELS = ['MANNERS', 'CHARACTER ARC', 'PRICIEST SENTENCE', 'LONGEST SIT', 'PET NAME', 'NEMESIS'];
 
 function withVariant<T>(v: string, fn: () => T): T {
   const prior = process.env['SLOPIE_BOARD_VARIANT'];
@@ -54,27 +55,73 @@ describe('final board (personality poster)', () => {
         expect(text).toContain('npx slopie audit');
       }
       const text = boardText(storySnapshot(), w, h);
-      // The default poster keeps the hero numbers and at least four whole fun facts.
+      // The default poster keeps the price, the prompts/days box, the catchphrase and all six core facts.
       expect(text).toContain('at API prices');
       expect(text).toMatch(/\bprompts\b/);
-      const shown = ['6 f-bombs per thank-you', 'swearing went 2.6% → 23%', '$412, 330× your median prompt', '7.5h without a real break', 'you call it “buddy” ×37', 'GPT-6 Sol gets 1.9× your swearing']
-        .filter(line => text.includes(line));
-      expect(shown.length, `facts at ${w}×${h}`).toBeGreaterThanOrEqual(4);
+      expect(text).toMatch(/\bdays\b/);
+      expect(text).toContain('“real quick” ×212');
+      for (const label of CORE_LABELS) expect(text, `${label} at ${w}×${h}`).toContain(label);
+      expect(text).toContain('6 f-bombs per thank-you');
       // The clutter is gone.
       for (const gone of ['SPEND', 'recovered', 'per active day', 'this month', 'MODELS', 'AGENTS', 'YOUR WORK', 'lantern-api', 'Mon ', 'AWARDS']) expect(text).not.toContain(gone);
       expect(text).not.toMatch(/\$0\b/);
     });
   }
 
-  it('the 120×40 hero poster shows the badge, tagline, three numbers, six facts and trophies', () => {
+  it('the 120×40 hero poster: badge, sub-role, tagline, big price, box, six tiles with diagrams, two trophies', () => {
     const text = boardText(storySnapshot(), 120, 40);
     expect(text).toContain('★ EPIC ★');
-    expect(text).toContain('dishwasher');
-    for (const label of ['MANNERS', 'CHARACTER ARC', 'PRICIEST SENTENCE', 'LONGEST SIT', 'PET NAME', 'NEMESIS']) expect(text).toContain(label);
-    // Trophies never repeat a fact already on the poster (priciest sentence, marathon, pet name).
-    expect(text).toContain('Worst day');
-    expect(text).not.toContain('Priciest sentence');
+    expect(text).toContain('with a streak of The Spec Writer');
+    expect(text).toContain('your agent has seen you at your worst');
+    for (const label of CORE_LABELS) expect(text).toContain(`─ ${label} ─`); // each fact in its own tile
+    // Diagrams: manners scale, the arc sparkline, the 24h strip with its axis, the face-off.
+    expect(text).toContain('♥ 22');
+    expect(text).toContain('131 f-bombs');
+    expect(text).toMatch(/Dec [▁▂▃▄▅▆▇█]{11} Oct/);
+    expect(text).toContain('☠ 11 PM angriest');
+    expect(text).toContain('✿ 9 AM saint');
+    expect(text).toMatch(/12a───6a/);
+    expect(lineWith(text, 'GPT-6 Sol')).toContain('1.9× swears');
+    expect(lineWith(text, 'Fable 5')).toContain('2.4× thanks');
+    // Favourite model and the mood clock are diagrams, not extra fact lines.
+    expect(text).not.toContain('SOFT SPOT ─');
+    expect(text).not.toContain('MOOD CLOCK');
+    // The catchphrase has its own slot, so it is not also a fact tile.
+    expect(text).not.toContain('CATCHPHRASE');
+    // The top two trophies that repeat nothing on the poster, with their receipts and diagrams.
+    expect(text).toContain("Didn't Miss a Day");
+    expect(text).toContain('23 days  ·  Aug 2–Aug 24');
+    expect(text).toContain('■'.repeat(23));
+    expect(text).toContain('Middle Management');
+    expect(text).toMatch(/266 subagents ─+┬/);
+    for (const repeat of ['Potty Mouth', 'The $412 Sentence', 'Iron Chair', 'Trademark Pending']) expect(text).not.toContain(repeat);
     expect(text).toContain('slopie remembers → slopie setup');
+  });
+
+  it('every variant keeps trophies from repeating a fact on the poster', () => {
+    for (const v of VARIANTS) {
+      const text = withVariant(v, () => boardText(storySnapshot(), 120, 40));
+      // Swearing is already on every poster (manners / arc / nemesis), so no "potty mouth" trophy.
+      expect(text, v).not.toContain('Potty Mouth');
+    }
+  });
+
+  it('long and legendary titles fit at every size, with nothing cut', () => {
+    for (const [title, tier, sub] of [['The Gremlin', 'legendary', null], ['First Spared in the Uprising', 'rare', 'The Spec Writer']] as const) {
+      const snapshot = storySnapshot();
+      const story = (snapshot.launch as unknown as { story: { archetype: Record<string, unknown> } }).story;
+      story.archetype['title'] = title;
+      story.archetype['rarity'] = tier;
+      story.archetype['subRole'] = sub ? { id: 'architect', title: sub, label: `with a streak of ${sub}` } : null;
+      for (const [w, h] of SIZES) {
+        const text = boardText(snapshot, w, h);
+        expect(text.split('\n').length).toBeLessThanOrEqual(h);
+        expect(text).not.toContain('…');
+        expect(text, `${title} ${w}×${h}`).toContain(`★ ${tier.toUpperCase()} ★`);
+        for (const label of CORE_LABELS) expect(text, `${title} ${w}×${h}`).toContain(label);
+        if (w <= 100) expect(text).toContain(title.toUpperCase().split(' ').map(word => [...word].join(' ')).join('   '));
+      }
+    }
   });
 
   it('hides any hero number the snapshot does not have (never a zero)', () => {
@@ -99,7 +146,7 @@ describe('final board (personality poster)', () => {
     const sixteen = boardText(storySnapshot(), 120, 40, { color: '16' });
     expect(sixteen).toContain('6 f-bombs per thank-you');
     const ascii = boardText(storySnapshot(), 120, 40, { ascii: true, color: 'none' });
-    expect(ascii).toContain('T H E   N I G H T   S H I F T');
+    expect(ascii).toContain('T H E   2 A M   D E P L O Y E R');
     expect(ascii).toContain('6 f-bombs per thank-you');
     expect(ascii).not.toContain('…');
   });
@@ -117,7 +164,7 @@ describe('final board (personality poster)', () => {
     expect(share).toContain('online · Jev');
   });
 
-  it('share card: same poster, public-safe (no project names, no prompt text beyond catchphrase / pet name)', () => {
+  it('share card: same poster, public-safe (no project names, no prompt text beyond the pet name)', () => {
     const text = shareCanvas(storySnapshot())!.toText();
     const board = boardText(storySnapshot(), 120, 40);
     for (const secret of ['lantern-api', 'tidepool', 'paper-boats', 'pocket-garden', 'keep going', 'sync layer', 'leave the tests']) expect(text).not.toContain(secret);
@@ -125,10 +172,13 @@ describe('final board (personality poster)', () => {
     expect(text).toContain('all local');
     expect(text).not.toContain('…');
     // Same layout: the facts on the board are the facts on the card.
-    for (const line of ['6 f-bombs per thank-you', 'GPT-6 Sol gets 1.9× your swearing', 'you call it “buddy” ×37']) {
+    for (const line of ['6 f-bombs per thank-you', 'swearing went 2.6% → 23%', 'you call it “buddy” ×37', '1.9× swears', '☠ 11 PM angriest', "Didn't Miss a Day"]) {
       expect(board).toContain(line);
       expect(text).toContain(line);
     }
+    // The catchphrase slot is the user's own phrase: on the board, not on the share card.
+    expect(board).toContain('“real quick” ×212');
+    expect(text).not.toContain('real quick');
     expect(text).not.toContain('q quit');
   });
 

@@ -55,6 +55,12 @@ const safeWord = (text: string | null | undefined, mask: (s: string) => string):
   return clean;
 };
 
+/**
+ * Trophies about swearing (story-card ids and engine award ids). A fact that already quotes your
+ * swearing covers them, so the poster never shows "Worst day: 44 swear words" beside it.
+ */
+export const SWEAR_TROPHIES = ['rage_day', 'swear_month', 'redemption', 'shortest_fuse', 'ragequit', 'honeymoon', 'worst_model', 'fuse_length'];
+
 type Candidate = (story: AuditStory, mask: (s: string) => string) => Omit<FunFact, 'id'> | null;
 
 /**
@@ -76,11 +82,11 @@ export const CATALOGUE: readonly { id: string; guard: string; score: string; mak
       const score = clamp(50 + 20 * Math.abs(log2(ratio)));
       if (ratio >= 1) {
         const n = ratio >= 10 ? String(Math.round(ratio)) : ratio.toFixed(1).replace(/\.0$/, '');
-        return { family: 'voice', label: 'MANNERS', parts: [N(n), T(` ${word}s per thank-you`)], short: [N(n), T(` ${word}s per thanks`)], score, awards: [] };
+        return { family: 'voice', label: 'MANNERS', parts: [N(n), T(` ${word}s per thank-you`)], short: [N(n), T(` ${word}s per thanks`)], score, awards: SWEAR_TROPHIES };
       }
       const inv = 1 / ratio;
       const n = inv >= 10 ? String(Math.round(inv)) : inv.toFixed(1).replace(/\.0$/, '');
-      return { family: 'voice', label: 'MANNERS', parts: [N(n), T(` thank-yous per ${word}`)], short: [N(n), T(` thanks per ${word}`)], score, awards: [] };
+      return { family: 'voice', label: 'MANNERS', parts: [N(n), T(` thank-yous per ${word}`)], short: [N(n), T(` thanks per ${word}`)], score, awards: SWEAR_TROPHIES };
     },
   },
   {
@@ -90,9 +96,9 @@ export const CATALOGUE: readonly { id: string; guard: string; score: string; mak
       const w = story.models.worst;
       if (!w || !(w.swearRatio !== null && w.swearRatio >= 1.3) || w.matchedMonths < 2 || !w.label) return null;
       return {
-        family: 'model', label: 'NEMESIS', score: clamp(45 + 35 * log2(w.swearRatio)), awards: [],
+        family: 'model', label: 'NEMESIS', score: clamp(45 + 35 * log2(w.swearRatio)), awards: SWEAR_TROPHIES,
         parts: [M(sanitize(w.label)), T(' gets '), N(times(w.swearRatio)), T(' your swearing')],
-        short: [M(shortModel(w.label)), T(', '), N(times(w.swearRatio)), T(' the swears')],
+        short: [M(shortModel(w.label)), T(': '), N(times(w.swearRatio)), T(' swears')],
       };
     },
   },
@@ -106,7 +112,7 @@ export const CATALOGUE: readonly { id: string; guard: string; score: string; mak
       return {
         family: 'model', label: 'SOFT SPOT', score: clamp(40 + 30 * log2(b.praiseRatio)), awards: [],
         parts: [M(sanitize(b.label)), T(' gets '), N(times(b.praiseRatio)), T(' your thank-yous')],
-        short: [M(shortModel(b.label)), T(', '), N(times(b.praiseRatio)), T(' the thanks')],
+        short: [M(shortModel(b.label)), T(': '), N(times(b.praiseRatio)), T(' thanks')],
       };
     },
   },
@@ -132,7 +138,7 @@ export const CATALOGUE: readonly { id: string; guard: string; score: string; mak
       if (!c || !phrase || c.count < 10 || !(story.totals.prompts > 0)) return null;
       const rate = (c.count / story.totals.prompts) * 100;
       return {
-        family: 'voice', label: 'CATCHPHRASE', score: clamp(30 + 15 * log2(1 + rate)), awards: ['verbal_tics'],
+        family: 'voice', label: 'CATCHPHRASE', score: clamp(30 + 15 * log2(1 + rate)), awards: ['verbal_tics', 'catchphrase'],
         parts: [Q(phrase), T(' '), N(`×${count(c.count)}`)],
       };
     },
@@ -148,7 +154,7 @@ export const CATALOGUE: readonly { id: string; guard: string; score: string; mak
       if (factor < 3) return null;
       const pct = (v: number) => `${v < 10 ? v.toFixed(1).replace(/\.0$/, '') : Math.round(v)}%`;
       return {
-        family: 'mood', label: 'CHARACTER ARC', score: clamp(40 + 15 * log2(factor)), awards: ['mood_drift'],
+        family: 'mood', label: 'CHARACTER ARC', score: clamp(40 + 15 * log2(factor)), awards: ['mood_drift', ...SWEAR_TROPHIES],
         parts: [T('swearing went '), N(pct(early)), T(' → '), N(pct(late))],
       };
     },
@@ -187,7 +193,7 @@ export const CATALOGUE: readonly { id: string; guard: string; score: string; mak
       const p = story.highlights.mostExpensivePrompt;
       if (!p || !(p.costUsd >= 5) || !(p.timesMedian >= 10)) return null;
       return {
-        family: 'money', label: 'PRICIEST SENTENCE', score: clamp(30 + 20 * Math.log10(p.timesMedian)), awards: ['most_expensive_sentence'],
+        family: 'money', label: 'PRICIEST SENTENCE', score: clamp(30 + 20 * Math.log10(p.timesMedian)), awards: ['most_expensive_sentence', 'priciest_sentence'],
         parts: [N(money(p.costUsd)), T(', '), N(`${count(Math.round(p.timesMedian))}×`), T(' your median prompt')],
         short: [N(money(p.costUsd)), T(', '), N(`${count(Math.round(p.timesMedian))}×`), T(' the median')],
       };
@@ -213,7 +219,7 @@ export const CATALOGUE: readonly { id: string; guard: string; score: string; mak
       const f = story.highlights.fuse;
       if (!f || f.sessions < 10 || !(f.medianTurn >= 1) || f.medianTurn > 15) return null;
       return {
-        family: 'mood', label: 'FUSE', score: clamp(62 - 3 * f.medianTurn), awards: ['fuse_length'],
+        family: 'mood', label: 'FUSE', score: clamp(62 - 3 * f.medianTurn), awards: SWEAR_TROPHIES,
         parts: [T('you snap at prompt '), N(`#${f.medianTurn}`)],
       };
     },
@@ -264,6 +270,30 @@ export const CATALOGUE: readonly { id: string; guard: string; score: string; mak
     },
   },
 ];
+
+/**
+ * The six facts that carry the archetype's personality, in poster order. The poster shows these
+ * first whenever their guard passes, then fills from the ranked rest.
+ */
+export const CORE_FACTS = ['manners', 'mood_drift', 'priciest_sentence', 'longest_sit', 'pet_name', 'nemesis'] as const;
+
+/** The catchphrase gets its own slot on the poster: same guard as the fact. */
+export function catchphraseSlot(story: AuditStory | null, mask: (s: string) => string = sanitize): { phrase: string; count: number } | null {
+  const c = story?.highlights.catchphrase;
+  const phrase = safeWord(c?.phrase, mask);
+  if (!story || !c || !phrase || c.count < 10 || !(story.totals.prompts > 0)) return null;
+  return { phrase, count: c.count };
+}
+
+/**
+ * Poster order: the core six (when present) in their fixed order, then the rest by rank.
+ * `exclude` drops facts shown elsewhere (the catchphrase slot, the mood-clock diagram).
+ */
+export function posterOrder(facts: readonly FunFact[], exclude: readonly string[] = []): FunFact[] {
+  const core = CORE_FACTS.map(id => facts.find(f => f.id === id)).filter((f): f is FunFact => !!f);
+  const rest = facts.filter(f => !(CORE_FACTS as readonly string[]).includes(f.id));
+  return [...core, ...rest].filter(f => !exclude.includes(f.id));
+}
 
 /** Every fact that passes its guard, best first (score, then catalogue order). */
 export function rankFunFacts(story: AuditStory | null, mask: (s: string) => string = sanitize): FunFact[] {

@@ -8,7 +8,7 @@ import type { BoardData } from '../view-model.js';
 import { cardOf, num, str } from './source.js';
 import type { AuditStory } from './types.js';
 import { automatedRunsOf, modelShareOf, spendOf, type Spend } from './v19.js';
-import { rankFunFacts, type FunFact } from './fun-facts.js';
+import { catchphraseSlot, rankFunFacts, type FunFact } from './fun-facts.js';
 
 export interface BarRow {
   label: string;
@@ -40,6 +40,29 @@ export interface SpendPanel {
 
 export interface VoiceLine { label: string; short: string; value: string; valueShort?: string; quoted: boolean; count: number | null; private: boolean }
 
+/**
+ * Data for the poster's mini diagrams. Every field mirrors a fun-fact guard (or is stricter), so a
+ * diagram never draws from a number the facts would not quote.
+ */
+export interface PosterViz {
+  /** Monthly swearing % (months with ≥ 40 prompts), for the character-arc sparkline. */
+  arc: { pcts: number[]; from: string; to: string } | null;
+  /** Prompts per hour of day (24), the angriest and the calmest ("saint") hour. */
+  clock: { hours: number[]; angry: number; saint: number } | null;
+  /** Nemesis vs soft-spot face-off (ratios vs the other models in the same weeks). */
+  faceoff: { nemesis: { label: string; ratio: number } | null; fav: { label: string; ratio: number } | null };
+  /** Thank-yous vs f-bombs (or swears), for the manners scale. */
+  manners: { thanks: number; rude: number; word: 'f-bombs' | 'swears' } | null;
+  /** Subagents launched, and per month (for the fan-out tree). */
+  subagents: { total: number; months: number[] } | null;
+  /** Longest streak in days (for the streak strip). */
+  streak: number | null;
+  /** Longest unbroken stretch in hours. */
+  sit: number | null;
+  /** Priciest sentence vs the median prompt. */
+  priciest: { usd: number; times: number } | null;
+}
+
 export interface BoardSummary {
   archetype: string | null;
   tier: 'common' | 'rare' | 'epic' | 'legendary' | null;
@@ -55,6 +78,10 @@ export interface BoardSummary {
   heroes: { value: string; label: string }[];
   /** Every fun fact that passed its guard, best first (the poster keeps what fits). */
   facts: FunFact[];
+  /** The catchphrase slot (its own box on the poster); null unless the fact's guard passes. */
+  catchphrase: { phrase: string; count: number } | null;
+  /** Numbers behind the poster's little diagrams. Each is null when its data is missing or zero. */
+  viz: PosterViz;
   spend: SpendPanel | null;
   /** Legacy single total for snapshots without a story. */
   bill: number | null;
@@ -63,7 +90,7 @@ export interface BoardSummary {
   time: { grid: number[][] | null; peak: string | null; lines: string[] } | null;
   voice: VoiceLine[];
   work: { rows: BarRow[]; lines: string[] } | null;
-  awards: { id?: string; title: string; value: string; publicValue: string; tier: 'gold' | 'silver' | 'bronze' }[];
+  awards: { id?: string; title: string; value: string; publicValue: string; sub?: string; publicSub?: string; tier: 'gold' | 'silver' | 'bronze' }[];
   /** "since last run" ticker (filled when a run history exists). */
   sinceLast: string | null;
   /** First run with history support: plant the weekly habit. */
@@ -285,6 +312,46 @@ function workPanel(story: AuditStory | null, board: BoardData): BoardSummary['wo
   return { rows: rows.slice(0, 4).map((p, i) => ({ label: p.name, publicLabel: `Project ${String.fromCharCode(65 + i)}`, pct: (p.prompts / sum) * 100, value: `${Math.round((p.prompts / sum) * 100)}%` })), lines: [`${count(board.stats.projects)} projects`] };
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const monthName = (ym: string) => MONTHS[Number(ym.slice(5, 7)) - 1] ?? null;
+
+/** The poster's diagram data, guarded like the facts they illustrate. */
+export function posterViz(story: AuditStory | null): PosterViz {
+  const none: PosterViz = { arc: null, clock: null, faceoff: { nemesis: null, fav: null }, manners: null, subagents: null, streak: null, sit: null, priciest: null };
+  if (!story) return none;
+  const out = none;
+  const months = (story.swearTimeline ?? []).filter(m => m.prompts >= 40 && Number.isFinite(m.swearPct) && m.swearPct >= 0);
+  const drift = cardOf(story, 'mood_drift');
+  const early = num(drift, 'earlyPct'), late = num(drift, 'latePct');
+  if (months.length >= 3 && early !== null && late !== null && early > 0 && late > early && months.some(m => m.swearPct > 0)) {
+    const from = monthName(months[0]!.month), to = monthName(months.at(-1)!.month);
+    if (from && to) out.arc = { pcts: months.map(m => m.swearPct), from, to };
+  }
+  const owl = cardOf(story, 'night_owl');
+  const angry = num(owl, 'angriestHour'), saint = num(owl, 'calmestHour'), angryPct = num(owl, 'angriestPct');
+  const hours = story.rhythm?.hours ?? [];
+  if (angry !== null && saint !== null && angry !== saint && angryPct !== null && angryPct >= 5 && hours.length === 24 && hours.some(h => h > 0)
+    && angry >= 0 && angry < 24 && saint >= 0 && saint < 24) out.clock = { hours: [...hours], angry, saint };
+  const w = story.models.worst, b = story.models.best;
+  if (w && w.label && w.swearRatio !== null && w.swearRatio >= 1.3 && w.matchedMonths >= 2) out.faceoff.nemesis = { label: sanitize(w.label), ratio: w.swearRatio };
+  if (b && b.label && b.praiseRatio !== null && b.praiseRatio >= 1.3 && b.matchedMonths >= 2 && b.label !== w?.label) out.faceoff.fav = { label: sanitize(b.label), ratio: b.praiseRatio };
+  const manners = cardOf(story, 'thanks_vs_swears');
+  const thanks = num(manners, 'thanks') ?? 0, fb = num(manners, 'fbombs'), sw = num(manners, 'swears');
+  const rude = fb ?? sw ?? 0;
+  if (thanks > 0 && rude > 0) out.manners = { thanks, rude, word: fb !== null ? 'f-bombs' : 'swears' };
+  const subs = story.totals.subagents;
+  if (subs >= 50) {
+    const series = cardOf(story, 'orchestrator')?.chart.series?.[0]?.points ?? [];
+    const per = series.map(p => (typeof p.y === 'number' && p.y > 0 ? p.y : 0));
+    out.subagents = { total: subs, months: per };
+  }
+  if (story.totals.longestStreakDays >= 14) out.streak = story.totals.longestStreakDays;
+  if (story.totals.longestStretchHours >= 4) out.sit = story.totals.longestStretchHours;
+  const p = story.highlights.mostExpensivePrompt;
+  if (p && p.costUsd >= 5 && p.timesMedian >= 10) out.priciest = { usd: p.costUsd, times: p.timesMedian };
+  return out;
+}
+
 function heroStats(story: AuditStory | null, board: BoardData): BoardSummary['hero'] {
   const t = story?.totals;
   const out: BoardSummary['hero'] = [];
@@ -310,7 +377,7 @@ export function boardSummaryData(
   board: BoardData,
   extras: {
     archetype: { title: string; tier: BoardSummary['tier']; subRole: string | null; code: string | null; tagline: string } | null;
-    awards: { id?: string; title: string; value: string; publicValue: string; tier?: 'gold' | 'silver' }[];
+    awards: { id?: string; title: string; value: string; publicValue: string; sub?: string; publicSub?: string; tier?: 'gold' | 'silver' }[];
     mask: (s: string) => string;
   },
 ): BoardSummary {
@@ -337,6 +404,8 @@ export function boardSummaryData(
     work: workPanel(story, board),
     heroes: posterHeroes(story, board, spend),
     facts: rankFunFacts(story, extras.mask),
+    catchphrase: catchphraseSlot(story, extras.mask),
+    viz: posterViz(story),
     // Rank decides the metal unless the engine says otherwise: 1 gold, 2–3 silver, the rest bronze.
     awards: extras.awards.map((a, i) => ({ ...a, tier: a.tier ?? (i === 0 ? 'gold' : i < 3 ? 'silver' : 'bronze') })),
     sinceLast: null,

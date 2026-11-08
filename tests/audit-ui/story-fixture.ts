@@ -22,7 +22,7 @@ function card(id: string, kind: StoryCard['kind'], headline: string, support: st
 }
 
 function weekdayHour(): number[][] {
-  // Night-heavy weekdays, slow weekend mornings, a Tuesday 11pm peak.
+  // Night-heavy weekdays, slow weekend mornings, a Tuesday 2am peak.
   return Array.from({ length: 7 }, (_, d) => Array.from({ length: 24 }, (_, h) => {
     const night = h >= 21 || h <= 2 ? 1 : 0;
     const day = h >= 10 && h <= 17 ? 0.55 : 0;
@@ -30,7 +30,7 @@ function weekdayHour(): number[][] {
     const weekend = d >= 5 ? 0.6 : 1;
     const base = (night * 1.0 + day + dead) * weekend * 22;
     const wobble = ((d * 31 + h * 17) % 7) - 3;
-    const peak = d === 1 && h === 23 ? 18 : 0;
+    const peak = d === 1 && h === 2 ? 30 : 0;
     return Math.max(0, Math.round(base + wobble + peak));
   }));
 }
@@ -72,7 +72,7 @@ export function storyOfFixture(): AuditStory {
       prompts: 2904, sessions: 388, projects: 41, activeDays: 176, firstAt: '2025-12-02T21:14:00Z', lastAt: '2026-10-08T23:02:00Z', spanDays: 310,
       costUsd: 6412.5, subagents: 266, words: 182400, longestStreakDays: 23, longestStretchHours: 7.5, tokens: 8_412_000_000, byHarness: { claude: 1900, claude_hist: 500, codex: 480, pi: 24 }, automatedRuns: 37,
     },
-    rhythm: { hours, weekdayHour: grid, peakHour: 23, peakWeekday: 1, lateNightDaysPct: 38, weekendPct: 17 },
+    rhythm: { hours, weekdayHour: grid, peakHour: 2, peakWeekday: 1, lateNightDaysPct: 38, weekendPct: 17 },
     swearTimeline: months.map((month, i) => ({ month, prompts: 180 + i * 20, swearing: Math.round((180 + i * 20) * pct[i]! / 100), swearPct: pct[i]!, politePct: Math.max(1, 9 - i * 0.7) })),
     models: {
       rows: [
@@ -111,28 +111,32 @@ export function storyOfFixture(): AuditStory {
     cards,
     suppressed: [{ id: 'day_night_topics', reason: 'guard' }],
     archetype: {
-      id: 'night_shift', title: 'The Night Shift Architect', tagline: "your best ideas show up after the dishwasher's done",
-      profile: "This year you've been writing specs, not prompts, and writing them at 1am. The house is quiet; the agents are not.",
-      subRole: { id: 'architect', title: 'The Architect', label: 'with a streak of The Architect' }, rarity: 'epic',
+      // A title the engine really produces: night_shift with a peak hour ≤ 4 → "The <h>AM Deployer"
+      // (story-archetype.ts); the architect sub-role is "The Spec Writer". Tagline = the engine's first
+      // night_shift tagline with this fixture's 41% after 10pm.
+      id: 'night_shift', title: 'The 2AM Deployer', tagline: '41% after 10pm. your agent has seen you at your worst.',
+      profile: "This year you've been The 2AM Deployer: 41% of your prompts landed after 10pm, and 2am was your busiest hour.",
+      subRole: { id: 'architect', title: 'The Spec Writer', label: 'with a streak of The Spec Writer' }, rarity: 'epic',
       deciding: [
         { key: 'night', label: 'prompts after 10pm', value: 41, unit: 'pct', display: '41% after 10pm', band: 0.86 },
         { key: 'len', label: 'median prompt', value: 64, unit: 'words', display: '64-word median prompt', band: 0.72 },
         { key: 'agents', label: 'agents', value: 3, unit: 'count', display: '3 agents, 9 models', band: 0.55 },
       ],
       code: 'NSRH',
-      scores: [{ id: 'night_shift', title: 'The Night Shift', score: 0.82 }, { id: 'architect', title: 'The Architect', score: 0.71 }, { id: 'sommelier', title: 'The Model Sommelier', score: 0.55 }],
+      scores: [{ id: 'night_shift', title: 'The 2AM Deployer', score: 0.82 }, { id: 'architect', title: 'The Spec Writer', score: 0.71 }, { id: 'sommelier', title: 'The Model Sommelier', score: 0.55 }],
       confidence: 0.78, source: 'local',
     },
+    // Award ids, titles and receipts in the engine's own wording (story-archetype.ts awards()).
     awards: [
-      { id: 'most_expensive_sentence', title: 'Priciest sentence', receipt: '$412, Aug 21', publicReceipt: '$412, Aug 21' },
-      { id: 'marathon', title: 'Longest session', receipt: '7.5h without a break, Jun 3', publicReceipt: '7.5h without a break, Jun 3' },
-      { id: 'rage_day', title: 'Worst day', receipt: 'Sep 14: 44 swear words', publicReceipt: 'Sep 14: 44 swear words' },
-      { id: 'streak', title: 'Longest streak', receipt: '23 days in a row, Aug 2–24', publicReceipt: '23 days in a row, Aug 2–24' },
-      { id: 'pet_names', title: 'Pet name', receipt: '“buddy”, 37 times', publicReceipt: '37 times' },
-      { id: 'orchestrator', title: 'Middle manager', receipt: '266 subagents launched', publicReceipt: '266 subagents launched' },
+      { id: 'priciest_sentence', title: 'The $412 Sentence', receipt: 'Aug 21 · 330× your median', publicReceipt: 'Aug 21 · 330× your median' },
+      { id: 'swear_month', title: 'Potty Mouth of the Month', receipt: 'Oct: 24% of prompts', publicReceipt: 'Oct: 24% of prompts' },
+      { id: 'marathon', title: 'Iron Chair', receipt: '7.5h, no break · Jun 3', publicReceipt: '7.5h, no break · Jun 3' },
+      { id: 'catchphrase', title: 'Trademark Pending', receipt: "'real quick' ×212", publicReceipt: '×212' },
+      { id: 'streak', title: "Didn't Miss a Day", receipt: '23 days · Aug 2–Aug 24', publicReceipt: '23 days · Aug 2–Aug 24' },
+      { id: 'orchestrator', title: 'Middle Management', receipt: '266 subagents', publicReceipt: '266 subagents' },
     ],
     coldOpen: { quote: 'ok rewrite the whole sync layer but keep the api exactly the same', at: '2026-08-21T23:41:00Z', day: '2026-08-21', hour: 23, why: 'most_expensive' },
-    peakTime: { hour: 23, weekday: 1, label: 'Tuesdays around 11pm', narrative: 'Most of your best work lands late on Tuesdays, when the house is quiet.', source: 'local' },
+    peakTime: { hour: 2, weekday: 1, label: 'Tuesdays around 2am', narrative: 'Most of your best work lands deep into Monday night, when the house is quiet.', source: 'local' },
     enrichment: { state: 'offline', model: null, code: null, quotesSent: 0 },
     timings: { featuresMs: 10, detectorsMs: 5 },
     ...(() => { const { automatedRuns, ...rest } = v19Fields(months); void automatedRuns; return rest; })(),

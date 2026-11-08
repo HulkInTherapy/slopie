@@ -31,7 +31,7 @@ describe('plain and share outputs', () => {
   it('prints every story card as a text section before the board', () => {
     const text = renderLaunchPlain(storySnapshot(), { width: 100 });
     expect(text).not.toContain('\x1b');
-    for (const expected of ['YOUR YEAR WITH AGENTS', 'BEFORE WE START', 'THE BILL', 'YOUR CLOCK', 'QUICK QUIZ', 'answer: Claude Opus 5', 'HOW YOU TALK', 'THE NIGHT SHIFT ARCHITECT'.toLowerCase(), 'THE BOARD', 'WHAT THE NUMBERS MEAN']) {
+    for (const expected of ['YOUR YEAR WITH AGENTS', 'BEFORE WE START', 'THE BILL', 'YOUR CLOCK', 'QUICK QUIZ', 'answer: Claude Opus 5', 'HOW YOU TALK', 'the 2am deployer'.toLowerCase(), 'THE BOARD', 'WHAT THE NUMBERS MEAN']) {
       expect(text.toLowerCase()).toContain(expected.toLowerCase());
     }
     expect(text).toContain('f-bombs');
@@ -41,7 +41,7 @@ describe('plain and share outputs', () => {
   it('story share SVG is anonymised and stays in the palette family', () => {
     const svg = renderAuditShareSvg(storySnapshot());
     expect(svg.startsWith('<svg')).toBe(true);
-    expect(svg).toContain('Night Shift Architect');
+    expect(svg).toContain('2AM Deployer');
     expect(svg).toContain('at API prices');
     expect(svg).toContain('npx slopie audit');
     // Only the catchphrase / pet name the poster already shows; no project names or other prompt text.
