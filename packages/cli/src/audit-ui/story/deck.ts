@@ -52,7 +52,7 @@ export interface Counter { label: string; value: number; style: 'count' | 'compa
 export interface BillLine { name: string; value: number }
 export interface Option { name: string; share: number }
 export interface Tile { label: string; text: string; count: number | null; quoted: boolean; sub?: string }
-export interface Trophy { title: string; value: string; sub: string; publicValue?: string; tier?: 'gold' | 'silver' }
+export interface Trophy { id?: string; title: string; value: string; sub: string; publicValue?: string; tier?: 'gold' | 'silver' }
 export interface ProjectRow { name: string; prompts: number; cost: number | null }
 export interface Gauge { label: string; per100: number; expected: number | null; ratio: number | null; prompts: number }
 
@@ -611,7 +611,7 @@ function awards(story: AuditStory | null): DeckCard | null {
     const [value, sub] = split(mask(award.receipt));
     const [publicValue] = split(mask(award.publicReceipt));
     const tier = (award as { tier?: unknown }).tier;
-    return { title: mask(award.title), value, sub, publicValue, tier: tier === 'gold' || tier === 'silver' ? tier : undefined } as Trophy;
+    return { id: award.id, title: mask(award.title), value, sub, publicValue, tier: tier === 'gold' || tier === 'silver' ? tier : undefined } as Trophy;
   });
   return {
     kind: 'awards', id: 'awards', kicker: 'THE AWARDS', expression: 'proud',
@@ -648,7 +648,7 @@ function boardSummary(story: AuditStory | null, board: BoardData, deck: DeckCard
   const arche = deck.find(c => c.kind === 'archetype');
   const a = arche?.kind === 'archetype' ? arche.data : null;
   const awardsCard = deck.find(c => c.kind === 'awards');
-  const awards = awardsCard?.kind === 'awards' ? awardsCard.data.trophies.slice(0, 6).map(tr => ({ title: tr.title, value: tr.value, publicValue: tr.publicValue ?? tr.value, tier: tr.tier })) : [];
+  const awards = awardsCard?.kind === 'awards' ? awardsCard.data.trophies.slice(0, 6).map(tr => ({ id: tr.id, title: tr.title, value: tr.value, publicValue: tr.publicValue ?? tr.value, tier: tr.tier })) : [];
   const data = boardSummaryData(story, board, {
     archetype: a ? { title: a.title, tier: a.tier, subRole: a.subRole, code: a.code, tagline: a.tagline } : null,
     awards, mask,
@@ -690,7 +690,7 @@ function stitch(cards: DeckCard[], story: AuditStory | null, board: BoardData): 
       case 'then_now': return 'which brings us to who you became.';
       case 'archetype': return prompts ? `so. after ${count(prompts)} prompts…` : 'so…';
       case 'awards': return 'you also won some things.';
-      case 'board': return "your whole year on one screen. press s.";
+      case 'board': return 'your year, on one poster. press s.';
       default: return `next: ${next.kicker.toLowerCase()}`;
     }
   };

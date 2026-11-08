@@ -42,8 +42,9 @@ describe('plain and share outputs', () => {
     const svg = renderAuditShareSvg(storySnapshot());
     expect(svg.startsWith('<svg')).toBe(true);
     expect(svg).toContain('Night Shift Architect');
-    expect(svg).toContain('SPEND');
+    expect(svg).toContain('at API prices');
     expect(svg).toContain('npx slopie audit');
-    for (const secret of ['lantern-api', 'tidepool', 'paper-boats', 'real quick', 'sync layer', 'buddy']) expect(svg).not.toContain(secret);
+    // Only the catchphrase / pet name the poster already shows; no project names or other prompt text.
+    for (const secret of ['lantern-api', 'tidepool', 'paper-boats', 'sync layer', 'keep going', 'leave the tests']) expect(svg).not.toContain(secret);
   });
 });

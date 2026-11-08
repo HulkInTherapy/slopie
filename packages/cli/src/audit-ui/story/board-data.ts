@@ -8,6 +8,7 @@ import type { BoardData } from '../view-model.js';
 import { cardOf, num, str } from './source.js';
 import type { AuditStory } from './types.js';
 import { automatedRunsOf, modelShareOf, spendOf, type Spend } from './v19.js';
+import { rankFunFacts, type FunFact } from './fun-facts.js';
 
 export interface BarRow {
   label: string;
@@ -45,9 +46,15 @@ export interface BoardSummary {
   subRole: string | null;
   code: string | null;
   tagline: string | null;
+  /** The tagline quotes none of the user's own words (safe for the share card). */
+  taglinePublic: boolean;
   range: string | null;
   days: string | null;
   hero: { value: string; label: string }[];
+  /** The poster's (at most 3) big numbers: $ at API prices, prompts, days. Never zero or unknown. */
+  heroes: { value: string; label: string }[];
+  /** Every fun fact that passed its guard, best first (the poster keeps what fits). */
+  facts: FunFact[];
   spend: SpendPanel | null;
   /** Legacy single total for snapshots without a story. */
   bill: number | null;
@@ -56,7 +63,7 @@ export interface BoardSummary {
   time: { grid: number[][] | null; peak: string | null; lines: string[] } | null;
   voice: VoiceLine[];
   work: { rows: BarRow[]; lines: string[] } | null;
-  awards: { title: string; value: string; publicValue: string; tier: 'gold' | 'silver' }[];
+  awards: { id?: string; title: string; value: string; publicValue: string; tier: 'gold' | 'silver' | 'bronze' }[];
   /** "since last run" ticker (filled when a run history exists). */
   sinceLast: string | null;
   /** First run with history support: plant the weekly habit. */
@@ -119,11 +126,11 @@ function modelsPanel(story: AuditStory | null, board: BoardData): BoardSummary['
   };
   if (share && share.rows.length) {
     const pcts = tenths(share.rows.map(r => r.outputTokens));
-    const priciest = [...share.rows].sort((a, b) => b.usd - a.usd)[0];
-    const priciestLabel = priciest && priciest.usd > 0 ? priciest.label : null;
+    const priciest = priciestPerPrompt(share.rows);
+    const priciestLabel = priciest ? priciest.label : null;
     const rows = share.rows.map((r, i) => ({ label: sanitize(r.label), pct: pcts[i]!, value: shareText(pcts[i]!), tags: tag(r.label, priciestLabel, share.rows[0]!.label), note: r.usd > 0 ? money(r.usd) : undefined }));
     const facts: string[] = [];
-    if (priciest && priciestLabel && priciest.usd > 0) facts.push(`$ priciest: ${sanitize(priciest.label)}, ${money(priciest.usd)}`);
+    if (priciest) facts.push(`$ priciest: ${sanitize(priciest.label)}, ${money(priciest.usd / priciest.prompts)}/prompt`);
     if (worst) facts.push(`☠ nemesis: ${sanitize(worst.label)}, ${(worst.swearRatio ?? 1).toFixed(1)}× swears`);
     const era = eras(share.timeline);
     if (era) facts.push(`eras ${era}`);
@@ -140,6 +147,40 @@ function modelsPanel(story: AuditStory | null, board: BoardData): BoardSummary['
   if (!rows.length) return null;
   const pcts = tenths(rows.map(r => r.value!));
   return { basis: 'share of spend', rows: rows.map((r, i) => ({ label: r.name, pct: pcts[i]!, value: shareText(pcts[i]!), tags: r.favourite ? ['fav'] : [] })), more: 0, unknown: null, facts: [] };
+}
+
+/**
+ * The model that cost the most per prompt, among models with ≥ 5% of the priced prompts.
+ * (Total $ just repeats the volume leader, so the "$ priciest" tag always landed on the #1 row.)
+ */
+export function priciestPerPrompt<R extends { label: string; usd: number; prompts: number }>(rows: readonly R[]): R | null {
+  const priced = rows.filter(r => r.usd > 0 && r.prompts > 0);
+  const total = priced.reduce((s, r) => s + r.prompts, 0);
+  if (priced.length < 2 || !(total > 0)) return null;
+  const eligible = priced.filter(r => r.prompts / total >= 0.05);
+  const best = [...eligible].sort((a, b) => b.usd / b.prompts - a.usd / a.prompts || a.label.localeCompare(b.label))[0];
+  return best ?? null;
+}
+
+/** A tagline is public unless it quotes something the user typed (other than the catchphrase or pet name). */
+function taglineIsPublic(tagline: string | null, story: AuditStory | null): boolean {
+  if (!tagline) return false;
+  const allowed = [story?.highlights.catchphrase?.phrase, story?.highlights.petName?.term].filter((v): v is string => !!v).map(v => v.toLowerCase());
+  const quoted = [...tagline.matchAll(/(?:^|[\s(])['‘“"]([^'’”"]+)['’”"]/g)].map(m => m[1]!.toLowerCase());
+  if (quoted.some(q => !allowed.includes(q))) return false;
+  const projects = (story?.projects ?? []).map(p => p.name).filter((n): n is string => !!n && n.length >= 3).map(n => n.toLowerCase());
+  return !projects.some(n => tagline.toLowerCase().includes(n));
+}
+
+function posterHeroes(story: AuditStory | null, board: BoardData, spend: Spend | null): BoardSummary['heroes'] {
+  const out: BoardSummary['heroes'] = [];
+  const usd = spend ? spend.measuredUsd : (board.hero.value ?? story?.totals.costUsd ?? null);
+  if (usd !== null && usd >= 1) out.push({ value: money(usd).replace(/\.\d\d$/, ''), label: 'at API prices' });
+  const prompts = story?.totals.prompts ?? board.stats.prompts;
+  if (prompts && prompts > 0) out.push({ value: count(prompts), label: 'prompts' });
+  const active = story?.totals.activeDays ?? board.stats.activeDays;
+  if (active && active > 0) out.push({ value: count(active), label: active === 1 ? 'day' : 'days' });
+  return out.slice(0, 3);
 }
 
 /** "Fable 5 ▸ GPT-6 Sol ▸ Opus 5": consecutive months collapsed. */
@@ -269,7 +310,7 @@ export function boardSummaryData(
   board: BoardData,
   extras: {
     archetype: { title: string; tier: BoardSummary['tier']; subRole: string | null; code: string | null; tagline: string } | null;
-    awards: { title: string; value: string; publicValue: string; tier?: 'gold' | 'silver' }[];
+    awards: { id?: string; title: string; value: string; publicValue: string; tier?: 'gold' | 'silver' }[];
     mask: (s: string) => string;
   },
 ): BoardSummary {
@@ -283,6 +324,7 @@ export function boardSummaryData(
     subRole: extras.archetype?.subRole ?? null,
     code: extras.archetype?.code ?? null,
     tagline: extras.archetype?.tagline || null,
+    taglinePublic: taglineIsPublic(extras.archetype?.tagline ?? null, story),
     range,
     days: span ? `${count(span)} days${active ? ` · ${count(active)} active` : ''}` : null,
     hero: heroStats(story, board),
@@ -293,7 +335,10 @@ export function boardSummaryData(
     time: timePanel(story),
     voice: voiceLines(story, board, extras.mask),
     work: workPanel(story, board),
-    awards: extras.awards.map((a, i) => ({ ...a, tier: a.tier ?? (i < 2 ? 'gold' : 'silver') })),
+    heroes: posterHeroes(story, board, spend),
+    facts: rankFunFacts(story, extras.mask),
+    // Rank decides the metal unless the engine says otherwise: 1 gold, 2–3 silver, the rest bronze.
+    awards: extras.awards.map((a, i) => ({ ...a, tier: a.tier ?? (i === 0 ? 'gold' : i < 3 ? 'silver' : 'bronze') })),
     sinceLast: null,
     firstRun: false,
   };
