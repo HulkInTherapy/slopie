@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { AuditEvent, AuditSession, AuditSnapshot } from '../../../core/src/analytics/contracts.js';
 import { renderCard } from './cards/index.js';
+import { revealDone, T } from './cards/reveal.js';
 import { MIN_COLS, MIN_ROWS, tierFor, type CardState, type Scene } from './cards/scene.js';
 import { Canvas } from './gfx/canvas.js';
 import { C, fade } from './gfx/color.js';
@@ -85,6 +86,74 @@ export function decodeKey(chunk: string): Key {
     case '4': return 'guess4';
     default: return null;
   }
+}
+
+const PASTE_START = '\x1b[200~';
+const PASTE_END = '\x1b[201~';
+
+/**
+ * Streaming key parser. Escape sequences and bracketed-paste delimiters may arrive split across
+ * stdin chunks at any byte; an incomplete tail is held until the next chunk (or a short timeout),
+ * and everything between paste delimiters is dropped, never executed as keys.
+ */
+export class InputParser {
+  private pending = '';
+  private pasting = false;
+  constructor(private readonly emit: (token: string) => void) {}
+
+  get holding(): boolean { return this.pending.length > 0; }
+
+  feed(chunk: string): void {
+    let buf = this.pending + chunk;
+    this.pending = '';
+    for (;;) {
+      if (this.pasting) {
+        const end = buf.indexOf(PASTE_END);
+        if (end < 0) {
+          // Keep only what could be the start of the end marker.
+          this.pending = partialTail(buf, PASTE_END);
+          return;
+        }
+        buf = buf.slice(end + PASTE_END.length);
+        this.pasting = false;
+        continue;
+      }
+      const start = buf.indexOf(PASTE_START);
+      if (start >= 0) {
+        this.keys(buf.slice(0, start));
+        buf = buf.slice(start + PASTE_START.length);
+        this.pasting = true;
+        continue;
+      }
+      // An unfinished escape sequence at the end waits for the rest.
+      const tail = /\x1b(?:\[[0-9;]*|O)?$/.exec(buf);
+      if (tail) {
+        this.keys(buf.slice(0, tail.index));
+        this.pending = tail[0];
+        return;
+      }
+      this.keys(buf);
+      return;
+    }
+  }
+
+  /** Timeout: a held lone Esc is a real Esc; a held partial sequence is dropped. */
+  flush(): void {
+    const held = this.pending;
+    this.pending = '';
+    if (!this.pasting && held === '\x1b') this.emit('\x1b');
+  }
+
+  private keys(text: string): void {
+    if (!text) return;
+    for (const token of splitKeys(text)) this.emit(token);
+  }
+}
+
+/** The longest suffix of `text` that is a proper prefix of `marker`. */
+function partialTail(text: string, marker: string): string {
+  for (let n = Math.min(marker.length - 1, text.length); n > 0; n--) if (marker.startsWith(text.slice(-n))) return text.slice(-n);
+  return '';
 }
 
 const FRAME_MS = 33;
@@ -399,14 +468,13 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   }
 
   /* ── input ── */
-  let pasting = false;
+  const input = new InputParser(token => onKey(token));
+  let inputTimer: ReturnType<typeof setTimeout> | null = null;
   const onData = (chunk: string) => {
-    if (chunk.includes('\x1b[200~')) pasting = true;
-    if (pasting) {
-      if (chunk.includes('\x1b[201~')) pasting = false;
-      return;
-    }
-    for (const token of splitKeys(chunk)) onKey(token);
+    input.feed(chunk);
+    // A held lone Esc (or a split escape) is released if nothing completes it soon.
+    if (inputTimer) { clearTimeout(inputTimer); inputTimer = null; }
+    if (input.holding) inputTimer = setTimeout(() => { inputTimer = null; input.flush(); }, 40);
   };
   const onKey = (token: string) => {
     if (stopping) return;
@@ -436,6 +504,12 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
       case 'share': share(); return;
       case 'left': go(index - 1); return;
       case 'right': case 'enter': {
+        // The archetype ceremony is skippable: the first key jumps to its final frame.
+        if (card.kind === 'archetype' && caps.motion && !revealDone((now - enteredAt) * CARD_SPEED)) {
+          enteredAt = now - T.settle / CARD_SPEED - 1;
+          paint();
+          return;
+        }
         if (card.kind === 'guess') {
           const state = stateOf(card);
           if (state.guess === undefined) { state.guess = -1; state.guessAt = (now - enteredAt) * CARD_SPEED; paint(); return; }
@@ -512,7 +586,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   try {
     await done;
   } finally {
-    for (const timer of [scheduled, toastTimer, bannerTimer, blinkTimer]) if (timer) clearTimeout(timer);
+    for (const timer of [scheduled, toastTimer, bannerTimer, blinkTimer, inputTimer]) if (timer) clearTimeout(timer);
     if (ticker) clearInterval(ticker);
     stdin.off('data', onData);
     stdout.off('resize', onResize);

@@ -31,7 +31,7 @@ describe('plain and share outputs', () => {
   it('prints every story card as a text section before the board', () => {
     const text = renderLaunchPlain(storySnapshot(), { width: 100 });
     expect(text).not.toContain('\x1b');
-    for (const expected of ['BEFORE WE START', 'THE BILL', 'YOUR CLOCK', 'QUICK QUIZ', 'answer: Claude Opus 5', 'HOW YOU TALK', 'THE NIGHT SHIFT ARCHITECT'.toLowerCase(), 'THE BOARD', 'WHAT THE NUMBERS MEAN']) {
+    for (const expected of ['YOUR YEAR WITH AGENTS', 'BEFORE WE START', 'THE BILL', 'YOUR CLOCK', 'QUICK QUIZ', 'answer: Claude Opus 5', 'HOW YOU TALK', 'THE NIGHT SHIFT ARCHITECT'.toLowerCase(), 'THE BOARD', 'WHAT THE NUMBERS MEAN']) {
       expect(text.toLowerCase()).toContain(expected.toLowerCase());
     }
     expect(text).toContain('f-bombs');
@@ -42,7 +42,8 @@ describe('plain and share outputs', () => {
     const svg = renderAuditShareSvg(storySnapshot());
     expect(svg.startsWith('<svg')).toBe(true);
     expect(svg).toContain('Night Shift Architect');
-    expect(svg).toContain('AT API PRICES');
+    expect(svg).toContain('SPEND');
+    expect(svg).toContain('npx slopie audit');
     for (const secret of ['lantern-api', 'tidepool', 'paper-boats', 'real quick', 'sync layer', 'buddy']) expect(svg).not.toContain(secret);
   });
 });

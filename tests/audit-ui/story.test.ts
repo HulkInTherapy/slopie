@@ -8,6 +8,7 @@ import { C } from '../../packages/cli/src/audit-ui/gfx/color.js';
 import { CellRenderer, detectCaps } from '../../packages/cli/src/audit-ui/gfx/screen.js';
 import { LoadingStory, loadingModel } from '../../packages/cli/src/audit-ui/loading.js';
 import { buildDeck, mask } from '../../packages/cli/src/audit-ui/story/deck.js';
+import { T } from '../../packages/cli/src/audit-ui/cards/reveal.js';
 import { runWallboard } from '../../packages/cli/src/audit-ui/terminal.js';
 import { readySnapshot, startingSnapshot } from './fixture.js';
 import { storyOfFixture, storyRecording, storySnapshot } from './story-fixture.js';
@@ -23,9 +24,10 @@ function render(card: ReturnType<typeof buildDeck>[number], w: number, h: number
 describe('story deck', () => {
   it('builds the story in spec order and ends with the board', () => {
     const kinds = buildDeck(storySnapshot()).map(card => card.kind);
-    expect(kinds[0]).toBe('cold_open');
+    expect(kinds[0]).toBe('cover');
     expect(kinds.at(-1)).toBe('board');
-    const order = ['cold_open', 'scale', 'bill', 'clock', 'guess', 'faceoff', 'mood', 'fuse', 'talk', 'manners', 'projects', 'delegation', 'then_now', 'archetype', 'awards', 'board'];
+    expect(kinds.length).toBeLessThanOrEqual(17);
+    const order = ['cover', 'cold_open', 'scale', 'bill', 'clock', 'guess', 'faceoff', 'mood', 'fuse', 'talk', 'projects', 'delegation', 'then_now', 'archetype', 'awards', 'board'];
     const positions = order.map(kind => kinds.indexOf(kind as never));
     expect(positions.every(p => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
@@ -38,7 +40,7 @@ describe('story deck', () => {
     story.archetype = null;
     story.awards = [];
     const kinds = buildDeck({ ...snapshot } as AuditSnapshot).map(card => card.kind);
-    for (const gone of ['mood', 'fuse', 'manners', 'delegation', 'then_now', 'archetype', 'awards']) expect(kinds).not.toContain(gone);
+    for (const gone of ['mood', 'fuse', 'manners', 'delegation', 'then_now', 'archetype', 'awards', 'cover']) expect(kinds).not.toContain(gone);
     expect(kinds).toContain('board');
   });
 
@@ -73,9 +75,10 @@ describe('story deck', () => {
     }
   });
 
-  it('settles: every card stops animating within 3 seconds', () => {
+  it('settles: every card stops animating within 3 seconds (the archetype ceremony within ~4 s real)', () => {
     const deck = buildDeck(storySnapshot());
-    for (const card of deck) expect(render(card, 120, 40, 3200, deck.length).busy).toBe(false);
+    for (const card of deck) expect(render(card, 120, 40, card.kind === 'archetype' ? T.settle : 3200, deck.length).busy).toBe(false);
+    expect(T.settle / 1.5).toBeLessThan(4000);
   });
 
   it('keeps 16-colour and colourless output free of pixel-art mascots', () => {

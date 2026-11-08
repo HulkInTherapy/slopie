@@ -161,3 +161,29 @@ export function textCenter(canvas: Canvas, cx: number, y: number, text: string, 
 }
 
 export { fade, textWidth };
+
+/**
+ * Share bar with a guaranteed sliver: any non-zero value shows at least a 1/8 cell, so a 0.1% row
+ * is never an empty line. ASCII: '#' for whole cells and '.' for the partial cell or sliver.
+ */
+export function bar8(canvas: Canvas, x: number, y: number, width: number, frac: number, color: Rgb, ascii = false, track?: Rgb): void {
+  if (width <= 0) return;
+  const f = Math.max(0, Math.min(1, frac));
+  let eighths = Math.round(f * width * 8);
+  if (f > 0 && eighths === 0) eighths = 1;
+  const full = Math.floor(eighths / 8);
+  const rest = eighths % 8;
+  if (track !== undefined) for (let i = 0; i < width; i++) canvas.put(x + i, y, ascii ? ' ' : '·', track);
+  for (let i = 0; i < full; i++) canvas.put(x + i, y, ascii ? '#' : '█', color);
+  if (rest > 0 && full < width) canvas.put(x + full, y, ascii ? '.' : EIGHTHS_H[rest]!, color);
+}
+
+/** Square-cornered panel with its title set into the top border: ┌ TITLE ───┐. */
+export function panel(canvas: Canvas, r: Rect, title: string, color: Rgb, titleColor: Rgb, ascii = false, alpha = 1): void {
+  if (r.w < 4 || r.h < 2) return;
+  box(canvas, r, fade(color, alpha), { rounded: false, ascii });
+  if (title) {
+    const text = ` ${title} `;
+    canvas.text(r.x + 1, r.y, text, { fg: titleColor, bold: true, alpha }, r.w - 3);
+  }
+}

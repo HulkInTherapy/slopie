@@ -70,7 +70,7 @@ export function storyOfFixture(): AuditStory {
     version: 'story-v1', state: 'ready', timezone: 'Europe/Lisbon', generatedAt: '2026-10-08T22:00:00Z',
     totals: {
       prompts: 2904, sessions: 388, projects: 41, activeDays: 176, firstAt: '2025-12-02T21:14:00Z', lastAt: '2026-10-08T23:02:00Z', spanDays: 310,
-      costUsd: 6412.5, subagents: 266, words: 182400, longestStreakDays: 23, longestStretchHours: 7.5, tokens: 8_412_000_000, byHarness: { claude: 1900, claude_hist: 500, codex: 480, pi: 24 },
+      costUsd: 6412.5, subagents: 266, words: 182400, longestStreakDays: 23, longestStretchHours: 7.5, tokens: 8_412_000_000, byHarness: { claude: 1900, claude_hist: 500, codex: 480, pi: 24 }, automatedRuns: 37,
     },
     rhythm: { hours, weekdayHour: grid, peakHour: 23, peakWeekday: 1, lateNightDaysPct: 38, weekendPct: 17 },
     swearTimeline: months.map((month, i) => ({ month, prompts: 180 + i * 20, swearing: Math.round((180 + i * 20) * pct[i]! / 100), swearPct: pct[i]!, politePct: Math.max(1, 9 - i * 0.7) })),
@@ -135,6 +135,71 @@ export function storyOfFixture(): AuditStory {
     peakTime: { hour: 23, weekday: 1, label: 'Tuesdays around 11pm', narrative: 'Most of your best work lands late on Tuesdays, when the house is quiet.', source: 'local' },
     enrichment: { state: 'offline', model: null, code: null, quotesSent: 0 },
     timings: { featuresMs: 10, detectorsMs: 5 },
+    ...(() => { const { automatedRuns, ...rest } = v19Fields(months); void automatedRuns; return rest; })(),
+  } as AuditStory;
+}
+
+/** SYNTHETIC 1.9 fields (V19-CONTRACT): spend timeline, output-token model shares, automated runs. */
+export function v19Fields(months: readonly string[]) {
+  const weight = [0.3, 0.45, 0.5, 0.6, 0.7, 0.9, 1.2, 1.6, 2.1, 1.4, 1.1];
+  const wsum = weight.reduce((a, b) => a + b, 0);
+  const measuredTotal = 6412.5;
+  const daily: { day: string; usd: number; prompts: number }[] = [];
+  const monthly = months.map((month, i) => {
+    const target = Math.round((measuredTotal * weight[i]!) / wsum * 100) / 100;
+    const [y, m] = month.split('-').map(Number) as [number, number];
+    const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const active: number[] = [];
+    for (let d = 1; d <= days; d++) if ((d * 7 + i * 13) % 10 < 6) active.push(d);
+    const raw = active.map(d => 0.3 + ((d * 37 + i * 11) % 17) / 17 + (d === 21 && month === '2026-08' ? 6 : 0));
+    const rsum = raw.reduce((a, b) => a + b, 0);
+    let used = 0;
+    active.forEach((d, k) => {
+      const usd = k === active.length - 1 ? Math.round((target - used) * 100) / 100 : Math.round((target * raw[k]!) / rsum * 100) / 100;
+      used += usd;
+      daily.push({ day: `${month}-${String(d).padStart(2, '0')}`, usd, prompts: 4 + Math.round(raw[k]! * 9) });
+    });
+    return { month, measuredUsd: target, recoveredUsd: i < 4 ? [180, 140, 95, 40][i]! : 0, estimatedUsd: i < 3 ? [260, 190, 120][i]! : 0, prompts: 180 + i * 20 };
+  });
+  const priciest = daily.reduce((a, b) => (b.usd > a.usd ? b : a));
+  const measuredUsd = Math.round(monthly.reduce((a, b) => a + b.measuredUsd, 0) * 100) / 100;
+  return {
+    spend: {
+      measuredUsd, recoveredUsd: 455, estimated: { lowUsd: 410, highUsd: 760, prompts: 500, basis: 'history-only prompts priced at your median prompt cost for that month' },
+      unpricedTokens: 1_240_000,
+      byHarness: [
+        { harness: 'claude', usd: 4100.4, prompts: 2400, tokens: 6_100_000_000, sharePct: 82.6 },
+        { harness: 'codex', usd: 2290.1, prompts: 480, tokens: 2_300_000_000, sharePct: 16.5 },
+        { harness: 'pi', usd: 21.9, prompts: 24, tokens: 12_000_000, sharePct: 0.8 },
+        { harness: 'opencode', usd: 0.1, prompts: 3, tokens: 90_000, sharePct: 0.1 },
+      ],
+      monthly, daily, thisMonthUsd: monthly.at(-1)!.measuredUsd,
+      perActiveDayUsd: Math.round((measuredUsd / daily.length) * 100) / 100,
+      priciestDay: { day: priciest.day, usd: priciest.usd }, priceVersion: 'models.dev 2026-10-07',
+    },
+    modelShare: {
+      basis: 'output_tokens' as const,
+      rows: [
+        { model: 'anthropic/claude-opus-5', label: 'Claude Opus 5', harness: 'claude', outputTokens: 41_000_000, tokenSharePct: 47.1, prompts: 1240, promptSharePct: 51.2, usd: 3076.4, spendSharePct: 48.0 },
+        { model: 'openai/gpt-6-sol', label: 'GPT-6 Sol', harness: 'codex', outputTokens: 19_600_000, tokenSharePct: 22.5, prompts: 410, promptSharePct: 16.9, usd: 1340.2, spendSharePct: 20.9 },
+        { model: 'anthropic/claude-fable-5', label: 'Claude Fable 5', harness: 'claude', outputTokens: 14_200_000, tokenSharePct: 16.3, prompts: 480, promptSharePct: 19.8, usd: 1182.6, spendSharePct: 18.4 },
+        { model: 'openai/gpt-6.1-sol', label: 'GPT-6.1 Sol', harness: 'codex', outputTokens: 9_900_000, tokenSharePct: 11.4, prompts: 260, promptSharePct: 10.7, usd: 701.3, spendSharePct: 10.9 },
+        { model: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5', harness: 'claude', outputTokens: 2_300_000, tokenSharePct: 2.6, prompts: 31, promptSharePct: 1.3, usd: 104.0, spendSharePct: 1.6 },
+        { model: 'pi/qwen-coder-3', label: 'Qwen Coder 3', harness: 'pi', outputTokens: 90_000, tokenSharePct: 0.1, prompts: 3, promptSharePct: 0.1, usd: 8.0, spendSharePct: 0.2 },
+      ],
+      unknownModelPrompts: 480,
+      last30d: [
+        { model: 'anthropic/claude-opus-5', label: 'Claude Opus 5', promptSharePct: 58 },
+        { model: 'openai/gpt-6.1-sol', label: 'GPT-6.1 Sol', promptSharePct: 30 },
+        { model: 'anthropic/claude-fable-5', label: 'Claude Fable 5', promptSharePct: 12 },
+      ],
+      timeline: months.map((month, i) => {
+        const label = i < 3 ? 'Claude Fable 5' : i < 6 ? 'GPT-6 Sol' : 'Claude Opus 5';
+        const model = i < 3 ? 'anthropic/claude-fable-5' : i < 6 ? 'openai/gpt-6-sol' : 'anthropic/claude-opus-5';
+        return { month, model, label, tokenSharePct: 55 + ((i * 7) % 30) };
+      }),
+    },
+    automatedRuns: 37,
   };
 }
 

@@ -11,10 +11,12 @@ import { compact, count, harnessName, hourLabel, modelName, money, shortDate } f
 import { sanitize } from '../text.js';
 import { boardData, type BoardData } from '../view-model.js';
 import { cardOf, num, storyOf, str } from './source.js';
+import { boardSummaryData, type BoardSummary } from './board-data.js';
+import { modelShareOf, spendOf } from './v19.js';
 import type { AuditStory, StoryCard, StoryChart } from './types.js';
 
 export type Kind =
-  | 'cold_open' | 'scale' | 'bill' | 'clock' | 'guess' | 'faceoff' | 'mood' | 'fuse' | 'talk' | 'manners'
+  | 'cover' | 'cold_open' | 'scale' | 'bill' | 'clock' | 'guess' | 'faceoff' | 'mood' | 'fuse' | 'talk' | 'manners'
   | 'projects' | 'delegation' | 'then_now' | 'archetype' | 'awards' | 'insight' | 'board';
 
 interface Base<K extends Kind, D> {
@@ -28,23 +30,47 @@ interface Base<K extends Kind, D> {
   /** `?` method notes, plain English. */
   notes: string[];
   data: D;
+  /** Short receipts drawn under the visual (merged detectors: rants, Esc, rage day...). */
+  callouts?: string[];
+  /** One-line lead-in to the next card ("next → it wasn't free."), set when the deck is assembled. */
+  bridge?: string;
+}
+
+/** The 1.9 spend card: lifetime, monthly bars, daily heat strip (all measured from the snapshot). */
+export interface SpendView {
+  measured: number;
+  recovered: number | null;
+  estimated: { low: number; high: number; prompts: number } | null;
+  months: { month: string; measured: number; extra: number }[];
+  days: { day: string; usd: number; prompts: number }[];
+  thisMonth: number | null;
+  perDay: number | null;
+  priciestDay: { day: string; usd: number } | null;
 }
 
 export interface Counter { label: string; value: number; style: 'count' | 'compact' | 'days' }
 export interface BillLine { name: string; value: number }
 export interface Option { name: string; share: number }
 export interface Tile { label: string; text: string; count: number | null; quoted: boolean; sub?: string }
-export interface Trophy { title: string; value: string; sub: string; publicValue?: string }
+export interface Trophy { title: string; value: string; sub: string; publicValue?: string; tier?: 'gold' | 'silver' }
 export interface ProjectRow { name: string; prompts: number; cost: number | null }
 export interface Gauge { label: string; per100: number; expected: number | null; ratio: number | null; prompts: number }
 
+export interface CoverData {
+  /** Word lengths of the archetype title, drawn as a locked silhouette. */
+  words: number[];
+  tier: 'common' | 'rare' | 'epic' | 'legendary' | null;
+  numbers: { value: string; label: string }[];
+}
+
 export type DeckCard =
+  | Base<'cover', CoverData>
   | Base<'cold_open', { quote: string; stamp: string; caption: string }>
   | Base<'scale', { counters: Counter[] }>
-  | Base<'bill', { total: number; lines: BillLine[]; more: number; byAgent: { name: string; share: number }[]; priciest: { cost: number; day: string; model: string | null } | null }>
+  | Base<'bill', { total: number; lines: BillLine[]; more: number; byAgent: { name: string; share: number }[]; priciest: { cost: number; day: string; model: string | null } | null; spend: SpendView | null }>
   | Base<'clock', { grid: number[][]; peakHour: number | null; peakWeekday: number | null; lateNightPct: number | null; callouts: { label: string; value: string; sub: string }[] }>
   | Base<'guess', { options: Option[]; answer: number; basis: string; after: string | null }>
-  | Base<'faceoff', { best: Gauge | null; worst: Gauge | null; compare: { label: string; observed: number; expected: number | null; highlight: boolean }[]; compareUnit: string }>
+  | Base<'faceoff', { best: Gauge | null; worst: Gauge | null; compare: { label: string; observed: number; expected: number | null; highlight: boolean }[]; compareUnit: string; eras: { month: string; label: string }[] }>
   | Base<'mood', { months: { month: string; pct: number }[]; tip: number }>
   | Base<'fuse', { median: number; sessions: number; of: number; firstPrompt: number; hist: number[] }>
   | Base<'talk', { tiles: Tile[] }>
@@ -52,26 +78,12 @@ export type DeckCard =
   | Base<'projects', { rows: ProjectRow[]; gotAway: { name: string; prompts: number; days: number; idle: number; lastDay: string; lastWords: string | null } | null }>
   | Base<'delegation', { total: number; months: { month: string; n: number }[]; firstMonth: string | null }>
   | Base<'then_now', { then: { day: string; words: number; quote: string | null; shell: boolean }; now: { day: string; words: number; quote: string | null }; spanDays: number; prompts: number }>
-  | Base<'archetype', { title: string; tagline: string; profile: string; subRole: string | null; code: string | null; deciding: { label: string; display: string; band: number }[]; tier: 'common' | 'rare' | 'epic' | 'legendary' | null }>
+  | Base<'archetype', { title: string; tagline: string; profile: string; subRole: string | null; code: string | null; codeWords: string[]; deciding: { label: string; display: string; band: number }[]; tier: 'common' | 'rare' | 'epic' | 'legendary' | null; runners: { title: string; score: number }[] }>
   | Base<'awards', { trophies: Trophy[] }>
   | Base<'insight', { chart: StoryChart; motif: string }>
   | Base<'board', BoardSummary>;
 
-export interface BoardSummary {
-  archetype: string | null;
-  tier: string | null;
-  bill: number | null;
-  range: string | null;
-  stats: { label: string; value: string }[];
-  grid: number[][] | null;
-  peak: string | null;
-  best: string | null;
-  worst: string | null;
-  catchphrase: { text: string; count: number } | null;
-  agents: { name: string; share: number }[];
-  topModel: string | null;
-  awards: { title: string; value: string; publicValue: string }[];
-}
+export type { BoardSummary } from './board-data.js';
 
 const WEEKDAYS = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -110,6 +122,25 @@ function title(text: string): string {
 }
 
 /* ── individual cards ─────────────────────────────────────────────────────── */
+
+/** Teaser: the archetype as a locked silhouette, its rarity glow, and three headline numbers. */
+function cover(story: AuditStory | null, board: BoardData): DeckCard | null {
+  const a = story?.archetype;
+  if (!story || !a || story.state === 'empty') return null;
+  const spend = spendOf(story);
+  const numbers: { value: string; label: string }[] = [];
+  if (story.totals.prompts) numbers.push({ value: count(story.totals.prompts), label: 'prompts' });
+  if (story.totals.spanDays) numbers.push({ value: count(story.totals.spanDays), label: 'days' });
+  const money$ = spend?.measuredUsd ?? board.hero.value;
+  if (money$ && money$ > 0) numbers.push({ value: money(money$).replace(/\.\d+$/, ''), label: 'at API prices' });
+  const tier = ['common', 'rare', 'epic', 'legendary'].includes(a.rarity) ? a.rarity : null;
+  return {
+    kind: 'cover', id: 'cover', kicker: 'YOUR YEAR WITH AGENTS', expression: 'waving',
+    headline: 'You were someone this year.', support: 'The verdict is at the end. First, the evidence.',
+    notes: ['Everything in this story is computed on this machine from your agents\' history files. The locked title is your archetype: it unlocks at the end.'],
+    data: { words: a.title.split(/\s+/).map(w => w.length), tier: tier as CoverData['tier'], numbers },
+  };
+}
 
 const COLD_CAPTIONS: Record<string, string> = {
   first_prompt: 'The first thing you ever said to a coding agent. On this machine, anyway.',
@@ -187,16 +218,37 @@ function bill(story: AuditStory | null, board: BoardData): DeckCard | null {
   const more = rows.slice(6).reduce((sum, row) => sum + (row.value ?? 0), 0);
   const pricey = story?.highlights.mostExpensivePrompt ?? null;
   const card = cardOf(story, 'most_expensive_sentence');
-  const headline = pricey
-    ? `Your most expensive sentence cost ${money(pricey.costUsd)}.`
-    : `Your agents would have cost ${money(total)} at API prices.`;
-  const support = pricey
+  const sv = spendOf(story);
+  const headline = sv
+    ? `${money(sv.measuredUsd)} of agent work, at API list prices.`
+    : pricey
+      ? `Your most expensive sentence cost ${money(pricey.costUsd)}.`
+      : `Your agents would have cost ${money(total)} at API prices.`;
+  const support = sv
+    ? [sv.perActiveDayUsd > 0 ? `${money(sv.perActiveDayUsd)} per active day` : null, sv.priciestDay ? `worst day ${shortDate(sv.priciestDay.day)}: ${money(sv.priciestDay.usd)}` : null, pricey ? `and that sentence? ${money(pricey.costUsd)}` : null].filter(Boolean).join(' · ') + '.'
+    : pricey
     ? `${shortDate(pricey.day)}${pricey.model ? `, ${modelName(pricey.model)}` : ''}. That's ${Math.round(pricey.timesMedian)}× your median prompt and ${Math.round(pricey.sharePct)}% of everything.`
     : card ? mask(card.support) : 'What your recorded tokens would cost at public list prices. Not a bill.';
   return {
     kind: 'bill', id: 'bill', kicker: 'THE BILL', expression: 'shocked', headline, support,
-    notes: ['The total is what your recorded tokens would cost at public API list prices. It is not what you paid: subscriptions and discounts are unknown.', 'A prompt’s cost includes the subagents it started, counted by time window.', 'Models priced from the closest model in the list are marked ~ on the board.'],
-    data: { total, lines: shown, more, byAgent: board.agentSplit, priciest: pricey ? { cost: pricey.costUsd, day: pricey.day, model: pricey.model ? modelName(pricey.model) : null } : null },
+    notes: ['The total is what your recorded tokens would cost at public API list prices. It is not what you paid: subscriptions and discounts are unknown.',
+      '"Measured" is priced request by request from usage logs. "Recovered" comes from usage counters that the logs no longer cover. "Est." is a low–high range for older prompts whose token logs are gone; it is never added to the measured total.', 'A prompt’s cost includes the subagents it started, counted by time window.', 'Models priced from the closest model in the list are marked ~ on the board.'],
+    data: { total, lines: shown, more, byAgent: board.agentSplit, priciest: pricey ? { cost: pricey.costUsd, day: pricey.day, model: pricey.model ? modelName(pricey.model) : null } : null, spend: spendView(story) },
+  };
+}
+
+function spendView(story: AuditStory | null): SpendView | null {
+  const sp = spendOf(story);
+  if (!sp || sp.measuredUsd <= 0) return null;
+  return {
+    measured: sp.measuredUsd,
+    recovered: sp.recoveredUsd > 0.5 ? sp.recoveredUsd : null,
+    estimated: sp.estimated ? { low: sp.estimated.lowUsd, high: sp.estimated.highUsd, prompts: sp.estimated.prompts } : null,
+    months: sp.monthly.map(m => ({ month: m.month, measured: m.measuredUsd, extra: Math.max(0, m.recoveredUsd) + Math.max(0, m.estimatedUsd) })),
+    days: [...sp.daily],
+    thisMonth: sp.monthly.length ? sp.thisMonthUsd : null,
+    perDay: sp.perActiveDayUsd > 0 ? sp.perActiveDayUsd : null,
+    priciestDay: sp.priciestDay,
   };
 }
 
@@ -208,13 +260,16 @@ function clock(story: AuditStory | null): DeckCard | null {
   const owl = cardOf(story, 'night_owl');
   const copy = engineCopy(owl);
   const peak = rhythm.peakHour !== null && rhythm.peakWeekday !== null ? `${WEEKDAYS[rhythm.peakWeekday]} around ${hourLabel(rhythm.peakHour).toLowerCase().replace(' ', '')}` : null;
-  const headline = copy?.headline ?? (story?.peakTime ? `You're a ${mask(story.peakTime.label)} person.` : peak ? `Peak you: ${peak}.` : 'Your week, hour by hour.');
-  const support = copy?.support ?? story?.peakTime?.narrative ?? (rhythm.lateNightDaysPct !== null ? `${Math.round(rhythm.lateNightDaysPct)}% of your days end after 1am.` : '');
+  const peakLine = rhythm.peakHour !== null && rhythm.peakWeekday !== null ? `${WEEKDAYS[rhythm.peakWeekday]}, ${hourLabel(rhythm.peakHour)}. That's you.` : null;
+  const headline = peakLine ?? copy?.headline ?? (story?.peakTime ? `You're a ${mask(story.peakTime.label)} person.` : peak ? `Peak you: ${peak}.` : 'Your week, hour by hour.');
+  const support = (peakLine && copy ? copy.headline + ' ' + copy.support : null) ?? copy?.support ?? story?.peakTime?.narrative ?? (rhythm.lateNightDaysPct !== null ? `${Math.round(rhythm.lateNightDaysPct)}% of your days end after 1am.` : '');
+  const busiest = [...(spendOf(story)?.daily ?? [])].sort((a, b) => b.prompts - a.prompts)[0];
   return {
     kind: 'clock', id: owl ? 'night_owl' : 'clock', kicker: 'YOUR CLOCK', expression: (rhythm.lateNightDaysPct ?? 0) >= 25 ? 'sleepy' : 'idle',
     headline, support: mask(support),
     notes: [`Every prompt placed on a weekday × hour grid in your timezone (${sanitize(story!.timezone)}). Brighter = more prompts.`, 'A "day" runs 6am to 6am, so a 2am prompt belongs to the night before.', 'Angriest and calmest hours only count hours with at least 50 prompts.'],
     data: { grid: rhythm.weekdayHour.map(row => [...row]), peakHour: rhythm.peakHour, peakWeekday: rhythm.peakWeekday, lateNightPct: rhythm.lateNightDaysPct, callouts: clockCallouts(story!, owl) },
+    callouts: busiest && busiest.prompts > 0 ? [`busiest day ever: ${shortDate(busiest.day, true)}, ${count(busiest.prompts)} prompts`] : undefined,
   };
 }
 
@@ -234,6 +289,29 @@ function clockCallouts(story: AuditStory, owl: StoryCard | null): { label: strin
 }
 
 function guess(story: AuditStory | null, board: BoardData, snapshot: AuditSnapshot): DeckCard | null {
+  const share = modelShareOf(story);
+  if (share && share.rows.length >= 2) {
+    // One row per model (aliases merged upstream and again in modelShareOf), so no two choices are the same model.
+    const rows = share.rows.slice(0, 4);
+    const options = rows.map(m => ({ name: mask(m.label), share: m.tokenSharePct / 100 }));
+    const seed = rows.reduce((sum, m) => sum + m.prompts, 0) % 997;
+    const order = options.map((_, i) => i).sort((a, b) => ((a * 7 + seed) % 11) - ((b * 7 + seed) % 11));
+    const leader = rows[0]!;
+    const priciest = [...share.rows].sort((a, b) => b.usd - a.usd)[0]!;
+    const unknown = share.unknownModelPrompts;
+    const twist = priciest.label !== leader.label && priciest.usd > 0
+      ? `…but ${mask(priciest.label)} cost you the most: ${money(priciest.usd)}.`
+      : `${mask(leader.label)} wrote ${Math.round(leader.tokenSharePct)}% of everything your agents said back.`;
+    return {
+      kind: 'guess', id: 'guess', kicker: 'QUICK QUIZ', expression: 'smirk',
+      headline: 'Which model did the most work?', support: `Press 1–${options.length} to guess.`,
+      notes: [
+        'Ranked by share of output tokens: what each model actually wrote back to you, across every agent on this machine. Only answers with a recorded model count.',
+        unknown > 0 ? `${count(unknown)} older prompts have no recorded model (their history survived but the answer did not). They are left out, never guessed.` : '',
+      ].filter(Boolean),
+      data: { options: order.map(i => options[i]!), answer: order.indexOf(0), basis: 'share of output tokens', after: twist + (unknown > 0 ? ` (${count(unknown)} older prompts have no recorded model.)` : '') },
+    };
+  }
   const top = story?.models.top ?? [];
   if (top.length >= 2) {
     const options = top.slice(0, 4).map(m => ({ name: displayModel(m.model, m.label), share: m.sharePct / 100 }));
@@ -275,25 +353,53 @@ function guess(story: AuditStory | null, board: BoardData, snapshot: AuditSnapsh
   void board;
 }
 
+function timelineBeat(story: AuditStory | null): { line: string; eras: { month: string; label: string }[]; now: string | null } | null {
+  const share = modelShareOf(story);
+  const tl = share?.timeline ?? [];
+  if (tl.length < 2) return null;
+  const first = tl[0]!, last = tl.at(-1)!;
+  const now = share!.last30d[0];
+  const short = (l: string) => mask(l);
+  const line = first.label !== last.label
+    ? `You started on ${short(first.label)}. You're ending on ${short(last.label)}.`
+    : `${short(first.label)} from ${monthLabel(first.month)} to ${monthLabel(last.month)}. No notes.`;
+  return { line, eras: tl.map(t => ({ month: t.month, label: mask(t.label) })), now: now ? `last 30 days: ${mask(now.label)}, ${Math.round(now.promptSharePct)}% of prompts` : null };
+}
+
 function faceoff(story: AuditStory | null): DeckCard | null {
   const best = story?.models.best ?? null;
-  const worst = story?.models.worst ?? null;
-  if (!best && !worst) return null;
+  // A nemesis needs at least two month-matched months before it can headline.
+  const worst = story?.models.worst && story.models.worst.matchedMonths >= 2 ? story.models.worst : null;
+  const beat = timelineBeat(story);
+  if (!best && !worst && !beat) return null;
   const gauge = (m: NonNullable<typeof best>, key: 'praise' | 'swear'): Gauge => ({
     label: displayModel(m.model, m.label), prompts: m.prompts,
     per100: key === 'praise' ? m.praisePer100 : m.swearPer100,
     expected: key === 'praise' ? m.expectedPraisePer100 : m.expectedSwearPer100,
     ratio: key === 'praise' ? m.praiseRatio : m.swearRatio,
   });
-  const worstCard = cardOf(story, 'worst_model');
+  const worstCard = worst ? cardOf(story, 'worst_model') : null;
   const bestCard = cardOf(story, 'best_model');
-  const headline = worstCard ? mask(worstCard.headline) : bestCard ? mask(bestCard.headline) : worst ? `${mask(worst.label)} brings out the worst in you.` : `${mask(best!.label)} is your favourite.`;
-  const support = worstCard ? mask(worstCard.support) : bestCard ? mask(bestCard.support) : '';
+  const verdict = worstCard ? mask(worstCard.headline) : bestCard ? mask(bestCard.headline) : worst ? `${mask(worst.label)} brings out the worst in you.` : best ? `${mask(best.label)} is your favourite.` : '';
+  const headline = beat?.line ?? verdict;
+  const support = beat ? verdict : worstCard ? mask(worstCard.support) : bestCard ? mask(bestCard.support) : '';
+  const honey = cardOf(story, 'honeymoon');
+  const callouts = [
+    beat && beat.eras.length ? `eras: ${erasLine(beat.eras)}` : null,
+    beat?.now ?? null,
+    honey ? mask(honey.headline) : null,
+  ].filter((x): x is string => !!x);
   return {
-    kind: 'faceoff', id: 'faceoff', kicker: 'FAVOURITE VS NEMESIS', expression: 'side-eye', headline, support,
+    kind: 'faceoff', id: 'faceoff', kicker: 'THE MODEL LINEUP', expression: 'side-eye', headline, support, callouts,
     notes: ['Rates per 100 prompts sent to each model, compared with what the other models got from you in the same months (month-matched), so a model is not blamed for the month you had.', 'Only models with at least 40 prompts seen in transcripts are ranked.'],
-    data: { best: best ? gauge(best, 'praise') : null, worst: worst ? gauge(worst, 'swear') : null, ...compareOf(worstCard ?? bestCard) },
+    data: { best: best ? gauge(best, 'praise') : null, worst: worst ? gauge(worst, 'swear') : null, ...compareOf(worstCard ?? bestCard), eras: beat?.eras ?? [] },
   };
+}
+
+function erasLine(eras: { label: string }[]): string {
+  const seq: string[] = [];
+  for (const e of eras) if (seq.at(-1) !== e.label) seq.push(e.label);
+  return seq.join(' ▸ ');
 }
 
 /** Observed vs month-matched expected per model, from the worst/best model chart. */
@@ -319,9 +425,20 @@ function mood(story: AuditStory | null): DeckCard | null {
   const tipMonth = str(card, 'tipMonth') ?? (typeof card.chart.highlight === 'string' ? card.chart.highlight : null);
   const tip = Math.max(0, months.findIndex(m => m.month === tipMonth));
   const mellow = (num(card, 'latePct') ?? 1) < (num(card, 'earlyPct') ?? 0);
+  // Third act: nice → feral → making amends, when the latest month is under half the peak.
+  const peak = months.reduce((a, m) => (m.pct > a.pct ? m : a), months[0]!);
+  const last = months.at(-1)!;
+  const amends = !mellow && peak !== last && last.pct <= peak.pct / 2;
+  const manners = cardOf(story, 'thanks_vs_swears');
+  const rants = cardOf(story, 'rant_length');
+  const callouts = [
+    amends ? `and then: ${monthLabel(peak.month)} peaked at ${peak.pct.toFixed(0)}%. ${monthLabel(last.month)}: back to ${last.pct.toFixed(1).replace(/\.0$/, '')}%. character development.` : null,
+    manners ? mask(manners.headline) + (num(manners, 'pleases') !== null ? ` (${count(num(manners, 'pleases'))} pleases, ${count(num(manners, 'thanks'))} thank-yous)` : '') : null,
+    rants ? mask(rants.headline) + (rants.support ? ' ' + mask(rants.support) : '') : null,
+  ].filter((x): x is string => !!x);
   return {
-    kind: 'mood', id: card.id, kicker: mellow ? 'YOU MELLOWED OUT' : 'THE TURN', expression: mellow ? 'proud' : 'smirk',
-    headline: mask(card.headline), support: mask(card.support),
+    kind: 'mood', id: card.id, kicker: mellow ? 'YOU MELLOWED OUT' : amends ? 'MAKING AMENDS' : 'THE TURN', expression: mellow || amends ? 'proud' : 'smirk',
+    headline: mask(card.headline), support: mask(card.support), callouts,
     notes: ['Share of each month’s prompts that contain a swear word or an insult (months with 40+ prompts).', 'The marked month is the first one that reached half of your recent rate.', 'Pasted text is ignored: only what you typed counts.'],
     data: { months, tip },
   };
@@ -332,7 +449,8 @@ function fuse(story: AuditStory | null): DeckCard | null {
   const card = cardOf(story, 'fuse_length');
   if (!f || !card) return null;
   return {
-    kind: 'fuse', id: card.id, kicker: 'YOUR FUSE', expression: 'smirk', headline: mask(card.headline), support: mask(card.support),
+    kind: 'fuse', id: card.id, kicker: 'HOW YOU SNAP', expression: 'smirk', headline: mask(card.headline), support: mask(card.support),
+    callouts: [cardOf(story, 'esc_key'), cardOf(story, 'rage_day'), cardOf(story, 'walk_away')].filter((x): x is StoryCard => !!x).map(x => mask(x.headline) + (x.support && x.id !== 'walk_away' ? ' ' + mask(x.support) : '')),
     notes: ['Sessions with at least 5 prompts and at least one swear. The fuse is the median prompt number of the first swear.'],
     data: {
       median: f.medianTurn, sessions: f.sessions, of: f.ofSessions, firstPrompt: f.firstPromptSwears,
@@ -404,7 +522,8 @@ function projects(story: AuditStory | null, board: BoardData): DeckCard | null {
   const pricey = cardOf(story, 'priciest_project');
   const top = rows[0]!;
   return {
-    kind: 'projects', id: 'projects', kicker: 'WHERE IT WENT', expression: 'idle',
+    kind: 'projects', id: 'projects', kicker: 'YOUR PROJECT UNIVERSE', expression: 'idle',
+    callouts: [cardOf(story, 'sprint_and_vanish'), cardOf(story, 'project_graveyard')].filter((x): x is StoryCard => !!x).map(x => mask(x.headline)),
     headline: awayCard ? mask(awayCard.headline) : `${top.name} got ${Math.round((top.prompts / rows.reduce((s, r) => s + r.prompts, 0)) * 100)}% of your top-project attention.`,
     // The support line must back the headline: got-away facts under a got-away headline, cost otherwise.
     support: awayCard ? mask(awayCard.support) : pricey ? mask(pricey.headline) : `${count(story?.totals.projects ?? board.stats.projects)} projects in all.`,
@@ -456,15 +575,25 @@ function archetype(story: AuditStory | null): DeckCard | null {
     headline: mask(a.title), support: mask(a.tagline || a.profile),
     notes: [
       'The archetype is chosen locally from your numbers: each archetype has a rule, the highest score wins, ties go to a fixed order. The bars are the three metrics that decided it.',
-      a.code ? `Your code ${sanitize(a.code)}: Night/Day · Spec/Vibe · Loyal/Roaming · Kind/Hot.` : '',
+      a.code ? `Your code ${sanitize(a.code)}: Night/Day · Spec/Vibe · Loyal/Roaming · Kind/Hot-headed (thank-yous and pleases vs swears).` : '',
+      'Rarity = how extreme your deciding numbers are on fixed scales. It is not how many other people got it: slopie never sees anyone else\'s data.',
       a.source === 'jev' ? 'The wording was picked by Jev from local variants; any number not in your facts is rejected.' : 'The wording is a local template.',
     ].filter(Boolean),
     data: {
       title: mask(a.title), tagline: mask(a.tagline ?? ''), profile: mask(a.profile), subRole: a.subRole ? mask(a.subRole.label) : null, code: a.code || null,
+      codeWords: codeWords(a.code),
+      // The archetypes you nearly got, best first (real scores; the slot roll uses them).
+      runners: (a.scores ?? []).filter(x => x.id !== a.id && x.score > 0).slice(0, 3).map(x => ({ title: mask(x.title), score: Math.round(x.score * 100) / 100 })),
       deciding: (a.deciding ?? []).slice(0, 3).map(m => ({ label: mask(m.label), display: mask(m.display), band: Math.max(0, Math.min(1, m.band)) })),
       tier: tier as 'common' | 'rare' | 'epic' | 'legendary',
     },
   };
+}
+
+const CODE_WORDS: Record<string, string>[] = [{ N: 'night', D: 'day' }, { S: 'spec', V: 'vibe' }, { L: 'loyal', R: 'roaming' }, { K: 'kind', H: 'hot-headed' }];
+function codeWords(code: string | null | undefined): string[] {
+  if (!code || code.length !== 4) return [];
+  return [...code].map((ch, i) => CODE_WORDS[i]![ch] ?? ch);
 }
 
 function awards(story: AuditStory | null): DeckCard | null {
@@ -507,50 +636,72 @@ const KICKERS: Record<string, string> = {
 
 /** Detectors that feed a dedicated card (never shown again as a generic insight). */
 const CONSUMED = new Set([
+  'rant_length', 'esc_key', 'rage_day', 'walk_away', 'honeymoon', 'sprint_and_vanish', 'project_graveyard',
   'most_expensive_sentence', 'mood_drift', 'worst_model', 'best_model', 'thanks_vs_swears', 'one_that_got_away', 'continue_count', 'verbal_tics',
   'fuse_length', 'pet_names', 'defection', 'night_owl', 'i_to_we', 'typo_fingerprint', 'first_vs_latest', 'orchestrator', 'priciest_project', 'predicted_next_word',
 ]);
 
 function boardSummary(story: AuditStory | null, board: BoardData, deck: DeckCard[]): DeckCard {
   const arche = deck.find(c => c.kind === 'archetype');
-  const face = deck.find(c => c.kind === 'faceoff');
-  const stats = [
-    { label: 'prompts', value: count(story?.totals.prompts ?? board.stats.prompts) },
-    { label: 'chats', value: count(board.stats.chats ?? story?.totals.sessions) },
-    { label: 'tokens', value: compact(board.stats.tokens) },
-    { label: 'active days', value: count(story?.totals.activeDays ?? board.stats.activeDays) },
-  ].filter(s => s.value !== '—');
-  const range = board.range.from && board.range.to ? `${shortDate(board.range.from, true)} → ${shortDate(board.range.to, true)}` : null;
-  const rhythm = story?.rhythm;
-  const fav = board.models.rows.find(r => r.favourite) ?? board.models.rows[0];
+  const a = arche?.kind === 'archetype' ? arche.data : null;
+  const awardsCard = deck.find(c => c.kind === 'awards');
+  const awards = awardsCard?.kind === 'awards' ? awardsCard.data.trophies.slice(0, 6).map(tr => ({ title: tr.title, value: tr.value, publicValue: tr.publicValue ?? tr.value, tier: tr.tier })) : [];
+  const data = boardSummaryData(story, board, {
+    archetype: a ? { title: a.title, tier: a.tier, subRole: a.subRole, code: a.code, tagline: a.tagline } : null,
+    awards, mask,
+  });
   return {
     kind: 'board', id: 'board', kicker: 'YOUR YEAR WITH AGENTS', expression: 'waving',
-    headline: arche ? `This year you've been ${arche.data.title as string}.` : 'Your year with coding agents.',
-    support: range ?? '',
-    notes: ['The share card. Press s to save it as an SVG: project names are replaced and none of your words are included.'],
-    data: {
-      archetype: arche?.kind === 'archetype' ? arche.data.title : null,
-      tier: arche?.kind === 'archetype' ? arche.data.tier : null,
-      bill: board.hero.value,
-      range,
-      stats,
-      grid: rhythm && rhythm.weekdayHour.length === 7 ? rhythm.weekdayHour.map(r => [...r]) : null,
-      peak: rhythm && rhythm.peakHour !== null && rhythm.peakWeekday !== null ? `${WEEKDAYS[rhythm.peakWeekday]} · ${hourLabel(rhythm.peakHour)}` : null,
-      best: face?.kind === 'faceoff' && face.data.best ? face.data.best.label : null,
-      worst: face?.kind === 'faceoff' && face.data.worst ? face.data.worst.label : null,
-      catchphrase: story?.highlights.catchphrase ? { text: mask(story.highlights.catchphrase.phrase), count: story.highlights.catchphrase.count } : board.repeats.rows[0] ? { text: mask(board.repeats.rows[0].text), count: board.repeats.rows[0].count } : null,
-      agents: board.agentSplit,
-      topModel: story?.models.top[0] ? mask(story.models.top[0].label) : fav ? fav.name : null,
-      awards: (() => { const a = deck.find(c => c.kind === 'awards'); return a?.kind === 'awards' ? a.data.trophies.slice(0, 4).map(tr => ({ title: tr.title, value: tr.value, publicValue: tr.publicValue ?? tr.value })) : []; })(),
-    },
+    headline: a ? `This year you've been ${a.title}.` : 'Your year with coding agents.',
+    support: data.range ?? '',
+    notes: [
+      'The share card. Press s to save it as an SVG: project names are replaced and none of your words are included.',
+      'Money is what your recorded tokens would cost at public API list prices, not what you paid. "Measured" is priced from per-request logs; "recovered" from usage counters the logs no longer cover; "est." is a range for older prompts whose token logs are gone.',
+      'Model shares are by output tokens (who did the most work). Agent shares are by prompts you typed. Shares sum to 100%.',
+    ],
+    data,
   };
+}
+
+/* ── bridges ── */
+
+/** Each card ends with a one-line lead-in to the next, so the deck reads as one story (≤ 48 chars, lowercase). */
+function stitch(cards: DeckCard[], story: AuditStory | null, board: BoardData): void {
+  const prompts = story?.totals.prompts ?? board.stats.prompts;
+  const folders = story?.totals.projects ?? board.stats.projects;
+  const peak = story?.rhythm.peakHour ?? null;
+  const lead = (next: DeckCard): string => {
+    switch (next.kind) {
+      case 'cold_open': return "let's start with something you said.";
+      case 'scale': return prompts ? `that was one of ${count(prompts)}.` : 'now the whole year.';
+      case 'bill': return "it wasn't free.";
+      case 'clock': return peak !== null ? `most of it around ${hourLabel(peak).toLowerCase()}. here's your clock.` : "let's look at your clock.";
+      case 'guess': return 'and who was on the other end?';
+      case 'faceoff': return "…but that's not the whole story.";
+      case 'mood': return "you weren't always like this with them.";
+      case 'manners': return 'let’s talk about your manners.';
+      case 'fuse': return "here's exactly when you snap.";
+      case 'talk': return "when you're calm, this is how you talk.";
+      case 'projects': return folders ? `you said it across ${count(folders)} folders.` : 'where did it all go?';
+      case 'delegation': return 'eventually you stopped doing it yourself.';
+      case 'then_now': return 'which brings us to who you became.';
+      case 'archetype': return prompts ? `so. after ${count(prompts)} prompts…` : 'so…';
+      case 'awards': return 'you also won some things.';
+      case 'board': return "your whole year on one screen. press s.";
+      default: return `next: ${next.kicker.toLowerCase()}`;
+    }
+  };
+  for (let i = 0; i < cards.length - 1; i++) {
+    const text = lead(cards[i + 1]!);
+    cards[i]!.bridge = text.length <= 48 ? text : text.slice(0, 47) + '…';
+  }
 }
 
 /* ── assembly ── */
 
 const cache = new WeakMap<AuditSnapshot, DeckCard[]>();
 
-const MAX_EXTRAS = 4;
+const MAX_EXTRAS = 1;
 
 export function buildDeck(snapshot: AuditSnapshot): DeckCard[] {
   const hit = cache.get(snapshot);
@@ -569,32 +720,44 @@ export function buildDeck(snapshot: AuditSnapshot): DeckCard[] {
     extrasLeft--;
     return safe(() => insight(pool.splice(i, 1)[0]!));
   };
+  // One wildcard: the best-ranked detector no dedicated card consumed, placed in its own act.
+  const wild = pool[0] ?? null;
+  const wildIn = (sections: string[]) => (wild && sections.includes((wild as { section?: string }).section ?? 'more') ? extra((wild as { section?: string }).section ?? 'more') : null);
+  const turn = safe(() => mood(story));
   const deck: (DeckCard | null)[] = [
+    // Cover
+    safe(() => cover(story, board)),
+    // I. The scale
     safe(() => coldOpen(story)),
     safe(() => scale(story, board)),
     safe(() => bill(story, board)),
+    // II. The rhythm
     safe(() => clock(story)),
-    extra('clock'),
+    wildIn(['clock']),
+    // III. The models
     safe(() => guess(story, board, snapshot)),
     safe(() => faceoff(story)),
-    extra('best_worst'),
-    safe(() => mood(story)),
-    extra('mood'),
+    wildIn(['models', 'best_worst']),
+    // IV. The mood
+    turn,
+    turn ? null : safe(() => manners(story)),
     safe(() => fuse(story)),
+    wildIn(['mood', 'manners', 'fuse']),
+    // V. The voice
     safe(() => talk(story, board)),
-    safe(() => manners(story)),
-    extra('manners'),
+    wildIn(['talk']),
+    // VI. The work
     safe(() => projects(story, board)),
-    extra('projects'),
     safe(() => delegation(story)),
-    extra('delegation'),
-    extra('more'),
+    wildIn(['projects', 'delegation', 'more', 'scale', 'bill', 'first_latest', 'cold_open', 'archetype', 'awards']),
+    // VII. Who you became
     safe(() => thenNow(story)),
     safe(() => archetype(story)),
     safe(() => awards(story)),
   ];
   const cards = deck.filter((card): card is DeckCard => card !== null);
   cards.push(boardSummary(story, board, cards));
+  stitch(cards, story, board);
   cache.set(snapshot, cards);
   return cards;
 }
