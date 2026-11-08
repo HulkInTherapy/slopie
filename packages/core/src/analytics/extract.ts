@@ -420,7 +420,9 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
       const sub = isRec(source.subagent) ? source.subagent : {};
       const spawn = isRec(sub.thread_spawn) ? sub.thread_spawn : {};
       f.parentId = str(spawn.parent_thread_id) ?? str(p.parent_thread_id) ?? str(p.forked_from_id);
-    } else if (str(p.forked_from_id)) f.forkedFrom = str(p.forked_from_id);
+    }
+    // A fork (also a forked subagent) starts from a copy of its parent's history: replayed counters count once.
+    if (str(p.forked_from_id)) f.forkedFrom = str(p.forked_from_id);
     if (source === 'exec' || p.originator === 'codex_exec' || p.originator === 'codex_sdk_ts') f.automated = true;
     touch(b, time(r.timestamp));
     return;

@@ -189,6 +189,8 @@ export function aggregate(input: AggregateInput): Aggregate {
   const sources = input.sources
     .filter(s => harnessSet.has(s.harness))
     .sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? '') || (a.firstAt ?? 0) - (b.firstAt ?? 0)
+      // Parents before children and originals before forks, so a replayed copy never claims the original's identity.
+      || Number(a.child) - Number(b.child) || Number(!!a.forkedFrom) - Number(!!b.forkedFrom)
       || (a.sessionId === b.sessionId ? completeness(b) - completeness(a) || b.size - a.size || Number(!!a.archived) - Number(!!b.archived) : 0) || a.file.localeCompare(b.file))
     .filter(s => {
       if (policy.forgotten.has(sid(s.harness, s.sessionId)) || (s.parentId && policy.forgotten.has(sid(s.harness, s.parentId)))) { excludedSources++; return false; }
