@@ -52,14 +52,14 @@ function bandWord(band: number): string {
 }
 
 /** Split an uppercase title into block-font lines that fit `width`. */
-function titleLines(title: string, width: number): string[] | null {
+function titleLines(title: string, width: number, scale = 1): string[] | null {
   const words = title.toUpperCase().split(/\s+/);
   const lines: string[] = [];
   let line = '';
   for (const word of words) {
     const next = line ? `${line} ${word}` : word;
-    if (bigWidth(next) <= width) line = next;
-    else { if (line) lines.push(line); line = word; if (bigWidth(word) > width) return null; }
+    if (bigWidth(next, scale) <= width) line = next;
+    else { if (line) lines.push(line); line = word; if (bigWidth(word, scale) > width) return null; }
   }
   if (line) lines.push(line);
   return lines;
@@ -116,11 +116,15 @@ export function archetypeBody(s: Scene, data: Data, r: Rect, mascot: Rect): bool
   const padX = 3;
   const avoidMascot = (yy: number) => (mascot.w > 0 && yy < mascot.y + mascot.h ? mascot.x - 2 : r.x + r.w);
   const slotW = avoidMascot(y) - r.x - padX * 2 - 2;
-  const lines = pixel && bigSupported(data.title) ? titleLines(data.title, Math.min(slotW, r.w - padX * 2 - 2)) : null;
-  const useBig = !!lines && lines.length <= 2 && lines.length * (bigHeight() + 1) + 1 + 2 <= end - y - 4;
-  const titleRows = useBig ? lines!.length * (bigHeight() + 1) - 1 : 1;
+  const titleW = Math.min(slotW, r.w - padX * 2 - 2);
+  // Short titles get the double-size trophy font on big screens.
+  const big2 = L && pixel && bigSupported(data.title) ? titleLines(data.title, titleW, 2) : null;
+  const scale = big2 && big2.length === 1 && bigHeight(2) + 4 <= end - y - 10 ? 2 : 1;
+  const lines = pixel && bigSupported(data.title) ? titleLines(data.title, titleW, scale) : null;
+  const useBig = !!lines && lines.length <= 2 && lines.length * (bigHeight(scale) + 1) + 1 + 2 <= end - y - 4;
+  const titleRows = useBig ? lines!.length * (bigHeight(scale) + 1) - 1 : 1;
   const padY = L && end - y >= 26 ? 1 : 0;
-  const innerW = useBig ? Math.max(...lines!.map(l => bigWidth(l))) : textWidth(spacedTitle(data.title, uni));
+  const innerW = useBig ? Math.max(...lines!.map(l => bigWidth(l, scale))) : textWidth(spacedTitle(data.title, uni));
   const frame: Rect = { x: r.x, y: y + 1, w: Math.min(r.w, innerW + padX * 2 + 2), h: titleRows + 2 + padY * 2 };
   const ty = frame.y + 1 + padY;
   const tx = frame.x + 1 + padX;
@@ -138,7 +142,7 @@ export function archetypeBody(s: Scene, data: Data, r: Rect, mascot: Rect): bool
       const name = steps[idx]!.title;
       const lift = Math.round((1 - easeOutCubic(local)) * 2);
       const alpha = 0.35 + 0.25 * Math.sin(Math.PI * local);
-      drawTitle(s, tx, ty, name, useBig, slotW, (_px, py) => fade(mix(C.slate, C.gray, py / 4), alpha), lift);
+      drawTitle(s, tx, ty, name, useBig ? scale : 0, titleW, (_px, py) => fade(mix(C.slate, C.gray, py / 4), alpha), lift);
       c.text(tx, frame.y + frame.h, `${steps[idx]!.score.toFixed(2)}?`, { fg: C.slate, alpha: alpha });
     }
   } else if (t >= T.slam || !s.caps.motion) {
@@ -158,7 +162,7 @@ export function archetypeBody(s: Scene, data: Data, r: Rect, mascot: Rect): bool
     }
     const w = innerW;
     const goldShift = data.tier === 'legendary' ? clamp01((t - T.shimmer) / (n * passDur)) : 0;
-    drawTitle(s, tx, ty, data.title, useBig, slotW, (px, py) => {
+    drawTitle(s, tx, ty, data.title, useBig ? scale : 0, titleW, (px, py) => {
       let base = mix(C.cream, C.orange, py / 4);
       if (data.tier === 'legendary') base = mix(base, mix(GOLD, C.cream, py / 8), s.caps.motion ? goldShift : 1);
       if (sweep >= 0 && s.caps.color !== '16') {
@@ -233,15 +237,18 @@ function spacedTitle(title: string, uni: boolean): string {
 }
 
 /** Pixel title (or a bold letter-spaced text title). `glint16` highlights a column band in 16 colours. */
-function drawTitle(s: Scene, x: number, y: number, title: string, big: boolean, width: number, color: (px: number, py: number) => Rgb, dyPx: number, glint16: number | null = null): void {
+function drawTitle(s: Scene, x: number, y: number, title: string, scale: number, width: number, colorAt: (px: number, py: number) => Rgb, dyPx: number, glint16: number | null = null): void {
   const { c } = s;
-  if (big) {
-    const lines = titleLines(title, width) ?? [title.toUpperCase()];
-    lines.forEach((line, i) => drawBig(c, x, y + i * (bigHeight() + 1), line, { color, dy: () => dyPx }));
+  if (scale > 0) {
+    // Colour functions work in 1× pixel space whatever the scale.
+    const color = (px: number, py: number) => colorAt(Math.floor(px / scale), Math.floor(py / scale));
+    const lines = titleLines(title, width, scale) ?? titleLines(title, width) ?? [title.toUpperCase()];
+    const k = titleLines(title, width, scale) ? scale : 1;
+    lines.forEach((line, i) => drawBig(c, x, y + i * (bigHeight(k) + 1), line, { scale: k, color, dy: () => dyPx * k }));
     if (glint16 !== null) {
       // 16 colours: shimmer as bold reverse on the swept columns.
       const col = Math.round(x + glint16 - 5);
-      for (let yy = y; yy < y + lines.length * (bigHeight() + 1) - 1; yy++) for (let xx = col; xx < col + 2; xx++) {
+      for (let yy = y; yy < y + lines.length * (bigHeight(k) + 1) - 1; yy++) for (let xx = col; xx < col + 2 * k; xx++) {
         if (!c.inside(xx, yy)) continue;
         const i = yy * c.w + xx;
         if (c.ch[i] === ' ') continue;
@@ -251,7 +258,7 @@ function drawTitle(s: Scene, x: number, y: number, title: string, big: boolean, 
     return;
   }
   const text = spacedTitle(title, s.caps.unicode);
-  c.text(x, y, text, { fg: color(0, 0), bold: true }, width + 8);
+  c.text(x, y, text, { fg: colorAt(0, 0), bold: true }, width + 8);
 }
 
 function drawFrame(s: Scene, r: Rect, style: 'single' | 'double', color: Rgb, k: number): void {
