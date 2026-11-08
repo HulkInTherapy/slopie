@@ -27,7 +27,7 @@ import {localClock} from './story-time.js';
 /** 6: session-agnostic Codex/pi fingerprints, fork lineage, zstd and archive sources. */
 export const FACTS_VERSION = 6;
 
-export type NativeHarness = Exclude<AuditHarness, 'opencode'>;
+export type NativeHarness = Exclude<AuditHarness, 'opencode' | 'cursor' | 'gemini' | 'copilot'>;
 
 export interface UsageFact {
   /** De-duplication key (see `aggregate.ts`); null when the record has no stable identity. */

@@ -7,7 +7,7 @@ import type {AuditOptions} from './audit.js';
 /** New route only. Legacy branches never import or initialize the terminal UI. */
 export async function runAuditOverview(o: AuditOptions): Promise<number> {
   const harnesses = o.harness ? [...new Set(o.harness.split(',').map(h => h.trim()))] : undefined;
-  if (harnesses?.some(h => !['claude', 'codex', 'pi', 'opencode'].includes(h))) throw new UserError('Choose overview sources from claude,codex,pi,opencode.');
+  if (harnesses?.some(h => !['claude', 'codex', 'pi', 'opencode', 'cursor', 'gemini', 'copilot'].includes(h))) throw new UserError('Choose overview sources from claude,codex,pi,opencode,cursor,gemini,copilot.');
   if (o.export && path.extname(o.export).toLowerCase() !== '.svg') throw new UserError('Use a .svg path for the safe share preview.');
   if (o.tone && !['elegant', 'witty', 'chaotic', 'roast'].includes(o.tone)) throw new UserError('Choose a tone: elegant, witty, chaotic, roast.');
   let options: AuditOverviewOptions = {

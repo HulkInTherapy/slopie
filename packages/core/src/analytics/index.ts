@@ -31,6 +31,8 @@ import {cachedPublicCatalog, refreshPublicCatalog} from './catalog-service.js';
 import {FactsCache} from './facts-cache.js';
 import {inlineScanExecutor, type ScanExecutor, type ScanJob} from './scan-pool.js';
 import {nativeAuditRoots} from './native-census.js';
+import {ADAPTER_HARNESSES, discoverAdapter, readAdapterSources, type AdapterHarness} from './adapter-facts.js';
+import type {SessionSource} from '../adapters/types.js';
 import {extractOpenCodeDatabase, extractOpenCodeJson} from './opencode-facts.js';
 import {DerivedCache} from './derived-cache.js';
 import {requestedProjectFocus} from './project-focus.js';
@@ -51,8 +53,8 @@ import type {
 export * from './contracts.js';
 export {composeJevJudgments} from './jev-session.js';
 
-const HARNESSES: AuditHarness[] = ['claude', 'codex', 'pi', 'opencode'];
-const LAUNCH_ORDER: AuditHarness[] = ['codex', 'claude', 'opencode', 'pi'];
+const HARNESSES: AuditHarness[] = ['claude', 'codex', 'pi', 'opencode', 'cursor', 'gemini', 'copilot'];
+const LAUNCH_ORDER: AuditHarness[] = ['codex', 'claude', 'opencode', 'pi', 'cursor', 'gemini', 'copilot'];
 /** Appended tails up to this size are parsed on the main thread; bigger ones go to the pool. */
 const RESUME_MAX_BYTES = 64 * 1024 * 1024;
 const offline = () => process.env['POTSHERD_OFFLINE'] === '1';
@@ -127,6 +129,8 @@ interface Discovered {
   census: Map<AuditHarness, {files: number; bytes: number; roots: number}>;
   /** Compressed sources that cannot be read on this machine (no zstd). */
   zstdUnsupported: number;
+  /** Cursor / Gemini / Copilot sources (prompt-only, read through their adapters). */
+  adapters: Map<AdapterHarness, SessionSource[]>;
 }
 
 function listFiles(root: string, accept: (file: string) => boolean): string[] {
@@ -169,7 +173,7 @@ function sniffFile(file: string): NativeHarness | 'auto' | null {
 }
 
 function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOptions, onHarness?: (harness: AuditHarness, row: {files: number; bytes: number}) => void, known?: (file: string, size: number, mtimeMs: number) => AuditHarness | null): Discovered {
-  const result: Discovered = {jobs: [], opencodeDatabases: [], opencodeJson: [], historyFiles: [], codexImported: new Set(), statsFiles: [], census: new Map(), zstdUnsupported: 0};
+  const result: Discovered = {jobs: [], opencodeDatabases: [], opencodeJson: [], historyFiles: [], codexImported: new Set(), statsFiles: [], census: new Map(), zstdUnsupported: 0, adapters: new Map()};
   const seen = new Set<string>();
   const zstd = zstdSupport() !== null;
   // Archive copies are classified first so each harness row's census includes them.
@@ -186,6 +190,14 @@ function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOpti
     }
   }
   for (const harness of harnesses) {
+    if ((ADAPTER_HARNESSES as readonly string[]).includes(harness)) {
+      const list = discoverAdapter(harness as AdapterHarness, options);
+      result.adapters.set(harness as AdapterHarness, list);
+      const row = {files: list.length, bytes: list.reduce((n, x) => n + x.bytes, 0), roots: 1};
+      result.census.set(harness, row);
+      onHarness?.(harness, row);
+      continue;
+    }
     const roots = nativeAuditRoots(harness, options);
     const row = {files: 0, bytes: 0, roots: roots.length + (evidence ? 1 : 0)};
     result.census.set(harness, row);
@@ -444,7 +456,7 @@ class LocalAuditSession implements AuditSession {
         this.detail = {...this.detail, harnesses: this.detail.harnesses.map(h => h.harness === harness ? {...h, files: row.files, bytes: row.bytes, discovered: true, absent: row.files === 0} : h),
           counts: {...this.detail.counts, files: this.detail.counts.files + row.files, bytes: this.detail.counts.bytes + row.bytes}};
         this.progress('discovering', 'Finding your agents', 0, null);
-      }, (file, size, mtimeMs) => cache.get(file, size, mtimeMs)?.harness ?? null);
+      }, (file, size, mtimeMs) => cache.harnessOf(file, size, mtimeMs));
       t = lap('discoverMs', t);
       this.policy = loadPolicy(this.root);
       t = lap('policyMs', t);
@@ -495,6 +507,7 @@ class LocalAuditSession implements AuditSession {
       if (found.opencodeJson.length) {
         try { extra.push(...extractOpenCodeJson(found.opencodeJson).map(f => stripText(finishExternalFacts(f, {timezone: tz})))); } catch { failures.push('opencode_storage_unreadable'); }
       }
+      extra.push(...await readAdapterSources(ADAPTER_HARNESSES.filter(h => harnesses.includes(h)), found.adapters, tz, failures));
       for (const f of extra) this.count(f, 0);
       const historyData = mergeHistories(harnesses.includes('claude') ? found.historyFiles.map(file => ({file, data: cache.history(file, tz, (f, previous) => readHistory(f, {timezone: tz}, previous))})) : []);
       this.historyData = historyData;
@@ -515,6 +528,7 @@ class LocalAuditSession implements AuditSession {
       facts.push(...extra);
       t = lap('scanMs', t);
       this.timings['filesRead'] = toRead.length;
+      this.timings['shardsRead'] = cache.shardsRead;
       this.timings['filesCached'] = cacheHits;
 
       if (this.controller.signal.aborted) return this.finishCancelled();
@@ -537,7 +551,9 @@ class LocalAuditSession implements AuditSession {
       t = lap('languageMs', t);
 
       // Never keep opted-out sources in the cache.
-      cache.save(f => fs.existsSync(f.file) && !policy.forgotten.has(sourceId(f.harness, f.sessionId)) && !(f.parentId && policy.forgotten.has(sourceId(f.harness, f.parentId))) && !policy.ignored(f.project),
+      const discovered = new Set(found.jobs.map(j => j.file));
+      const forgotten = (h: AuditHarness, id: string) => policy.forgotten.size > 0 && policy.forgotten.has(sourceId(h, id));
+      cache.save(f => (discovered.has(f.file) || fs.existsSync(f.file)) && !forgotten(f.harness, f.sessionId) && !(f.parentId && forgotten(f.harness, f.parentId)) && !policy.ignored(f.project),
         h => !policy.ignored(h.project) && !(h.sessionId && policy.forgotten.has(sourceId('claude', h.sessionId))));
       lap('cacheWriteMs', t);
       this.timings['totalMs'] = Math.round(performance.now() - t0);
@@ -642,12 +658,14 @@ class LocalAuditSession implements AuditSession {
 
     const sources: AuditSourceCapability[] = this.current.sources.map(s => {
       const h = a.harness[s.harness];
+      const promptOnly = (ADAPTER_HARNESSES as readonly string[]).includes(s.harness);
       const hasData = h.files > 0 || h.conversations > 0;
       return {
         ...s, state: hasData ? 'available' : s.candidateFiles ? 'available' : 'absent',
-        conversations: h.conversations, humanPrompts: h.humanPrompts, humanOrigin: 'native_marker',
+        conversations: h.conversations, humanPrompts: h.humanPrompts, humanOrigin: promptOnly ? 'projection' : 'native_marker',
         evidence: hasData ? 'transient' : 'unavailable', usage: h.responses ? 'reported' : 'unavailable',
-        firstUnsupportedStep: null, gapCodes: [],
+        // Prompt-only harnesses: cost is unknown, never $0.
+        firstUnsupportedStep: promptOnly && hasData ? 'usage' : null, gapCodes: promptOnly && hasData ? ['usage_not_recorded'] : [],
         childConversations: h.childConversations, slashCommands: h.slashCommands, userMessages: h.userMessages,
         responses: h.responses, costUsd: h.costUsd, excluded: h.excluded,
       } as AuditSourceCapability;
@@ -659,7 +677,8 @@ class LocalAuditSession implements AuditSession {
     const coverage: AuditCoverage = {
       state: failures.length ? 'partial' : 'complete_snapshot', knownSources: run.total, parsedSources: run.total - run.failures.length,
       unknownOriginEvents: 0, excludedEvents: Object.values(a.harness).reduce((n, h) => n + Object.values(h.excluded).reduce((x, y) => x + y, 0), 0),
-      omittedSources: run.failures.length, gapCodes: [...failures, ...(a.unpricedResponses ? ['unpriced_model_usage'] : [])],
+      omittedSources: run.failures.length, gapCodes: [...failures, ...(a.unpricedResponses ? ['unpriced_model_usage'] : []),
+        ...(sources.some(x => x.gapCodes.includes('usage_not_recorded')) ? ['usage_not_recorded'] : [])],
     };
     const userMessages = Object.values(a.harness).reduce((n, h) => n + h.userMessages, 0);
     const facts = this.launchFacts(a);
