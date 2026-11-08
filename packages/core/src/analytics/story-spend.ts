@@ -24,7 +24,7 @@ import {canonicalModel, largestRemainder, modelLabel} from './model-names.js';
 import type {PriceBook} from './pricing.js';
 import type {StoryHarness, StoryModelShare, StorySpend} from './story-contracts.js';
 import type {StoryRow, StoryTable} from './story-table.js';
-import {localClock} from './story-time.js';
+import {localClock, localDayMonth} from './story-time.js';
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const MILLION = 1_000_000;
@@ -115,7 +115,7 @@ export interface SpendInput {
 interface KeptUsage {u: UsageFact; harness: StoryHarness; cost: number | null; day: string | null; month: string | null; model: string | null}
 
 const keptUsage = (a: Aggregate, timezone: string): KeptUsage[] => {
-  const clock = localClock(timezone);
+  const clock = localDayMonth(timezone);
   const out: KeptUsage[] = [];
   for (const s of a.story.sources) for (const u of s.usage) {
     if (!a.story.kept.has(u)) continue;
