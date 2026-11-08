@@ -30,3 +30,18 @@ export function str(card: StoryCard | null, key: string): string | null {
   const value = card?.numbers[key];
   return typeof value === 'string' && value ? value : null;
 }
+
+/**
+ * True when this run may have sent anything off the machine (Jev wording or online classification).
+ * Only runs that never dispatched a request may say "all local"; a failed or timed-out request
+ * still counts, because the text may have left before it failed.
+ */
+export function wentOnline(snapshot: AuditSnapshot, transfers = 0): boolean {
+  if (transfers > 0) return true;
+  const story = storyOf(snapshot);
+  const e = story?.enrichment;
+  if (e && (e.quotesSent > 0 || e.state === 'pending' || e.state === 'complete' || (e.state === 'failed' && e.model !== null))) return true;
+  const sem = snapshot.launch?.semantics as { requestCount?: number } | null | undefined;
+  if (sem && typeof sem.requestCount === 'number' && sem.requestCount > 0) return true;
+  return (snapshot.semantics?.requestCount ?? 0) > 0;
+}

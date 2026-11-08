@@ -6,7 +6,7 @@ import type {AuditStory, StoryModelShare, StorySpend, StoryAward, StoryHarness, 
 import {STORY_VERSION} from './story-contracts.js';
 import type {StoryRow, StoryTable} from './story-table.js';
 import {runDetectors, modelComparison, modelLabel, base, median, pct, defectionOf, lateNight, longestStreak, longestStretch, homeDir, type Draft} from './story-detectors.js';
-import {assignArchetype} from './story-archetype.js';
+import {assignArchetype, storyAwards} from './story-archetype.js';
 import {TICS, maskLine} from './story-lexicon.js';
 import {HOUR_NAME, WEEKDAY_NAMES, dayName, daysBetween, localClock, monthName} from './story-time.js';
 import type {WordSet} from './story-typos.js';
@@ -49,7 +49,7 @@ export function buildStory(input: StoryInput): {story: AuditStory; detectorsMs: 
     projects: projects(rows, input.alias),
     highlights: highlights(rows, drafts),
     cards, suppressed,
-    archetype: rows.length ? assignArchetype(rows, 0) : null,
+    archetype: rows.length ? assignArchetype(rows) : null,
     awards: awards(rows, drafts),
     coldOpen: coldOpen(rows),
     peakTime: peakTime(rows),
@@ -181,25 +181,8 @@ function highlights(rows: readonly StoryRow[], drafts: Map<string, Draft>): Stor
 }
 
 function awards(rows: readonly StoryRow[], drafts: Map<string, Draft>): StoryAward[] {
-  const out: StoryAward[] = [];
-  const add = (id: string, title: string, receipt: string, publicReceipt = receipt) => { if (out.length < 6) out.push({id, title, receipt, publicReceipt}); };
-  const exp = drafts.get('most_expensive_sentence');
-  if (exp) add('priciest_sentence', 'Most expensive sentence', `$${Math.round(num(exp, 'cost_usd') as number).toLocaleString('en-US')}, ${dayName(num(exp, 'day') as string)}`);
-  const stretch = longestStretch(rows);
-  if (stretch && stretch.ms >= 3 * 3_600_000) add('marathon', 'Marathon', `${(stretch.ms / 3_600_000).toFixed(1)}h without a break, ${dayName(stretch.start.day)}`);
-  const s = longestStreak(rows);
-  if (s && s.days >= 5) add('streak', 'Streak', `${s.days} days in a row, ${dayName(s.start)}–${dayName(s.end)}`);
-  const night = drafts.get('night_owl');
-  if (night && (num(night, 'days_ending_after_1am_pct') as number) >= 20) add('night_owl', 'Night Owl', `${Math.round(num(night, 'days_ending_after_1am_pct') as number)}% of days end after 1am`);
-  const months = swearTimeline(rows).filter(m => m.prompts >= 40 && m.swearing >= 5);
-  if (rows.length >= 200 && months.length) { const m = months.reduce((a, b) => (b.swearPct > a.swearPct ? b : a)); add('swear_month', 'Swear of the month', `${monthName(m.month)}: ${m.swearPct.toFixed(0)}% of prompts swore`); }
-  const subs = rows.reduce((n, r) => n + (r.subs ?? 0), 0);
-  if (subs >= 30) add('orchestrator', 'Orchestrator', `${subs.toLocaleString('en-US')} subagents launched`);
-  const agents = new Set(rows.map(r => (r.harness.startsWith('claude') ? 'claude' : r.harness))).size;
-  if (agents >= 2) add('polyglot', 'Polyglot', `${agents} coding agents`);
-  const longest = rows.reduce<StoryRow | null>((a, r) => (!a || r.f.w > a.f.w ? r : a), null);
-  if (longest && longest.f.w >= 200) add('longest_prompt', 'Longest prompt', `${longest.f.w.toLocaleString('en-US')} words, ${dayName(longest.day)}`);
-  return out;
+  // Ranked shelf (24 candidates, top six; gold/silver tiers): see story-archetype.ts.
+  return storyAwards(rows, drafts);
 }
 
 function coldOpen(rows: readonly StoryRow[]): AuditStory['coldOpen'] {

@@ -5,6 +5,7 @@ import { lineToAnsi } from './renderer.js';
 import { toAscii, wrap } from './text.js';
 import { boardData, detailLines } from './view-model.js';
 import { buildDeck, monthLabel, type DeckCard } from './story/deck.js';
+import type { BarRow, BoardSummary } from './story/board-data.js';
 import { storyOf } from './story/source.js';
 import { compact, count, hourLabel, money, shortDate } from './format.js';
 
@@ -25,9 +26,11 @@ export function plainCard(card: DeckCard, width = 80): string[] {
   const rows: string[] = [];
   const d = card.data as never;
   switch (card.kind) {
+    case 'cover': rows.push(card.data.numbers.map(n => `${n.value} ${n.label}`).join(' · ')); break;
     case 'cold_open': rows.push(`— ${card.data.stamp}`, card.data.caption); break;
     case 'scale': rows.push(card.data.counters.map(k => `${k.style === 'compact' ? compact(k.value) : count(k.value)} ${k.label.toLowerCase()}`).join(' · ')); break;
     case 'bill':
+      if (card.data.spend) { const sp = card.data.spend; rows.push(`measured ${money(sp.measured)}${sp.recovered ? ` · recovered ${money(sp.recovered)}` : ''}${sp.estimated ? ` · est. ${money(sp.estimated.low)}–${money(sp.estimated.high)} for ${count(sp.estimated.prompts)} older prompts` : ''}`, 'by month: ' + sp.months.map(m => `${monthLabel(m.month)} ${money(m.measured)}`).join(' · ')); }
       for (const line of card.data.lines) rows.push(`${line.name.padEnd(24, '.')} ${money(line.value)}`);
       if (card.data.more) rows.push(`${'everything else'.padEnd(24, '.')} ${money(card.data.more)}`);
       rows.push(`${'TOTAL'.padEnd(24)} ${money(card.data.total)}`);
@@ -64,21 +67,34 @@ export function plainCard(card: DeckCard, width = 80): string[] {
       break;
     case 'awards': for (const tr of card.data.trophies) rows.push(`${tr.title}: ${tr.value}${tr.sub ? ` (${tr.sub})` : ''}`); break;
     case 'insight': for (const series of card.data.chart.series.slice(0, 2)) rows.push(`${series.name}: ` + series.points.slice(0, 12).map(p => `${p.x} ${p.y}`).join(' · ')); break;
-    case 'board': {
-      const b = card.data;
-      if (b.bill !== null) rows.push(`at API prices: ${money(b.bill)}`);
-      if (b.peak) rows.push(`peak: ${b.peak}`);
-      if (b.topModel) rows.push(`most used: ${b.topModel}`);
-      if (b.best) rows.push(`favourite: ${b.best}`);
-      if (b.worst) rows.push(`nemesis: ${b.worst}`);
-      rows.push(b.stats.map(s2 => `${s2.value} ${s2.label}`).join(' · '));
-      if (b.catchphrase) rows.push(`catchphrase: “${b.catchphrase.text}” ×${count(b.catchphrase.count)}`);
-      break;
-    }
+    case 'board': rows.push(...boardPlain(card.data)); break;
   }
   void d; void WEEK; void hourLabel;
+  for (const callout of card.callouts ?? []) rows.push(`> ${callout}`);
   for (const row of rows) for (const line of wrap(row, width - 4)) out.push('  ' + line);
+  if (card.bridge) out.push(`  next: ${card.bridge}`);
   return out;
+}
+
+/** The final board's panels as plain lines (also the --plain summary). */
+export function boardPlain(b: BoardSummary): string[] {
+  const rows: string[] = [];
+  if (b.archetype) rows.push(`archetype: ${b.archetype}${b.tier ? ` (${b.tier})` : ''}${b.subRole ? ` · ${b.subRole}` : ''}${b.code ? ` · code ${b.code}` : ''}`);
+  if (b.hero.length) rows.push(b.hero.map(h => `${h.value} ${h.label}`).join(' · '));
+  const sp = b.spend;
+  if (sp) {
+    rows.push(`spend at API list prices: ${money(sp.lifetime)} lifetime${sp.measured ? ' (measured)' : ''}${sp.recovered ? ` + ${money(sp.recovered)} recovered` : ''}${sp.estimated ? ` · ≈ ${money(sp.estimated.low)}–${money(sp.estimated.high)} est. for ${count(sp.estimated.prompts)} older prompts` : ''}`);
+    const more = [sp.thisMonth !== null ? `this month ${money(sp.thisMonth)}` : null, sp.perDay !== null ? `per active day ${money(sp.perDay)}` : null, sp.priciestDay ? `priciest day ${money(sp.priciestDay.usd)} (${shortDate(sp.priciestDay.day)})` : null].filter(Boolean);
+    if (more.length) rows.push(more.join(' · '));
+  }
+  const bars = (title: string, list: BarRow[]) => { if (list.length) rows.push(`${title}: ` + list.map(r => `${r.label} ${r.value}${r.tags?.includes('fav') ? ' ♥' : ''}${r.tags?.includes('nemesis') ? ' ☠' : ''}`).join(' · ')); };
+  if (b.models) { bars(`models (${b.models.basis})`, b.models.rows); if (b.models.unknown) rows.push(`${count(b.models.unknown)} older prompts have no recorded model`); }
+  if (b.agents) { bars(`agents (${b.agents.basis})`, b.agents.rows); if (b.agents.automated) rows.push(`+ ${count(b.agents.automated)} automated runs (not counted as chats)`); }
+  if (b.time?.peak) rows.push(`peak: ${b.time.peak}${b.time.lines.length ? ' · ' + b.time.lines.join(' · ') : ''}`);
+  for (const v of b.voice) rows.push(`${v.label}: ${v.quoted ? `“${v.value}”` : v.value}${v.count !== null ? ` ×${count(v.count)}` : ''}`);
+  if (b.awards.length) rows.push('awards: ' + b.awards.map(a => `${a.title} (${a.value})`).join(' · '));
+  if (b.sinceLast) rows.push(`since last run: ${b.sinceLast}`);
+  return rows;
 }
 
 /** The whole board on one tall page (never clipped to a viewport), then the details. */

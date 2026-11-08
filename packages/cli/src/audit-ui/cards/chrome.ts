@@ -55,7 +55,7 @@ export function drawFooter(s: Scene, extra?: string): void {
     x += 3;
   }
   if (tier.id !== 'S') {
-    const local = 'all local';
+    const local = s.online ? 'online · Jev' : 'all local';
     c.text(w - tier.mx - textWidth(local) - 2, y, s.caps.unicode ? '●' : '*', { fg: fade(C.orange, 0.7) });
     c.text(w - tier.mx - textWidth(local), y, local, { fg: C.slate });
   }
@@ -127,7 +127,16 @@ export function drawChrome(s: Scene, card: DeckCard, options: ChromeOptions = {}
   }
   const minTop = options.mascot === false ? y + 1 : Math.max(y + 1, (L ? 2 : 1) + mascotBox.h + (L ? 0 : 0));
   const top = options.bodyUnderKicker ? kickY + 2 : Math.max(y + 2, minTop);
-  const bottom = L ? h - 3 : h - 2;
+  let bottom = L ? h - 3 : h - 2;
+  // Bridge to the next card: dim, right-aligned, after the card has settled a little.
+  if (card.bridge && !s.share && (card.kind !== 'guess' || s.state.guess !== undefined)) {
+    const ba = s.caps.motion ? seg(t - (card.kind === 'guess' ? (s.state.guessAt ?? 0) : 0), 900, 400) : 1;
+    busy ||= ba < 1;
+    const text = `next ${s.caps.unicode ? '→' : '->'} ${card.bridge}`;
+    const by = bottom;
+    if (ba > 0) c.text(Math.max(tier.mx, w - tier.mx - textWidth(text)), by, text, { fg: C.gray, italic: true, alpha: ba });
+    bottom -= 1;
+  }
   drawFooter(s, options.hint);
   const mascotRect = { x: mascotBox.x, y: tier.mascot === 'line' ? kickY : (L ? 2 : 1), w: mascotBox.w, h: mascotBox.h };
   return { body: { x: tier.mx, y: top, w: w - tier.mx * 2, h: Math.max(0, bottom - top) }, busy, mascot: mascotRect };

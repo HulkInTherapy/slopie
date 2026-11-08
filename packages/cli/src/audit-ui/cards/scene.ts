@@ -43,6 +43,8 @@ export interface Scene {
   total: number;
   /** Rendering for the exported share card: no project names, no quotes. */
   share?: boolean;
+  /** Something was (or may have been) sent off this machine during the run (Jev wording). */
+  online?: boolean;
 }
 
 export type Body<D> = (scene: Scene, data: D, body: Rect) => boolean;

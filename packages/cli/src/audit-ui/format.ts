@@ -116,7 +116,7 @@ export function modelName(raw: string | null | undefined): string {
   return id;
 }
 
-const HARNESS_NAMES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', pi: 'pi', opencode: 'OpenCode' };
+const HARNESS_NAMES: Record<string, string> = { claude: 'Claude Code', claude_hist: 'Claude Code', codex: 'Codex', pi: 'pi', opencode: 'OpenCode', cursor: 'Cursor', gemini: 'Gemini CLI', copilot: 'Copilot' };
 export function harnessName(harness: string): string {
   return HARNESS_NAMES[harness] ?? harness;
 }

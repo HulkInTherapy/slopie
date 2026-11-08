@@ -8,11 +8,12 @@ import { C, hex } from './gfx/color.js';
 import { renderCard } from './cards/index.js';
 import { tierFor } from './cards/scene.js';
 import { buildDeck } from './story/deck.js';
+import { wentOnline } from './story/source.js';
 
 const CW = 9;
 const CH = 18;
 
-export function shareCanvas(snapshot: AuditSnapshot, columns = 100, rows = 36): Canvas | null {
+export function shareCanvas(snapshot: AuditSnapshot, columns = 120, rows = 40): Canvas | null {
   const deck = buildDeck(snapshot);
   const board = deck.at(-1);
   if (!board || board.kind !== 'board') return null;
@@ -20,13 +21,8 @@ export function shareCanvas(snapshot: AuditSnapshot, columns = 100, rows = 36): 
   c.fill(0, 0, columns, rows, ' ', { bg: C.ink });
   renderCard({
     c, w: columns, h: rows, t: Infinity, tier: tierFor(columns, rows)!, caps: { color: 'truecolor', motion: false, unicode: true },
-    blink: false, state: {}, index: deck.length - 1, total: deck.length, share: true,
+    blink: false, state: {}, index: deck.length - 1, total: deck.length, share: true, online: wentOnline(snapshot),
   }, board);
-  // The footer keys mean nothing in a picture.
-  const footerY = rows - 2;
-  for (let x = 0; x < columns; x++) c.put(x, footerY, ' ', C.cream, C.ink);
-  c.text(4, footerY, 'slopie audit', { fg: C.orange, bold: true });
-  c.text(17, footerY, '· computed locally · nothing left the machine', { fg: C.slate });
   return c;
 }
 

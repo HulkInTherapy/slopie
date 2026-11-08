@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { AuditEvent, AuditSession, AuditSnapshot } from '../../../core/src/analytics/contracts.js';
 import { renderCard } from './cards/index.js';
+import { revealDone, T } from './cards/reveal.js';
 import { MIN_COLS, MIN_ROWS, tierFor, type CardState, type Scene } from './cards/scene.js';
 import { Canvas } from './gfx/canvas.js';
 import { C, fade } from './gfx/color.js';
@@ -22,6 +23,8 @@ import { applyAuditEvent, applyPreviewInvalidation, applyPrivacyEvent, type Priv
 import { storyShareSvg } from './share.js';
 import { buildDeck, type DeckCard } from './story/deck.js';
 import { sanitize } from './text.js';
+import { baseline, digestOf, historyDir, readHistory, sinceLast, writeDigest, type Since } from './history.js';
+import { wentOnline } from './story/source.js';
 import { detailLines } from './view-model.js';
 
 export interface TerminalIo {
@@ -41,6 +44,8 @@ export interface TerminalOptions {
   shareDir?: string;
   /** Injected clock for tests. */
   now?: () => number;
+  /** Run-history directory; false disables it (default: ~/.potsherd/audit-history, off with injected io). */
+  historyDir?: string | false;
 }
 
 export interface TerminalResult {
@@ -85,6 +90,74 @@ export function decodeKey(chunk: string): Key {
     case '4': return 'guess4';
     default: return null;
   }
+}
+
+const PASTE_START = '\x1b[200~';
+const PASTE_END = '\x1b[201~';
+
+/**
+ * Streaming key parser. Escape sequences and bracketed-paste delimiters may arrive split across
+ * stdin chunks at any byte; an incomplete tail is held until the next chunk (or a short timeout),
+ * and everything between paste delimiters is dropped, never executed as keys.
+ */
+export class InputParser {
+  private pending = '';
+  private pasting = false;
+  constructor(private readonly emit: (token: string) => void) {}
+
+  get holding(): boolean { return this.pending.length > 0; }
+
+  feed(chunk: string): void {
+    let buf = this.pending + chunk;
+    this.pending = '';
+    for (;;) {
+      if (this.pasting) {
+        const end = buf.indexOf(PASTE_END);
+        if (end < 0) {
+          // Keep only what could be the start of the end marker.
+          this.pending = partialTail(buf, PASTE_END);
+          return;
+        }
+        buf = buf.slice(end + PASTE_END.length);
+        this.pasting = false;
+        continue;
+      }
+      const start = buf.indexOf(PASTE_START);
+      if (start >= 0) {
+        this.keys(buf.slice(0, start));
+        buf = buf.slice(start + PASTE_START.length);
+        this.pasting = true;
+        continue;
+      }
+      // An unfinished escape sequence at the end waits for the rest.
+      const tail = /\x1b(?:\[[0-9;]*|O)?$/.exec(buf);
+      if (tail) {
+        this.keys(buf.slice(0, tail.index));
+        this.pending = tail[0];
+        return;
+      }
+      this.keys(buf);
+      return;
+    }
+  }
+
+  /** Timeout: a held lone Esc is a real Esc; a held partial sequence is dropped. */
+  flush(): void {
+    const held = this.pending;
+    this.pending = '';
+    if (!this.pasting && held === '\x1b') this.emit('\x1b');
+  }
+
+  private keys(text: string): void {
+    if (!text) return;
+    for (const token of splitKeys(text)) this.emit(token);
+  }
+}
+
+/** The longest suffix of `text` that is a proper prefix of `marker`. */
+function partialTail(text: string, marker: string): string {
+  for (let n = Math.min(marker.length - 1, text.length); n > 0; n--) if (marker.startsWith(text.slice(-n))) return text.slice(-n);
+  return '';
 }
 
 const FRAME_MS = 33;
@@ -248,7 +321,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
       const card = deck[index];
       if (card) {
         const scene: Scene = {
-          c: canvas, w, h, tier, caps, blink, state: stateOf(card), index, total: deck.length,
+          c: canvas, w, h, tier, caps, blink, state: stateOf(card), index, total: deck.length, online: wentOnline(view.snapshot, transfers.length),
           t: caps.motion ? (now - enteredAt) * CARD_SPEED : Infinity,
         };
         busy = renderCard(scene, card);
@@ -324,13 +397,45 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
     paint();
   }
 
+  /* ── run history ── */
+  const histDir = options.historyDir !== undefined ? options.historyDir : options.io ? false : historyDir();
+  let history: { since: Since | null; firstRun: boolean } | null = null;
+  let digestWritten = false;
+  let openedOnBoard = false;
+
+  function loadHistory(snapshot: AuditSnapshot): void {
+    if (history || histDir === false) return;
+    const digest = digestOf(snapshot);
+    if (!digest) return;
+    const past = readHistory(snapshot, histDir);
+    const prev = baseline(past);
+    history = { since: prev ? sinceLast(prev, digest, past) : null, firstRun: !past.length };
+    if (!digestWritten && (snapshot.status === 'ready' || snapshot.status === 'partial')) digestWritten = writeDigest(snapshot, digest, histDir);
+  }
+
+  /** The deck with this run's history folded into the board (ticker, records, replay hint). */
+  function decorate(cards: DeckCard[]): DeckCard[] {
+    const last = cards.at(-1);
+    if (!last || last.kind !== 'board' || !history) return cards;
+    const since = history.since;
+    const records = since?.records ?? [];
+    const awards = records.length
+      ? [{ title: 'New Personal Best', value: `${records[0]!.metric}: ${records[0]!.to}`, publicValue: `${records[0]!.metric}: ${records[0]!.to}`, tier: 'gold' as const }, ...last.data.awards].slice(0, 6)
+      : last.data.awards;
+    const board = { ...last, data: { ...last.data, sinceLast: since?.line ?? null, firstRun: history.firstRun, replay: openedOnBoard, awards } };
+    return [...cards.slice(0, -1), board];
+  }
+
   /* ── navigation ── */
 
   function startDeck(now: number): void {
     deckSnapshot = view.snapshot;
-    deck = buildDeck(view.snapshot);
+    loadHistory(view.snapshot);
+    // Re-runs open on the verdict; ← replays the story.
+    openedOnBoard = !!history && !history.firstRun;
+    deck = decorate(buildDeck(view.snapshot));
     mode = 'deck';
-    index = 0;
+    index = openedOnBoard ? deck.length - 1 : 0;
     enteredAt = now;
     needsClear = false;
   }
@@ -367,7 +472,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
       queue.length = 0;
       lingering = null;
       session.cancel();
-      if (mode === 'deck') { deck = buildDeck(view.snapshot); index = Math.min(index, deck.length - 1); }
+      if (mode === 'deck') { deck = decorate(buildDeck(view.snapshot)); index = Math.min(index, deck.length - 1); }
       flash('Cleared by your privacy settings');
       return;
     }
@@ -391,7 +496,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
     if (mode === 'deck' && view.snapshot !== deckSnapshot) {
       const id = deck[index]?.id;
       deckSnapshot = view.snapshot;
-      deck = buildDeck(view.snapshot);
+      deck = decorate(buildDeck(view.snapshot));
       const found = deck.findIndex(card => card.id === id);
       index = found >= 0 ? found : Math.min(index, deck.length - 1);
     }
@@ -399,14 +504,13 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   }
 
   /* ── input ── */
-  let pasting = false;
+  const input = new InputParser(token => onKey(token));
+  let inputTimer: ReturnType<typeof setTimeout> | null = null;
   const onData = (chunk: string) => {
-    if (chunk.includes('\x1b[200~')) pasting = true;
-    if (pasting) {
-      if (chunk.includes('\x1b[201~')) pasting = false;
-      return;
-    }
-    for (const token of splitKeys(chunk)) onKey(token);
+    input.feed(chunk);
+    // A held lone Esc (or a split escape) is released if nothing completes it soon.
+    if (inputTimer) { clearTimeout(inputTimer); inputTimer = null; }
+    if (input.holding) inputTimer = setTimeout(() => { inputTimer = null; input.flush(); }, 40);
   };
   const onKey = (token: string) => {
     if (stopping) return;
@@ -434,8 +538,17 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
       case 'back': return;
       case 'board': go(deck.length - 1); return;
       case 'share': share(); return;
-      case 'left': go(index - 1); return;
+      case 'left':
+        if (openedOnBoard && card.kind === 'board') { openedOnBoard = false; deck = decorate(buildDeck(view.snapshot)); go(0); return; }
+        go(index - 1);
+        return;
       case 'right': case 'enter': {
+        // The archetype ceremony is skippable: the first key jumps to its final frame.
+        if (card.kind === 'archetype' && caps.motion && !revealDone((now - enteredAt) * CARD_SPEED)) {
+          enteredAt = now - T.settle / CARD_SPEED - 1;
+          paint();
+          return;
+        }
         if (card.kind === 'guess') {
           const state = stateOf(card);
           if (state.guess === undefined) { state.guess = -1; state.guessAt = (now - enteredAt) * CARD_SPEED; paint(); return; }
@@ -512,7 +625,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   try {
     await done;
   } finally {
-    for (const timer of [scheduled, toastTimer, bannerTimer, blinkTimer]) if (timer) clearTimeout(timer);
+    for (const timer of [scheduled, toastTimer, bannerTimer, blinkTimer, inputTimer]) if (timer) clearTimeout(timer);
     if (ticker) clearInterval(ticker);
     stdin.off('data', onData);
     stdout.off('resize', onResize);

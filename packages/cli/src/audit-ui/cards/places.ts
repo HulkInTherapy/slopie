@@ -5,6 +5,7 @@ import { bigWidth, drawBig } from '../gfx/font.js';
 import { easeOutCubic, seg, spring } from '../gfx/motion.js';
 import { count, money, shortDate } from '../format.js';
 import { monthLabel, type DeckCard } from '../story/deck.js';
+import { BRONZE, GOLD, metalGlyph, SILVER } from './poster.js';
 import type { Scene } from './scene.js';
 
 type Data<K extends DeckCard['kind']> = Extract<DeckCard, { kind: K }>['data'];
@@ -137,21 +138,36 @@ export function delegationBody(s: Scene, data: Data<'delegation'>, r: Rect): boo
 
 const CUP = ['.#####.', '##ooo##', '#.ooo.#', '.#ooo#.', '..ooo..', '...o...', '..ooo..', '.ooooo.'];
 
-function trophy(s: Scene, x: number, y: number, dy: number, a: number, rank: number, scale = 1): void {
+type Metal = 'gold' | 'silver' | 'bronze';
+/** Cup colours per metal: [rim top, rim bottom, bowl top, bowl bottom]. */
+const METAL: Record<Metal, [number, number, number, number]> = {
+  gold: [C.cream, GOLD, GOLD, C.orange],
+  silver: [C.white, SILVER, SILVER, C.slate],
+  bronze: [C.peach, BRONZE, BRONZE, C.deep],
+};
+
+/** A trophy's metal: the engine's tier when it gives one, else rank (1 gold, 2–3 silver, rest bronze). */
+export function metalOf(tier: 'gold' | 'silver' | undefined, rank: number): Metal {
+  return tier ?? (rank === 0 ? 'gold' : rank < 3 ? 'silver' : 'bronze');
+}
+
+function trophy(s: Scene, x: number, y: number, dy: number, a: number, metal: Metal, scale = 1): void {
   const { c } = s;
   if (s.caps.color === 'none' || s.caps.color === '16') {
-    c.text(x + 1, y + 1, '\\_/', { fg: C.orange });
-    c.text(x + 2, y + 2, '|', { fg: C.orange });
-    c.text(x + 1, y + 3, '/_\\', { fg: C.orange });
+    const fg = metal === 'gold' ? C.orange : metal === 'silver' ? C.gray : C.rust;
+    c.text(x + 1, y + 1, '\\_/', { fg });
+    c.text(x + 2, y + 2, metal === 'gold' ? '*' : metal === 'silver' ? '+' : '|', { fg });
+    c.text(x + 1, y + 3, '/_\\', { fg });
     return;
   }
-  const top = rank === 0 ? C.cream : C.peach;
-  const bottom = rank === 0 ? C.orange : C.rust;
+  const [top, bottom, bowlTop, bowlBottom] = METAL[metal];
   CUP.forEach((row, py) => {
     for (let px = 0; px < row.length; px++) {
       if (row[px] === '.') continue;
-      const color = row[px] === '#' ? mix(top, bottom, py / 7) : mix(C.peach, C.orange, py / 7);
-      const col = fade(px === 2 && py < 4 && row[px] === 'o' ? C.white : color, a);
+      const color = row[px] === '#' ? mix(top, bottom, py / 7) : mix(bowlTop, bowlBottom, py / 7);
+      // Gold gets a highlight streak; bronze stays matte.
+      const shine = metal !== 'bronze' && px === 2 && py < 4 && row[px] === 'o';
+      const col = fade(shine ? C.white : color, a);
       for (let sy = 0; sy < scale; sy++) for (let sx = 0; sx < scale; sx++) c.px(x + px * scale + sx, y * 2 + py * scale + sy + dy, col);
     }
   });
@@ -183,15 +199,18 @@ export function awardsBody(s: Scene, data: Data<'awards'>, r: Rect): boolean {
       // Drop from just above the shelf row, never through the headline.
       const dropRows = Math.min(6, Math.max(1, y - r.y + 2));
       const dy = Math.round((1 - Math.min(1.15, fall)) * -dropRows);
-      trophy(s, cx - (big ? 7 : 3), y, dy * 2, Math.min(1, fall * 1.5), index, big ? 2 : 1);
+      const metal = metalOf(award.tier, index);
+      trophy(s, cx - (big ? 7 : 3), y, dy * 2, Math.min(1, fall * 1.5), metal, big ? 2 : 1);
+      if (metal === 'gold' && s.caps.unicode && fall >= 1) c.put(cx + (big ? 7 : 4), y + (big ? 0 : 0), '✦', fade(GOLD, seg(t, delay + 500, 300)));
       const la = seg(t, delay + 300, 300);
       const w = colW - 2;
       // Titles get two lines rather than an ellipsis ("Most expensive sentence" in a narrow column).
-      const title = wrapText(award.title, w, 2);
-      title.forEach((line, li) => textCenter(c, cx, shelfY + 1 + li, line, { fg: C.gray, alpha: la }));
+      const title = wrapText(award.title, w - 2, 2);
+      title.forEach((line, li) => textCenter(c, cx, shelfY + 1 + li, li === 0 ? `${metalGlyph(metal, s.caps.unicode)} ${line}` : line, { fg: C.gray, alpha: la }));
       const valueY = shelfY + 1 + title.length;
       const value = wrapText(s.share && award.publicValue ? award.publicValue : award.value, w, 2);
-      value.forEach((line, li) => textCenter(c, cx, valueY + li, line, { fg: index === 0 ? C.orange : C.cream, bold: true, alpha: la }));
+      const ink = metal === 'gold' ? GOLD : metal === 'silver' ? SILVER : BRONZE;
+      value.forEach((line, li) => textCenter(c, cx, valueY + li, line, { fg: ink, bold: metal !== 'bronze', alpha: la }));
       if (award.sub) textCenter(c, cx, valueY + value.length, wrapText(award.sub, w, 1)[0] ?? '', { fg: C.slate, alpha: la });
     });
   }
