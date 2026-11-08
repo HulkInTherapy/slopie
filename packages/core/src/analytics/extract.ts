@@ -24,8 +24,8 @@ import {deriveStory, promptLex, isAgentTool, usageWeight, type StoryTextFacts, t
 import {featurize, safeQuote, topicWords, vocabularyWords, type PromptFeatures} from './story-lexicon.js';
 import {localClock} from './story-time.js';
 
-/** 6: session-agnostic Codex/pi fingerprints, fork lineage, zstd and archive sources. */
-export const FACTS_VERSION = 6;
+/** 7: session-agnostic Codex/pi fingerprints, fork lineage, zstd and archive sources, dated word counters. */
+export const FACTS_VERSION = 7;
 
 export type NativeHarness = Exclude<AuditHarness, 'opencode' | 'cursor' | 'gemini' | 'copilot'>;
 
