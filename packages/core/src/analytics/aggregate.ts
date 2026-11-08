@@ -93,6 +93,9 @@ export interface Aggregate {
   costUsd: number;
   estimatedCostUsd: number;
   responses: number;
+  /** Responses with no known price (unknown or missing model): never priced at $0 silently. */
+  unpricedResponses: number;
+  unpricedTokens: number;
   inferredModelResponses: number;
   compactionResponses: number;
   topLevelConversations: number;
@@ -118,11 +121,12 @@ const total = (u: UsageFact) => u.input + u.output + u.cacheRead + u.cacheWrite;
 
 export function dayFormatter(timezone: string): (at: number) => string {
   const format = new Intl.DateTimeFormat('en-CA', {timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit'});
+  // Every real UTC offset is a multiple of 15 minutes, so a local day never changes inside a quarter hour.
   const memo = new Map<number, string>();
   return at => {
-    const hour = Math.floor(at / 3_600_000);
-    let day = memo.get(hour);
-    if (day === undefined) { day = format.format(new Date(at)); memo.set(hour, day); }
+    const slot = Math.floor(at / 900_000);
+    let day = memo.get(slot);
+    if (day === undefined) { day = format.format(new Date(slot * 900_000)); memo.set(slot, day); }
     return day;
   };
 }
@@ -184,14 +188,14 @@ export function aggregate(input: AggregateInput): Aggregate {
 
   const models = new Map<string, ModelRow & {convs: Set<string>}>();
   const tokens = {input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0};
-  let costUsd = 0, estimatedCostUsd = 0, inferredModelResponses = 0, compactionResponses = 0;
+  let costUsd = 0, estimatedCostUsd = 0, inferredModelResponses = 0, compactionResponses = 0, unpricedResponses = 0, unpricedTokens = 0;
   const conversationOf = (s: SourceFacts) => sid(s.harness, s.child && s.parentId ? s.parentId : s.sessionId);
   const costOf = new Map<UsageFact, number>();
   for (const {u, s} of usageRows) {
     const price = book.lookup(u.model);
     const fast = u.tier === 'fast' || (s.harness === 'codex' && u.tier === undefined && input.codexFastDefault);
     const cost = price ? usageCost(u, price, fast) : 0;
-    costOf.set(u, cost);
+    if (price) costOf.set(u, cost); else { unpricedResponses++; unpricedTokens += total(u); }
     const name = u.model ?? 'unknown';
     let row = models.get(name);
     if (!row) {
@@ -376,7 +380,7 @@ export function aggregate(input: AggregateInput): Aggregate {
   return {
     story: {refs, costOf, sources},
     conversations: list, prompts, around, models: modelRows, harness, tokens, costUsd, estimatedCostUsd,
-    responses: usageRows.length, inferredModelResponses, compactionResponses,
+    responses: usageRows.length, unpricedResponses, unpricedTokens, inferredModelResponses, compactionResponses,
     topLevelConversations: top, childConversations: children, historyOnlyConversations,
     projects: [...projectRows.values()].map(r => ({id: r.id, path: r.path, humanPrompts: r.humanPrompts, conversations: r.conversations.size}))
       .sort((a, b) => b.humanPrompts - a.humanPrompts || b.conversations - a.conversations || a.id.localeCompare(b.id)),

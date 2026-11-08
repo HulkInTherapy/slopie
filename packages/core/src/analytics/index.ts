@@ -548,11 +548,11 @@ class LocalAuditSession implements AuditSession {
 
     const failures = [...new Set(run.failures)];
     const warnings = [...failures.map(code => `unreadable_source:${code}`), ...(run.policyError ? [run.policyError] : []),
-      ...(a.estimatedCostUsd > 0 ? ['estimated_prices'] : [])];
+      ...(a.estimatedCostUsd > 0 ? ['estimated_prices'] : []), ...(a.unpricedResponses ? [`unpriced_models:${a.unpricedResponses}`] : [])];
     const coverage: AuditCoverage = {
       state: failures.length ? 'partial' : 'complete_snapshot', knownSources: run.total, parsedSources: run.total - run.failures.length,
       unknownOriginEvents: 0, excludedEvents: Object.values(a.harness).reduce((n, h) => n + Object.values(h.excluded).reduce((x, y) => x + y, 0), 0),
-      omittedSources: run.failures.length, gapCodes: failures,
+      omittedSources: run.failures.length, gapCodes: [...failures, ...(a.unpricedResponses ? ['unpriced_model_usage'] : [])],
     };
     const userMessages = Object.values(a.harness).reduce((n, h) => n + h.userMessages, 0);
     const facts = this.launchFacts(a);
@@ -616,7 +616,7 @@ class LocalAuditSession implements AuditSession {
       funnel: {
         nativeFilesDiscovered: run.total, nativeFilesParsed: run.total - run.failures.length, retainedSources: 0,
         selectedSources: a.conversations.length, responsesObserved: a.responses, responsesDeduplicated: 0, responsesExcluded: 0,
-        responsesPriced: a.responses, excludedReasons: {forgotten_or_ignored_source: a.excludedSources}, gaps: failures,
+        responsesPriced: a.responses - a.unpricedResponses, excludedReasons: {forgotten_or_ignored_source: a.excludedSources}, gaps: failures,
       },
     });
   }
@@ -630,10 +630,10 @@ class LocalAuditSession implements AuditSession {
     return {
       records: [], recordsIncluded: false, models, favourite: favourite ? models.find(m => m.id === favourite.id)! : null,
       valueUsd: a.costUsd, referenceValueUsd: null, pricing: this.catalog.basis,
-      recordedResponses: a.responses, knownTokenResponses: a.responses, pricedResponses: a.responses,
-      referencePricedResponses: 0, equivalentPricedResponses: a.responses, referenceProviders: [],
-      unknownModelResponses: a.inferredModelResponses,
-      gaps: a.estimatedCostUsd > 0 ? ['price_estimated_from_model_family'] : [],
+      recordedResponses: a.responses, knownTokenResponses: a.responses, pricedResponses: a.responses - a.unpricedResponses,
+      referencePricedResponses: 0, equivalentPricedResponses: a.responses - a.unpricedResponses, referenceProviders: [],
+      unknownModelResponses: a.inferredModelResponses + a.unpricedResponses, unpricedResponses: a.unpricedResponses, unpricedTokens: a.unpricedTokens,
+      gaps: [...(a.estimatedCostUsd > 0 ? ['price_estimated_from_model_family'] : []), ...(a.unpricedResponses ? ['unpriced_model_usage'] : [])],
       costByHarness, estimatedValueUsd: a.estimatedCostUsd, compactionResponses: a.compactionResponses,
       cacheReadTokens: a.tokens.cacheRead, cacheWriteTokens: a.tokens.cacheWrite,
     } as LaunchFacts;

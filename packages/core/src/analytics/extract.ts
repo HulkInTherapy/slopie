@@ -126,13 +126,15 @@ type Rec = Record<string, unknown>;
 const isRec = (v: unknown): v is Rec => v !== null && typeof v === 'object' && !Array.isArray(v);
 const str = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null);
 const int = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
-function time(v: unknown): number | null {
-  if (typeof v === 'string') {
-    const t = Date.parse(v);
-    return Number.isFinite(t) ? t : null;
-  }
-  if (typeof v === 'number' && Number.isFinite(v)) return v < 1e11 ? v * 1000 : v;
-  return null;
+/** Largest epoch ms a Date can hold; anything outside is not a timestamp. */
+const MAX_DATE_MS = 8.64e15;
+export function time(v: unknown): number | null {
+  let t: number;
+  if (typeof v === 'string') t = Date.parse(v);
+  else if (typeof v === 'number' && Number.isFinite(v)) t = v < 1e11 ? v * 1000 : v;
+  else return null;
+  // Out-of-range values become "unknown time" rather than crashing later in toISOString.
+  return Number.isFinite(t) && Math.abs(t) <= MAX_DATE_MS && t > 0 ? t : null;
 }
 
 function textOf(content: unknown): string {
@@ -258,7 +260,7 @@ function claudeLine(b: Builder, line: Buffer, subagent: boolean, sessions: Set<s
   }
   let r: Rec;
   try { r = JSON.parse(line.toString('utf8')) as Rec; } catch { b.facts.malformed++; return; }
-  if (!isRec(r)) return;
+  if (!isRec(r)) { b.facts.malformed++; return; }
   const f = b.facts;
   if (r.type === 'summary' || r.type === 'custom-title' || r.type === 'ai-title') {
     const title = str(r.customTitle) ?? str(r.aiTitle) ?? str(r.title) ?? str(r.summary);
@@ -381,7 +383,8 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
   const head = line.toString("latin1", 0, Math.min(line.length, 260));
   const f = b.facts;
   const parse = (): Rec | null => {
-    try { return JSON.parse(line.toString('utf8')) as Rec; } catch { f.malformed++; return null; }
+    try { const v: unknown = JSON.parse(line.toString('utf8')); if (isRec(v)) return v; } catch { /* below */ }
+    f.malformed++; return null;
   };
   if (n === 0 && head.includes('session_meta')) {
     const r = parse();
@@ -551,6 +554,7 @@ function finishCodex(b: Builder, s: CodexState): void {
 function piLine(b: Builder, line: Buffer): void {
   let r: Rec;
   try { r = JSON.parse(line.toString('utf8')) as Rec; } catch { b.facts.malformed++; return; }
+  if (!isRec(r)) { b.facts.malformed++; return; }
   const f = b.facts, at = time(r.timestamp);
   if (r.type === 'session') {
     f.sessionId = str(r.id) ?? f.sessionId;
@@ -828,6 +832,7 @@ export function parseHistory(raw: string, options: ExtractOptions = {}, into: Hi
     if (!line) continue;
     let r: Rec;
     try { r = JSON.parse(line) as Rec; } catch { continue; }
+    if (!isRec(r)) continue;
     const display = typeof r.display === 'string' ? r.display.trim() : '';
     if (!display) continue;
     const command = display.startsWith('/');
