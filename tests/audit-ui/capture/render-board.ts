@@ -1,6 +1,6 @@
 /**
- * Render the final board (any variant, any size) straight to ANSI for headless captures, without a pty.
- * `tsx render-board.ts out.ansi [variant A|B|C|M1|M2|M3] [cols] [rows] [share] [t ms|Infinity] [title] [tier] [subRole]`
+ * Render the final board (any size) straight to ANSI for headless captures, without a pty.
+ * `tsx render-board.ts out.ansi [cols] [rows] [share] [t ms|Infinity] [title] [tier] [subRole]`
  * A finite `t` renders that frame of the entry animation (motion on); Infinity is the static frame.
  */
 import fs from 'node:fs';
@@ -11,8 +11,7 @@ import { C, hex } from '../../../packages/cli/src/audit-ui/gfx/color.js';
 import { buildDeck } from '../../../packages/cli/src/audit-ui/story/deck.js';
 import { storySnapshot } from '../story-fixture.js';
 
-const [out = 'board.ansi', variant = 'M1', cols = '120', rows = '40', share = '', time = 'Infinity', title = '', tier = '', subRole = ''] = process.argv.slice(2);
-process.env['SLOPIE_BOARD_VARIANT'] = variant;
+const [out = 'board.ansi', cols = '120', rows = '40', share = '', time = 'Infinity', title = '', tier = '', subRole = ''] = process.argv.slice(2);
 const w = Number(cols), h = Number(rows);
 const snapshot = storySnapshot();
 const story = (snapshot.launch as unknown as { story: { archetype: { title: string; rarity: string; subRole: unknown; tagline: string } } }).story;

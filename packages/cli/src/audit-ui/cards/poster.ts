@@ -55,7 +55,8 @@ export function metalGlyph(tier: 'gold' | 'silver' | 'bronze', uni: boolean): st
 export function countUp(value: string, k: number): string {
   if (k >= 1 || !/^\$[\d,]+$/.test(value)) return value;
   const target = Number(value.replace(/[^\d]/g, ''));
-  const n = Math.max(1, Math.round(target * (COUNT_FROM + (1 - COUNT_FROM) * clamp01(k))));
+  if (!(target > 0)) return value;
+  const n =Math.max(1, Math.round(target * (COUNT_FROM + (1 - COUNT_FROM) * clamp01(k))));
   return `$${n.toLocaleString('en-US')}`;
 }
 
