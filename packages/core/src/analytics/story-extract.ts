@@ -10,7 +10,6 @@ import {languageLines, namedModels} from './language-feedback.js';
 import {focusLabels} from './project-focus.js';
 import {normalizedLine} from './findings.js';
 import {featurize, safeQuote, topicWords, vocabularyWords, type PromptFeatures} from './story-lexicon.js';
-import {localClock} from './story-time.js';
 
 /** Tools that start a subagent. */
 export const AGENT_TOOLS = new Set(['Task', 'Agent', 'spawn_agent', 'spawn_agents', 'TaskCreate']);
@@ -33,13 +32,13 @@ export interface TurnStats {
 export interface TopicBag {month: string; date: string; night: number; day: number; words: Map<string, [number, number]>}
 
 export interface StoryTextFacts {
-  /** Word counts of this file's prompts per local date (typo fingerprint); null for Claude transcripts (their typed text lives in history.jsonl). */
+  /** Legacy per-file word counters; always null since facts v8 (words are kept per prompt, `PromptFact.w` / `tw`). */
   vocab: Map<string, Map<string, number>> | null;
   topics: TopicBag[] | null;
 }
 
 interface PromptLike {key: string; at: number | null; text: string; kind: string; reason: string | null; project: string | null;
-  before: string | null; after: string | null; f?: PromptFeatures; lex?: AuditPromptLex; q?: string; t?: TurnStats}
+  before: string | null; after: string | null; f?: PromptFeatures; lex?: AuditPromptLex; q?: string; t?: TurnStats; w?: string[]; tw?: string[]}
 
 export function promptLex(text: string, models: Iterable<string>): AuditPromptLex | undefined {
   const lex: {-readonly [K in keyof AuditPromptLex]: AuditPromptLex[K]} = {};
@@ -60,32 +59,25 @@ export function promptLex(text: string, models: Iterable<string>): AuditPromptLe
 const QUOTE_TOP = 8, QUOTE_SUBAGENT_TOP = 5, QUOTE_LAST_PER_PROJECT = 3;
 
 /**
- * Adds story fields to the human prompts of one file (in place) and returns
- * the file's word counters. `typed` marks text the user typed (no inline pastes).
+ * Adds story fields to the human prompts of one file (in place). With `counters`, each prompt
+ * also keeps its vocabulary and topic words, so word counts are built later from deduplicated
+ * prompts (copies of a session, divergent tails) instead of per-file bags. `typed` marks text
+ * the user typed (no inline pastes).
  */
 export function deriveStory(prompts: PromptLike[], events: TurnEvent[], interrupts: number[], options: {typed: boolean; counters: boolean; timezone: string; from?: number; previous?: StoryTextFacts}): StoryTextFacts {
   const human = prompts.filter(p => p.kind === 'human' && p.at !== null).sort((a, b) => a.at! - b.at!);
   const fresh = new Set(prompts.slice(options.from ?? 0));
   const models = new Set<string>();
   for (const p of prompts) { if (p.before) models.add(p.before); if (p.after) models.add(p.after); }
-  const vocab = options.counters ? options.previous?.vocab ?? new Map<string, Map<string, number>>() : null;
-  const topics = options.counters ? new Map<string, TopicBag>((options.previous?.topics ?? []).map(t => [t.date, t])) : null;
-  const clock = localClock(options.timezone);
   for (const p of human) {
     if (!fresh.has(p)) continue;
     p.f = featurize({text: p.text, typed: options.typed});
     const lex = promptLex(p.text, models);
     if (lex) p.lex = lex;
-    const {hour, month, day: date} = clock(p.at!);
-    if (vocab) { let v = vocab.get(date); if (!v) { v = new Map(); vocab.set(date, v); } for (const w of vocabularyWords(p.text)) v.set(w, (v.get(w) ?? 0) + 1); }
-    if (topics) {
-      const slot = hour < 5 ? 0 : hour >= 9 && hour < 19 ? 1 : -1;
-      if (slot >= 0) {
-        let bag = topics.get(date);
-        if (!bag) { bag = {month, date, night: 0, day: 0, words: new Map()}; topics.set(date, bag); }
-        if (slot === 0) bag.night++; else bag.day++;
-        for (const w of topicWords(p.text)) { let c = bag.words.get(w); if (!c) { c = [0, 0]; bag.words.set(w, c); } c[slot as 0 | 1]++; }
-      }
+    if (options.counters) {
+      const w = vocabularyWords(p.text), tw = [...topicWords(p.text)];
+      if (w.length) p.w = w;
+      if (tw.length) p.tw = tw;
     }
   }
   turnStats(human, events, interrupts);
@@ -101,7 +93,7 @@ export function deriveStory(prompts: PromptLike[], events: TurnEvent[], interrup
   for (const p of [...human].sort((a, b) => (weight.get(b) ?? 0) - (weight.get(a) ?? 0)).slice(0, QUOTE_TOP)) slots.add(p);
   for (const p of human.filter(p => (p.t?.sa ?? 0) > 0).sort((a, b) => b.t!.sa - a.t!.sa).slice(0, QUOTE_SUBAGENT_TOP)) slots.add(p);
   for (const p of slots) { if (!p.text) continue; const q = safeQuote(p.text, 90); if (q) p.q = q; }
-  return {vocab, topics: topics ? [...topics.values()] : null};
+  return {vocab: null, topics: null};
 }
 
 /** Two-pointer assignment of assistant events and interrupts to the turn windows [prompt, next prompt). */

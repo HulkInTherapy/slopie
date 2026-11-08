@@ -2,9 +2,9 @@
  * Model prices and request cost, following ccusage's rules:
  *   cost = input*in + output*out + cacheRead*cr + cacheWrite5m*cw + cacheWrite1h*(2*in)
  * A request whose whole prompt exceeds a tier threshold is billed entirely at
- * the tier rate. Every model gets a price: when the exact model is not in the
- * table the closest model of the same family is used and the price is flagged
- * as estimated.
+ * the tier rate. When the exact model is not in the table the closest model of
+ * the same family (same vendor and series) is used and the price is flagged as
+ * estimated; a name that shares no family stays unpriced (unknown, never $0).
  */
 import {bundledModelCatalog, type CatalogEntry, type ModelCatalog} from './model-catalog.js';
 import type {UsageFact} from './extract.js';
@@ -71,7 +71,7 @@ export class PriceBook {
     return {pricedAs: entry.id, estimated, rates, fast: fastMultiplier(entry.id), tiers: (entry.tiers ?? []).map(t => ({threshold: t.threshold, rates: toRates(t.rates, rates)}))};
   }
 
-  /** Price for a recorded model name; never null for a non-empty name. */
+  /** Price for a recorded model name; null when it is unknown and has no family. */
   lookup(model: string | null): ModelPrice | null {
     if (!model) return null;
     const cached = this.memo.get(model);
@@ -94,7 +94,8 @@ export class PriceBook {
       const have = tokens(id);
       let shared = 0;
       while (shared < want.length && shared < have.length && want[shared] === have[shared]) shared++;
-      if (shared === 0) continue;
+      // A family is vendor + series ('claude-haiku', 'gpt-6'): one shared token ('codex', 'gpt') is not a model family.
+      if (shared < 2) continue;
       const distance = Math.abs(have.length - want.length) + versionDistance(want.slice(shared), have.slice(shared));
       if (!best || shared > best.shared || (shared === best.shared && (distance < best.distance || (distance === best.distance && id < best.id)))) best = {id, shared, distance};
     }

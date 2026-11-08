@@ -23,9 +23,13 @@ import type {AuditHarness, AuditPromptLex} from './contracts.js';
 import {deriveStory, promptLex, isAgentTool, usageWeight, type StoryTextFacts, type TurnEvent, type TurnStats} from './story-extract.js';
 import {featurize, safeQuote, topicWords, vocabularyWords, type PromptFeatures} from './story-lexicon.js';
 import {localClock} from './story-time.js';
+import {StreamHashes} from './copy-prune.js';
 
-/** 7: session-agnostic Codex/pi fingerprints, fork lineage, zstd and archive sources, dated word counters. */
-export const FACTS_VERSION = 7;
+/**
+ * 8: deferred Codex compactions keep their request-time model/tier; unknown Codex identities stay unknown;
+ *    per-prompt word lists replace per-file word counters; archive sources carry their native identity.
+ */
+export const FACTS_VERSION = 8;
 
 export type NativeHarness = Exclude<AuditHarness, 'opencode' | 'cursor' | 'gemini' | 'copilot'>;
 
@@ -46,6 +50,8 @@ export interface UsageFact {
   reasoning: number;
   /** True when the model was not recorded and had to be inferred. */
   inferredModel?: boolean;
+  /** Raw identity recorded in the model slot that is not a model (e.g. Codex `codex-auto-review`); `model` is null. */
+  identity?: string;
   /** Claude: written by a subagent / sidechain. */
   sidechain?: boolean;
   /** Claude: the record had no requestId. */
@@ -85,6 +91,9 @@ export interface PromptFact {
   t?: TurnStats;
   /** Codex: not inside a real (non-import) turn; replayed history when the thread was imported from another agent. */
   imp?: 1;
+  /** Story: vocabulary words (typo fingerprint) and distinct topic words of a human prompt (non-Claude harnesses). */
+  w?: string[];
+  tw?: string[];
 }
 
 export interface SourceFacts {
@@ -121,6 +130,8 @@ export interface SourceFacts {
   story?: StoryTextFacts;
   /** Append-only resume state (recent files only). */
   resume?: ResumeState;
+  /** Compressed rollouts asked to (`ExtractOptions.checks`): hashes of the decompressed bytes, to prove archive copies are prefixes. Never cached. */
+  copyHashes?: {head: string; at: [number, string][]};
 }
 
 export interface ExtractOptions {
@@ -128,6 +139,8 @@ export interface ExtractOptions {
   timezone?: string;
   /** potsherd archive copy: harness is sniffed from the content and subagent files are recognised by their records. */
   archive?: boolean;
+  /** Compressed source: also hash the decompressed head and the TAIL bytes before each of these offsets (copy-prune.ts). */
+  checks?: readonly number[];
 }
 
 const MAX_PROMPT_CHARS = 4000;
@@ -349,7 +362,8 @@ interface CodexState {
   /** A non-import task_started has been seen (prompts before it are replayed history). */
   inTurn: boolean;
   anyTurn: boolean;
-  records: Map<string, {at: number | null; usage: Rec}>;
+  /** token_usage_record by response id, with the model and tier in force when it was written (immutable). */
+  records: Map<string, {at: number | null; usage: Rec; model: string | null; tier: 'fast' | 'standard' | undefined}>;
   compacted: Set<string>;
   deltas: Set<string>;
   itemPrompts: PendingCodexPrompt[];
@@ -369,25 +383,19 @@ export class ResumeMismatch extends Error { constructor() { super('resume_mismat
 const U_KEYS = ['input_tokens', 'cached_input_tokens', 'output_tokens', 'reasoning_output_tokens', 'total_tokens'] as const;
 const tuple = (u: unknown): number[] | null => (isRec(u) ? U_KEYS.map(k => int(u[k])) : null);
 
-/** Codex records its review helper as `codex-auto-review`; bill it as the helper model of that date. */
-const AUTO_REVIEW_MODELS: readonly [string, string][] = [
-  ['2026-07-30', 'gpt-5.6-luna'], ['2026-03-05', 'gpt-5.4'], ['2026-02-05', 'gpt-5.3-codex'],
-  ['2025-12-11', 'gpt-5.2-codex'], ['2025-11-13', 'gpt-5.1-codex'], ['2025-09-15', 'gpt-5-codex'],
-];
-function codexModel(model: string | null, timestamp: string): {model: string; inferred: boolean} {
-  if (model === 'codex-auto-review') {
-    const day = timestamp.slice(0, 10);
-    return {model: AUTO_REVIEW_MODELS.find(([since]) => day >= since)?.[1] ?? 'gpt-5', inferred: true};
-  }
-  return model ? {model, inferred: false} : {model: 'gpt-5', inferred: true};
-}
+/**
+ * Identities Codex records in the model slot that are not models (its review helper). Which model
+ * served them is not recorded: they stay unknown (unpriced), never billed as a guessed model.
+ */
+const CODEX_NON_MODELS = new Set(['codex-auto-review']);
+const codexModel = (model: string | null): string | null => (model && !CODEX_NON_MODELS.has(model) ? model : null);
 
-function codexFact(b: Builder, s: CodexState, at: number | null, timestamp: string, d: readonly number[], key: string | null): UsageFact {
+/** A Codex usage fact; model and tier are the ones in force when the request was recorded. */
+function codexFact(model: string | null, tier: 'fast' | 'standard' | undefined, at: number | null, d: readonly number[], key: string | null): UsageFact {
   const input = d[0]!, output = d[2]!, reasoning = d[3]!, cached = Math.min(d[1]!, input);
-  const {model, inferred} = codexModel(b.currentModel, timestamp);
-  const fact: UsageFact = {key, at, model, provider: 'openai', input: input - cached, output, cacheRead: cached, cacheWrite: 0, cacheWrite1h: 0, reasoning};
-  if (inferred) fact.inferredModel = true;
-  if (s.tier) fact.tier = s.tier;
+  const fact: UsageFact = {key, at, model: codexModel(model), provider: 'openai', input: input - cached, output, cacheRead: cached, cacheWrite: 0, cacheWrite1h: 0, reasoning};
+  if (model && !fact.model) fact.identity = model;
+  if (tier) fact.tier = tier;
   return fact;
 }
 
@@ -447,7 +455,7 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
     // A fingerprint, not an identity: aggregation scopes it to the session's fork lineage, so copies and
     // fork replays of one request count once while independent sessions with equal counters both count.
     const key = totalSig ? `x:${totalSig}|${last ? last.join(',') : ''}` : `y:${String(r.timestamp ?? '')}|${d.join(',')}`;
-    const fact = codexFact(b, s, time(r.timestamp), String(r.timestamp ?? ''), d, key);
+    const fact = codexFact(b.currentModel, s.tier, time(r.timestamp), d, key);
     addUsage(b, fact);
     if (fact.at !== null) b.events.push({at: fact.at, tools: 0, subs: 0, weight: usageWeight(fact.input, fact.output, fact.cacheRead, fact.cacheWrite)});
     return;
@@ -500,7 +508,8 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
     const r = parse();
     const p = r && isRec(r.payload) ? r.payload : null;
     const id = p ? str(p.response_id) : null;
-    if (r && p && id && isRec(p.usage)) s.records.set(id, {at: time(r.timestamp), usage: p.usage});
+    // The compaction is only priced at the end of the file: capture the request-time model and tier now.
+    if (r && p && id && isRec(p.usage) && !s.records.has(id)) s.records.set(id, {at: time(r.timestamp), usage: p.usage, model: b.currentModel, tier: s.tier});
     return;
   }
   if (head.includes('"type":"compacted"')) {
@@ -541,7 +550,7 @@ function finishCodex(b: Builder, s: CodexState): void {
     const d = record ? tuple(record.usage) : null;
     if (!record || !d || !(d[0]! || d[1]! || d[2]! || d[3]!) || s.deltas.has(d.join(','))) continue;
     s.compactionDone.add(id);
-    const fact = codexFact(b, s, record.at, record.at ? new Date(record.at).toISOString() : '', d, `codex-compaction:${id}`);
+    const fact = codexFact(record.model, record.tier, record.at, d, `codex-compaction:${id}`);
     fact.compaction = true;
     f.usage.push(fact);
     touch(b, record.at);
@@ -665,11 +674,13 @@ export function extractFile(file: string, requested: NativeHarness | 'auto', opt
   const fd = fs.openSync(file, 'r');
   try {
     const stat = fs.fstatSync(fd);
-    // Compressed rollouts (Codex `.jsonl.zst`) are decompressed in memory; they are final, never resumed.
-    const data = isZstd(fd) ? decompressZstd(file) : null;
-    const harness = requested === 'auto' ? sniffHarness(data ?? headBytes(fd, 64 * 1024)) : requested;
+    // Compressed rollouts (Codex `.jsonl.zst`) are decompressed as a stream, chunk by chunk (never whole:
+    // they reach hundreds of MB); they are final, never resumed.
+    const hashes = options.checks?.length ? new StreamHashes(options.checks) : null;
+    const zst = isZstd(fd) ? zstdStream(fd, file, hashes) : null;
+    const harness = requested === 'auto' ? sniffHarness(zst ? zst.peek(64 * 1024) : headBytes(fd, 64 * 1024)) : requested;
     if (!harness) throw new Error('unrecognised_archive_source');
-    if (data && previous) throw new ResumeMismatch();
+    if (zst && previous) throw new ResumeMismatch();
     let b = makeBuilder(file, harness, stat.size, stat.mtimeMs);
     if (options.archive) b.facts.archived = true;
     let codex = newCodexState();
@@ -694,22 +705,14 @@ export function extractFile(file: string, requested: NativeHarness | 'auto', opt
     // One read buffer per thread, reused across files (it only grows for very long lines).
     let buffer = sharedBuffer ??= Buffer.allocUnsafe(CHUNK);
     let filled = 0, skipping = false, base = position, endsWithNewline = true;
-    if (data) {
-      let start = 0;
-      for (;;) {
-        const nl = data.indexOf(10, start);
-        if (nl < 0) { if (start < data.length) { endsWithNewline = false; onLine(data.subarray(start)); } break; }
-        if (nl > start) onLine(data.subarray(start, nl));
-        start = nl + 1;
-      }
-    } else for (;;) {
+    for (;;) {
       if (filled === buffer.length) {
         // A line longer than the buffer: drop it unread unless its head says we need it.
         if (harness === 'codex' && !codexWanted(buffer.toString('latin1', 0, Math.min(filled, 400)), codex.lineNo)) { codexToolOrAbort(b, buffer.toString('latin1', 0, Math.min(filled, 400))); skipping = true; base += filled; filled = 0; codex.lineNo++; }
         else if (buffer.length >= MAX_LINE) { skipping = true; base += filled; filled = 0; b.facts.malformed++; }
         else { const bigger = Buffer.allocUnsafe(buffer.length * 2); buffer.copy(bigger, 0, 0, filled); buffer = bigger; if (bigger.length <= 4 * CHUNK) sharedBuffer = bigger; }
       }
-      const n = fs.readSync(fd, buffer, filled, buffer.length - filled, position);
+      const n = zst ? zst.read(buffer, filled, buffer.length - filled) : fs.readSync(fd, buffer, filled, buffer.length - filled, position);
       position += n;
       const end = filled + n;
       let start = 0;
@@ -730,12 +733,13 @@ export function extractFile(file: string, requested: NativeHarness | 'auto', opt
       filled = end - start;
     }
     if (harness === 'codex') finishCodex(b, codex);
+    if (hashes) b.facts.copyHashes = hashes.result();
     if (harness === 'claude' && !subagent && sessions.size) b.facts.sessionIds = [...sessions];
     b.facts.size = stat.size;
     b.facts.mtimeMs = stat.mtimeMs;
     finishStory(b, harness, options, firstNew);
     delete b.facts.resume;
-    if (!data && !options.archive && endsWithNewline && !b.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS) {
+    if (!zst && !options.archive && endsWithNewline && !b.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS) {
       const events = new Float64Array(b.events.length * 4);
       b.events.forEach((e, i) => { events[i * 4] = e.at; events[i * 4 + 1] = e.tools; events[i * 4 + 2] = e.subs; events[i * 4 + 3] = e.weight; });
       const {itemPrompts: _items, responsePrompts: _responses, ...codexState} = codex;
@@ -758,7 +762,98 @@ function isZstd(fd: number): boolean {
   const head = headBytes(fd, 4);
   return head.length === 4 && head.readUInt32LE(0) === ZSTD_MAGIC;
 }
-type ZlibWithZstd = typeof zlib & {zstdDecompressSync?: (buffer: Buffer) => Buffer};
+type ZlibWithZstd = typeof zlib & {zstdDecompressSync?: (buffer: Buffer) => Buffer; ZstdDecompress?: new () => ZstdEngine};
+/**
+ * The native handle of a zlib engine, driven synchronously the way zlib's own *Sync helpers drive it
+ * (lib/zlib.js processChunkSync), but kept open across input chunks. Feature-detected: without it,
+ * the file is decompressed whole.
+ */
+interface ZstdEngine {
+  _handle?: {writeSync?: (flush: number, input: Buffer, inOff: number, inLen: number, out: Buffer, outOff: number, outLen: number) => void} | null;
+  _writeState?: Uint32Array;
+  destroyed: boolean;
+  on(event: 'error', listener: () => void): unknown;
+  close(): void;
+}
+const ZSTD_INPUT = 1024 * 1024;
+const ZSTD_OUTPUT = 1024 * 1024;
+
+/** Sequential reader over the decompressed bytes of a zstd file. */
+interface ZstdStream {
+  read(target: Buffer, offset: number, length: number): number;
+  /** Up to `max` leading decompressed bytes, without consuming them. */
+  peek(max: number): Buffer;
+}
+
+/** Chunked decompressor (input chunk -> output buffers), or null when this Node cannot do it. */
+function chunkedZstd(): {step: (input: Buffer) => Buffer[]; close: () => void} | null {
+  const Engine = (zlib as ZlibWithZstd).ZstdDecompress;
+  if (zstdMode !== 'node' || !Engine) return null;
+  let engine: ZstdEngine;
+  try { engine = new Engine(); } catch { return null; }
+  const handle = engine._handle, state = engine._writeState;
+  if (!handle || typeof handle.writeSync !== 'function' || !(state instanceof Uint32Array)) { engine.close(); return null; }
+  engine.on('error', () => { /* reported through `destroyed` below */ });
+  const flush = zlib.constants.ZSTD_e_continue;
+  return {
+    step(input) {
+      const outs: Buffer[] = [];
+      let inOff = 0, availIn = input.length;
+      for (;;) {
+        const out = Buffer.allocUnsafe(ZSTD_OUTPUT);
+        handle.writeSync!(flush, input, inOff, availIn, out, 0, out.length);
+        if (engine.destroyed) throw new Error('zstd_corrupt');
+        const availOut = state[0]!, availInAfter = state[1]!;
+        if (out.length - availOut > 0) outs.push(out.subarray(0, out.length - availOut));
+        inOff += availIn - availInAfter;
+        availIn = availInAfter;
+        // A full output buffer means there is more to drain from this input.
+        if (availOut !== 0) break;
+      }
+      return outs;
+    },
+    close: () => engine.close(),
+  };
+}
+
+/**
+ * Streams a zstd file's decompressed bytes with bounded memory (1 MB of input per step). Falls back
+ * to whole-file decompression (zstd CLI, or a Node without the chunked engine).
+ */
+function zstdStream(fd: number, file: string, hashes: StreamHashes | null): ZstdStream {
+  zstdMode ??= zstdSupport();
+  const engine = chunkedZstd();
+  let pending: Buffer[] = [], inPos = 0, done = false;
+  const input = engine ? Buffer.allocUnsafe(ZSTD_INPUT) : null;
+  const emit = (out: Buffer) => { if (out.length) { pending.push(out); hashes?.push(out); } };
+  const fill = (): void => {
+    if (!engine) { emit(decompressZstd(file)); done = true; return; }
+    const n = fs.readSync(fd, input!, 0, ZSTD_INPUT, inPos);
+    inPos += n;
+    // Like zstdDecompressSync, a truncated final frame keeps what was decoded.
+    if (!n) { done = true; engine.close(); return; }
+    try { for (const out of engine.step(input!.subarray(0, n))) emit(out); } catch (error) { done = true; engine.close(); throw error; }
+  };
+  return {
+    read(target, offset, length) {
+      while (!pending.length && !done) fill();
+      let written = 0;
+      while (written < length && pending.length) {
+        const head = pending[0]!, n = Math.min(head.length, length - written);
+        head.copy(target, offset + written, 0, n);
+        written += n;
+        if (n === head.length) pending.shift(); else pending[0] = head.subarray(n);
+      }
+      return written;
+    },
+    peek(max) {
+      while (pending.reduce((x, p) => x + p.length, 0) < max && !done) fill();
+      const all = Buffer.concat(pending);
+      pending = all.length ? [all] : [];
+      return all.subarray(0, max);
+    },
+  };
+}
 /** Node ≥22.15 has zstd built in; otherwise the `zstd` CLI; otherwise a visible gap code. */
 export function zstdSupport(): 'node' | 'cli' | null {
   if (typeof (zlib as ZlibWithZstd).zstdDecompressSync === 'function') return 'node';
@@ -790,7 +885,7 @@ export function sniffHarness(head: Buffer): NativeHarness | null {
 function resumeBuilder(previous: SourceFacts, r: ResumeState, stat: fs.Stats): Builder {
   const facts: SourceFacts = {...previous, size: stat.size, mtimeMs: stat.mtimeMs, usage: [...previous.usage], prompts: previous.prompts.map(p => ({...p})),
     ...(previous.sessionIds ? {sessionIds: [...previous.sessionIds]} : {}),
-    ...(previous.story ? {story: {vocab: previous.story.vocab ? new Map([...previous.story.vocab].map(([d, m]) => [d, new Map(m)])) : null, topics: previous.story.topics ? previous.story.topics.map(t => ({...t, words: new Map([...t.words].map(([w, c]) => [w, [c[0], c[1]] as [number, number]]))})) : null}} : {})};
+    ...(previous.story ? {story: {vocab: null, topics: null}} : {})};
   delete facts.resume;
   const b = makeBuilder(previous.file, previous.harness as NativeHarness, stat.size, stat.mtimeMs);
   b.facts = facts;

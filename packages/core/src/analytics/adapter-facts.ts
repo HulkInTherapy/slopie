@@ -13,6 +13,7 @@ import * as copilot from '../adapters/copilot.js';
 import type {SessionSource} from '../adapters/types.js';
 import {classifyText, FACTS_VERSION, finishExternalFacts, stripText, time, type SourceFacts} from './extract.js';
 import type {AuditOverviewOptions} from './contracts.js';
+import type {FactsCache} from './facts-cache.js';
 
 export type AdapterHarness = 'cursor' | 'gemini' | 'copilot';
 export const ADAPTER_HARNESSES: readonly AdapterHarness[] = ['cursor', 'gemini', 'copilot'];
@@ -54,11 +55,21 @@ export async function adapterFacts(harness: AdapterHarness, source: SessionSourc
   return stripText(finishExternalFacts(facts, {timezone}));
 }
 
-/** All sources of the requested adapter harnesses; unreadable files become failure codes. */
-export async function readAdapterSources(harnesses: readonly AdapterHarness[], discovered: ReadonlyMap<AdapterHarness, SessionSource[]>, timezone: string, failures: string[]): Promise<SourceFacts[]> {
+/** Facts-cache key of an adapter source: several sessions can live in one file (Cursor's databases). */
+export const adapterKey = (source: SessionSource): string => `adapter:${source.harness}:${source.path}#${source.sessionId}`;
+
+/**
+ * All sources of the requested adapter harnesses; unreadable files become failure codes. With a
+ * cache, a source is parsed again only when its size or mtime changed.
+ */
+export async function readAdapterSources(harnesses: readonly AdapterHarness[], discovered: ReadonlyMap<AdapterHarness, SessionSource[]>, timezone: string, failures: string[], cache?: FactsCache, stats = {parsed: 0}): Promise<SourceFacts[]> {
   const out: SourceFacts[] = [];
+  const parse = (h: AdapterHarness, source: SessionSource) => { stats.parsed++; return adapterFacts(h, source, timezone); };
   for (const h of harnesses) for (const source of discovered.get(h) ?? []) {
-    try { if (fs.existsSync(source.path)) out.push(await adapterFacts(h, source, timezone)); } catch { failures.push(`${h}_source_unreadable`); }
+    try {
+      if (!fs.existsSync(source.path)) continue;
+      out.push(await (cache ? cache.external(adapterKey(source), source.bytes, source.mtimeMs, timezone, () => parse(h, source)) : parse(h, source)));
+    } catch { failures.push(`${h}_source_unreadable`); }
   }
   return out;
 }

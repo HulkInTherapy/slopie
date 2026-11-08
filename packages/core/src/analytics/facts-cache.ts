@@ -6,7 +6,8 @@
  *
  * Layout (v19): one small index plus one shard per source,
  *
- *   facts-v<N>/index.bin        file -> {shard, size, mtime, tz, harness, ids, project}
+ *   facts-v<N>/index.bin        file -> {shard, size, mtime, tz, harness, ids, project};
+ *                               file probes and verified prefix relations (copy-prune.ts)
  *   facts-v<N>/<sha1>.bin       SourceFacts of one file
  *   facts-v<N>/h-<sha1>.bin     parsed history.jsonl of one Claude root
  *   facts-v<N>/dictionary.bin   typo-fingerprint dictionary memo
@@ -22,13 +23,14 @@ import {createHash} from 'node:crypto';
 import {serialize, deserialize} from 'node:v8';
 import {FACTS_VERSION, type HistoryData, type HistoryEntry, type SourceFacts} from './extract.js';
 import type {AuditHarness} from './contracts.js';
+import type {PrefixRelation, Probe} from './copy-prune.js';
 
 const DIR = `facts-v${FACTS_VERSION}`;
 const INDEX = 'index.bin';
 const DICTIONARY = 'dictionary.bin';
 
 /** What the cache knows about a file without opening its shard (also what pruning needs). */
-export interface FactsMeta {file: string; shard: string; size: number; mtimeMs: number; tz?: string; harness: AuditHarness; sessionId: string; parentId: string | null; project: string | null}
+export interface FactsMeta {file: string; /** Adapter sources: the facts' own file when `file` is a cache key. */ source?: string; shard: string; size: number; mtimeMs: number; tz?: string; harness: AuditHarness; sessionId: string; parentId: string | null; project: string | null}
 interface HistoryMeta {file: string; shard: string; size: number; mtimeMs: number; tz: string}
 interface HistoryRecord extends HistoryMeta {data: HistoryData}
 
@@ -49,6 +51,11 @@ export class FactsCache {
   private historyMetas = new Map<string, HistoryMeta>();
   private historyLoaded = new Map<string, HistoryRecord>();
   private dirtyHistory = new Set<string>();
+  /** Bounded probes of native files (harness, identity, head/tail hashes), by path. */
+  private probes = new Map<string, Probe>();
+  /** Verified "is a prefix copy of" relations, by the shorter file. */
+  relations = new Map<string, PrefixRelation>();
+  private probesDirty = false;
   /** Dictionary lookups of the typo fingerprint (word -> in dictionary). */
   dictionary = new Map<string, boolean>();
   private dictionarySize = 0;
@@ -63,10 +70,12 @@ export class FactsCache {
   load(): void {
     if (!this.dir) return;
     try {
-      const value = deserialize(fs.readFileSync(path.join(this.root, INDEX))) as {version: number; entries: FactsMeta[]; history: HistoryMeta[]};
+      const value = deserialize(fs.readFileSync(path.join(this.root, INDEX))) as {version: number; entries: FactsMeta[]; history: HistoryMeta[]; probes?: [string, Probe][]; relations?: PrefixRelation[]};
       if (value?.version !== FACTS_VERSION || !Array.isArray(value.entries)) return;
       for (const m of value.entries) this.metas.set(m.file, m);
       for (const h of Array.isArray(value.history) ? value.history : []) this.historyMetas.set(h.file, h);
+      for (const [file, p] of Array.isArray(value.probes) ? value.probes : []) this.probes.set(file, p);
+      for (const r of Array.isArray(value.relations) ? value.relations : []) this.relations.set(r.file, r);
     } catch {
       // Missing or unreadable cache: everything is simply read again.
     }
@@ -81,7 +90,7 @@ export class FactsCache {
     if (hit) return hit;
     try {
       const facts = deserialize(fs.readFileSync(path.join(this.root, meta.shard))) as SourceFacts;
-      if (!facts || facts.v !== FACTS_VERSION || facts.file !== meta.file) return null;
+      if (!facts || facts.v !== FACTS_VERSION || facts.file !== (meta.source ?? meta.file)) return null;
       this.shardsRead++;
       this.loaded.set(meta.file, facts);
       return facts;
@@ -90,10 +99,38 @@ export class FactsCache {
     }
   }
 
-  /** Harness of a cached, unchanged file without reading its shard (archive classification). */
-  harnessOf(file: string, size: number, mtimeMs: number): AuditHarness | null {
-    const m = this.metas.get(file);
-    return m && m.size === size && m.mtimeMs === mtimeMs ? m.harness : null;
+  /** Probe of an unchanged file, else a fresh one from `probe` (null: unreadable). */
+  probe(file: string, size: number, mtimeMs: number, probe: () => Probe | null): Probe | null {
+    const old = this.probes.get(file);
+    if (old && old.size === size && old.mtimeMs === mtimeMs) return old;
+    const fresh = probe();
+    if (fresh) { this.probes.set(file, fresh); this.probesDirty = true; }
+    return fresh;
+  }
+
+  /** Replaces the cached prefix relations with this run's (only relations between unchanged files are ever reused). */
+  setRelations(relations: readonly PrefixRelation[]): void {
+    const same = relations.length === this.relations.size && relations.every(r => { const o = this.relations.get(r.file); return o && o.by === r.by && o.size === r.size && o.bySize === r.bySize && o.mtimeMs === r.mtimeMs && o.byMtimeMs === r.byMtimeMs; });
+    if (same) return;
+    this.relations = new Map(relations.map(r => [r.file, r]));
+    this.probesDirty = true;
+  }
+
+  /**
+   * Facts of a non-file-backed or adapter source (Cursor, Gemini, Copilot), keyed by an identity
+   * plus size and mtime; parsed again only when that changes.
+   */
+  external(key: string, size: number, mtimeMs: number, tz: string, read: () => Promise<SourceFacts>): Promise<SourceFacts> {
+    const m = this.metas.get(key);
+    if (m && m.size === size && m.mtimeMs === mtimeMs && m.tz === tz) { const hit = this.shard(m); if (hit) return Promise.resolve(hit); }
+    return read().then(facts => {
+      const stored = {...facts, size, mtimeMs, tz};
+      this.loaded.set(key, stored);
+      this.metas.set(key, {...metaOf(stored), file: key, shard: shardOf(key), source: facts.file});
+      this.dirtyShards.add(key);
+      this.indexDirty = true;
+      return facts;
+    });
   }
 
   /** Cached facts when the file still has the same size and mtime (and story time zone). */
@@ -156,10 +193,11 @@ export class FactsCache {
    * Writes what changed, keeping only files that are allowed (`keep` sees the
    * index metadata, so files not read this run are pruned without opening them).
    */
-  save(keep: (meta: Pick<FactsMeta, 'file' | 'harness' | 'sessionId' | 'parentId' | 'project'>) => boolean, keepHistory: (entry: HistoryEntry) => boolean = () => true): void {
+  save(keep: (meta: Pick<FactsMeta, 'file' | 'harness' | 'sessionId' | 'parentId' | 'project'>) => boolean, keepHistory: (entry: HistoryEntry) => boolean = () => true, keepProbe: (file: string) => boolean = () => true): void {
     if (!this.dir) return;
     const removedShards: string[] = [];
     for (const [file, meta] of this.metas) if (!keep(meta)) { this.metas.delete(file); this.loaded.delete(file); this.dirtyShards.delete(file); removedShards.push(meta.shard); }
+    for (const file of this.probes.keys()) if (!keepProbe(file)) { this.probes.delete(file); this.relations.delete(file); this.probesDirty = true; }
     for (const [file, meta] of this.historyMetas) {
       if (!fs.existsSync(file)) { this.historyMetas.delete(file); this.historyLoaded.delete(file); removedShards.push(meta.shard); continue; }
       const record = this.historyLoaded.get(file);
@@ -175,7 +213,7 @@ export class FactsCache {
       }
     }
     const dictionaryChanged = this.dictionary.size !== this.dictionarySize;
-    if (!this.dirtyShards.size && !this.dirtyHistory.size && !removedShards.length && !this.indexDirty && !dictionaryChanged) return;
+    if (!this.dirtyShards.size && !this.dirtyHistory.size && !removedShards.length && !this.indexDirty && !this.probesDirty && !dictionaryChanged) return;
     try {
       fs.mkdirSync(this.root, {recursive: true, mode: 0o700});
       for (const file of this.dirtyShards) {
@@ -188,7 +226,7 @@ export class FactsCache {
       }
       for (const shard of removedShards) fs.rmSync(path.join(this.root, shard), {force: true});
       if (dictionaryChanged) writeAtomic(path.join(this.root, DICTIONARY), serialize(this.dictionary));
-      writeAtomic(path.join(this.root, INDEX), serialize({version: FACTS_VERSION, entries: [...this.metas.values()], history: [...this.historyMetas.values()]}));
+      writeAtomic(path.join(this.root, INDEX), serialize({version: FACTS_VERSION, entries: [...this.metas.values()], history: [...this.historyMetas.values()], probes: [...this.probes], relations: [...this.relations.values()]}));
       // Older layouts (single facts-v<N>.bin blobs, other versions' directories) are dropped.
       for (const old of fs.readdirSync(this.dir)) {
         if (/^facts-v\d+\.bin$/.test(old) || (/^facts-v\d+$/.test(old) && old !== DIR)) fs.rmSync(path.join(this.dir, old), {recursive: true, force: true});
@@ -196,6 +234,7 @@ export class FactsCache {
       this.dirtyShards.clear();
       this.dirtyHistory.clear();
       this.indexDirty = false;
+      this.probesDirty = false;
       this.dictionarySize = this.dictionary.size;
     } catch {
       // The cache is an optimisation; failing to write it never fails a report.

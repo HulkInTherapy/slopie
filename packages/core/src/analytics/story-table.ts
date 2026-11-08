@@ -87,7 +87,7 @@ export interface StoryTableInput {
 export function buildStoryTable(input: StoryTableInput): StoryTable {
   const {aggregate: a, timezone} = input;
   const clock = localClock(timezone);
-  const {refs, costOf, sources, primary} = a.story;
+  const {refs, costOf} = a.story;
   const dateAllowed = input.dateAllowed ?? (() => true);
 
   // ---- typed text of live Claude sessions, by session id
@@ -198,11 +198,25 @@ export function buildStoryTable(input: StoryTableInput): StoryTable {
       for (const [w, n] of words) vocab.set(w, (vocab.get(w) ?? 0) + n);
     }
   };
-  for (const s of sources) {
-    // One copy per session: archived/compressed copies would count the same words twice.
-    if (!s.story?.vocab || !primary.has(s) || !inScope.has(sid(s.harness, s.sessionId))) continue;
-    addVocab(s.story.vocab);
-    for (const bag of s.story.topics ?? []) if (dateAllowed(bag.date)) addTopics(bag.month, bag);
+  // Transcript prompts (Codex, pi, OpenCode, adapters): from the deduplicated, in-scope prompts, so every
+  // copy of a session counts once and a divergent tail of a non-primary copy still counts.
+  for (const ref of refs) {
+    const fact = ref.fact;
+    if (ref.history || !ref.source || ref.source.harness === 'claude' || ref.source.child || !('key' in fact)) continue;
+    if (fact.at === null) {
+      if (input.undatedAllowed === false) continue;
+      for (const w of fact.w ?? []) vocab.set(w, (vocab.get(w) ?? 0) + 1);
+      continue;
+    }
+    const local = clock(fact.at);
+    if (!dateAllowed(local.day)) continue;
+    for (const w of fact.w ?? []) vocab.set(w, (vocab.get(w) ?? 0) + 1);
+    const slot = local.hour < 5 ? 0 : local.hour >= 9 && local.hour < 19 ? 1 : -1;
+    if (slot >= 0) {
+      const words = new Map<string, [number, number]>();
+      for (const w of fact.tw ?? []) words.set(w, slot === 0 ? [1, 0] : [0, 1]);
+      addTopics(local.month, {night: slot === 0 ? 1 : 0, day: slot === 1 ? 1 : 0, words});
+    }
   }
   for (const [session, c] of input.historyCounters) {
     if (!input.allowed(c.project, session || null) || !inScope.has(sid('claude', session))) continue;
