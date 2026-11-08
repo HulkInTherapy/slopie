@@ -15,7 +15,46 @@ import type {AuditHarness} from './contracts.js';
 export const STORY_VERSION = 'story-v1';
 
 /** Where a prompt came from. `claude_hist` = Claude session known only from ~/.claude/history.jsonl. */
-export type StoryHarness = 'claude' | 'claude_hist' | 'codex' | 'pi' | 'opencode';
+export type StoryHarness = 'claude' | 'claude_hist' | 'codex' | 'pi' | 'opencode' | 'cursor' | 'gemini' | 'copilot';
+
+/** v19 spend breakdown (measured / recovered / estimated are never added together silently). */
+export interface StorySpend {
+  /** Priced from per-request usage logs, deduplicated, all harnesses. The only number called "measured". */
+  measuredUsd: number;
+  /** Priced from aggregate counters that are not per-request (e.g. Claude Code ~/.claude/stats-cache.json
+   *  residuals after subtracting what request logs already cover). Shown as "recovered". */
+  recoveredUsd: number;
+  /** Estimate for human prompts whose token logs no longer exist (history-only). null when none. Always labelled "est.". */
+  estimated: {lowUsd: number; highUsd: number; prompts: number; basis: string} | null;
+  /** Tokens with no known price (unknown model ids). Never priced at $0 silently. */
+  unpricedTokens: number;
+  byHarness: readonly {harness: StoryHarness; usd: number; prompts: number; tokens: number; sharePct: number}[];
+  /** Calendar months, oldest first, local timezone. */
+  monthly: readonly {month: string /* YYYY-MM */; measuredUsd: number; recoveredUsd: number; estimatedUsd: number; prompts: number}[];
+  /** Local days with any activity, oldest first. Measured only. */
+  daily: readonly {day: string /* YYYY-MM-DD */; usd: number; prompts: number}[];
+  thisMonthUsd: number;
+  perActiveDayUsd: number;
+  priciestDay: {day: string; usd: number} | null;
+  priceVersion: string;
+}
+
+export interface StoryModelShare {
+  /** Ranking basis for "who did the most work". Quiz copy must say "share of output tokens". */
+  basis: 'output_tokens';
+  /** Observed models only (model recorded on the response). Never imputed from other days. */
+  rows: readonly {model: string; label: string; harness: StoryHarness;
+    outputTokens: number; tokenSharePct: number;
+    /** Share among prompts WITH an observed model. */
+    prompts: number; promptSharePct: number;
+    usd: number; spendSharePct: number}[];
+  /** Human prompts with no observed answering model (e.g. history-only). Shown, never redistributed. */
+  unknownModelPrompts: number;
+  /** Last 30 days, by prompts with an observed model. */
+  last30d: readonly {model: string; label: string; promptSharePct: number}[];
+  /** Per month, the model with the most output tokens. */
+  timeline: readonly {month: string; model: string; label: string; tokenSharePct: number}[];
+}
 
 export interface StoryChartPoint {
   /** Category or ordinal: '2026-03', 'Mon', 13, 'gpt-6-sol', ... */
@@ -210,7 +249,13 @@ export interface AuditStory {
     longestStretchHours: number;
     tokens: number;
     byHarness: Readonly<Partial<Record<StoryHarness, number>>>;
+    /** `codex exec` / non-interactive runs: cost counted, NOT counted as chats (sessions = human chats only). */
+    automatedRuns: number;
   };
+  /** v19: measured / recovered / estimated spend and series. */
+  spend: StorySpend;
+  /** v19: observed-only model share ranked by output tokens. */
+  modelShare: StoryModelShare;
   rhythm: {
     /** Prompts per local hour 0..23. */
     hours: readonly number[];
