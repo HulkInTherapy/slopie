@@ -39,7 +39,10 @@ export function buildStory(input: StoryInput): {story: AuditStory; detectorsMs: 
     version: STORY_VERSION,
     state: rows.length === 0 ? 'empty' : rows.length < 200 ? 'thin' : 'ready',
     timezone: input.timezone, generatedAt: (input.now ?? new Date()).toISOString(),
-    totals: {...totals(rows, input.tokens), automatedRuns: input.automatedRuns ?? 0},
+    totals: {...totals(rows, input.tokens),
+      // Headline counts include prompts without a timestamp; time charts use dated rows only.
+      prompts: input.table.headline?.prompts ?? rows.length, sessions: input.table.headline?.sessions ?? new Set(rows.map(r => r.conv)).size,
+      undatedPrompts: input.table.headline?.undated ?? 0, automatedRuns: input.automatedRuns ?? 0},
     rhythm: rhythm(rows, shifted),
     swearTimeline: swearTimeline(rows),
     models: models(rows),

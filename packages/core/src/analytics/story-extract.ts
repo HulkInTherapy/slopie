@@ -29,12 +29,12 @@ export interface TurnStats {
   /** Seconds since the last assistant event before this prompt. */ g: number | null;
 }
 
-/** Words per month and slot (0 = night 0–4h, 1 = day 9–18h) in documents (prompts). */
-export interface TopicBag {month: string; night: number; day: number; words: Map<string, [number, number]>}
+/** Words per local date and slot (0 = night 0–4h, 1 = day 9–18h) in documents (prompts). Dated so scoped stories only see their days. */
+export interface TopicBag {month: string; date: string; night: number; day: number; words: Map<string, [number, number]>}
 
 export interface StoryTextFacts {
-  /** Word counts of this file's prompts (typo fingerprint); null for Claude transcripts (their typed text lives in history.jsonl). */
-  vocab: Map<string, number> | null;
+  /** Word counts of this file's prompts per local date (typo fingerprint); null for Claude transcripts (their typed text lives in history.jsonl). */
+  vocab: Map<string, Map<string, number>> | null;
   topics: TopicBag[] | null;
 }
 
@@ -68,21 +68,21 @@ export function deriveStory(prompts: PromptLike[], events: TurnEvent[], interrup
   const fresh = new Set(prompts.slice(options.from ?? 0));
   const models = new Set<string>();
   for (const p of prompts) { if (p.before) models.add(p.before); if (p.after) models.add(p.after); }
-  const vocab = options.counters ? options.previous?.vocab ?? new Map<string, number>() : null;
-  const topics = options.counters ? new Map<string, TopicBag>((options.previous?.topics ?? []).map(t => [t.month, t])) : null;
+  const vocab = options.counters ? options.previous?.vocab ?? new Map<string, Map<string, number>>() : null;
+  const topics = options.counters ? new Map<string, TopicBag>((options.previous?.topics ?? []).map(t => [t.date, t])) : null;
   const clock = localClock(options.timezone);
   for (const p of human) {
     if (!fresh.has(p)) continue;
     p.f = featurize({text: p.text, typed: options.typed});
     const lex = promptLex(p.text, models);
     if (lex) p.lex = lex;
-    if (vocab) for (const w of vocabularyWords(p.text)) vocab.set(w, (vocab.get(w) ?? 0) + 1);
+    const {hour, month, day: date} = clock(p.at!);
+    if (vocab) { let v = vocab.get(date); if (!v) { v = new Map(); vocab.set(date, v); } for (const w of vocabularyWords(p.text)) v.set(w, (v.get(w) ?? 0) + 1); }
     if (topics) {
-      const {hour, month} = clock(p.at!);
       const slot = hour < 5 ? 0 : hour >= 9 && hour < 19 ? 1 : -1;
       if (slot >= 0) {
-        let bag = topics.get(month);
-        if (!bag) { bag = {month, night: 0, day: 0, words: new Map()}; topics.set(month, bag); }
+        let bag = topics.get(date);
+        if (!bag) { bag = {month, date, night: 0, day: 0, words: new Map()}; topics.set(date, bag); }
         if (slot === 0) bag.night++; else bag.day++;
         for (const w of topicWords(p.text)) { let c = bag.words.get(w); if (!c) { c = [0, 0]; bag.words.set(w, c); } c[slot as 0 | 1]++; }
       }

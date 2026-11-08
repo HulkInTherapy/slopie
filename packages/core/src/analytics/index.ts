@@ -20,10 +20,11 @@ import {clock, digest} from './source.js';
 import {extractFile, finishExternalFacts, parseHistory, readHistory, sniffHarness, stripText, zstdSupport, type HistoryData, type HistoryEntry, type NativeHarness, type SourceFacts} from './extract.js';
 import {buildStoryTable} from './story-table.js';
 import {buildStory} from './story.js';
+import {buildSpend, readStatsCache} from './story-spend.js';
 import {DictionaryLookup} from './story-dictionary.js';
 import {enrichStory} from './story-enrich.js';
 import type {AuditProgressDetail, AuditStory} from './story-contracts.js';
-import {aggregate, projectName, type Aggregate} from './aggregate.js';
+import {aggregate, dayFormatter, projectName, type Aggregate} from './aggregate.js';
 import {PriceBook} from './pricing.js';
 import {bundledModelCatalog} from './model-catalog.js';
 import {cachedPublicCatalog, refreshPublicCatalog} from './catalog-service.js';
@@ -121,6 +122,8 @@ interface Discovered {
   historyFiles: string[];
   /** Codex thread ids imported from another agent. */
   codexImported: Set<string>;
+  /** Every Claude root's stats-cache.json (Claude Code's own per-model token totals). */
+  statsFiles: string[];
   census: Map<AuditHarness, {files: number; bytes: number; roots: number}>;
   /** Compressed sources that cannot be read on this machine (no zstd). */
   zstdUnsupported: number;
@@ -166,7 +169,7 @@ function sniffFile(file: string): NativeHarness | 'auto' | null {
 }
 
 function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOptions, onHarness?: (harness: AuditHarness, row: {files: number; bytes: number}) => void, known?: (file: string, size: number, mtimeMs: number) => AuditHarness | null): Discovered {
-  const result: Discovered = {jobs: [], opencodeDatabases: [], opencodeJson: [], historyFiles: [], codexImported: new Set(), census: new Map(), zstdUnsupported: 0};
+  const result: Discovered = {jobs: [], opencodeDatabases: [], opencodeJson: [], historyFiles: [], codexImported: new Set(), statsFiles: [], census: new Map(), zstdUnsupported: 0};
   const seen = new Set<string>();
   const zstd = zstdSupport() !== null;
   // Archive copies are classified first so each harness row's census includes them.
@@ -200,6 +203,8 @@ function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOpti
         // Every Claude root keeps its own typed-prompt log.
         const history = path.join(path.dirname(root), 'history.jsonl');
         if (fs.existsSync(history) && !result.historyFiles.includes(history)) result.historyFiles.push(history);
+        const stats = path.join(path.dirname(root), 'stats-cache.json');
+        if (fs.existsSync(stats) && !result.statsFiles.includes(stats)) result.statsFiles.push(stats);
       }
       if (harness === 'codex') for (const f of readCodexImports(path.join(path.dirname(root), 'external_agent_session_imports.json'))) result.codexImported.add(f);
       // Codex: sessions/ and archived_sessions/ copies (and compressed .jsonl.zst rollouts) are all read;
@@ -255,6 +260,14 @@ export function mergeHistories(parts: readonly {file: string; data: HistoryData}
   }
   for (const [session, {counters}] of perSession) out.counters.set(session, counters);
   return out;
+}
+
+/** Local-date filter for the story's word counters, matching the audit's event range. */
+function dateScope(scope: AuditSnapshot['scope']): {dateAllowed?: (date: string) => boolean; undatedAllowed?: boolean} {
+  if (!scope.eventFrom && !scope.asOf) return {};
+  const day = dayFormatter(scope.timezone);
+  const from = scope.eventFrom ? day(Date.parse(scope.eventFrom)) : null, to = scope.asOf ? day(Date.parse(scope.asOf)) : null;
+  return {dateAllowed: d => (from === null || d >= from) && (to === null || d <= to), undatedAllowed: false};
 }
 
 /* --------------------------------------------------------------- policy --- */
@@ -512,6 +525,7 @@ class LocalAuditSession implements AuditSession {
       const policy = this.policy;
       this.historyFile = found.historyFiles[0] ?? null;
       this.historyFiles = found.historyFiles;
+      this.statsFiles = harnesses.includes('claude') ? found.statsFiles : [];
       this.result = aggregate({
         sources: facts, history, historyFile: this.historyFile, historyOrigins: historyData.origins, codexImported: found.codexImported,
         scope: {harnesses, project: scope.project, eventFrom: scope.eventFrom ? Date.parse(scope.eventFrom) : null, asOf: scope.asOf ? Date.parse(scope.asOf) : null, timezone: scope.timezone},
@@ -553,6 +567,7 @@ class LocalAuditSession implements AuditSession {
   private historyData: MergedHistory | null = null;
   private historyFile: string | null = null;
   private historyFiles: string[] = [];
+  private statsFiles: string[] = [];
   private dictionary: DictionaryLookup | null = null;
 
   /** Running counts for the loading story (cheap: a few additions per file). */
@@ -658,11 +673,16 @@ class LocalAuditSession implements AuditSession {
       const table = buildStoryTable({
         aggregate: a, history: this.historyData?.entries ?? [], historyCounters: this.historyData?.counters ?? new Map(), historyFile: this.historyFile, timezone: scope.timezone,
         allowed: (project, session) => !policy?.ignored(project) && !(session && policy?.forgotten.has(sourceId('claude', session))) && (scope.project === null || project === scope.project),
+        ...dateScope(scope),
       });
       this.timings['storyTableMs'] = Math.round(performance.now() - ts);
       const dictionary = this.dictionary ?? new DictionaryLookup(this.cache?.dictionary);
       const built = buildStory({table, timezone: scope.timezone, alias: p => aliases.get(p ?? '(unknown)') ?? 'a project', dictionary, tokens: a.tokens.input + a.tokens.output + a.tokens.cacheRead + a.tokens.cacheWrite, offline: offline(), automatedRuns: a.automatedRuns});
       story = built.story;
+      const spent = buildSpend({aggregate: a, table, book: this.book, priceVersion: this.catalog.basis.sha256, timezone: scope.timezone,
+        statsCaches: this.statsFiles.map(readStatsCache).filter(c => c !== null), projectScoped: scope.project !== null, ...dateScope(scope)});
+      story.spend = spent.spend;
+      story.modelShare = spent.modelShare;
       story.timings.featuresMs = this.timings['storyTableMs'];
       this.timings['detectorsMs'] = Math.round(built.detectorsMs);
       this.timings['dictionaryLoaded'] = dictionary.loaded ? 1 : 0;

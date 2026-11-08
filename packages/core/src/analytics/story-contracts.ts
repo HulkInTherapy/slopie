@@ -28,7 +28,8 @@ export interface StorySpend {
   estimated: {lowUsd: number; highUsd: number; prompts: number; basis: string} | null;
   /** Tokens with no known price (unknown model ids). Never priced at $0 silently. */
   unpricedTokens: number;
-  byHarness: readonly {harness: StoryHarness; usd: number; prompts: number; tokens: number; sharePct: number}[];
+  /** usd and sharePct are measured; `claude_hist` prompts are folded into `claude`; recoveredUsd (optional) is the stats-cache part. */
+  byHarness: readonly {harness: StoryHarness; usd: number; prompts: number; tokens: number; sharePct: number; recoveredUsd?: number}[];
   /** Calendar months, oldest first, local timezone. */
   monthly: readonly {month: string /* YYYY-MM */; measuredUsd: number; recoveredUsd: number; estimatedUsd: number; prompts: number}[];
   /** Local days with any activity, oldest first. Measured only. */
@@ -47,7 +48,9 @@ export interface StoryModelShare {
     outputTokens: number; tokenSharePct: number;
     /** Share among prompts WITH an observed model. */
     prompts: number; promptSharePct: number;
-    usd: number; spendSharePct: number}[];
+    usd: number; spendSharePct: number;
+    /** Part of outputTokens from Claude's stats-cache residual (model recorded by Claude Code, not imputed). */
+    recoveredOutputTokens?: number}[];
   /** Human prompts with no observed answering model (e.g. history-only). Shown, never redistributed. */
   unknownModelPrompts: number;
   /** Last 30 days, by prompts with an observed model. */
@@ -251,6 +254,8 @@ export interface AuditStory {
     byHarness: Readonly<Partial<Record<StoryHarness, number>>>;
     /** `codex exec` / non-interactive runs: cost counted, NOT counted as chats (sessions = human chats only). */
     automatedRuns: number;
+    /** Human prompts without a timestamp: in `prompts`, not in time-based charts. */
+    undatedPrompts?: number;
   };
   /** v19: measured / recovered / estimated spend and series. */
   spend: StorySpend;

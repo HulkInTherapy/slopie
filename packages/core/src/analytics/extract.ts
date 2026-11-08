@@ -788,7 +788,7 @@ export function sniffHarness(head: Buffer): NativeHarness | null {
 function resumeBuilder(previous: SourceFacts, r: ResumeState, stat: fs.Stats): Builder {
   const facts: SourceFacts = {...previous, size: stat.size, mtimeMs: stat.mtimeMs, usage: [...previous.usage], prompts: previous.prompts.map(p => ({...p})),
     ...(previous.sessionIds ? {sessionIds: [...previous.sessionIds]} : {}),
-    ...(previous.story ? {story: {vocab: previous.story.vocab ? new Map(previous.story.vocab) : null, topics: previous.story.topics ? previous.story.topics.map(t => ({...t, words: new Map([...t.words].map(([w, c]) => [w, [c[0], c[1]] as [number, number]]))})) : null}} : {})};
+    ...(previous.story ? {story: {vocab: previous.story.vocab ? new Map([...previous.story.vocab].map(([d, m]) => [d, new Map(m)])) : null, topics: previous.story.topics ? previous.story.topics.map(t => ({...t, words: new Map([...t.words].map(([w, c]) => [w, [c[0], c[1]] as [number, number]]))})) : null}} : {})};
   delete facts.resume;
   const b = makeBuilder(previous.file, previous.harness as NativeHarness, stat.size, stat.mtimeMs);
   b.facts = facts;
@@ -840,8 +840,8 @@ export interface HistoryEntry {
   q?: string;
 }
 
-/** Story word counters of history.jsonl, per Claude session. */
-export interface HistoryCounters {project: string | null; vocab: Map<string, number>; topics: Map<string, {night: number; day: number; words: Map<string, [number, number]>}>}
+/** Story word counters of history.jsonl, per Claude session, keyed by local date ('' = undated). */
+export interface HistoryCounters {project: string | null; vocab: Map<string, Map<string, number>>; topics: Map<string, {night: number; day: number; words: Map<string, [number, number]>}>}
 
 export interface HistoryData {
   entries: HistoryEntry[];
@@ -938,13 +938,17 @@ export function parseHistory(raw: string, options: ExtractOptions = {}, into: Hi
       const key = entry.sessionId ?? '';
       let c = into.counters.get(key);
       if (!c) { c = {project: entry.project, vocab: new Map(), topics: new Map()}; into.counters.set(key, c); }
-      for (const w of vocabularyWords(text)) c.vocab.set(w, (c.vocab.get(w) ?? 0) + 1);
-      if (entry.at !== null) {
-        const {hour, month} = clock(entry.at);
+      const local = entry.at !== null ? clock(entry.at) : null;
+      const date = local?.day ?? '';
+      let v = c.vocab.get(date);
+      if (!v) { v = new Map(); c.vocab.set(date, v); }
+      for (const w of vocabularyWords(text)) v.set(w, (v.get(w) ?? 0) + 1);
+      if (local) {
+        const {hour} = local;
         const slot = hour < 5 ? 0 : hour >= 9 && hour < 19 ? 1 : -1;
         if (slot >= 0) {
-          let bag = c.topics.get(month);
-          if (!bag) { bag = {night: 0, day: 0, words: new Map()}; c.topics.set(month, bag); }
+          let bag = c.topics.get(date);
+          if (!bag) { bag = {night: 0, day: 0, words: new Map()}; c.topics.set(date, bag); }
           if (slot === 0) bag.night++; else bag.day++;
           for (const w of topicWords(text)) { let n = bag.words.get(w); if (!n) { n = [0, 0]; bag.words.set(w, n); } n[slot as 0 | 1]++; }
         }

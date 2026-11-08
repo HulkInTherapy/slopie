@@ -10,6 +10,7 @@ import path from 'node:path';
 import {sourceId} from '../memory/source-identity.js';
 import {digest} from './source.js';
 import {PriceBook, usageCost} from './pricing.js';
+import {canonicalModel} from './model-names.js';
 import type {HistoryEntry, PromptFact, SourceFacts, UsageFact} from './extract.js';
 import type {AuditConversation, AuditEvidenceRoute, AuditHarness, AuditPrompt} from './contracts.js';
 import type {ModelAggregate} from './launch-contracts.js';
@@ -222,10 +223,12 @@ export function aggregate(input: AggregateInput): Aggregate {
     const fast = u.tier === 'fast' || (s.harness === 'codex' && u.tier === undefined && input.codexFastDefault);
     const cost = price ? usageCost(u, price, fast) : 0;
     if (price) costOf.set(u, cost); else { unpricedResponses++; unpricedTokens += total(u); }
-    const name = u.model ?? 'unknown';
+    // Rows group aliases of one model (date stamps, provider/region prefixes); pricing above used the raw endpoint.
+    const name = u.model ? canonicalModel(u.model) : 'unknown';
     let row = models.get(name);
     if (!row) {
       const provider = u.provider && !u.provider.includes('vertex') ? u.provider : s.harness === 'codex' ? 'openai' : name.startsWith('claude') ? 'anthropic' : u.provider;
+      // (A provider-prefixed Claude id is 'claude-…' once canonical, so it is attributed to Anthropic too.)
       row = {
         id: `model:${name}`, provider, model: name, canonicalModel: price ? `${provider ?? 'unknown'}/${price.pricedAs}` : null,
         inputTokens: 0, outputTokens: 0, totalTokens: 0, knownTokens: 0, conversations: 0, tokenShare: null, conversationShare: 0,
