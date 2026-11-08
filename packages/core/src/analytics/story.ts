@@ -21,6 +21,8 @@ export interface StoryInput {
   tokens: number;
   offline: boolean;
   now?: Date;
+  /** Non-interactive runs (codex exec / SDK): cost counted, not chats. */
+  automatedRuns?: number;
 }
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -37,7 +39,7 @@ export function buildStory(input: StoryInput): {story: AuditStory; detectorsMs: 
     version: STORY_VERSION,
     state: rows.length === 0 ? 'empty' : rows.length < 200 ? 'thin' : 'ready',
     timezone: input.timezone, generatedAt: (input.now ?? new Date()).toISOString(),
-    totals: totals(rows, input.tokens),
+    totals: {...totals(rows, input.tokens), automatedRuns: input.automatedRuns ?? 0},
     rhythm: rhythm(rows, shifted),
     swearTimeline: swearTimeline(rows),
     models: models(rows),
