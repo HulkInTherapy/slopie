@@ -2,7 +2,7 @@
  * Session-start hook (Claude Code SessionStart, Codex SessionStart, pi session_start):
  *   - keeps the records current (an incremental `slopie sync`; the first full build runs detached), and
  *   - on resume / after compaction, prints a continuation pointer of at most 10 lines: this session's id,
- *     its record path, and the exact read / search commands. No summary and no model call.
+ *     its record path, and the exact `slopie search` commands. No summary and no model call.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -52,10 +52,10 @@ export function continuationPointer(sessionId: string, harness: string, recordsD
   const lines = [
     `slopie: this ${harness} session (${sessionId}) continues earlier work; its full transcript is a plain-text record.`,
     file ? `record: ${file}` : `record: not written yet (run: slopie sync); index: ${path.join(recordsDir, 'INDEX.tsv')}`,
-    `latest turns:  slopie read ${sessionId} --from -30`,
-    `inside it:     slopie search "<words>" --session ${sessionId}    exact text: slopie grep ${sessionId} "<text>"`,
+    `latest turns:  slopie search --session ${sessionId} --turns -30`,
+    `inside it:     slopie search "<words>" --session ${sessionId}`,
   ];
-  if (rec?.project) lines.push(`same project:  slopie threads --project ${JSON.stringify(rec.project)}`);
+  if (rec?.project) lines.push(`same project:  slopie search --project ${JSON.stringify(rec.project)}`);
   if (file) lines.push(`or with the shell: rg -n -i '<term>' ${JSON.stringify(file)} ; sed -n 'a,bp' ${JSON.stringify(file)}`);
   lines.push('Retrieve exact lines as you need them; do not guess what happened earlier.');
   return lines.slice(0, 10);

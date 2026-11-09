@@ -81,20 +81,37 @@ export class Engine {
 
   close(): void { this.db.close(); }
 
-  // ------------------------------------------------------------ call syntax
+  // ------------------------------------------------------------ call syntax (one tool: search)
+  private call(a: {query?: string; session?: string; turns?: string; project?: string; since?: string}): string {
+    if (this.style === 'mcp') {
+      const parts = Object.entries(a).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${q(v!)}`);
+      return `search(${parts.join(', ')})`;
+    }
+    const parts = ['slopie search'];
+    if (a.query !== undefined) parts.push(a.query === '...' ? '<text>' : shq(a.query));
+    if (a.session !== undefined) parts.push('--session', a.session);
+    if (a.turns !== undefined) parts.push('--turns', a.turns);
+    if (a.project !== undefined) parts.push('--project', shq(a.project));
+    if (a.since !== undefined) parts.push('--since', a.since);
+    return parts.join(' ');
+  }
   private readCall(id: string, from: number, to?: number, fromChar?: number): string {
-    if (this.style === 'mcp') return `read(session=${q(id)}, from_turn=${from}${to !== undefined ? `, to_turn=${to}` : ''}${fromChar ? `, from_char=${fromChar}` : ''})`;
-    return `slopie read ${id} --from ${from}${to !== undefined ? ` --to ${to}` : ''}${fromChar ? ` --from-char ${fromChar}` : ''}`;
+    return this.call({session: id, turns: fromChar ? `${from}@${fromChar}` : to !== undefined ? `${from}-${to}` : `${from}`});
+  }
+  private grepCall(id: string, pattern: string | null, offset?: number, regex = false): string {
+    if (regex || offset !== undefined) {
+      // Hidden 1.9 alias forms (slopie grep --regex / --offset); the one tool has no such flags.
+      if (this.style === 'mcp') return `grep(session=${q(id)}, pattern=${pattern === null ? '...' : q(pattern)}${regex ? ', regex=true' : ''}${offset !== undefined ? `, offset=${offset}` : ''})`;
+      return `slopie grep ${id} ${pattern === null ? '<pattern>' : shq(pattern)}${regex ? ' --regex' : ''}${offset !== undefined ? ` --offset ${offset}` : ''}`;
+    }
+    return this.call({query: pattern ?? '...', session: id});
   }
   private moreThreads(offset: number): string {
     return this.style === 'mcp' ? `threads(..., offset=${offset})` : `slopie threads ... --offset ${offset}`;
   }
-  private grepCall(id: string, pattern: string | null, offset?: number, regex = false): string {
-    if (this.style === 'mcp') return `grep(session=${q(id)}, pattern=${pattern === null ? '...' : q(pattern)}${regex ? ', regex=true' : ''}${offset !== undefined ? `, offset=${offset}` : ''})`;
-    return `slopie grep ${id} ${pattern === null ? '<pattern>' : shq(pattern)}${regex ? ' --regex' : ''}${offset !== undefined ? ` --offset ${offset}` : ''}`;
-  }
   private name(tool: 'search' | 'threads' | 'read' | 'grep'): string {
-    return this.style === 'mcp' ? `${tool}(...)` : `slopie ${tool}`;
+    if (tool === 'threads') return this.call({project: '...'});
+    return this.style === 'mcp' ? 'search(query=...)' : 'slopie search <words>';
   }
 
   // ------------------------------------------------------------ helpers
@@ -104,7 +121,7 @@ export class Engine {
     if (!id) return {s: null, err: 'session is required'};
     let hits = [...this.sessions.values()].filter(s => s.id === id || s.key.endsWith(':' + id));
     if (!hits.length && id.length >= 6) hits = [...this.sessions.values()].filter(s => s.id.startsWith(id) || s.key.split(':').slice(1).join(':').startsWith(id));
-    if (!hits.length) return {s: null, err: `no session matches '${id}'. Use ${this.name('threads')} or ${this.name('search')} to find ids.`};
+    if (!hits.length) return {s: null, err: `no session matches '${id}'. Find ids with ${this.name('search')} or ${this.name('threads')}.`};
     hits.sort((a, b) => Number(a.parent_kind === 'subagent') - Number(b.parent_kind === 'subagent') || (b.n_turns ?? 0) - (a.n_turns ?? 0));
     return {s: hits[0]!, err: null};
   }
@@ -199,9 +216,9 @@ export class Engine {
     if (!o.query || !o.query.trim()) return 'query is required.';
     let keys: Set<string> | null;
     try { keys = this.filters(o); } catch (e) { return (e as Error).message; }
-    if (keys && !keys.size) return `No threads match those filters (project/harness/time). Try ${this.name('threads')} to see what exists.`;
+    if (keys && !keys.size) return `No threads match those filters (project/harness/time). See what exists: ${this.name('threads')}`;
     const cand = this.rank(o.query, keys, o.since, o.until, o.session);
-    if (!cand.length) return `No passages matched. Try other words (the ones the user or agent would have typed), drop filters, or list ${this.name('threads')} to browse by project and date.`;
+    if (!cand.length) return `No passages matched. Try other words (the ones the user or agent would have typed), drop filters, or browse threads by project and date: ${this.name('threads')}`;
     const out: Row[] = [];
     const per = new Map<string, number>();
     for (const r of cand) {
@@ -227,8 +244,70 @@ export class Engine {
     const threadsAll = new Set(cand.map(r => r.skey)).size, shown = new Set(out.map(r => r.skey)).size;
     const more = threadsAll - shown;
     lines.push(`(${out.length} hits shown; ${cand.length} candidates across ${threadsAll} threads${more > 0 ? `, ${more} more threads not shown` : ''}; ${Date.now() - t0} ms.) `
-      + `If these miss: rephrase with words the hits use, add project/since filters, or raise k. For every occurrence of an exact string in one thread use ${this.grepCall('<id>', null).replace('"<id>"', '...')}.`);
+      + 'If these miss: rephrase with words the hits use, or add project/since filters.');
+    const top = this.sessions.get(out[0]!.skey)!;
+    lines.push(`Next: ${this.readCall(top.id, Math.max(1, out[0]!.n - 2), out[0]!.n + 4)} reads around hit 1; ${this.grepCall(top.id, o.query.trim())} lists every match inside that thread.`);
     return lines.join('\n');
+  }
+
+  // ------------------------------------------------------------ the one tool
+  /**
+   * `search` (MCP) / `slopie search` (CLI): one entry point for every lookup.
+   *   query                 ranked passages across every thread (project/harness/since/until filter them)
+   *   session [+ turns]     read that thread's turns ("120-160", "-30" = the last 30, "120" = from 120)
+   *   query + session       every exact match inside that thread, then the best passages with the words
+   *   neither               list threads, newest first (project/harness/since/until filter them)
+   */
+  find(o: {query?: string; session?: string; turns?: string | number; project?: string; harness?: string; since?: string; until?: string; k?: number}): string {
+    const text = (o.query ?? '').trim();
+    const turns = o.turns === undefined || o.turns === null || o.turns === '' ? null : String(o.turns).trim();
+    if (o.session) {
+      if (text) return this.inside(o.session, text);
+      const r = parseTurns(turns);
+      if (!r) return `turns must look like "120-160", "-30" (the last 30) or "120" (from turn 120). Example: ${this.call({session: o.session, turns: '-30'})}`;
+      return this.read({session: o.session, from_turn: r.from, to_turn: r.to, from_char: r.char});
+    }
+    if (turns) return `turns needs a session. Example: ${this.call({session: '<id>', turns: '-30'})}`;
+    if (text) return this.search({query: text, k: o.k, project: o.project, harness: o.harness, since: o.since, until: o.until});
+    return this.list({project: o.project, harness: o.harness, since: o.since, until: o.until});
+  }
+
+  /** Threads newest first (up to 60), each with its opening ask; ends with the call that reads the newest one's end. */
+  list(o: {project?: string; harness?: string; since?: string; until?: string}): string {
+    const out = this.threads({...o, limit: 60}).split('\n').filter(l => !l.startsWith('[more: ') && !l.startsWith('    last: '));
+    const m = /^(\d+) threads/.exec(out[0] ?? '');
+    const total = m ? Number(m[1]) : 0;
+    if (!total) return `No threads match those filters. Drop one, or search by words: ${this.name('search')}`;
+    if (total > 60) out.push(`(${total - 60} older threads not shown: narrow with since/until, or add a query.)`);
+    const first = /^- (\S+) \|/.exec(out[1] ?? '');
+    if (first) out.push(`Next: ${this.call({session: first[1]!, turns: '-30'})} reads the end of the newest thread.`);
+    return out.join('\n');
+  }
+
+  /** query + session: every exact (case-insensitive) match in reading order, then the best passages with the words. */
+  inside(session: string, text: string): string {
+    const {s, err} = this.resolve(session);
+    if (err || !s) return err!;
+    const rx = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const {hits, partial} = this.grepHits(s, rx);
+    const MAX = 60;
+    const parent = s.parent && this.hitParent ? `, ${relation(s.parent_kind, s.parent)}` : '';
+    const out = [`${hits.length} exact matches for ${pyRepr(text)} in ${s.harness} ${s.id} (${s.n_turns} turns, reading order${parent}):`, ...hits.slice(0, MAX).map(h => h.line)];
+    if (hits.length > MAX) out.push(`[${hits.length - MAX} more matches from t${hits[MAX]!.n} on: ${this.readCall(s.id, hits[MAX]!.n, Math.min(s.n_turns, hits[MAX]!.n + 39))}, or use more specific text]`);
+    if (partial) out.push(`[partial scan: ${partial}.]`);
+    let firstN = hits[0]?.n ?? 0;
+    if (hits.length < 5 && terms(text).length > 1) {
+      const cand = this.rank(text, new Set([s.key]), undefined, undefined, s.id).filter(r => !hits.some(h => h.n === r.n)).slice(0, 5);
+      if (cand.length) {
+        out.push(`Passages with these words${hits.length ? '' : ' (no exact match)'}:`);
+        const ts = terms(text);
+        firstN ||= cand[0]!.n;
+        for (const r of cand) out.push(`t${r.n} ${r.role}${r.tool ? ' ' + r.tool : ''} ${shortTs(r.ts)}: ${snippet(r.body, ts, 240)}`);
+      }
+    }
+    if (firstN) out.push(`Next: ${this.readCall(s.id, Math.max(1, firstN - 2), Math.min(s.n_turns, firstN + 4))} reads around t${firstN}.`);
+    else out.push(`No match in this thread. Try other words, or search every thread: ${this.call({query: text})}`);
+    return out.join('\n');
   }
 
   // ------------------------------------------------------------ read
@@ -249,7 +328,8 @@ export class Engine {
     const ch = JSON.parse(s.children || '[]') as {id: string; kind: string}[];
     if (ch.length) out.push('children: ' + ch.slice(0, 20).map(x => `${x.id} (${x.kind})`).join(', ') + (ch.length > 20 ? ` … +${ch.length - 20}` : ''));
     // max_chars is the whole reply: header lines, turns and the footer (room for the longest footer is kept).
-    const footerRoom = `[turn ${N} of ${N} cut at character ${99999999} of ${99999999}; turns ${N}-${N} of ${N}. Continue: ${this.readCall(s.id, N, undefined, 99999999)}]`.length + 1;
+    const footerRoom = Math.max(`[turn ${N} of ${N} cut at character ${99999999} of ${99999999}; turns ${N}-${N} of ${N}. Continue: ${this.readCall(s.id, N, undefined, 99999999)}]`.length,
+      `[turns ${N}-${N} of ${N}; end of thread. Later threads in this project: ${this.call({project: s.project ?? '', since: '2026-01-01'})}]`.length) + 1;
     let used = out.reduce((n, l) => n + l.length + 1, 0);
     let last = a - 1;
     let cut: {n: number; at: number; of: number} | null = null;
@@ -270,8 +350,8 @@ export class Engine {
       break;
     }
     if (cut) out.push(`[turn ${cut.n} cut at character ${cut.at} of ${cut.of}; ${last >= a ? `turns ${a}-${last}, then ` : ''}part of t${cut.n} of ${N}. Continue: ${this.readCall(s.id, cut.n, undefined, cut.at)}]`);
-    else if (last < N) out.push(`[turns ${a}-${last} of ${N}. Continue: ${this.readCall(s.id, last + 1)}]`);
-    else out.push(`[turns ${a}-${last} of ${N}; end of thread.]`);
+    else if (last < N) out.push(`[turns ${a}-${last} of ${N}. Continue: ${this.readCall(s.id, last + 1, Math.min(N, last + 40))}]`);
+    else out.push(`[turns ${a}-${last} of ${N}; end of thread.${s.project ? ` Later threads in this project: ${this.call({project: s.project, since: (s.end ?? '').slice(0, 10) || undefined})}` : ''}]`);
     return out.join('\n');
   }
 
@@ -320,7 +400,7 @@ export class Engine {
       if (ch.length) extra.push(`${ch.length} child threads`);
       if (s.archive_only) extra.push('deleted from harness, archived copy');
       if (firstHit.has(s.key)) extra.push(`first match t${firstHit.get(s.key)}`);
-      out.push(`- ${s.id} | ${s.harness} | ${s.project || '?'} | ${shortTs(s.start)} → ${shortTs(s.end)} | ${s.n_turns} turns | "${(s.title ?? '').trim().slice(0, 70)}"` + (extra.length ? ` | ${extra.join('; ')}` : ''));
+      out.push(`- ${s.id} | ${s.harness} | ${s.project || '?'} | ${shortTs(s.start)} → ${shortTs(s.end)} | ${s.n_turns} turns | "${ws((s.title ?? '').trim()).slice(0, 70)}"` + (extra.length ? ` | ${extra.join('; ')}` : ''));
       out.push(`    ask: ${(s.first_user ?? '').slice(0, 110)}`);
       const la = s.last_assistant ?? '';
       out.push(`    last: ${la.slice(Math.max(0, la.length - 110))}`);
@@ -354,13 +434,8 @@ export class Engine {
     return {turns, partial: `searched the record only (${why}); text the record shortens was not searched`};
   }
 
-  grep(o: {session: string; pattern: string; regex?: boolean; offset?: number; max_hits?: number}): string {
-    const {s, err} = this.resolve(o.session);
-    if (err || !s) return err!;
-    if (!o.pattern) return 'pattern is required';
-    let rx: RegExp;
-    try { rx = new RegExp(o.regex ? o.pattern : o.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); } catch (e) { return `bad regex: ${(e as Error).message}`; }
-    const hits: string[] = [];
+  private grepHits(s: S, rx: RegExp): {hits: {n: number; line: string}[]; partial: string | null} {
+    const hits: {n: number; line: string}[] = [];
     const {turns, partial} = this.fullTurns(s);
     turns.slice(0, s.n_turns).forEach((t, i) => {
       for (const field of ['text', 'output'] as const) {
@@ -371,10 +446,21 @@ export class Engine {
         while ((m = rx.exec(v))) {
           if (m[0] === '') { rx.lastIndex++; continue; }
           const a = Math.max(0, m.index - 140), b = Math.min(v.length, m.index + m[0].length + 140);
-          hits.push(`t${i + 1} ${t.role}${t.role === 'TOOL' ? ' ' + (t.tool ?? '') : ''}${field === 'output' ? ' (output)' : ''} ${shortTs(t.ts)}: ` + (a ? '…' : '') + ws(v.slice(a, b)) + (b < v.length ? '…' : ''));
+          hits.push({n: i + 1, line: `t${i + 1} ${t.role}${t.role === 'TOOL' ? ' ' + (t.tool ?? '') : ''}${field === 'output' ? ' (output)' : ''} ${shortTs(t.ts)}: ` + (a ? '…' : '') + ws(v.slice(a, b)) + (b < v.length ? '…' : '')});
         }
       }
     });
+    return {hits, partial};
+  }
+
+  grep(o: {session: string; pattern: string; regex?: boolean; offset?: number; max_hits?: number}): string {
+    const {s, err} = this.resolve(o.session);
+    if (err || !s) return err!;
+    if (!o.pattern) return 'pattern is required';
+    let rx: RegExp;
+    try { rx = new RegExp(o.regex ? o.pattern : o.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); } catch (e) { return `bad regex: ${(e as Error).message}`; }
+    const {hits: found, partial} = this.grepHits(s, rx);
+    const hits = found.map(h => h.line);
     const offset = Math.max(0, Math.trunc(Number(o.offset ?? 0)) || 0);
     const maxHits = Math.max(1, Math.min(Math.trunc(Number(o.max_hits ?? 40)) || 40, 200));
     const page = hits.slice(offset, offset + maxHits);
@@ -394,4 +480,13 @@ export class Engine {
 function pyRepr(s: string): string {
   const quote = s.includes("'") && !s.includes('"') ? '"' : "'";
   return quote + s.replace(/\\/g, '\\\\').replace(new RegExp(quote, 'g'), `\\${quote}`).replace(/\n/g, '\\n') + quote;
+}
+
+/** "120-160", "-30" (the last 30), "120" or "120-" (from 120), "t120-t160", "120@4000" (from character 4000 of t120). Null when malformed. */
+export function parseTurns(t: string | null): {from: number | null; to: number | null; char: number | null} | null {
+  if (t === null) return {from: null, to: null, char: null};
+  const m = /^\s*(-?)t?(\d+)\s*(?:@\s*(\d+))?\s*(?:(?:-|\.\.|–|to)\s*t?(\d+)?)?\s*$/i.exec(t);
+  if (!m) return null;
+  const from = Number(m[2]) * (m[1] ? -1 : 1);
+  return {from, to: m[4] !== undefined && !m[1] ? Number(m[4]) : null, char: m[3] !== undefined ? Number(m[3]) : null};
 }

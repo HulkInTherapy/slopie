@@ -9,12 +9,13 @@ import { LEGACY_WHAT, legacyChanges, type LegacyTarget } from './setup-legacy.js
 /**
  * `slopie setup`: teach the user's agents the records.
  *
- *   claude   ~/.claude/skills/slopie-memory/SKILL.md (the note) + a SessionStart hook in ~/.claude/settings.json
- *   codex    a marked block in ~/.codex/AGENTS.md (the note)
- *   pi       ~/.pi/agent/skills/slopie-memory/SKILL.md (the note) + ~/.pi/agent/extensions/slopie.ts (sync on start;
+ *   claude   ~/.claude/skills/slopie/SKILL.md (the one skill) + a SessionStart hook in ~/.claude/settings.json
+ *   codex    a marked `slopie` block in ~/.codex/AGENTS.md (the same text)
+ *   pi       ~/.pi/agent/skills/slopie/SKILL.md (the one skill) + ~/.pi/agent/extensions/slopie.ts (sync on start;
  *            the continuation pointer after a resume or compaction, injected with pi.sendMessage)
  *
- * The note is R5's NOTE_B verbatim with the records path filled in, plus one line on the CLI tools. Every write
+ * The skill body is the evaluated note (records format, answer protocol, `slopie search`). A pre-release
+ * `slopie-memory` skill is removed. Every write
  * shows its diff first, asks (or takes --yes), keeps a backup of a file it changes, and never touches content it
  * did not write. `--remove` takes out exactly what it put in.
  *
@@ -34,10 +35,14 @@ export interface SetupOptions extends GlobalOptions {
   note?: boolean;
 }
 
-const BEGIN = '<!-- slopie:memory:begin -->';
-const END = '<!-- slopie:memory:end -->';
-const SKILL = 'slopie-memory';
-const DESCRIPTION = "The user's past coding-agent sessions (Claude Code, Codex, pi; every project; including sessions the harness deleted) as plain-text records you can search with rg/sed or the slopie CLI. Use whenever the user refers to earlier work, a past session, decision, error or file, or when you continue a session.";
+const BEGIN = '<!-- slopie:begin -->';
+const END = '<!-- slopie:end -->';
+/** The 1.9.0 pre-release markers: a block between them is replaced too. */
+const OLD_MARKERS = ['<!-- slopie:memory:begin -->', '<!-- slopie:memory:end -->'] as const;
+export const SKILL = 'slopie';
+/** The 1.9.0 pre-release skill name; setup removes a skill of this name that it wrote. */
+const OLD_SKILL = 'slopie-memory';
+export const SKILL_DESCRIPTION = 'Search everything you and the user did in past coding sessions (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session.';
 
 interface Change {
   client: SetupClient | LegacyTarget;
@@ -50,7 +55,12 @@ interface Change {
 }
 
 export function skillText(recordsDir: string): string {
-  return `---\nname: ${SKILL}\ndescription: ${JSON.stringify(DESCRIPTION)}\n---\n\n${agentNote(recordsDir)}\n`;
+  return `---\nname: ${SKILL}\ndescription: ${JSON.stringify(SKILL_DESCRIPTION)}\n---\n\n${agentNote(recordsDir)}\n`;
+}
+
+/** The Codex AGENTS.md block: the skill's name and description as a heading, then the same body. */
+export function agentsBlock(recordsDir: string): string {
+  return `## ${SKILL}\n${SKILL_DESCRIPTION}\n\n${agentNote(recordsDir)}`;
 }
 
 /** The argv that runs this slopie: `slopie` when it is on PATH, else this exact node + entry. */
@@ -71,10 +81,14 @@ function read(file: string): string | null {
   try { return fs.readFileSync(file, 'utf8'); } catch { return null; }
 }
 
+function cutBlock(cur: string, begin: string, end: string): string {
+  const a = cur.indexOf(begin), b = cur.indexOf(end);
+  return a >= 0 && b > a ? (cur.slice(0, a).replace(/\n+$/, '') + cur.slice(b + end.length).replace(/^\n+/, '\n')).replace(/^\n+$/, '') : cur;
+}
+
 function withBlock(text: string | null, block: string | null): string | null {
   const cur = text ?? '';
-  const a = cur.indexOf(BEGIN), b = cur.indexOf(END);
-  const without = a >= 0 && b > a ? (cur.slice(0, a).replace(/\n+$/, '') + cur.slice(b + END.length).replace(/^\n+/, '\n')).replace(/^\n+$/, '') : cur;
+  const without = cutBlock(cutBlock(cur, BEGIN, END), ...OLD_MARKERS);
   if (!block) return without.trim() ? without.replace(/\n*$/, '\n') : text === null ? null : '';
   return (without.trim() ? without.replace(/\n*$/, '\n\n') : '') + `${BEGIN}\n${block}\n${END}\n`;
 }
@@ -139,19 +153,26 @@ function plan(o: SetupOptions, clients: readonly SetupClient[], others = false):
     const before = read(file);
     if (before !== after && !(before === null && after === null)) out.push({client, file, what, before, after});
   };
+  const oldSkill = (client: SetupClient, skills: string) => {
+    const file = path.join(skills, OLD_SKILL, 'SKILL.md');
+    const before = read(file);
+    if (before !== null && before.startsWith(`---\nname: ${OLD_SKILL}\n`)) out.push({client, file, what: `old ${OLD_SKILL} skill`, before, after: null});
+  };
   for (const c of clients) {
     if (c === 'claude') {
       const dir = paths.claudeDir(o.claudeDir);
       add(c, path.join(dir, 'skills', SKILL, 'SKILL.md'), 'skill', o.remove ? null : skillText(records));
+      oldSkill(c, path.join(dir, 'skills'));
       const settings = path.join(dir, 'settings.json');
       add(c, settings, 'SessionStart hook', claudeSettings(read(settings), o.remove ? null : hookCommand('claude')));
     } else if (c === 'codex') {
       const home = paths.codexDir(o.codexDir);
       const file = path.join(home, 'AGENTS.md');
-      add(c, file, 'AGENTS.md note', withBlock(read(file), o.remove ? null : agentNote(records)));
+      add(c, file, 'AGENTS.md slopie block', withBlock(read(file), o.remove ? null : agentsBlock(records)));
     } else {
       const root = path.join(paths.piDir(o.piDir), 'agent');
       add(c, path.join(root, 'skills', SKILL, 'SKILL.md'), 'skill', o.remove ? null : skillText(records));
+      oldSkill(c, path.join(root, 'skills'));
       add(c, path.join(root, 'extensions', 'slopie.ts'), 'extension', o.remove ? null : piExtension());
     }
   }
@@ -229,11 +250,12 @@ export async function runSetup(o: SetupOptions): Promise<number> {
       c.after = c.transform(now);
       if (c.after === now) continue;
     }
-    if (c.before !== null && !c.file.includes(`${path.sep}${SKILL}${path.sep}`) && !c.file.endsWith(`${path.sep}slopie.ts`)) fs.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
+    const ours = [SKILL, OLD_SKILL].some(k => c.file.includes(`${path.sep}${k}${path.sep}`)) || c.file.endsWith(`${path.sep}slopie.ts`);
+    if (c.before !== null && !ours) fs.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
     if (c.after === null) {
       fs.rmSync(c.file, {force: true});
       const dir = path.dirname(c.file);
-      if (path.basename(dir) === SKILL) fs.rmSync(dir, {recursive: true, force: true});
+      if ([SKILL, OLD_SKILL].includes(path.basename(dir))) fs.rmSync(dir, {recursive: true, force: true});
     } else {
       fs.mkdirSync(path.dirname(c.file), {recursive: true});
       if (c.transform) {

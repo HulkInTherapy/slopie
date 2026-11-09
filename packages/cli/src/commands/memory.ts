@@ -1,5 +1,5 @@
 /**
- * The records verbs: sync, search, read, threads, grep, mcp, hook, forget.
+ * The records verbs: sync, search, mcp, hook, forget (read, threads and grep remain as hidden aliases).
  */
 import fs from 'node:fs';
 import process from 'node:process';
@@ -75,8 +75,9 @@ function withEngine(o: RecordsOptions, fn: (e: Engine) => string): number {
 
 const num = (v: unknown) => (v === undefined || v === null || v === '' ? undefined : Number(v));
 
-export function runSearch(o: RecordsOptions & {query: string; k?: unknown; project?: string; harness?: string; since?: string; until?: string; session?: string}): number {
-  return withEngine(o, e => e.search({query: o.query, k: num(o.k), project: o.project, harness: o.harness, since: o.since, until: o.until, session: o.session}));
+/** `slopie search`: the one lookup verb (passages, a thread's turns, matches inside a thread, or a thread list). */
+export function runSearch(o: RecordsOptions & {query?: string; k?: unknown; project?: string; harness?: string; since?: string; until?: string; session?: string; turns?: string}): number {
+  return withEngine(o, e => e.find({query: o.query, k: num(o.k), project: o.project, harness: o.harness, since: o.since, until: o.until, session: o.session, turns: o.turns}));
 }
 
 export function runRead(o: RecordsOptions & {session: string; from?: unknown; to?: unknown; maxChars?: unknown; fromChar?: unknown}): number {

@@ -63,7 +63,7 @@ function main(argv: string[]): void {
   addGlobals(
     program
       .name(publicCommandName)
-      .description('audit your coding-agent history, and keep every session as plain text your agents can search')
+      .description('search your past coding-agent sessions. Plus `slopie audit`, a Wrapped of your year.')
       .version(VERSION, '-v, --version')
       .showHelpAfterError(`(run  ${publicCommandName} --help  for the list of verbs)`),
   );
@@ -135,28 +135,30 @@ forget and ignore remove them.`);
   const search = addGlobals(records(
     program
       .command('search')
-      .description('find passages in every past session (ranked; each hit ends with the read command for it)')
-      .argument('<query...>', 'words or exact strings')
-      .addOption(new Option('-k <n>', 'passages to return (default 8, max 30)'))
-      .option('--project <text>', 'only sessions whose working directory contains this')
+      .description('search your past coding-agent sessions; every reply ends with the exact next command')
+      .argument('[query...]', 'words or exact text to find')
+      .option('--session <id>', 'one thread (id or 8+ char prefix): with a query, search inside it; without, read it')
+      .option('--turns <range>', 'with --session: turns to read, e.g. 120-160, or -30 for the last 30')
+      .option('--project <text>', 'only threads whose working directory contains this')
+      .option('--since <date>', 'only activity on or after this date')
+      .option('--until <date>', 'only activity on or before this date')
       .addOption(new Option('--harness <name>', 'only this harness').choices(['claude', 'codex', 'pi']))
-      .option('--since <iso>', 'only passages at or after this date/time')
-      .option('--until <iso>', 'only passages at or before this date/time')
-      .option('--session <id>', 'search inside one session (id or 8+ char prefix)'),
+      .addOption(new Option('-k <n>', 'passages to return (default 8, max 30)')),
   )).addHelpText('after', `
 example:
-  potsherd search pgbouncer pool size
-  potsherd search "ECONNREFUSED 5432" --project api --since 2026-10-01
-  potsherd search deploy --session 9c4d2f18`);
+  potsherd search "pgbouncer pool size"                      # passages, every thread
+  potsherd search "ECONNREFUSED" --session 9c4d2f18          # inside one thread
+  potsherd search --session 9c4d2f18 --turns -30             # read its last 30 turns
+  potsherd search --project api --since 2026-11-01           # list threads`);
   search.action((query: string[], opts: Record<string, unknown>) => {
     const o = globals(program, search, opts);
     void run(async () => runSearch({...o, ...rec(opts), query: query.join(' '), k: opts['k'], project: str(opts['project']), harness: str(opts['harness']),
-      since: str(opts['since']), until: str(opts['until']), session: str(opts['session'])}), o);
+      since: str(opts['since']), until: str(opts['until']), session: str(opts['session']), turns: str(opts['turns'])}), o);
   });
 
   const read = addGlobals(records(
     program
-      .command('read')
+      .command('read', {hidden: true})
       .description("read a past session's turns (tool output shortened); --from -30 reads the last 30")
       .argument('<session>', 'session id or 8+ char prefix')
       .addOption(new Option('--from <n>', 'first turn (negative counts from the end)'))
@@ -175,7 +177,7 @@ example:
 
   const threads = addGlobals(records(
     program
-      .command('threads')
+      .command('threads', {hidden: true})
       .description('list sessions newest first; --text lists EVERY thread containing all the words')
       .option('--project <text>', 'working-directory substring')
       .addOption(new Option('--harness <name>', 'only this harness').choices(['claude', 'codex', 'pi']))
@@ -199,7 +201,7 @@ example:
 
   const grep = addGlobals(records(
     program
-      .command('grep')
+      .command('grep', {hidden: true})
       .description('every occurrence of an exact string in ONE session, including full tool output')
       .argument('<session>', 'session id or 8+ char prefix')
       .argument('<pattern>', 'literal text (case-insensitive)')
@@ -217,7 +219,7 @@ example:
   const mcp = addGlobals(records(
     program
       .command('mcp')
-      .description('serve search, read, threads and grep as a stdio MCP server (for harnesses without a shell)'),
+      .description('serve the one search tool as a stdio MCP server (for harnesses without a shell)'),
   )).addHelpText('after', `
 example:
   potsherd mcp                                       # speaks MCP on stdin/stdout
@@ -403,11 +405,8 @@ async function run(fn: () => Promise<number>, o: GlobalOptions): Promise<void> {
 const VERBS: [string, string][] = [
   ['audit', 'your year with coding agents, from local history'],
   ['sync', 'every session as a plain-text record your agents can search'],
-  ['search', 'find passages in every past session'],
-  ['read', "read a session's turns; --from -30 for the end"],
-  ['threads', 'sessions by project and date; --text for every match'],
-  ['grep', 'every occurrence of a string in one session'],
-  ['setup', 'teach your agents the records (skill, AGENTS.md, pi)'],
+  ['search', 'search your past coding-agent sessions'],
+  ['setup', 'give your agents the one slopie skill'],
 ];
 const REST = ['mcp', 'doctor', 'ignore', 'unignore', 'forget', 'unforget'];
 
@@ -419,7 +418,7 @@ function tour(o: { width?: number; ascii?: boolean; color?: boolean; json?: bool
   }
   const wide = t.width >= 80;
   print('');
-  print(`  ${t.bold(publicCommandName)} ${t.dim(VERSION)}  ${t.dim(`${t.g('—', '-')} ${wide ? 'your coding-agent history, audited and kept as plain text' : 'audit and records'}`)}`);
+  print(`  ${t.bold(publicCommandName)} ${t.dim(VERSION)}  ${t.dim(`${t.g('—', '-')} ${wide ? 'search your past coding-agent sessions; plus a Wrapped of your year' : 'search your sessions'}`)}`);
   print('');
   for (const [verb, what] of VERBS) print(wide ? `    ${publicCommandName} ${verb.padEnd(8)} ${t.dim(what)}` : `    ${verb.padEnd(8)} ${t.dim(what.slice(0, Math.max(10, t.width - 14)))}`);
   print('');

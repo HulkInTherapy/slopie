@@ -1,17 +1,14 @@
 /**
- * The agent note that teaches the record format (R5 NOTE_B, verbatim, with the records path filled in),
- * plus one line about the `slopie` CLI tools over the same records.
+ * The agent note (the body of the one `slopie` skill): the record format (R5 NOTE_B as extended through R8, with the
+ * records path filled in), the R8 answer protocol, and one line on `slopie search`.
  */
 import {NOTE_B_TEMPLATE} from './spec.js';
 
-/** One line on the CLI tools (not part of the evaluated R5 note; appended after it, evaluated in R6). */
+/** One line on the `slopie search` CLI (R6 measured the four-verb form as arm P2; this one-verb form is arm P3). */
 export const CLI_LINE = 'If the slopie command is on PATH, start with it rather than rg: it searches these same records faster and more cheaply. '
-  + 'slopie search <words> [--project P --since D --session ID]; slopie read <id> --from N [--to M] (--from -30 reads the end); '
-  + 'slopie threads [--project P --since D --text W]; slopie grep <id> <text>. Each reply ends with the exact next command. Use rg/sed on the files for anything else.';
-
-/** The line R6 first measured (arm P2w): agents rarely used the CLI with it, so it saved nothing. */
-export const CLI_LINE_WEAK = 'Faster lookups over the same records, if the slopie command is available: slopie search <words> [--project P --since D], '
-  + 'slopie read <id> [--from N --to M], slopie threads [--project P --since D --text W], slopie grep <id> <text>; each reply ends with the exact next command.';
+  + 'slopie search <words> [--project P --since D] finds passages; slopie search <words> --session ID searches inside one thread; '
+  + 'slopie search --session ID --turns 120-160 reads turns (--turns -30 reads the end); slopie search --project P --since D lists threads. '
+  + 'Each reply ends with the exact next command. Use rg/sed on the files for anything else.';
 
 /** R5 §7 (iii): guidance for roster and latest-decision questions. Evaluated on the hard set; see R6. */
 export const GUIDANCE = "For 'which threads' questions, include threads that dispatched, coordinated or tracked the work, and long threads that started before the window but were active in it. "
