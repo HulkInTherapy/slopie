@@ -287,7 +287,13 @@ export function archetypeMetrics(rows: readonly StoryRow[]): ArchetypeMetrics {
   };
 }
 
-const band = (d: MetricDef, v: number) => Math.min(1, Math.max(0, (v - d.lo) / (d.hi - d.lo)));
+/**
+ * Soft band: reaching a metric's `hi` scores 0.8, twice the span scores 0.96, and only far-out values
+ * approach 1. A linear clamp saturated at `hi`, so ordinary heavy users maxed several archetypes at
+ * once and "legendary" stopped being rare (seen on a real 4.4k-prompt history: four archetypes ≥0.97).
+ */
+const SOFT = Math.log(5);
+const band = (d: MetricDef, v: number) => { const x = Math.max(0, (v - d.lo) / (d.hi - d.lo)); return 1 - Math.exp(-SOFT * x); };
 
 /** N/D night/day · S/V spec/vibe · L/R loyal/roaming · K/H kind/hot-headed (please+thanks vs swears). */
 export function archetypeCode(m: ArchetypeMetrics): string {

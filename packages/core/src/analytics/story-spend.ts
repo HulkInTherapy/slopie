@@ -11,8 +11,9 @@
  *               the conservative one). Spread over months by `dailyModelTokens` weight.
  *  - estimated: human prompts whose token logs no longer exist (history-only Claude prompts, on
  *               days the stats cache does not cover) × the per-prompt turn cost of Claude prompts
- *               with logs in the nearest months: median as the central scenario, p25–p75 as the
- *               range. Always labelled.
+ *               with logs in the nearest months. Turn costs are heavily right-skewed, so the range runs
+ *               from the median turn (a typical prompt) to the mean turn (what a large batch of prompts
+ *               tracks); the mean is the central scenario. Always labelled.
  *
  * Model share is observed only: models recorded on responses (and the stats cache's
  * per-model totals, which are recorded by Claude Code, not inferred). Prompts without an
@@ -217,7 +218,7 @@ export function buildSpend(input: SpendInput): {spend: StorySpend; modelShare: S
   // ---- estimate for unlogged prompts. They are history-only Claude prompts, so the basis is Claude
   // transcript prompts only: in each of the BASIS_MONTHS months nearest to the prompt's month that have
   // >=BASIS_MIN_PROMPTS priced Claude prompts, the cost of each prompt's turn (its responses and its
-  // subagents'). The pooled distribution's median is the central scenario, p25-p75 the range.
+  // subagents'). Range: median turn to mean turn of the pooled costs; the mean is the central scenario.
   const claudeCosts = new Map<string, number[]>();
   for (const r of rows) if (r.harness === 'claude' && r.costTotalUsd !== null) { const l = claudeCosts.get(r.month) ?? []; l.push(r.costTotalUsd); claudeCosts.set(r.month, l); }
   const basis = [...claudeCosts].filter(([, l]) => l.length >= BASIS_MIN_PROMPTS).map(([m, costs]) => ({m, i: monthIndex(m), costs})).sort((p, q) => p.i - q.i);
@@ -231,10 +232,11 @@ export function buildSpend(input: SpendInput): {spend: StorySpend; modelShare: S
       const near = [...basis].sort((p, q) => Math.abs(p.i - i) - Math.abs(q.i - i) || p.i - q.i).slice(0, BASIS_MONTHS);
       const costs = near.flatMap(b => b.costs).sort((x, y) => x - y);
       for (const b of near) used.add(b.m);
-      const p25 = quantile(costs, 0.25), p50 = quantile(costs, 0.5), p75 = quantile(costs, 0.75);
-      lows.push(p25); highs.push(p75);
-      low += n * p25; mid += n * p50; high += n * p75;
-      if (month) M(month).estimated += n * p50;
+      const mean = (xs: readonly number[]) => xs.reduce((x, y) => x + y, 0) / xs.length;
+      const avg = mean(costs), med = quantile(costs, 0.5);
+      lows.push(Math.min(med, avg)); highs.push(Math.max(med, avg));
+      low += n * Math.min(med, avg); mid += n * avg; high += n * Math.max(med, avg);
+      if (month) M(month).estimated += n * avg;
     };
     const dated = [...unloggedMonths].sort((x, y) => (x[0] < y[0] ? -1 : 1));
     for (const [m, n] of dated) apply(monthIndex(m), n, m);
@@ -247,8 +249,8 @@ export function buildSpend(input: SpendInput): {spend: StorySpend; modelShare: S
     estimated = {lowUsd: r2(low), midUsd: r2(mid), highUsd: r2(high), prompts: unloggedTotal,
       basis: `${unloggedTotal.toLocaleString('en-US')} Claude prompts survive only in history.jsonl, on days with no token logs and no stats-cache coverage. `
         + `Each is valued at what one Claude prompt with surviving logs cost (its turn, including subagents) in the ${BASIS_MONTHS} nearest months with at least ${BASIS_MIN_PROMPTS} such prompts (${months.join(', ')}): `
-        + `the median turn cost (about ${usd(mid / unloggedTotal)} per prompt) gives ${usd(mid)}; the 25th to 75th percentile turn costs `
-        + `(${usd(Math.min(...lows))} to ${usd(Math.max(...highs))} per prompt) give ${usd(low)} to ${usd(high)}. A scenario, not a measurement.`};
+        + `a typical (median) prompt turn gives ${usd(low)} and the average turn (about ${usd(mid / unloggedTotal)} per prompt; a few huge turns pull it up) gives ${usd(high)}. `
+        + `The truth for those deleted logs is unknown; this is a scenario range, not a measurement.`};
   }
 
   // ---- series

@@ -130,7 +130,7 @@ describe('unknown Codex identities stay unknown', () => {
 });
 
 describe('estimate for history-only prompts', () => {
-  it('values them at the median (p25–p75) Claude per-prompt turn cost of the nearest months with ≥50 priced prompts', async () => {
+  it('values them from the median to the mean Claude per-prompt turn cost of the nearest months with ≥50 priced prompts', async () => {
     const {dirs, options, write} = home();
     const rows: unknown[] = [];
     const costs: number[] = [];
@@ -149,9 +149,10 @@ describe('estimate for history-only prompts', () => {
     costs.sort((x, y) => x - y);
     const q = (p: number) => { const k = (costs.length - 1) * p, lo = Math.floor(k), hi = Math.ceil(k); return costs[lo]! + (costs[hi]! - costs[lo]!) * (k - lo); };
     expect(est.prompts).toBe(10);
-    expect(est.midUsd).toBeCloseTo(10 * q(0.5), 2);
-    expect(est.lowUsd).toBeCloseTo(10 * q(0.25), 2);
-    expect(est.highUsd).toBeCloseTo(10 * q(0.75), 2);
+    const mean = costs.reduce((x, y) => x + y, 0) / costs.length;
+    expect(est.lowUsd).toBeCloseTo(10 * Math.min(q(0.5), mean), 2);
+    expect(est.midUsd).toBeCloseTo(10 * mean, 2);
+    expect(est.highUsd).toBeCloseTo(10 * Math.max(q(0.5), mean), 2);
     expect(est.basis).toContain('2026-10');
     expect(est.basis).not.toContain('2026-08');
     expect(est.basis).toMatch(/median/);
