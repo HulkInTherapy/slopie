@@ -14,6 +14,7 @@ import * as paths from '../paths.js';
 import {stateDir} from './sync.js';
 import {INDEX_FILE} from './index-db.js';
 import {relation} from './format.js';
+import {scrub} from './scrub.js';
 
 export type CallStyle = 'mcp' | 'cli';
 
@@ -448,6 +449,7 @@ export class Engine {
       try {
         const sub = s.harness === 'claude' && s.parent_kind === 'subagent' ? s.parent : null;
         const parsed = readSession(s.best, s.harness as Harness, sub, {text: Number.MAX_SAFE_INTEGER, output: Number.MAX_SAFE_INTEGER});
+        // Raw, uncapped text: grepHits scrubs every field it matches before a snippet is cut from it.
         if (parsed && parsed.turns.length >= s.n_turns) return {turns: parsed.turns, partial: null};
         why = 'its raw source no longer matches the record';
       } catch (e) {
@@ -467,8 +469,13 @@ export class Engine {
     const {turns, partial} = this.fullTurns(s);
     turns.slice(0, s.n_turns).forEach((t, i) => {
       for (const field of ['text', 'output'] as const) {
-        const v = (field === 'text' ? t.text : t.output) ?? '';
-        if (!v) continue;
+        const raw = (field === 'text' ? t.text : t.output) ?? '';
+        if (!raw) continue;
+        rx.lastIndex = 0;
+        if (!rx.test(raw)) continue;
+        // Secrets masked and binary elided before any snippet is cut (the raw source is uncapped and unredacted);
+        // the turn list is untouched, so turn numbers match the record.
+        const v = scrub(raw);
         rx.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = rx.exec(v))) {

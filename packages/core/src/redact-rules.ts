@@ -53,6 +53,8 @@ export type SecretType =
   | 'openai'
   | 'anthropic'
   | 'npm'
+  | 'tavily'
+  | 'telegram'
   | 'jwt'
   | 'private-key'
   | 'basic-auth'
@@ -69,6 +71,8 @@ export const SECRET_TYPES: readonly SecretType[] = [
   'openai',
   'anthropic',
   'npm',
+  'tavily',
+  'telegram',
   'jwt',
   'private-key',
   'basic-auth',
@@ -637,6 +641,21 @@ export const RULES: Rule[] = [
     'secretlint-rule-aws AWSSecretAccessKey (MIT)',
     /aws[_.-]?(?:secret|access)[_.-]?(?:access[_.-]?)?key(?:[_.-]?id)?["'\s]{0,4}[:=]["'\s]{0,4}([A-Za-z0-9/+=]{40})(?![A-Za-z0-9/+=])/gi,
     { group: 1 },
+  ),
+  regexRule(
+    // Tavily search API keys (`tvly-` / `tvly-dev-`). Explicit, not left to the
+    // entropy rule: a 30-character key measured 4.39 bits and slipped under 4.5.
+    'tavily-api-key',
+    'tavily',
+    'slopie 1.9.1, in the shape of gitleaks vendor rules (MIT)',
+    /\btvly-(?:dev-)?[A-Za-z0-9_-]{16,}/g,
+  ),
+  regexRule(
+    // Telegram bot tokens: `<bot id>:AA<base64url>`.
+    'telegram-bot-token',
+    'telegram',
+    'gitleaks telegram-bot-api-token (MIT)',
+    /\b\d{8,12}:AA[A-Za-z0-9_-]{30,50}\b/g,
   ),
   regexRule(
     // gitleaks `gcp-api-key`; secretlint-rule-gcp `GCPApiKey`.
