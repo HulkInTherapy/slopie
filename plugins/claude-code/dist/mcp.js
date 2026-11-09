@@ -6793,7 +6793,7 @@ var require_formats = __commonJS({
     }
     var TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
     function getTime(strictTimeZone) {
-      return function time3(str) {
+      return function time4(str) {
         const matches = TIME.exec(str);
         if (!matches)
           return false;
@@ -6839,10 +6839,10 @@ var require_formats = __commonJS({
     }
     var DATE_TIME_SEPARATOR = /t|\s/i;
     function getDateTime(strictTimeZone) {
-      const time3 = getTime(strictTimeZone);
+      const time4 = getTime(strictTimeZone);
       return function date_time(str) {
         const dateTime = str.split(DATE_TIME_SEPARATOR);
-        return dateTime.length === 2 && date7(dateTime[0]) && time3(dateTime[1]);
+        return dateTime.length === 2 && date7(dateTime[0]) && time4(dateTime[1]);
       };
     }
     function compareDateTime(dt1, dt2) {
@@ -8659,13 +8659,13 @@ function time(args) {
   return new RegExp(`^${timeSource(args)}$`);
 }
 function datetime(args) {
-  const time3 = timeSource({ precision: args.precision });
+  const time4 = timeSource({ precision: args.precision });
   const opts = ["Z"];
   if (args.local)
     opts.push("");
   if (args.offset)
     opts.push(`([+-](?:[01]\\d|2[0-3]):[0-5]\\d)`);
-  const timeRegex2 = `${time3}(?:${opts.join("|")})`;
+  const timeRegex2 = `${time4}(?:${opts.join("|")})`;
   return new RegExp(`^${dateSource}T(?:${timeRegex2})$`);
 }
 var string = (params) => {
@@ -30317,803 +30317,37 @@ var ADDRESS_GATE = new RegExp("\\b(" + ADDRESS.map(esc2).join("|") + ")\\b", "g"
 var ADDRESS_INDEX = new Map(ADDRESS.map((a, i) => [a, i]));
 var TOPIC_STOP = new Set("the a an and or of to in on for is it that this i you we be are was with as at by from so if but not do can me my your our just what how all also now like then there they them these those one some any more much very really thing things something everything get got make made want need see know think going go let lets let's okay ok yes no up out into about will would should could have has had been being he she his her him its it's i'm don't can't isn't doesn't which who when where why here same other only even still well right good way time new use using done try give take put come look".split(" "));
 
+// packages/core/dist/analytics/copy-prune.js
+var SNIFF = 64 * 1024;
+var CLASSIFY_MAX_BYTES = 512 * 1024 * 1024;
+
 // packages/core/dist/analytics/extract.js
-var FACTS_VERSION = 5;
+var FACTS_VERSION = 8;
 var SUBAGENT_DIR = `${path12.sep}subagents${path12.sep}`;
 var CHUNK = 4 * 1024 * 1024;
 var MAX_LINE = 256 * 1024 * 1024;
 var RESUME_RECENT_MS = 48 * 36e5;
+var ZSTD_INPUT = 1024 * 1024;
+var ZSTD_OUTPUT = 1024 * 1024;
 
 // packages/core/dist/analytics/story-typos.js
 var SLANG_OK = new Set("intro sorta kinda gonna wanna gotta lemme dunno okay repo repos config configs env async auth admin todo todos dev devs infra prod app apps ui ux url urls api apis json yaml npm pnpm cli gui ide sdk llm llms gpt mcp oauth uuid dms dm vibe vibes tldr btw imo tbh lol lmao nah yeah yep yup hmm ohh ok pls plz thx ya yo".split(" "));
 var IRREGULAR = new Set("became began begun bent bound bred broke broken brought built burnt caught chose chosen clung dealt drew drawn drove driven ate eaten fed felt fled flung forbade forgot forgotten forgave froze frozen gave given went gone grew grown hung heard hid hidden held hurt kept knelt knew known laid led leapt left lent lay lain lit lost made meant met paid ran rang rung rode ridden rose risen sang sung sank sunk sat said saw seen sought sold sent set shook shaken shone shot shown shrank shut slept slid slung spoke spoken spent spun split spread sprang stood stole stolen stuck stung struck strove swore sworn swept swam swum swung taught tore torn told thought threw thrown took taken understood woke woken wore worn wove won wound wrote written children men women mice feet teeth geese data indices matrices analyses".split(" "));
+
+// packages/core/dist/analytics/story-archetype.js
+var WEEK = 7 * 864e5;
+var SOFT = Math.log(5);
 
 // packages/core/dist/analytics/jev-contract.js
 var JEV_PRICE_PER_MILLION_INPUT = 0.042;
 var JEV_ATTEMPT_RESERVATION_USD = 64e3 / 1e6 * JEV_PRICE_PER_MILLION_INPUT;
 
 // packages/core/dist/analytics/facts-cache.js
-var FILE = `facts-v${FACTS_VERSION}.bin`;
-
-// packages/core/dist/analytics/jev-questions.js
-var INTENT_CRITERIA = Object.freeze({
-  feature_build: "Create or add a product capability; use a more specific class if that specific action is central.",
-  bug_fix: "Diagnose or repair incorrect behavior reported as a defect.",
-  ui_design: "Change visual appearance, layout or interaction design as the central requested action.",
-  tests: "Create, run or repair tests or validation checks as the central requested action.",
-  refactor: "Restructure implementation while preserving intended behavior.",
-  code_review: "Assess code or a change and identify correctness or quality issues.",
-  pr_management: "Create, update, review status of or manage a pull request.",
-  research: "Find or verify information, sources or technical options.",
-  explanation_learning: "Explain a concept, behavior or result without another central action request.",
-  planning_architecture: "Plan work or decide system structure and implementation approach.",
-  deploy_operations: "Deploy, release, operate or troubleshoot running infrastructure.",
-  documentation_writing: "Write or edit documentation or prose as the central requested artifact.",
-  agent_coordination: "Assign, inspect, coordinate or manage agent/chat work.",
-  other: "An explicit requested action outside the supplied classes.",
-  mixed: "Several equally central requested actions, with no one primary action.",
-  insufficient_context: "No established action, an acknowledgment alone, or missing context needed to identify the request."
-});
-
-// packages/core/dist/analytics/index.js
-var RESUME_MAX_BYTES = 64 * 1024 * 1024;
-
-// packages/core/dist/adapters/claude.js
-import fs14 from "node:fs";
-import path13 from "node:path";
-function sourceDir3(claudeConfigDir) {
-  return claudePaths(claudeDir(claudeConfigDir)).projects;
-}
-function archiveSourceDir(root) {
-  return path13.join(archiveDir(root ?? potsherdDir()), "claude");
-}
-function discover3(options = {}) {
-  const live = walkProjects(sourceDir3(options.claudeDir), "live");
-  const byRel = /* @__PURE__ */ new Map();
-  for (const found of live)
-    byRel.set(found.rel, found);
-  if (options.archive !== false) {
-    const archiveRoot = archiveSourceDir(options.potsherdDir);
-    for (const found of walkProjects(archiveRoot, "archived")) {
-      if (byRel.has(found.rel))
-        continue;
-      found.originalPath = path13.join(sourceDir3(options.claudeDir), found.rel);
-      byRel.set(found.rel, found);
-    }
-  }
-  return [...byRel.values()].sort((a, b) => a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0);
-}
-async function parse5(source, options = {}) {
-  const raw = await parseClaudeTranscript(source.path, {
-    ...options,
-    // Only ever assert `true`: a top-level transcript that happens to carry a
-    // record with `isSidechain:true` is still a session, and forcing `false`
-    // would throw away the flag for a subagent file the path did not reveal.
-    ...source.isSidechain ? { isSidechain: true } : {},
-    ...source.parentSessionId ? { parentSessionId: source.parentSessionId } : {},
-    projectSlug: options.projectSlug ?? source.projectSlug,
-    status: source.status ?? "live",
-    bytes: source.bytes || void 0
-  });
-  const folded = foldContinuations(raw.exchanges, options.fromSeq ?? 0);
-  const version2 = await readTranscriptVersion(source.path);
-  return {
-    ...raw,
-    session: owningProject(raw.session),
-    exchanges: folded.exchanges,
-    ...version2 ? { version: version2 } : {},
-    continuationsFolded: folded.folded,
-    orphanContinuations: folded.orphans
-  };
-}
-var CLAUDE_WORKTREES = /[/\\]\.claude[/\\]worktrees[/\\][^/\\]+(?:[/\\].*)?$/;
-function owningProjectPath(project) {
-  if (!project)
-    return project ?? null;
-  const collapsed = project.replace(CLAUDE_WORKTREES, "");
-  return collapsed || project;
-}
-function isClaudeWorktree(project) {
-  return Boolean(project) && CLAUDE_WORKTREES.test(project);
-}
-function owningProject(session) {
-  if (!isClaudeWorktree(session.project))
-    return session;
-  const owner = owningProjectPath(session.project);
-  if (!owner || owner === session.project)
-    return session;
-  return { ...session, project: owner, projectSlug: slugify2(owner) };
-}
-function walkProjects(projectsDir, status) {
-  const out = [];
-  for (const slugEntry of readdirSafe(projectsDir, true)) {
-    if (!slugEntry.isDirectory())
-      continue;
-    const slug = slugEntry.name;
-    const dir = path13.join(projectsDir, slug);
-    for (const entry2 of readdirSafe(dir, true)) {
-      if (entry2.isFile()) {
-        if (!entry2.name.endsWith(".jsonl"))
-          continue;
-        push(out, {
-          file: path13.join(dir, entry2.name),
-          rel: path13.join(slug, entry2.name),
-          slug,
-          sessionId: basename(entry2.name),
-          isSidechain: false,
-          status
-        });
-        continue;
-      }
-      if (!entry2.isDirectory())
-        continue;
-      if (entry2.name === "memory")
-        continue;
-      const flat = entry2.name === SIDECHAIN_DIR;
-      const subDir = flat ? path13.join(dir, entry2.name) : path13.join(dir, entry2.name, SIDECHAIN_DIR);
-      const relDir = flat ? path13.join(slug, entry2.name) : path13.join(slug, entry2.name, SIDECHAIN_DIR);
-      for (const name of readdirSafe(subDir)) {
-        if (!name.endsWith(".jsonl"))
-          continue;
-        push(out, {
-          file: path13.join(subDir, name),
-          rel: path13.join(relDir, name),
-          slug,
-          sessionId: flat ? basename(name) : `${entry2.name}:${basename(name)}`,
-          isSidechain: true,
-          ...flat ? {} : { parentSessionId: entry2.name },
-          status
-        });
-      }
-    }
-  }
-  return out;
-}
-function push(out, spec) {
-  const st = statSafe(spec.file);
-  if (!st)
-    return;
-  out.push({
-    sessionId: spec.sessionId,
-    harness: "claude",
-    path: spec.file,
-    rel: spec.rel,
-    projectSlug: spec.slug,
-    bytes: st.size,
-    mtimeMs: st.mtimeMs,
-    isSidechain: spec.isSidechain,
-    ...spec.parentSessionId ? { parentSessionId: spec.parentSessionId } : {},
-    status: spec.status
-  });
-}
-function foldContinuations(exchanges, fromSeq) {
-  const kept = [];
-  let folded = 0;
-  let orphans = 0;
-  for (const exchange of exchanges) {
-    const previous = kept[kept.length - 1];
-    if (exchange.userText.trim()) {
-      kept.push(exchange);
-      continue;
-    }
-    if (!previous) {
-      orphans += 1;
-      continue;
-    }
-    folded += 1;
-    previous.assistantText = [previous.assistantText, exchange.assistantText].filter((t) => t.trim()).join("\n\n");
-    previous.toolCalls = [...previous.toolCalls, ...exchange.toolCalls];
-    previous.filesTouched = uniq([...previous.filesTouched, ...exchange.filesTouched]);
-  }
-  let seq = fromSeq;
-  for (const exchange of kept) {
-    seq += 1;
-    exchange.seq = seq;
-    exchange.id = exchangeId(exchange.sessionId, seq);
-  }
-  return { exchanges: kept, folded, orphans };
-}
-var VERSION_SCAN_LINES = 200;
-async function readTranscriptVersion(filePath) {
-  let seen = 0;
-  try {
-    for await (const line of readJsonlLines(filePath)) {
-      if (seen >= VERSION_SCAN_LINES)
-        break;
-      seen += 1;
-      const parsed = parseJsonLine(line.text);
-      if (!isRecord(parsed))
-        continue;
-      if (typeof parsed.version === "string" && parsed.version)
-        return parsed.version;
-    }
-  } catch {
-    return void 0;
-  }
-  return void 0;
-}
-var IGNORED_RECORD_TYPES = [
-  "last-prompt",
-  "mode",
-  "permission-mode",
-  "queue-operation",
-  "atis-latch",
-  "file-history-snapshot",
-  "file-history-delta",
-  "frame-link",
-  // Phase 1 found this as the sixteenth Claude Code record type, in no draft of
-  // `formats.md`, and left it OFF this list on purpose: "novel" was the honest
-  // answer until somebody opened one. Nobody did, for six phases, so `index`
-  // has been reporting it as an undocumented format change on every run since.
-  //
-  // Opened in phase 7, over the frozen snapshot: every instance is
-  //   { type, v, sessionId, artifacts: { <uuid>: { state, title, writtenAtMs } } }
-  // -- no `cwd`, no `timestamp`, no `message`, no `parentUuid`. It is the
-  // editor's bookkeeping for published artifacts, and there is nothing in it an
-  // exchange could carry. `tests/adapters/claude.test.ts` pins that shape, so a
-  // build that starts putting conversation into it fails rather than being
-  // silently skipped.
-  "artifact-comment-monitor"
-];
-var IGNORED = new Set(IGNORED_RECORD_TYPES);
-function isNovelRecordType(type) {
-  return !IGNORED.has(type);
-}
-function basename(fileName) {
-  return fileName.slice(0, -".jsonl".length);
-}
-function statSafe(file2) {
-  try {
-    return fs14.statSync(file2);
-  } catch {
-    return null;
-  }
-}
-function readdirSafe(dir, withFileTypes) {
-  try {
-    return withFileTypes ? fs14.readdirSync(dir, { withFileTypes: true }) : fs14.readdirSync(dir);
-  } catch {
-    return [];
-  }
-}
-
-// packages/core/dist/adapters/codex.js
-import fs16 from "node:fs";
-import path15 from "node:path";
-
-// packages/core/dist/parser/codex.js
-import fs15 from "node:fs";
-import path14 from "node:path";
-var TOOL_CALL_TYPES = /* @__PURE__ */ new Set([
-  "function_call",
-  "custom_tool_call",
-  "tool_search_call",
-  "local_shell_call"
-]);
-var TOOL_OUTPUT_TYPES = /* @__PURE__ */ new Set([
-  "function_call_output",
-  "custom_tool_call_output",
-  "tool_search_output",
-  "local_shell_call_output"
-]);
-var HANDLED_ENVELOPES = /* @__PURE__ */ new Set([
-  "session_meta",
-  "turn_context",
-  "response_item",
-  "event_msg",
-  "world_state",
-  "compacted"
-]);
-async function parseCodexTranscript(filePath, options = {}) {
-  const absolute2 = path14.resolve(filePath);
-  const fromOffset = options.fromOffset ?? 0;
-  const snapshot = fs15.readFileSync(absolute2);
-  const seqByOffset = /* @__PURE__ */ new Map();
-  const humanPrompts = await collectHumanPrompts(absolute2, fromOffset, snapshot);
-  const unknownTypes = {};
-  let malformedLines = 0;
-  let endOffset = fromOffset;
-  const exchanges = [];
-  let current = null;
-  let seq = options.fromSeq ?? 0;
-  let sessionId = options.sessionId;
-  let cwd;
-  let model;
-  let entrypoint;
-  let parentSessionId;
-  let agentName;
-  let firstTs;
-  let lastTs;
-  let userPrompts = 0;
-  let assistantTurns = 0;
-  let toolCallCount = 0;
-  const resolvedId = () => sessionId ?? sessionIdFromPath2(absolute2);
-  const finalize2 = () => {
-    if (!current)
-      return;
-    const b = current;
-    current = null;
-    if (!b.userText.trim() && b.toolCalls.length === 0)
-      return;
-    exchanges.push({
-      id: exchangeId(resolvedId(), b.seq),
-      sessionId: resolvedId(),
-      seq: b.seq,
-      ts: b.ts,
-      userText: b.userText,
-      assistantText: b.assistantTexts.join("\n\n"),
-      toolCalls: b.toolCalls,
-      filesTouched: uniq(b.files),
-      isSidechain: parentSessionId !== void 0,
-      redacted: false
-    });
-  };
-  for await (const line of readJsonlLines(absolute2, { start: fromOffset, snapshot })) {
-    if (!line.terminated)
-      break;
-    endOffset = line.end;
-    const parsed = parseJsonLine(line.text);
-    if (parsed === void 0) {
-      if (line.text.trim())
-        malformedLines += 1;
-      continue;
-    }
-    if (!isRecord(parsed)) {
-      malformedLines += 1;
-      continue;
-    }
-    const envelope = typeof parsed.type === "string" ? parsed.type : "";
-    if (!HANDLED_ENVELOPES.has(envelope)) {
-      unknownTypes[envelope || "(no type)"] = (unknownTypes[envelope || "(no type)"] ?? 0) + 1;
-    }
-    const ts = typeof parsed.timestamp === "string" ? parsed.timestamp : (/* @__PURE__ */ new Date()).toISOString();
-    if (typeof parsed.timestamp === "string") {
-      firstTs ??= parsed.timestamp;
-      lastTs = parsed.timestamp;
-    }
-    const payload = parsed.payload;
-    if (!isRecord(payload))
-      continue;
-    if (envelope === "session_meta") {
-      if (!options.sessionId) {
-        const id2 = payload.id ?? payload.session_id;
-        if (typeof id2 === "string")
-          sessionId = id2;
-      }
-      if (typeof payload.cwd === "string")
-        cwd = payload.cwd;
-      if (typeof payload.originator === "string")
-        entrypoint = payload.originator;
-      else if (typeof payload.source === "string")
-        entrypoint = payload.source;
-      if (isRecord(payload.source) && isRecord(payload.source.subagent) && isRecord(payload.source.subagent.thread_spawn)) {
-        const spawned = payload.source.subagent.thread_spawn;
-        if (typeof spawned.parent_thread_id === "string")
-          parentSessionId = spawned.parent_thread_id;
-        if (typeof spawned.agent_nickname === "string")
-          agentName = spawned.agent_nickname;
-      }
-      continue;
-    }
-    if (envelope === "turn_context") {
-      if (typeof payload.cwd === "string")
-        cwd = payload.cwd;
-      if (typeof payload.model === "string")
-        model = payload.model;
-      continue;
-    }
-    if (envelope !== "response_item")
-      continue;
-    const kind = typeof payload.type === "string" ? payload.type : "";
-    if (kind === "message") {
-      const text2 = extractTextFromContent(payload.content);
-      if (!text2.trim())
-        continue;
-      if (payload.role === "user") {
-        if (humanPrompts.size > 0 && !humanPrompts.has(normalise(text2)))
-          continue;
-        finalize2();
-        seq += 1;
-        userPrompts += 1;
-        current = {
-          seq,
-          ts,
-          userText: text2,
-          assistantTexts: [],
-          toolCalls: [],
-          byCallId: /* @__PURE__ */ new Map(),
-          files: []
-        };
-        seqByOffset.set(line.start, seq);
-      } else if (payload.role === "assistant" && current) {
-        seqByOffset.set(line.start, current.seq);
-        current.assistantTexts.push(text2);
-        current.ts = ts;
-        assistantTurns += 1;
-      }
-      continue;
-    }
-    if (TOOL_CALL_TYPES.has(kind) && current) {
-      seqByOffset.set(line.start, current.seq);
-      let input = payload.arguments;
-      if (typeof input === "string")
-        input = safeParseJson(input);
-      else if (payload.input !== void 0)
-        input = payload.input;
-      else if (payload.action !== void 0)
-        input = payload.action;
-      const name = typeof payload.name === "string" && payload.name || typeof payload.namespace === "string" && payload.namespace || kind;
-      const call3 = { name, input: stringifyToolInput(input) };
-      current.toolCalls.push(call3);
-      toolCallCount += 1;
-      if (typeof payload.call_id === "string") {
-        current.byCallId.set(payload.call_id, current.toolCalls.length - 1);
-      }
-      for (const f of filesFromToolInput(input))
-        current.files.push(f);
-      continue;
-    }
-    if (TOOL_OUTPUT_TYPES.has(kind) && current) {
-      seqByOffset.set(line.start, current.seq);
-      const callId = typeof payload.call_id === "string" ? payload.call_id : void 0;
-      if (!callId)
-        continue;
-      const at = current.byCallId.get(callId);
-      if (at === void 0)
-        continue;
-      const call3 = current.toolCalls[at];
-      if (!call3)
-        continue;
-      const out = stringifyToolOutput(payload.output);
-      if (out !== void 0)
-        call3.result = out;
-    }
-  }
-  finalize2();
-  const id = resolvedId();
-  const projectSlug = options.projectSlug ?? (cwd ? path14.basename(cwd) : "unknown");
-  const bytes2 = options.bytes ?? statBytes2(absolute2);
-  const session = {
-    id,
-    harness: "codex",
-    sourcePath: absolute2,
-    project: cwd ?? projectSlug,
-    projectSlug,
-    startedAt: firstTs ?? "",
-    endedAt: lastTs ?? firstTs ?? "",
-    ...options.title ? { title: options.title } : {},
-    ...options.gitBranch ? { gitBranch: options.gitBranch } : {},
-    ...entrypoint ? { entrypoint } : {},
-    ...model ? { model } : {},
-    isSidechain: parentSessionId !== void 0,
-    ...parentSessionId ? { parentSessionId } : {},
-    ...agentName ? { agentName } : {},
-    counts: { userPrompts, assistantTurns, toolCalls: toolCallCount, bytes: bytes2 },
-    status: options.status ?? "live"
-  };
-  const bySeq = new Map(exchanges.map((exchange) => [exchange.seq, exchange]));
-  const legacyByOffset = new Map([...seqByOffset].flatMap(([offset, seq2]) => {
-    const exchange = bySeq.get(seq2);
-    return exchange ? [[offset, { seq: seq2, exchangeId: exchange.id }]] : [];
-  }));
-  const evidence2 = await collectEvidence(absolute2, "codex", fromOffset, { snapshot, legacyByOffset });
-  for (const [kind, count2] of Object.entries(evidence2.unknownTypes))
-    unknownTypes[kind] = (unknownTypes[kind] ?? 0) + count2;
-  return { session, exchanges, unknownTypes, endOffset, malformedLines, records: evidence2.records, continuation: evidence2.continuation, evidenceVersion: CODEX_EVIDENCE_VERSION, artifactHash: evidence2.artifactHash };
-}
-async function collectHumanPrompts(absolute2, start, snapshot) {
-  const out = /* @__PURE__ */ new Set();
-  for await (const line of readJsonlLines(absolute2, { start, snapshot })) {
-    if (!line.terminated)
-      break;
-    const parsed = parseJsonLine(line.text);
-    if (!isRecord(parsed) || parsed.type !== "event_msg")
-      continue;
-    const payload = parsed.payload;
-    if (!isRecord(payload))
-      continue;
-    if (payload.type === "user_message" && typeof payload.message === "string") {
-      out.add(normalise(payload.message));
-    } else if (payload.type === "item_completed" && isRecord(payload.item) && payload.item.type === "UserMessage") {
-      const text2 = extractTextFromContent(payload.item.content);
-      if (text2.trim())
-        out.add(normalise(text2));
-    }
-  }
-  return out;
-}
-function normalise(text2) {
-  return text2.trim();
-}
-function sessionIdFromPath2(filePath) {
-  const base2 = path14.basename(filePath, ".jsonl");
-  const matches = base2.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
-  const last = matches?.[matches.length - 1];
-  return last ?? base2;
-}
-function statBytes2(absolute2) {
-  try {
-    return fs15.statSync(absolute2).size;
-  } catch {
-    return 0;
-  }
-}
-
-// packages/core/dist/codex/version.js
-var MIN_CODEX_VERSION = "0.130.0";
-function parseCodexCliVersion(output) {
-  return output.match(/\b(\d+\.\d+\.\d+)\b/)?.[1];
-}
-function compareSemver(a, b) {
-  const aParts = a.split(".").map((part) => Number.parseInt(part, 10));
-  const bParts = b.split(".").map((part) => Number.parseInt(part, 10));
-  for (let i = 0; i < 3; i += 1) {
-    const rawA = aParts[i];
-    const rawB = bParts[i];
-    const aPart = typeof rawA === "number" && Number.isFinite(rawA) ? rawA : 0;
-    const bPart = typeof rawB === "number" && Number.isFinite(rawB) ? rawB : 0;
-    if (aPart !== bPart)
-      return aPart - bPart;
-  }
-  return 0;
-}
-function versionMeetsMinimum(version2, minimum = MIN_CODEX_VERSION) {
-  return compareSemver(version2, minimum) >= 0;
-}
-
-// packages/core/dist/adapters/codex.js
-var ROLLOUT_FILE = /^rollout-.*\.jsonl$/i;
-var UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
-var MAX_WALK_DEPTH = 8;
-function sessionIdFromRolloutPath(filePath) {
-  const base2 = path15.basename(filePath, ".jsonl");
-  const matches = base2.match(UUID);
-  return matches?.[matches.length - 1] ?? base2;
-}
-function discover4(options = {}) {
-  const paths = codexPaths(codexDir(options.codexHome));
-  const out = [];
-  walk(paths.sessions, "live", 0, out);
-  walk(paths.archived, "archived", 0, out);
-  out.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
-  return out;
-}
-function walk(dir, status, depth, out) {
-  if (depth > MAX_WALK_DEPTH)
-    return;
-  let entries;
-  try {
-    entries = fs16.readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return;
-  }
-  for (const entry2 of entries) {
-    const full = path15.join(dir, entry2.name);
-    if (entry2.isDirectory()) {
-      walk(full, status, depth + 1, out);
-      continue;
-    }
-    if (!entry2.isFile() && !entry2.isSymbolicLink())
-      continue;
-    if (!ROLLOUT_FILE.test(entry2.name))
-      continue;
-    let stat;
-    try {
-      stat = fs16.statSync(full);
-    } catch {
-      continue;
-    }
-    if (!stat.isFile())
-      continue;
-    out.push({
-      sessionId: sessionIdFromRolloutPath(full),
-      harness: "codex",
-      path: full,
-      projectSlug: "",
-      bytes: stat.size,
-      mtimeMs: stat.mtimeMs,
-      isSidechain: false,
-      status
-    });
-  }
-}
-function readSessionIndex(options = {}) {
-  const file2 = codexPaths(codexDir(options.codexHome)).sessionIndex;
-  const out = /* @__PURE__ */ new Map();
-  let text2;
-  try {
-    text2 = fs16.readFileSync(file2, "utf8");
-  } catch {
-    return out;
-  }
-  for (const line of text2.split("\n")) {
-    if (!line.trim())
-      continue;
-    const parsed = parseJsonLine(line);
-    if (!isRecord(parsed) || typeof parsed["id"] !== "string")
-      continue;
-    const id = parsed["id"];
-    const threadName = parsed["thread_name"];
-    const updatedAt = parsed["updated_at"];
-    out.set(id, {
-      id,
-      ...typeof threadName === "string" && threadName.trim() ? { threadName } : {},
-      ...typeof updatedAt === "string" ? { updatedAt } : {}
-    });
-  }
-  return out;
-}
-var indexCache = /* @__PURE__ */ new Map();
-function sessionIndexCached(codexHome) {
-  const file2 = codexPaths(codexDir(codexHome)).sessionIndex;
-  let mtimeMs = -1;
-  try {
-    mtimeMs = fs16.statSync(file2).mtimeMs;
-  } catch {
-  }
-  const hit = indexCache.get(file2);
-  if (hit && hit.mtimeMs === mtimeMs)
-    return hit.entries;
-  const entries = readSessionIndex({ ...codexHome ? { codexHome } : {} });
-  indexCache.set(file2, { mtimeMs, entries });
-  return entries;
-}
-async function readCodexHeader(filePath) {
-  for await (const line of readJsonlLines(filePath)) {
-    if (!line.terminated)
-      return void 0;
-    const parsed = parseJsonLine(line.text);
-    if (!isRecord(parsed) || parsed["type"] !== "session_meta")
-      return void 0;
-    const payload = parsed["payload"];
-    if (!isRecord(payload))
-      return void 0;
-    const str = (key2) => typeof payload[key2] === "string" ? payload[key2] : void 0;
-    const timestamp = typeof parsed["timestamp"] === "string" ? parsed["timestamp"] : void 0;
-    const header = {
-      ...str("id") ?? str("session_id") ? { sessionId: str("id") ?? str("session_id") } : {},
-      ...str("cwd") ? { cwd: str("cwd") } : {},
-      ...str("originator") ? { originator: str("originator") } : {},
-      ...str("source") ? { source: str("source") } : {},
-      ...str("cli_version") ? { cliVersion: str("cli_version") } : {},
-      ...str("model_provider") ? { modelProvider: str("model_provider") } : {},
-      ...str("timestamp") ?? timestamp ? { startedAt: str("timestamp") ?? timestamp } : {}
-    };
-    return header;
-  }
-  return void 0;
-}
-function codexEntrypoint(header) {
-  for (const raw of [header.originator, header.source]) {
-    if (!raw || !raw.trim())
-      continue;
-    const v = raw.trim().toLowerCase();
-    if (v.includes("desktop"))
-      return "desktop";
-    if (v.includes("vscode") || v.includes("vs code"))
-      return "vscode";
-    if (v.includes("cli"))
-      return "cli";
-    if (v.includes("exec"))
-      return "exec";
-    return v.replace(/\s+/g, "-");
-  }
-  return void 0;
-}
-var DATA_URI2 = /data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)?(?:;[a-zA-Z0-9.+=-]+)*;base64,[A-Za-z0-9+/=\s]{64,}/g;
-var DEFAULT_MAX_VALUE_BYTES = 32 * 1024;
-var DEFAULT_MAX_MESSAGE_BYTES = 256 * 1024;
-function elideBinary2(text2, tally2) {
-  if (!text2.includes("base64,"))
-    return text2;
-  return text2.replace(DATA_URI2, (match, mime) => {
-    tally2.binaryParts += 1;
-    tally2.charsElided += match.length;
-    return `\u2039elided:${mime ?? "application/octet-stream"}:${match.length} bytes\u203A`;
-  });
-}
-function cap(text2, max, tally2) {
-  if (text2.length <= max)
-    return text2;
-  const dropped = text2.length - max;
-  tally2.truncatedValues += 1;
-  tally2.charsElided += dropped;
-  return `${text2.slice(0, max)}
-\u2039elided:oversize:${dropped} bytes\u203A`;
-}
-var PATCH_FILE = /\*\*\* (?:Add|Update|Delete) File: ([^\n"\\]+)/g;
-var PATCH_MOVE = /\*\*\* Move to: ([^\n"\\]+)/g;
-function filesFromCodexToolInput(input) {
-  if (!input.includes("*** "))
-    return [];
-  const out = [];
-  for (const re of [PATCH_FILE, PATCH_MOVE]) {
-    re.lastIndex = 0;
-    let m;
-    while ((m = re.exec(input)) !== null) {
-      const file2 = m[1]?.trim();
-      if (file2)
-        out.push(file2);
-    }
-  }
-  return out;
-}
-async function parse6(source, options = {}) {
-  const header = await readCodexHeader(source.path);
-  const id = options.sessionId ?? header?.sessionId ?? source.sessionId;
-  const entries = sessionIndexCached(options.codexHome);
-  const indexed = entries.get(id);
-  const title = options.title ?? indexed?.threadName;
-  const result = await parseCodexTranscript(source.path, {
-    ...options.fromOffset !== void 0 ? { fromOffset: options.fromOffset } : {},
-    ...options.fromSeq !== void 0 ? { fromSeq: options.fromSeq } : {},
-    // The header is the file's own record, so passing it satisfies "parse() is
-    // allowed to correct the id" while still working from a byte offset, where
-    // the parser would never see `session_meta` again.
-    sessionId: id,
-    ...options.projectSlug ?? source.projectSlug ? { projectSlug: options.projectSlug ?? source.projectSlug } : {},
-    ...title ? { title } : {},
-    ...options.gitBranch ? { gitBranch: options.gitBranch } : {},
-    status: source.status ?? "live",
-    bytes: source.bytes
-  });
-  const tally2 = { binaryParts: 0, truncatedValues: 0, charsElided: 0 };
-  const maxValue = options.maxValueBytes ?? DEFAULT_MAX_VALUE_BYTES;
-  const maxMessage = options.maxMessageBytes ?? DEFAULT_MAX_MESSAGE_BYTES;
-  const exchanges = result.exchanges.map((exchange) => {
-    const toolCalls = exchange.toolCalls.map((call3) => {
-      const input = cap(elideBinary2(call3.input, tally2), maxValue, tally2);
-      const next = { ...call3, input };
-      if (call3.result !== void 0) {
-        next.result = cap(elideBinary2(call3.result, tally2), maxValue, tally2);
-      }
-      return next;
-    });
-    const extraFiles = exchange.toolCalls.flatMap((call3) => filesFromCodexToolInput(call3.input));
-    return {
-      ...exchange,
-      userText: cap(elideBinary2(exchange.userText, tally2), maxMessage, tally2),
-      assistantText: cap(elideBinary2(exchange.assistantText, tally2), maxMessage, tally2),
-      toolCalls,
-      filesTouched: uniq([...exchange.filesTouched, ...extraFiles])
-    };
-  });
-  const entrypoint = header ? codexEntrypoint(header) : void 0;
-  const session = {
-    ...result.session,
-    id,
-    ...header?.cwd ? { project: header.cwd, projectSlug: pickSlug(result.session, header.cwd) } : {},
-    ...entrypoint ? { entrypoint } : {},
-    status: source.status ?? result.session.status
-  };
-  if (title)
-    session.title = title;
-  const cliVersion = header?.cliVersion;
-  const semver = cliVersion ? parseCodexCliVersion(cliVersion) : void 0;
-  return {
-    ...result,
-    session,
-    exchanges,
-    codex: {
-      ...cliVersion ? { cliVersion } : {},
-      // Unknown version == not yet proven unsupported; only a version we can
-      // read AND that is below the floor counts as unsupported.
-      versionSupported: semver ? versionMeetsMinimum(semver) : true,
-      headerUnreadable: header === void 0,
-      titled: Boolean(indexed?.threadName),
-      elisions: tally2
-    }
-  };
-}
-function pickSlug(session, cwd) {
-  if (session.projectSlug && session.projectSlug !== "unknown")
-    return session.projectSlug;
-  return path15.basename(cwd) || "unknown";
-}
+var DIR = `facts-v${FACTS_VERSION}`;
 
 // packages/core/dist/adapters/cursor.js
-import fs17 from "node:fs";
-import path16 from "node:path";
+import fs14 from "node:fs";
+import path13 from "node:path";
 var TRANSCRIPTS_DIR = "agent-transcripts";
 var SIDECHAIN_DIR3 = "subagents";
 function cursorSlug(cwd) {
@@ -31126,28 +30360,28 @@ function classifyProjectSlug(slug) {
     return "window-id";
   return "path";
 }
-function discover5(dirOverride) {
+function discover3(dirOverride) {
   const root = cursorProjectsDir(dirOverride);
   const out = [];
-  for (const slug of readdirSafe2(root, "dir")) {
-    const transcripts = path16.join(root, slug, TRANSCRIPTS_DIR);
-    for (const sessionId of readdirSafe2(transcripts, "dir")) {
-      const sessionDir = path16.join(transcripts, sessionId);
-      for (const file2 of readdirSafe2(sessionDir, "file")) {
+  for (const slug of readdirSafe(root, "dir")) {
+    const transcripts = path13.join(root, slug, TRANSCRIPTS_DIR);
+    for (const sessionId of readdirSafe(transcripts, "dir")) {
+      const sessionDir = path13.join(transcripts, sessionId);
+      for (const file2 of readdirSafe(sessionDir, "file")) {
         if (!file2.endsWith(".jsonl"))
           continue;
-        const source = statSource(path16.join(sessionDir, file2), slug, {
+        const source = statSource(path13.join(sessionDir, file2), slug, {
           sessionId: basenameId(file2),
           isSidechain: false
         });
         if (source)
           out.push(source);
       }
-      const sidechains = path16.join(sessionDir, SIDECHAIN_DIR3);
-      for (const file2 of readdirSafe2(sidechains, "file")) {
+      const sidechains = path13.join(sessionDir, SIDECHAIN_DIR3);
+      for (const file2 of readdirSafe(sidechains, "file")) {
         if (!file2.endsWith(".jsonl"))
           continue;
-        const source = statSource(path16.join(sidechains, file2), slug, {
+        const source = statSource(path13.join(sidechains, file2), slug, {
           sessionId: basenameId(file2),
           isSidechain: true,
           parentSessionId: sessionId
@@ -31162,10 +30396,10 @@ function discover5(dirOverride) {
 function basenameId(file2) {
   return file2.slice(0, -".jsonl".length);
 }
-function readdirSafe2(dir, want) {
+function readdirSafe(dir, want) {
   let entries;
   try {
-    entries = fs17.readdirSync(dir, { withFileTypes: true });
+    entries = fs14.readdirSync(dir, { withFileTypes: true });
   } catch {
     return [];
   }
@@ -31181,7 +30415,7 @@ function readdirSafe2(dir, want) {
 function statSource(file2, projectSlug, rest) {
   let st;
   try {
-    st = fs17.statSync(file2);
+    st = fs14.statSync(file2);
   } catch {
     return null;
   }
@@ -31197,7 +30431,7 @@ function statSource(file2, projectSlug, rest) {
     status: "live"
   };
 }
-async function parse7(source, options = {}) {
+async function parse5(source, options = {}) {
   const sessionId = options.sessionId ?? source.sessionId;
   const projectSlug = options.projectSlug ?? source.projectSlug;
   const isSidechain = source.isSidechain;
@@ -31491,7 +30725,7 @@ function recoverCwd(projectSlug, candidates) {
         hits.set(dir, (hits.get(dir) ?? 0) + 1);
         break;
       }
-      const parent = path16.dirname(dir);
+      const parent = path13.dirname(dir);
       if (parent === dir)
         break;
       dir = parent;
@@ -31527,382 +30761,51 @@ function isoFromMs(ms) {
   return new Date(ms).toISOString();
 }
 
-// packages/core/dist/adapters/pi.js
-import fs18 from "node:fs";
-import path17 from "node:path";
-import crypto4 from "node:crypto";
-var HANDLED_TYPES2 = /* @__PURE__ */ new Set([
-  "session",
-  "message",
-  "model_change",
-  "thinking_level_change",
-  "session_info",
-  "compaction",
-  "branch_summary",
-  "label",
-  "custom",
-  "custom_message"
-]);
-var HANDLED_ROLES = /* @__PURE__ */ new Set(["user", "assistant", "toolResult"]);
-function sourceDir4(override) {
-  return piSessionsDir(override);
-}
-function discover6(override) {
-  const root = sourceDir4(override);
-  const out = [];
-  let slugs;
-  try {
-    slugs = fs18.readdirSync(root, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-  for (const slug of slugs) {
-    if (!slug.isDirectory())
-      continue;
-    const dir = path17.join(root, slug.name);
-    let files;
-    try {
-      files = fs18.readdirSync(dir);
-    } catch {
-      continue;
-    }
-    for (const file2 of files) {
-      if (!file2.endsWith(".jsonl"))
-        continue;
-      const full = path17.join(dir, file2);
-      let stat;
-      try {
-        stat = fs18.statSync(full);
-      } catch {
-        continue;
-      }
-      if (!stat.isFile())
-        continue;
-      out.push({
-        sessionId: sessionIdFromFilename(file2),
-        harness: "pi",
-        path: full,
-        projectSlug: slug.name,
-        bytes: stat.size,
-        mtimeMs: stat.mtimeMs,
-        isSidechain: false,
-        status: "live"
-      });
-    }
-  }
-  out.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
-  return out;
-}
-function sessionIdFromFilename(file2) {
-  const base2 = path17.basename(file2, ".jsonl");
-  const at = base2.lastIndexOf("_");
-  return at === -1 ? base2 : base2.slice(at + 1);
-}
-async function parse8(source, options = {}) {
-  const src = typeof source === "string" ? void 0 : source;
-  const absolute2 = path17.resolve(typeof source === "string" ? source : source.path);
-  const unknownTypes = {};
-  let malformedLines = 0;
-  let endOffset = 0;
-  const nodes = [];
-  const byId = /* @__PURE__ */ new Map();
-  let header;
-  let order = 0;
-  for await (const line of readJsonlLines(absolute2)) {
-    if (!line.terminated)
-      break;
-    endOffset = line.end;
-    const parsed = parseJsonLine(line.text);
-    if (parsed === void 0 || !isRecord(parsed)) {
-      if (line.text.trim())
-        malformedLines += 1;
-      continue;
-    }
-    const type = typeof parsed.type === "string" ? parsed.type : "";
-    if (!HANDLED_TYPES2.has(type)) {
-      const key2 = type || "(no type)";
-      unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
-    } else if (type === "message") {
-      const message = parsed.message;
-      const role = isRecord(message) && typeof message.role === "string" ? message.role : "";
-      if (!HANDLED_ROLES.has(role)) {
-        const key2 = `message:${role || "(no role)"}`;
-        unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
-      }
-    }
-    if (type === "session") {
-      header ??= parsed;
-      continue;
-    }
-    const id = typeof parsed.id === "string" ? parsed.id : "";
-    if (!id) {
-      malformedLines += 1;
-      continue;
-    }
-    const node = {
-      id,
-      parentId: typeof parsed.parentId === "string" ? parsed.parentId : null,
-      type,
-      ts: typeof parsed.timestamp === "string" ? parsed.timestamp : "",
-      order: order++,
-      record: parsed
-    };
-    nodes.push(node);
-    byId.set(id, node);
-  }
-  const sessionId = options.sessionId ?? (header && typeof header.id === "string" && header.id ? header.id : sessionIdFromFilename(absolute2));
-  const mainline = linearise(nodes, byId);
-  const onMainline = new Set(mainline.map((n) => n.id));
-  const branches = branchChains(nodes, onMainline);
-  const counts = { userPrompts: 0, assistantTurns: 0, toolCalls: 0 };
-  const exchanges = [];
-  let seq = 0;
-  seq = buildExchanges3(mainline, sessionId, false, seq, exchanges, counts);
-  for (const chain of branches) {
-    seq = buildExchanges3(chain, sessionId, true, seq, exchanges, counts);
-  }
-  let model;
-  let title;
-  for (const node of mainline) {
-    if (node.type === "model_change" && typeof node.record.modelId === "string") {
-      model = node.record.modelId;
-    }
-    if (node.type === "message") {
-      const message = node.record.message;
-      if (isRecord(message) && message.role === "assistant" && typeof message.model === "string") {
-        model = message.model;
-      }
-    }
-    if (node.type === "session_info" && typeof node.record.name === "string" && node.record.name.trim()) {
-      title = node.record.name;
-    }
-  }
-  const projectSlug = options.projectSlug ?? src?.projectSlug ?? path17.basename(path17.dirname(absolute2));
-  const headerCwd = header && typeof header.cwd === "string" ? header.cwd : void 0;
-  const startedAt = header && typeof header.timestamp === "string" ? header.timestamp : nodes[0]?.ts ?? "";
-  let endedAt = startedAt;
-  for (const node of nodes)
-    if (node.ts > endedAt)
-      endedAt = node.ts;
-  const parentSession = header && typeof header.parentSession === "string" ? header.parentSession : void 0;
-  const session = {
-    id: sessionId,
-    harness: "pi",
-    sourcePath: absolute2,
-    project: headerCwd ?? unslugifyPi(projectSlug),
-    projectSlug,
-    startedAt,
-    endedAt,
-    ...title ? { title } : {},
-    // pi never persists the git branch: `GitBranch` exists only in the live
-    // TUI footer provider. Left undefined rather than guessed.
-    entrypoint: "cli",
-    ...model ? { model } : {},
-    isSidechain: false,
-    ...parentSession ? { parentSessionId: sessionIdFromFilename(parentSession) } : {},
-    counts: {
-      userPrompts: counts.userPrompts,
-      assistantTurns: counts.assistantTurns,
-      toolCalls: counts.toolCalls,
-      bytes: options.bytes ?? src?.bytes ?? statBytes3(absolute2)
-    },
-    status: options.status ?? src?.status ?? "live"
-  };
-  return { session, exchanges, unknownTypes, endOffset, malformedLines };
-}
-function linearise(nodes, byId) {
-  const leaf = nodes[nodes.length - 1];
-  if (!leaf)
-    return [];
-  const chain = [];
-  const seen = /* @__PURE__ */ new Set();
-  let current = leaf;
-  while (current && !seen.has(current.id)) {
-    seen.add(current.id);
-    chain.unshift(current);
-    current = current.parentId === null ? void 0 : byId.get(current.parentId);
-  }
-  return chain;
-}
-function branchChains(nodes, onMainline) {
-  const chains = [];
-  const chainOf = /* @__PURE__ */ new Map();
-  for (const node of nodes) {
-    if (onMainline.has(node.id))
-      continue;
-    const parentChain = node.parentId === null ? void 0 : chainOf.get(node.parentId);
-    if (parentChain === void 0) {
-      chainOf.set(node.id, chains.length);
-      chains.push([node]);
-      continue;
-    }
-    chainOf.set(node.id, parentChain);
-    chains[parentChain].push(node);
-  }
-  return chains;
-}
-function buildExchanges3(chain, sessionId, isSidechain, startSeq, out, counts) {
-  let seq = startSeq;
-  let current = null;
-  const finalize2 = () => {
-    if (!current)
-      return;
-    const b = current;
-    current = null;
-    if (!b.userText.trim() && b.assistantTexts.length === 0 && b.toolCalls.length === 0)
-      return;
-    out.push({
-      id: exchangeId2(sessionId, b.seq),
-      sessionId,
-      seq: b.seq,
-      ts: b.ts,
-      userText: b.userText,
-      assistantText: b.assistantTexts.join("\n\n"),
-      toolCalls: b.toolCalls,
-      filesTouched: uniq(b.files),
-      isSidechain,
-      ...b.parentUuid ? { parentUuid: b.parentUuid } : {},
-      redacted: false
-    });
-  };
-  const open2 = (ts, parentUuid) => {
-    seq += 1;
-    const b = {
-      seq,
-      ts,
-      userText: "",
-      assistantTexts: [],
-      toolCalls: [],
-      byToolCallId: /* @__PURE__ */ new Map(),
-      files: [],
-      parentUuid
-    };
-    current = b;
-    return b;
-  };
-  for (const node of chain) {
-    if (node.type !== "message")
-      continue;
-    const message = node.record.message;
-    if (!isRecord(message))
-      continue;
-    const role = typeof message.role === "string" ? message.role : "";
-    if (!HANDLED_ROLES.has(role))
-      continue;
-    if (role === "user") {
-      finalize2();
-      counts.userPrompts += 1;
-      open2(node.ts, node.parentId).userText = extractTypedText(message.content);
-      continue;
-    }
-    const b = current ?? open2(node.ts, node.parentId);
-    if (role === "assistant") {
-      counts.assistantTurns += 1;
-      const text2 = extractTypedText(message.content);
-      if (text2.trim())
-        b.assistantTexts.push(text2);
-      for (const block of toolCallBlocks(message.content)) {
-        const name2 = typeof block.name === "string" ? block.name : "unknown";
-        const call3 = { name: name2, input: stringifyToolInput(block.arguments) };
-        b.toolCalls.push(call3);
-        counts.toolCalls += 1;
-        if (typeof block.id === "string")
-          b.byToolCallId.set(block.id, b.toolCalls.length - 1);
-        for (const f of filesFromToolInput(block.arguments))
-          b.files.push(f);
-      }
-      continue;
-    }
-    const callId = typeof message.toolCallId === "string" ? message.toolCallId : void 0;
-    const at = callId === void 0 ? void 0 : b.byToolCallId.get(callId);
-    const result = stringifyToolOutput(typeof message.content === "string" ? message.content : extractTextFromContent(message.content));
-    if (at !== void 0) {
-      const call3 = b.toolCalls[at];
-      if (call3) {
-        if (result !== void 0)
-          call3.result = result;
-        if (message.isError === true)
-          call3.isError = true;
-      }
-      continue;
-    }
-    const name = typeof message.toolName === "string" ? message.toolName : "unknown";
-    b.toolCalls.push({
-      name,
-      input: "",
-      ...result !== void 0 ? { result } : {},
-      ...message.isError === true ? { isError: true } : {}
-    });
-    counts.toolCalls += 1;
-  }
-  finalize2();
-  return seq;
-}
-function toolCallBlocks(content) {
-  if (!Array.isArray(content))
-    return [];
-  return content.filter((b) => isRecord(b) && b.type === "toolCall");
-}
-function unslugifyPi(slug) {
-  const inner = slug.replace(/^--/, "").replace(/--$/, "");
-  return "/" + inner.replace(/-/g, "/");
-}
-function statBytes3(absolute2) {
-  try {
-    return fs18.statSync(absolute2).size;
-  } catch {
-    return 0;
-  }
-}
-function exchangeId2(sessionId, seq) {
-  return crypto4.createHash("sha256").update(`${sessionId}:${seq}`).digest("hex").slice(0, 32);
-}
-
 // packages/core/dist/adapters/gemini.js
-import fs19 from "node:fs";
-import path18 from "node:path";
-import crypto5 from "node:crypto";
+import fs15 from "node:fs";
+import path14 from "node:path";
+import crypto4 from "node:crypto";
 var DISPLAY_NAME3 = "Gemini CLI";
 var CHATS_DIR = "chats";
 var HANDLED_PART_KEYS = /* @__PURE__ */ new Set(["text", "functionCall", "functionResponse"]);
-var HANDLED_ROLES2 = /* @__PURE__ */ new Set(["user", "model", "assistant", "system", "tool"]);
+var HANDLED_ROLES = /* @__PURE__ */ new Set(["user", "model", "assistant", "system", "tool"]);
 var HISTORY_KEYS2 = ["history", "messages", "contents", "turns"];
-function sourceDir5(override) {
+function sourceDir3(override) {
   return geminiTmpDir(override);
 }
-function discover7(override) {
-  const root = sourceDir5(override);
+function discover4(override) {
+  const root = sourceDir3(override);
   const out = [];
   let hashes;
   try {
-    hashes = fs19.readdirSync(root, { withFileTypes: true });
+    hashes = fs15.readdirSync(root, { withFileTypes: true });
   } catch {
     return out;
   }
   for (const hash3 of hashes) {
     if (!hash3.isDirectory())
       continue;
-    const dir = path18.join(root, hash3.name, CHATS_DIR);
+    const dir = path14.join(root, hash3.name, CHATS_DIR);
     let files;
     try {
-      files = fs19.readdirSync(dir);
+      files = fs15.readdirSync(dir);
     } catch {
       continue;
     }
     for (const file2 of files) {
       if (!file2.endsWith(".json"))
         continue;
-      const full = path18.join(dir, file2);
+      const full = path14.join(dir, file2);
       let stat;
       try {
-        stat = fs19.statSync(full);
+        stat = fs15.statSync(full);
       } catch {
         continue;
       }
       if (!stat.isFile())
         continue;
       out.push({
-        sessionId: sessionIdFromFilename2(file2, hash3.name),
+        sessionId: sessionIdFromFilename(file2, hash3.name),
         harness: "gemini",
         path: full,
         projectSlug: hash3.name,
@@ -31916,18 +30819,18 @@ function discover7(override) {
   out.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   return out;
 }
-function sessionIdFromFilename2(file2, projectHash) {
-  const base2 = path18.basename(file2, ".json").replace(/^checkpoint-/, "") || "checkpoint";
+function sessionIdFromFilename(file2, projectHash) {
+  const base2 = path14.basename(file2, ".json").replace(/^checkpoint-/, "") || "checkpoint";
   return `${projectHash.slice(0, 12)}-${base2}`;
 }
-async function parse9(source, options = {}) {
+async function parse6(source, options = {}) {
   const src = typeof source === "string" ? void 0 : source;
-  const absolute2 = path18.resolve(typeof source === "string" ? source : source.path);
+  const absolute2 = path14.resolve(typeof source === "string" ? source : source.path);
   const unknownTypes = {};
   let malformedLines = 0;
   let raw = "";
   try {
-    raw = fs19.readFileSync(absolute2, "utf8");
+    raw = fs15.readFileSync(absolute2, "utf8");
   } catch {
     raw = "";
   }
@@ -31943,13 +30846,13 @@ async function parse9(source, options = {}) {
   const { turns, meta: meta3 } = unwrap(doc);
   if (doc !== void 0 && turns.length === 0 && !meta3)
     malformedLines += 1;
-  const projectSlug = options.projectSlug ?? src?.projectSlug ?? path18.basename(path18.dirname(path18.dirname(absolute2)));
-  const sessionId = options.sessionId ?? (meta3 && typeof meta3.sessionId === "string" && meta3.sessionId.trim() ? meta3.sessionId : sessionIdFromFilename2(absolute2, projectSlug));
+  const projectSlug = options.projectSlug ?? src?.projectSlug ?? path14.basename(path14.dirname(path14.dirname(absolute2)));
+  const sessionId = options.sessionId ?? (meta3 && typeof meta3.sessionId === "string" && meta3.sessionId.trim() ? meta3.sessionId : sessionIdFromFilename(absolute2, projectSlug));
   const mtimeMs = options.mtimeMs ?? src?.mtimeMs ?? statMtime2(absolute2);
   const fileTime = new Date(mtimeMs).toISOString();
   const counts = { userPrompts: 0, assistantTurns: 0, toolCalls: 0 };
   const cwdCandidates = [];
-  const exchanges = buildExchanges4(turns, sessionId, fileTime, counts, unknownTypes, cwdCandidates);
+  const exchanges = buildExchanges3(turns, sessionId, fileTime, counts, unknownTypes, cwdCandidates);
   const metaString = (key2) => {
     if (!meta3)
       return void 0;
@@ -31997,7 +30900,7 @@ function unwrap(doc) {
   }
   return { turns: [], meta: doc };
 }
-function buildExchanges4(turns, sessionId, fileTime, counts, unknownTypes, cwdCandidates) {
+function buildExchanges3(turns, sessionId, fileTime, counts, unknownTypes, cwdCandidates) {
   const out = [];
   let seq = 0;
   let current = null;
@@ -32039,7 +30942,7 @@ function buildExchanges4(turns, sessionId, fileTime, counts, unknownTypes, cwdCa
       continue;
     }
     const role = typeof turn.role === "string" ? turn.role : "";
-    if (!HANDLED_ROLES2.has(role)) {
+    if (!HANDLED_ROLES.has(role)) {
       const key2 = `role:${role || "(no role)"}`;
       unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
       continue;
@@ -32137,9 +31040,9 @@ function isHumanTurn(role, parts) {
   return parts.some((p) => !isRecord(p.functionResponse));
 }
 function projectHashes(cwd) {
-  const sha = (s) => crypto5.createHash("sha256").update(s).digest("hex");
+  const sha = (s) => crypto4.createHash("sha256").update(s).digest("hex");
   const trimmed = cwd.length > 1 ? cwd.replace(/[/\\]+$/, "") : cwd;
-  return uniq([sha(cwd), sha(trimmed), sha(trimmed + path18.sep)]);
+  return uniq([sha(cwd), sha(trimmed), sha(trimmed + path14.sep)]);
 }
 function recoverCwd2(projectHash, candidates) {
   if (!/^[0-9a-f]{16,}$/i.test(projectHash))
@@ -32147,15 +31050,15 @@ function recoverCwd2(projectHash, candidates) {
   const seen = /* @__PURE__ */ new Set();
   const dirs = [];
   for (const c of candidates) {
-    if (!path18.isAbsolute(c))
+    if (!path14.isAbsolute(c))
       continue;
-    let dir = path18.dirname(path18.resolve(c));
+    let dir = path14.dirname(path14.resolve(c));
     for (let i = 0; i < 40; i += 1) {
       if (seen.has(dir))
         break;
       seen.add(dir);
       dirs.push(dir);
-      const up = path18.dirname(dir);
+      const up = path14.dirname(dir);
       if (up === dir)
         break;
       dir = up;
@@ -32171,10 +31074,1117 @@ function recoverCwd2(projectHash, candidates) {
 }
 function statMtime2(absolute2) {
   try {
-    return fs19.statSync(absolute2).mtimeMs;
+    return fs15.statSync(absolute2).mtimeMs;
   } catch {
     return 0;
   }
+}
+
+// packages/core/dist/analytics/jev-questions.js
+var INTENT_CRITERIA = Object.freeze({
+  feature_build: "Create or add a product capability; use a more specific class if that specific action is central.",
+  bug_fix: "Diagnose or repair incorrect behavior reported as a defect.",
+  ui_design: "Change visual appearance, layout or interaction design as the central requested action.",
+  tests: "Create, run or repair tests or validation checks as the central requested action.",
+  refactor: "Restructure implementation while preserving intended behavior.",
+  code_review: "Assess code or a change and identify correctness or quality issues.",
+  pr_management: "Create, update, review status of or manage a pull request.",
+  research: "Find or verify information, sources or technical options.",
+  explanation_learning: "Explain a concept, behavior or result without another central action request.",
+  planning_architecture: "Plan work or decide system structure and implementation approach.",
+  deploy_operations: "Deploy, release, operate or troubleshoot running infrastructure.",
+  documentation_writing: "Write or edit documentation or prose as the central requested artifact.",
+  agent_coordination: "Assign, inspect, coordinate or manage agent/chat work.",
+  other: "An explicit requested action outside the supplied classes.",
+  mixed: "Several equally central requested actions, with no one primary action.",
+  insufficient_context: "No established action, an acknowledgment alone, or missing context needed to identify the request."
+});
+
+// packages/core/dist/analytics/index.js
+var RESUME_MAX_BYTES = 64 * 1024 * 1024;
+
+// packages/core/dist/adapters/claude.js
+import fs16 from "node:fs";
+import path15 from "node:path";
+function sourceDir4(claudeConfigDir) {
+  return claudePaths(claudeDir(claudeConfigDir)).projects;
+}
+function archiveSourceDir(root) {
+  return path15.join(archiveDir(root ?? potsherdDir()), "claude");
+}
+function discover5(options = {}) {
+  const live = walkProjects(sourceDir4(options.claudeDir), "live");
+  const byRel = /* @__PURE__ */ new Map();
+  for (const found of live)
+    byRel.set(found.rel, found);
+  if (options.archive !== false) {
+    const archiveRoot = archiveSourceDir(options.potsherdDir);
+    for (const found of walkProjects(archiveRoot, "archived")) {
+      if (byRel.has(found.rel))
+        continue;
+      found.originalPath = path15.join(sourceDir4(options.claudeDir), found.rel);
+      byRel.set(found.rel, found);
+    }
+  }
+  return [...byRel.values()].sort((a, b) => a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0);
+}
+async function parse7(source, options = {}) {
+  const raw = await parseClaudeTranscript(source.path, {
+    ...options,
+    // Only ever assert `true`: a top-level transcript that happens to carry a
+    // record with `isSidechain:true` is still a session, and forcing `false`
+    // would throw away the flag for a subagent file the path did not reveal.
+    ...source.isSidechain ? { isSidechain: true } : {},
+    ...source.parentSessionId ? { parentSessionId: source.parentSessionId } : {},
+    projectSlug: options.projectSlug ?? source.projectSlug,
+    status: source.status ?? "live",
+    bytes: source.bytes || void 0
+  });
+  const folded = foldContinuations(raw.exchanges, options.fromSeq ?? 0);
+  const version2 = await readTranscriptVersion(source.path);
+  return {
+    ...raw,
+    session: owningProject(raw.session),
+    exchanges: folded.exchanges,
+    ...version2 ? { version: version2 } : {},
+    continuationsFolded: folded.folded,
+    orphanContinuations: folded.orphans
+  };
+}
+var CLAUDE_WORKTREES = /[/\\]\.claude[/\\]worktrees[/\\][^/\\]+(?:[/\\].*)?$/;
+function owningProjectPath(project) {
+  if (!project)
+    return project ?? null;
+  const collapsed = project.replace(CLAUDE_WORKTREES, "");
+  return collapsed || project;
+}
+function isClaudeWorktree(project) {
+  return Boolean(project) && CLAUDE_WORKTREES.test(project);
+}
+function owningProject(session) {
+  if (!isClaudeWorktree(session.project))
+    return session;
+  const owner = owningProjectPath(session.project);
+  if (!owner || owner === session.project)
+    return session;
+  return { ...session, project: owner, projectSlug: slugify2(owner) };
+}
+function walkProjects(projectsDir, status) {
+  const out = [];
+  for (const slugEntry of readdirSafe2(projectsDir, true)) {
+    if (!slugEntry.isDirectory())
+      continue;
+    const slug = slugEntry.name;
+    const dir = path15.join(projectsDir, slug);
+    for (const entry2 of readdirSafe2(dir, true)) {
+      if (entry2.isFile()) {
+        if (!entry2.name.endsWith(".jsonl"))
+          continue;
+        push(out, {
+          file: path15.join(dir, entry2.name),
+          rel: path15.join(slug, entry2.name),
+          slug,
+          sessionId: basename(entry2.name),
+          isSidechain: false,
+          status
+        });
+        continue;
+      }
+      if (!entry2.isDirectory())
+        continue;
+      if (entry2.name === "memory")
+        continue;
+      const flat = entry2.name === SIDECHAIN_DIR;
+      const subDir = flat ? path15.join(dir, entry2.name) : path15.join(dir, entry2.name, SIDECHAIN_DIR);
+      const relDir = flat ? path15.join(slug, entry2.name) : path15.join(slug, entry2.name, SIDECHAIN_DIR);
+      for (const name of readdirSafe2(subDir)) {
+        if (!name.endsWith(".jsonl"))
+          continue;
+        push(out, {
+          file: path15.join(subDir, name),
+          rel: path15.join(relDir, name),
+          slug,
+          sessionId: flat ? basename(name) : `${entry2.name}:${basename(name)}`,
+          isSidechain: true,
+          ...flat ? {} : { parentSessionId: entry2.name },
+          status
+        });
+      }
+    }
+  }
+  return out;
+}
+function push(out, spec) {
+  const st = statSafe(spec.file);
+  if (!st)
+    return;
+  out.push({
+    sessionId: spec.sessionId,
+    harness: "claude",
+    path: spec.file,
+    rel: spec.rel,
+    projectSlug: spec.slug,
+    bytes: st.size,
+    mtimeMs: st.mtimeMs,
+    isSidechain: spec.isSidechain,
+    ...spec.parentSessionId ? { parentSessionId: spec.parentSessionId } : {},
+    status: spec.status
+  });
+}
+function foldContinuations(exchanges, fromSeq) {
+  const kept = [];
+  let folded = 0;
+  let orphans = 0;
+  for (const exchange of exchanges) {
+    const previous = kept[kept.length - 1];
+    if (exchange.userText.trim()) {
+      kept.push(exchange);
+      continue;
+    }
+    if (!previous) {
+      orphans += 1;
+      continue;
+    }
+    folded += 1;
+    previous.assistantText = [previous.assistantText, exchange.assistantText].filter((t) => t.trim()).join("\n\n");
+    previous.toolCalls = [...previous.toolCalls, ...exchange.toolCalls];
+    previous.filesTouched = uniq([...previous.filesTouched, ...exchange.filesTouched]);
+  }
+  let seq = fromSeq;
+  for (const exchange of kept) {
+    seq += 1;
+    exchange.seq = seq;
+    exchange.id = exchangeId(exchange.sessionId, seq);
+  }
+  return { exchanges: kept, folded, orphans };
+}
+var VERSION_SCAN_LINES = 200;
+async function readTranscriptVersion(filePath) {
+  let seen = 0;
+  try {
+    for await (const line of readJsonlLines(filePath)) {
+      if (seen >= VERSION_SCAN_LINES)
+        break;
+      seen += 1;
+      const parsed = parseJsonLine(line.text);
+      if (!isRecord(parsed))
+        continue;
+      if (typeof parsed.version === "string" && parsed.version)
+        return parsed.version;
+    }
+  } catch {
+    return void 0;
+  }
+  return void 0;
+}
+var IGNORED_RECORD_TYPES = [
+  "last-prompt",
+  "mode",
+  "permission-mode",
+  "queue-operation",
+  "atis-latch",
+  "file-history-snapshot",
+  "file-history-delta",
+  "frame-link",
+  // Phase 1 found this as the sixteenth Claude Code record type, in no draft of
+  // `formats.md`, and left it OFF this list on purpose: "novel" was the honest
+  // answer until somebody opened one. Nobody did, for six phases, so `index`
+  // has been reporting it as an undocumented format change on every run since.
+  //
+  // Opened in phase 7, over the frozen snapshot: every instance is
+  //   { type, v, sessionId, artifacts: { <uuid>: { state, title, writtenAtMs } } }
+  // -- no `cwd`, no `timestamp`, no `message`, no `parentUuid`. It is the
+  // editor's bookkeeping for published artifacts, and there is nothing in it an
+  // exchange could carry. `tests/adapters/claude.test.ts` pins that shape, so a
+  // build that starts putting conversation into it fails rather than being
+  // silently skipped.
+  "artifact-comment-monitor"
+];
+var IGNORED = new Set(IGNORED_RECORD_TYPES);
+function isNovelRecordType(type) {
+  return !IGNORED.has(type);
+}
+function basename(fileName) {
+  return fileName.slice(0, -".jsonl".length);
+}
+function statSafe(file2) {
+  try {
+    return fs16.statSync(file2);
+  } catch {
+    return null;
+  }
+}
+function readdirSafe2(dir, withFileTypes) {
+  try {
+    return withFileTypes ? fs16.readdirSync(dir, { withFileTypes: true }) : fs16.readdirSync(dir);
+  } catch {
+    return [];
+  }
+}
+
+// packages/core/dist/adapters/codex.js
+import fs18 from "node:fs";
+import path17 from "node:path";
+
+// packages/core/dist/parser/codex.js
+import fs17 from "node:fs";
+import path16 from "node:path";
+var TOOL_CALL_TYPES = /* @__PURE__ */ new Set([
+  "function_call",
+  "custom_tool_call",
+  "tool_search_call",
+  "local_shell_call"
+]);
+var TOOL_OUTPUT_TYPES = /* @__PURE__ */ new Set([
+  "function_call_output",
+  "custom_tool_call_output",
+  "tool_search_output",
+  "local_shell_call_output"
+]);
+var HANDLED_ENVELOPES = /* @__PURE__ */ new Set([
+  "session_meta",
+  "turn_context",
+  "response_item",
+  "event_msg",
+  "world_state",
+  "compacted"
+]);
+async function parseCodexTranscript(filePath, options = {}) {
+  const absolute2 = path16.resolve(filePath);
+  const fromOffset = options.fromOffset ?? 0;
+  const snapshot = fs17.readFileSync(absolute2);
+  const seqByOffset = /* @__PURE__ */ new Map();
+  const humanPrompts = await collectHumanPrompts(absolute2, fromOffset, snapshot);
+  const unknownTypes = {};
+  let malformedLines = 0;
+  let endOffset = fromOffset;
+  const exchanges = [];
+  let current = null;
+  let seq = options.fromSeq ?? 0;
+  let sessionId = options.sessionId;
+  let cwd;
+  let model;
+  let entrypoint;
+  let parentSessionId;
+  let agentName;
+  let firstTs;
+  let lastTs;
+  let userPrompts = 0;
+  let assistantTurns = 0;
+  let toolCallCount = 0;
+  const resolvedId = () => sessionId ?? sessionIdFromPath2(absolute2);
+  const finalize2 = () => {
+    if (!current)
+      return;
+    const b = current;
+    current = null;
+    if (!b.userText.trim() && b.toolCalls.length === 0)
+      return;
+    exchanges.push({
+      id: exchangeId(resolvedId(), b.seq),
+      sessionId: resolvedId(),
+      seq: b.seq,
+      ts: b.ts,
+      userText: b.userText,
+      assistantText: b.assistantTexts.join("\n\n"),
+      toolCalls: b.toolCalls,
+      filesTouched: uniq(b.files),
+      isSidechain: parentSessionId !== void 0,
+      redacted: false
+    });
+  };
+  for await (const line of readJsonlLines(absolute2, { start: fromOffset, snapshot })) {
+    if (!line.terminated)
+      break;
+    endOffset = line.end;
+    const parsed = parseJsonLine(line.text);
+    if (parsed === void 0) {
+      if (line.text.trim())
+        malformedLines += 1;
+      continue;
+    }
+    if (!isRecord(parsed)) {
+      malformedLines += 1;
+      continue;
+    }
+    const envelope = typeof parsed.type === "string" ? parsed.type : "";
+    if (!HANDLED_ENVELOPES.has(envelope)) {
+      unknownTypes[envelope || "(no type)"] = (unknownTypes[envelope || "(no type)"] ?? 0) + 1;
+    }
+    const ts = typeof parsed.timestamp === "string" ? parsed.timestamp : (/* @__PURE__ */ new Date()).toISOString();
+    if (typeof parsed.timestamp === "string") {
+      firstTs ??= parsed.timestamp;
+      lastTs = parsed.timestamp;
+    }
+    const payload = parsed.payload;
+    if (!isRecord(payload))
+      continue;
+    if (envelope === "session_meta") {
+      if (!options.sessionId) {
+        const id2 = payload.id ?? payload.session_id;
+        if (typeof id2 === "string")
+          sessionId = id2;
+      }
+      if (typeof payload.cwd === "string")
+        cwd = payload.cwd;
+      if (typeof payload.originator === "string")
+        entrypoint = payload.originator;
+      else if (typeof payload.source === "string")
+        entrypoint = payload.source;
+      if (isRecord(payload.source) && isRecord(payload.source.subagent) && isRecord(payload.source.subagent.thread_spawn)) {
+        const spawned = payload.source.subagent.thread_spawn;
+        if (typeof spawned.parent_thread_id === "string")
+          parentSessionId = spawned.parent_thread_id;
+        if (typeof spawned.agent_nickname === "string")
+          agentName = spawned.agent_nickname;
+      }
+      continue;
+    }
+    if (envelope === "turn_context") {
+      if (typeof payload.cwd === "string")
+        cwd = payload.cwd;
+      if (typeof payload.model === "string")
+        model = payload.model;
+      continue;
+    }
+    if (envelope !== "response_item")
+      continue;
+    const kind = typeof payload.type === "string" ? payload.type : "";
+    if (kind === "message") {
+      const text2 = extractTextFromContent(payload.content);
+      if (!text2.trim())
+        continue;
+      if (payload.role === "user") {
+        if (humanPrompts.size > 0 && !humanPrompts.has(normalise(text2)))
+          continue;
+        finalize2();
+        seq += 1;
+        userPrompts += 1;
+        current = {
+          seq,
+          ts,
+          userText: text2,
+          assistantTexts: [],
+          toolCalls: [],
+          byCallId: /* @__PURE__ */ new Map(),
+          files: []
+        };
+        seqByOffset.set(line.start, seq);
+      } else if (payload.role === "assistant" && current) {
+        seqByOffset.set(line.start, current.seq);
+        current.assistantTexts.push(text2);
+        current.ts = ts;
+        assistantTurns += 1;
+      }
+      continue;
+    }
+    if (TOOL_CALL_TYPES.has(kind) && current) {
+      seqByOffset.set(line.start, current.seq);
+      let input = payload.arguments;
+      if (typeof input === "string")
+        input = safeParseJson(input);
+      else if (payload.input !== void 0)
+        input = payload.input;
+      else if (payload.action !== void 0)
+        input = payload.action;
+      const name = typeof payload.name === "string" && payload.name || typeof payload.namespace === "string" && payload.namespace || kind;
+      const call3 = { name, input: stringifyToolInput(input) };
+      current.toolCalls.push(call3);
+      toolCallCount += 1;
+      if (typeof payload.call_id === "string") {
+        current.byCallId.set(payload.call_id, current.toolCalls.length - 1);
+      }
+      for (const f of filesFromToolInput(input))
+        current.files.push(f);
+      continue;
+    }
+    if (TOOL_OUTPUT_TYPES.has(kind) && current) {
+      seqByOffset.set(line.start, current.seq);
+      const callId = typeof payload.call_id === "string" ? payload.call_id : void 0;
+      if (!callId)
+        continue;
+      const at = current.byCallId.get(callId);
+      if (at === void 0)
+        continue;
+      const call3 = current.toolCalls[at];
+      if (!call3)
+        continue;
+      const out = stringifyToolOutput(payload.output);
+      if (out !== void 0)
+        call3.result = out;
+    }
+  }
+  finalize2();
+  const id = resolvedId();
+  const projectSlug = options.projectSlug ?? (cwd ? path16.basename(cwd) : "unknown");
+  const bytes2 = options.bytes ?? statBytes2(absolute2);
+  const session = {
+    id,
+    harness: "codex",
+    sourcePath: absolute2,
+    project: cwd ?? projectSlug,
+    projectSlug,
+    startedAt: firstTs ?? "",
+    endedAt: lastTs ?? firstTs ?? "",
+    ...options.title ? { title: options.title } : {},
+    ...options.gitBranch ? { gitBranch: options.gitBranch } : {},
+    ...entrypoint ? { entrypoint } : {},
+    ...model ? { model } : {},
+    isSidechain: parentSessionId !== void 0,
+    ...parentSessionId ? { parentSessionId } : {},
+    ...agentName ? { agentName } : {},
+    counts: { userPrompts, assistantTurns, toolCalls: toolCallCount, bytes: bytes2 },
+    status: options.status ?? "live"
+  };
+  const bySeq = new Map(exchanges.map((exchange) => [exchange.seq, exchange]));
+  const legacyByOffset = new Map([...seqByOffset].flatMap(([offset, seq2]) => {
+    const exchange = bySeq.get(seq2);
+    return exchange ? [[offset, { seq: seq2, exchangeId: exchange.id }]] : [];
+  }));
+  const evidence2 = await collectEvidence(absolute2, "codex", fromOffset, { snapshot, legacyByOffset });
+  for (const [kind, count2] of Object.entries(evidence2.unknownTypes))
+    unknownTypes[kind] = (unknownTypes[kind] ?? 0) + count2;
+  return { session, exchanges, unknownTypes, endOffset, malformedLines, records: evidence2.records, continuation: evidence2.continuation, evidenceVersion: CODEX_EVIDENCE_VERSION, artifactHash: evidence2.artifactHash };
+}
+async function collectHumanPrompts(absolute2, start, snapshot) {
+  const out = /* @__PURE__ */ new Set();
+  for await (const line of readJsonlLines(absolute2, { start, snapshot })) {
+    if (!line.terminated)
+      break;
+    const parsed = parseJsonLine(line.text);
+    if (!isRecord(parsed) || parsed.type !== "event_msg")
+      continue;
+    const payload = parsed.payload;
+    if (!isRecord(payload))
+      continue;
+    if (payload.type === "user_message" && typeof payload.message === "string") {
+      out.add(normalise(payload.message));
+    } else if (payload.type === "item_completed" && isRecord(payload.item) && payload.item.type === "UserMessage") {
+      const text2 = extractTextFromContent(payload.item.content);
+      if (text2.trim())
+        out.add(normalise(text2));
+    }
+  }
+  return out;
+}
+function normalise(text2) {
+  return text2.trim();
+}
+function sessionIdFromPath2(filePath) {
+  const base2 = path16.basename(filePath, ".jsonl");
+  const matches = base2.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
+  const last = matches?.[matches.length - 1];
+  return last ?? base2;
+}
+function statBytes2(absolute2) {
+  try {
+    return fs17.statSync(absolute2).size;
+  } catch {
+    return 0;
+  }
+}
+
+// packages/core/dist/codex/version.js
+var MIN_CODEX_VERSION = "0.130.0";
+function parseCodexCliVersion(output) {
+  return output.match(/\b(\d+\.\d+\.\d+)\b/)?.[1];
+}
+function compareSemver(a, b) {
+  const aParts = a.split(".").map((part) => Number.parseInt(part, 10));
+  const bParts = b.split(".").map((part) => Number.parseInt(part, 10));
+  for (let i = 0; i < 3; i += 1) {
+    const rawA = aParts[i];
+    const rawB = bParts[i];
+    const aPart = typeof rawA === "number" && Number.isFinite(rawA) ? rawA : 0;
+    const bPart = typeof rawB === "number" && Number.isFinite(rawB) ? rawB : 0;
+    if (aPart !== bPart)
+      return aPart - bPart;
+  }
+  return 0;
+}
+function versionMeetsMinimum(version2, minimum = MIN_CODEX_VERSION) {
+  return compareSemver(version2, minimum) >= 0;
+}
+
+// packages/core/dist/adapters/codex.js
+var ROLLOUT_FILE = /^rollout-.*\.jsonl$/i;
+var UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+var MAX_WALK_DEPTH = 8;
+function sessionIdFromRolloutPath(filePath) {
+  const base2 = path17.basename(filePath, ".jsonl");
+  const matches = base2.match(UUID);
+  return matches?.[matches.length - 1] ?? base2;
+}
+function discover6(options = {}) {
+  const paths = codexPaths(codexDir(options.codexHome));
+  const out = [];
+  walk(paths.sessions, "live", 0, out);
+  walk(paths.archived, "archived", 0, out);
+  out.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  return out;
+}
+function walk(dir, status, depth, out) {
+  if (depth > MAX_WALK_DEPTH)
+    return;
+  let entries;
+  try {
+    entries = fs18.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry2 of entries) {
+    const full = path17.join(dir, entry2.name);
+    if (entry2.isDirectory()) {
+      walk(full, status, depth + 1, out);
+      continue;
+    }
+    if (!entry2.isFile() && !entry2.isSymbolicLink())
+      continue;
+    if (!ROLLOUT_FILE.test(entry2.name))
+      continue;
+    let stat;
+    try {
+      stat = fs18.statSync(full);
+    } catch {
+      continue;
+    }
+    if (!stat.isFile())
+      continue;
+    out.push({
+      sessionId: sessionIdFromRolloutPath(full),
+      harness: "codex",
+      path: full,
+      projectSlug: "",
+      bytes: stat.size,
+      mtimeMs: stat.mtimeMs,
+      isSidechain: false,
+      status
+    });
+  }
+}
+function readSessionIndex(options = {}) {
+  const file2 = codexPaths(codexDir(options.codexHome)).sessionIndex;
+  const out = /* @__PURE__ */ new Map();
+  let text2;
+  try {
+    text2 = fs18.readFileSync(file2, "utf8");
+  } catch {
+    return out;
+  }
+  for (const line of text2.split("\n")) {
+    if (!line.trim())
+      continue;
+    const parsed = parseJsonLine(line);
+    if (!isRecord(parsed) || typeof parsed["id"] !== "string")
+      continue;
+    const id = parsed["id"];
+    const threadName = parsed["thread_name"];
+    const updatedAt = parsed["updated_at"];
+    out.set(id, {
+      id,
+      ...typeof threadName === "string" && threadName.trim() ? { threadName } : {},
+      ...typeof updatedAt === "string" ? { updatedAt } : {}
+    });
+  }
+  return out;
+}
+var indexCache = /* @__PURE__ */ new Map();
+function sessionIndexCached(codexHome) {
+  const file2 = codexPaths(codexDir(codexHome)).sessionIndex;
+  let mtimeMs = -1;
+  try {
+    mtimeMs = fs18.statSync(file2).mtimeMs;
+  } catch {
+  }
+  const hit = indexCache.get(file2);
+  if (hit && hit.mtimeMs === mtimeMs)
+    return hit.entries;
+  const entries = readSessionIndex({ ...codexHome ? { codexHome } : {} });
+  indexCache.set(file2, { mtimeMs, entries });
+  return entries;
+}
+async function readCodexHeader(filePath) {
+  for await (const line of readJsonlLines(filePath)) {
+    if (!line.terminated)
+      return void 0;
+    const parsed = parseJsonLine(line.text);
+    if (!isRecord(parsed) || parsed["type"] !== "session_meta")
+      return void 0;
+    const payload = parsed["payload"];
+    if (!isRecord(payload))
+      return void 0;
+    const str = (key2) => typeof payload[key2] === "string" ? payload[key2] : void 0;
+    const timestamp = typeof parsed["timestamp"] === "string" ? parsed["timestamp"] : void 0;
+    const header = {
+      ...str("id") ?? str("session_id") ? { sessionId: str("id") ?? str("session_id") } : {},
+      ...str("cwd") ? { cwd: str("cwd") } : {},
+      ...str("originator") ? { originator: str("originator") } : {},
+      ...str("source") ? { source: str("source") } : {},
+      ...str("cli_version") ? { cliVersion: str("cli_version") } : {},
+      ...str("model_provider") ? { modelProvider: str("model_provider") } : {},
+      ...str("timestamp") ?? timestamp ? { startedAt: str("timestamp") ?? timestamp } : {}
+    };
+    return header;
+  }
+  return void 0;
+}
+function codexEntrypoint(header) {
+  for (const raw of [header.originator, header.source]) {
+    if (!raw || !raw.trim())
+      continue;
+    const v = raw.trim().toLowerCase();
+    if (v.includes("desktop"))
+      return "desktop";
+    if (v.includes("vscode") || v.includes("vs code"))
+      return "vscode";
+    if (v.includes("cli"))
+      return "cli";
+    if (v.includes("exec"))
+      return "exec";
+    return v.replace(/\s+/g, "-");
+  }
+  return void 0;
+}
+var DATA_URI2 = /data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)?(?:;[a-zA-Z0-9.+=-]+)*;base64,[A-Za-z0-9+/=\s]{64,}/g;
+var DEFAULT_MAX_VALUE_BYTES = 32 * 1024;
+var DEFAULT_MAX_MESSAGE_BYTES = 256 * 1024;
+function elideBinary2(text2, tally2) {
+  if (!text2.includes("base64,"))
+    return text2;
+  return text2.replace(DATA_URI2, (match, mime) => {
+    tally2.binaryParts += 1;
+    tally2.charsElided += match.length;
+    return `\u2039elided:${mime ?? "application/octet-stream"}:${match.length} bytes\u203A`;
+  });
+}
+function cap(text2, max, tally2) {
+  if (text2.length <= max)
+    return text2;
+  const dropped = text2.length - max;
+  tally2.truncatedValues += 1;
+  tally2.charsElided += dropped;
+  return `${text2.slice(0, max)}
+\u2039elided:oversize:${dropped} bytes\u203A`;
+}
+var PATCH_FILE = /\*\*\* (?:Add|Update|Delete) File: ([^\n"\\]+)/g;
+var PATCH_MOVE = /\*\*\* Move to: ([^\n"\\]+)/g;
+function filesFromCodexToolInput(input) {
+  if (!input.includes("*** "))
+    return [];
+  const out = [];
+  for (const re of [PATCH_FILE, PATCH_MOVE]) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(input)) !== null) {
+      const file2 = m[1]?.trim();
+      if (file2)
+        out.push(file2);
+    }
+  }
+  return out;
+}
+async function parse8(source, options = {}) {
+  const header = await readCodexHeader(source.path);
+  const id = options.sessionId ?? header?.sessionId ?? source.sessionId;
+  const entries = sessionIndexCached(options.codexHome);
+  const indexed = entries.get(id);
+  const title = options.title ?? indexed?.threadName;
+  const result = await parseCodexTranscript(source.path, {
+    ...options.fromOffset !== void 0 ? { fromOffset: options.fromOffset } : {},
+    ...options.fromSeq !== void 0 ? { fromSeq: options.fromSeq } : {},
+    // The header is the file's own record, so passing it satisfies "parse() is
+    // allowed to correct the id" while still working from a byte offset, where
+    // the parser would never see `session_meta` again.
+    sessionId: id,
+    ...options.projectSlug ?? source.projectSlug ? { projectSlug: options.projectSlug ?? source.projectSlug } : {},
+    ...title ? { title } : {},
+    ...options.gitBranch ? { gitBranch: options.gitBranch } : {},
+    status: source.status ?? "live",
+    bytes: source.bytes
+  });
+  const tally2 = { binaryParts: 0, truncatedValues: 0, charsElided: 0 };
+  const maxValue = options.maxValueBytes ?? DEFAULT_MAX_VALUE_BYTES;
+  const maxMessage = options.maxMessageBytes ?? DEFAULT_MAX_MESSAGE_BYTES;
+  const exchanges = result.exchanges.map((exchange) => {
+    const toolCalls = exchange.toolCalls.map((call3) => {
+      const input = cap(elideBinary2(call3.input, tally2), maxValue, tally2);
+      const next = { ...call3, input };
+      if (call3.result !== void 0) {
+        next.result = cap(elideBinary2(call3.result, tally2), maxValue, tally2);
+      }
+      return next;
+    });
+    const extraFiles = exchange.toolCalls.flatMap((call3) => filesFromCodexToolInput(call3.input));
+    return {
+      ...exchange,
+      userText: cap(elideBinary2(exchange.userText, tally2), maxMessage, tally2),
+      assistantText: cap(elideBinary2(exchange.assistantText, tally2), maxMessage, tally2),
+      toolCalls,
+      filesTouched: uniq([...exchange.filesTouched, ...extraFiles])
+    };
+  });
+  const entrypoint = header ? codexEntrypoint(header) : void 0;
+  const session = {
+    ...result.session,
+    id,
+    ...header?.cwd ? { project: header.cwd, projectSlug: pickSlug(result.session, header.cwd) } : {},
+    ...entrypoint ? { entrypoint } : {},
+    status: source.status ?? result.session.status
+  };
+  if (title)
+    session.title = title;
+  const cliVersion = header?.cliVersion;
+  const semver = cliVersion ? parseCodexCliVersion(cliVersion) : void 0;
+  return {
+    ...result,
+    session,
+    exchanges,
+    codex: {
+      ...cliVersion ? { cliVersion } : {},
+      // Unknown version == not yet proven unsupported; only a version we can
+      // read AND that is below the floor counts as unsupported.
+      versionSupported: semver ? versionMeetsMinimum(semver) : true,
+      headerUnreadable: header === void 0,
+      titled: Boolean(indexed?.threadName),
+      elisions: tally2
+    }
+  };
+}
+function pickSlug(session, cwd) {
+  if (session.projectSlug && session.projectSlug !== "unknown")
+    return session.projectSlug;
+  return path17.basename(cwd) || "unknown";
+}
+
+// packages/core/dist/adapters/pi.js
+import fs19 from "node:fs";
+import path18 from "node:path";
+import crypto5 from "node:crypto";
+var HANDLED_TYPES2 = /* @__PURE__ */ new Set([
+  "session",
+  "message",
+  "model_change",
+  "thinking_level_change",
+  "session_info",
+  "compaction",
+  "branch_summary",
+  "label",
+  "custom",
+  "custom_message"
+]);
+var HANDLED_ROLES2 = /* @__PURE__ */ new Set(["user", "assistant", "toolResult"]);
+function sourceDir5(override) {
+  return piSessionsDir(override);
+}
+function discover7(override) {
+  const root = sourceDir5(override);
+  const out = [];
+  let slugs;
+  try {
+    slugs = fs19.readdirSync(root, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const slug of slugs) {
+    if (!slug.isDirectory())
+      continue;
+    const dir = path18.join(root, slug.name);
+    let files;
+    try {
+      files = fs19.readdirSync(dir);
+    } catch {
+      continue;
+    }
+    for (const file2 of files) {
+      if (!file2.endsWith(".jsonl"))
+        continue;
+      const full = path18.join(dir, file2);
+      let stat;
+      try {
+        stat = fs19.statSync(full);
+      } catch {
+        continue;
+      }
+      if (!stat.isFile())
+        continue;
+      out.push({
+        sessionId: sessionIdFromFilename2(file2),
+        harness: "pi",
+        path: full,
+        projectSlug: slug.name,
+        bytes: stat.size,
+        mtimeMs: stat.mtimeMs,
+        isSidechain: false,
+        status: "live"
+      });
+    }
+  }
+  out.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  return out;
+}
+function sessionIdFromFilename2(file2) {
+  const base2 = path18.basename(file2, ".jsonl");
+  const at = base2.lastIndexOf("_");
+  return at === -1 ? base2 : base2.slice(at + 1);
+}
+async function parse9(source, options = {}) {
+  const src = typeof source === "string" ? void 0 : source;
+  const absolute2 = path18.resolve(typeof source === "string" ? source : source.path);
+  const unknownTypes = {};
+  let malformedLines = 0;
+  let endOffset = 0;
+  const nodes = [];
+  const byId = /* @__PURE__ */ new Map();
+  let header;
+  let order = 0;
+  for await (const line of readJsonlLines(absolute2)) {
+    if (!line.terminated)
+      break;
+    endOffset = line.end;
+    const parsed = parseJsonLine(line.text);
+    if (parsed === void 0 || !isRecord(parsed)) {
+      if (line.text.trim())
+        malformedLines += 1;
+      continue;
+    }
+    const type = typeof parsed.type === "string" ? parsed.type : "";
+    if (!HANDLED_TYPES2.has(type)) {
+      const key2 = type || "(no type)";
+      unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+    } else if (type === "message") {
+      const message = parsed.message;
+      const role = isRecord(message) && typeof message.role === "string" ? message.role : "";
+      if (!HANDLED_ROLES2.has(role)) {
+        const key2 = `message:${role || "(no role)"}`;
+        unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+      }
+    }
+    if (type === "session") {
+      header ??= parsed;
+      continue;
+    }
+    const id = typeof parsed.id === "string" ? parsed.id : "";
+    if (!id) {
+      malformedLines += 1;
+      continue;
+    }
+    const node = {
+      id,
+      parentId: typeof parsed.parentId === "string" ? parsed.parentId : null,
+      type,
+      ts: typeof parsed.timestamp === "string" ? parsed.timestamp : "",
+      order: order++,
+      record: parsed
+    };
+    nodes.push(node);
+    byId.set(id, node);
+  }
+  const sessionId = options.sessionId ?? (header && typeof header.id === "string" && header.id ? header.id : sessionIdFromFilename2(absolute2));
+  const mainline = linearise(nodes, byId);
+  const onMainline = new Set(mainline.map((n) => n.id));
+  const branches = branchChains(nodes, onMainline);
+  const counts = { userPrompts: 0, assistantTurns: 0, toolCalls: 0 };
+  const exchanges = [];
+  let seq = 0;
+  seq = buildExchanges4(mainline, sessionId, false, seq, exchanges, counts);
+  for (const chain of branches) {
+    seq = buildExchanges4(chain, sessionId, true, seq, exchanges, counts);
+  }
+  let model;
+  let title;
+  for (const node of mainline) {
+    if (node.type === "model_change" && typeof node.record.modelId === "string") {
+      model = node.record.modelId;
+    }
+    if (node.type === "message") {
+      const message = node.record.message;
+      if (isRecord(message) && message.role === "assistant" && typeof message.model === "string") {
+        model = message.model;
+      }
+    }
+    if (node.type === "session_info" && typeof node.record.name === "string" && node.record.name.trim()) {
+      title = node.record.name;
+    }
+  }
+  const projectSlug = options.projectSlug ?? src?.projectSlug ?? path18.basename(path18.dirname(absolute2));
+  const headerCwd = header && typeof header.cwd === "string" ? header.cwd : void 0;
+  const startedAt = header && typeof header.timestamp === "string" ? header.timestamp : nodes[0]?.ts ?? "";
+  let endedAt = startedAt;
+  for (const node of nodes)
+    if (node.ts > endedAt)
+      endedAt = node.ts;
+  const parentSession = header && typeof header.parentSession === "string" ? header.parentSession : void 0;
+  const session = {
+    id: sessionId,
+    harness: "pi",
+    sourcePath: absolute2,
+    project: headerCwd ?? unslugifyPi(projectSlug),
+    projectSlug,
+    startedAt,
+    endedAt,
+    ...title ? { title } : {},
+    // pi never persists the git branch: `GitBranch` exists only in the live
+    // TUI footer provider. Left undefined rather than guessed.
+    entrypoint: "cli",
+    ...model ? { model } : {},
+    isSidechain: false,
+    ...parentSession ? { parentSessionId: sessionIdFromFilename2(parentSession) } : {},
+    counts: {
+      userPrompts: counts.userPrompts,
+      assistantTurns: counts.assistantTurns,
+      toolCalls: counts.toolCalls,
+      bytes: options.bytes ?? src?.bytes ?? statBytes3(absolute2)
+    },
+    status: options.status ?? src?.status ?? "live"
+  };
+  return { session, exchanges, unknownTypes, endOffset, malformedLines };
+}
+function linearise(nodes, byId) {
+  const leaf = nodes[nodes.length - 1];
+  if (!leaf)
+    return [];
+  const chain = [];
+  const seen = /* @__PURE__ */ new Set();
+  let current = leaf;
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    chain.unshift(current);
+    current = current.parentId === null ? void 0 : byId.get(current.parentId);
+  }
+  return chain;
+}
+function branchChains(nodes, onMainline) {
+  const chains = [];
+  const chainOf = /* @__PURE__ */ new Map();
+  for (const node of nodes) {
+    if (onMainline.has(node.id))
+      continue;
+    const parentChain = node.parentId === null ? void 0 : chainOf.get(node.parentId);
+    if (parentChain === void 0) {
+      chainOf.set(node.id, chains.length);
+      chains.push([node]);
+      continue;
+    }
+    chainOf.set(node.id, parentChain);
+    chains[parentChain].push(node);
+  }
+  return chains;
+}
+function buildExchanges4(chain, sessionId, isSidechain, startSeq, out, counts) {
+  let seq = startSeq;
+  let current = null;
+  const finalize2 = () => {
+    if (!current)
+      return;
+    const b = current;
+    current = null;
+    if (!b.userText.trim() && b.assistantTexts.length === 0 && b.toolCalls.length === 0)
+      return;
+    out.push({
+      id: exchangeId2(sessionId, b.seq),
+      sessionId,
+      seq: b.seq,
+      ts: b.ts,
+      userText: b.userText,
+      assistantText: b.assistantTexts.join("\n\n"),
+      toolCalls: b.toolCalls,
+      filesTouched: uniq(b.files),
+      isSidechain,
+      ...b.parentUuid ? { parentUuid: b.parentUuid } : {},
+      redacted: false
+    });
+  };
+  const open2 = (ts, parentUuid) => {
+    seq += 1;
+    const b = {
+      seq,
+      ts,
+      userText: "",
+      assistantTexts: [],
+      toolCalls: [],
+      byToolCallId: /* @__PURE__ */ new Map(),
+      files: [],
+      parentUuid
+    };
+    current = b;
+    return b;
+  };
+  for (const node of chain) {
+    if (node.type !== "message")
+      continue;
+    const message = node.record.message;
+    if (!isRecord(message))
+      continue;
+    const role = typeof message.role === "string" ? message.role : "";
+    if (!HANDLED_ROLES2.has(role))
+      continue;
+    if (role === "user") {
+      finalize2();
+      counts.userPrompts += 1;
+      open2(node.ts, node.parentId).userText = extractTypedText(message.content);
+      continue;
+    }
+    const b = current ?? open2(node.ts, node.parentId);
+    if (role === "assistant") {
+      counts.assistantTurns += 1;
+      const text2 = extractTypedText(message.content);
+      if (text2.trim())
+        b.assistantTexts.push(text2);
+      for (const block of toolCallBlocks(message.content)) {
+        const name2 = typeof block.name === "string" ? block.name : "unknown";
+        const call3 = { name: name2, input: stringifyToolInput(block.arguments) };
+        b.toolCalls.push(call3);
+        counts.toolCalls += 1;
+        if (typeof block.id === "string")
+          b.byToolCallId.set(block.id, b.toolCalls.length - 1);
+        for (const f of filesFromToolInput(block.arguments))
+          b.files.push(f);
+      }
+      continue;
+    }
+    const callId = typeof message.toolCallId === "string" ? message.toolCallId : void 0;
+    const at = callId === void 0 ? void 0 : b.byToolCallId.get(callId);
+    const result = stringifyToolOutput(typeof message.content === "string" ? message.content : extractTextFromContent(message.content));
+    if (at !== void 0) {
+      const call3 = b.toolCalls[at];
+      if (call3) {
+        if (result !== void 0)
+          call3.result = result;
+        if (message.isError === true)
+          call3.isError = true;
+      }
+      continue;
+    }
+    const name = typeof message.toolName === "string" ? message.toolName : "unknown";
+    b.toolCalls.push({
+      name,
+      input: "",
+      ...result !== void 0 ? { result } : {},
+      ...message.isError === true ? { isError: true } : {}
+    });
+    counts.toolCalls += 1;
+  }
+  finalize2();
+  return seq;
+}
+function toolCallBlocks(content) {
+  if (!Array.isArray(content))
+    return [];
+  return content.filter((b) => isRecord(b) && b.type === "toolCall");
+}
+function unslugifyPi(slug) {
+  const inner = slug.replace(/^--/, "").replace(/--$/, "");
+  return "/" + inner.replace(/-/g, "/");
+}
+function statBytes3(absolute2) {
+  try {
+    return fs19.statSync(absolute2).size;
+  } catch {
+    return 0;
+  }
+}
+function exchangeId2(sessionId, seq) {
+  return crypto5.createHash("sha256").update(`${sessionId}:${seq}`).digest("hex").slice(0, 32);
 }
 
 // packages/core/dist/memory/history.js
@@ -32870,12 +32880,12 @@ function adapterSpecs(o = {}) {
       harness: "claude",
       evidenceVersion: CLAUDE_EVIDENCE_VERSION,
       displayName: "Claude Code",
-      sourceDir: sourceDir3(o.claudeDir),
-      discover: () => discover3({
+      sourceDir: sourceDir4(o.claudeDir),
+      discover: () => discover5({
         ...o.claudeDir ? { claudeDir: o.claudeDir } : {},
         ...o.potsherdDir ? { potsherdDir: o.potsherdDir } : {}
       }),
-      parse: (source) => parse5(source),
+      parse: (source) => parse7(source),
       version: (r) => r.version ?? "unknown",
       novel: isNovelRecordType
     },
@@ -32884,8 +32894,8 @@ function adapterSpecs(o = {}) {
       evidenceVersion: CODEX_EVIDENCE_VERSION,
       displayName: "Codex CLI",
       sourceDir: codexPaths(codexDir(o.codexHome)).sessions,
-      discover: () => discover4(o.codexHome ? { codexHome: o.codexHome } : {}),
-      parse: (source) => parse6(source, o.codexHome ? { codexHome: o.codexHome } : {}),
+      discover: () => discover6(o.codexHome ? { codexHome: o.codexHome } : {}),
+      parse: (source) => parse8(source, o.codexHome ? { codexHome: o.codexHome } : {}),
       version: (r) => r.codex?.cliVersion ?? "unknown",
       novel: () => true
     },
@@ -32893,17 +32903,17 @@ function adapterSpecs(o = {}) {
       harness: "cursor",
       displayName: "Cursor",
       sourceDir: cursorProjectsDir(o.cursorDir),
-      discover: () => discover5(o.cursorDir),
-      parse: (source) => parse7(source),
+      discover: () => discover3(o.cursorDir),
+      parse: (source) => parse5(source),
       version: () => "unknown",
       novel: () => true
     },
     {
       harness: "pi",
       displayName: "pi",
-      sourceDir: sourceDir4(o.piDir),
-      discover: () => discover6(o.piDir),
-      parse: (source) => parse8(source),
+      sourceDir: sourceDir5(o.piDir),
+      discover: () => discover7(o.piDir),
+      parse: (source) => parse9(source),
       version: () => "unknown",
       novel: () => true
     },
@@ -32913,9 +32923,9 @@ function adapterSpecs(o = {}) {
       // **unmeasured**, and against synthetic fixtures. See the adapter header.
       harness: "gemini",
       displayName: DISPLAY_NAME3,
-      sourceDir: sourceDir5(o.geminiDir),
-      discover: () => discover7(o.geminiDir),
-      parse: (source) => parse9(source),
+      sourceDir: sourceDir3(o.geminiDir),
+      discover: () => discover4(o.geminiDir),
+      parse: (source) => parse6(source),
       version: () => "unknown",
       novel: () => true
     },
@@ -34184,10 +34194,10 @@ function named(v, now) {
     case "yesterday":
       return localRange(new Date(y, mo, d - 1), new Date(y, mo, d), "yesterday");
     case "this week":
-      return localRange(mondayOf(now), new Date(+mondayOf(now) + WEEK), "this week");
+      return localRange(mondayOf(now), new Date(+mondayOf(now) + WEEK2), "this week");
     case "last week": {
       const monday = mondayOf(now);
-      return localRange(new Date(+monday - WEEK), monday, "last week");
+      return localRange(new Date(+monday - WEEK2), monday, "last week");
     }
     case "this month":
       return localRange(new Date(y, mo, 1), new Date(y, mo + 1, 1), "this month");
@@ -34201,7 +34211,7 @@ function named(v, now) {
       return null;
   }
 }
-var WEEK = 7 * 24 * 60 * 60 * 1e3;
+var WEEK2 = 7 * 24 * 60 * 60 * 1e3;
 function mondayOf(d) {
   const day = (d.getDay() + 6) % 7;
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
@@ -34582,7 +34592,7 @@ function episodicIndexPath(env = process9.env) {
 }
 
 // packages/core/dist/version.js
-var VERSION = "1.8.0";
+var VERSION = "1.8.5";
 
 // packages/core/dist/memory/budget.js
 import { createHash as createHash8 } from "node:crypto";
@@ -35159,9 +35169,9 @@ var TOKENIZER_ASSET_HASH = createHash8("sha256").update(JSON.stringify(cl100k_ba
 var TOKENIZER_ID = `cl100k-base/js-tiktoken@1.0.21/${TOKENIZER_ASSET_HASH}`;
 var DEFAULT_RESPONSE_TOKENS = 4096;
 var DEFAULT_RESPONSE_BYTES = 65536;
-var tokenizer = new Tiktoken(cl100k_base_default);
+var tokenizer;
 function countTokens(text2) {
-  return tokenizer.encode(text2, [], []).length;
+  return (tokenizer ??= new Tiktoken(cl100k_base_default)).encode(text2, [], []).length;
 }
 function assertResponseFormat(transport, format) {
   if (format !== "expanded-v2" && format !== "compact-v1")

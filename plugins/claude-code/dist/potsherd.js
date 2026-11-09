@@ -338,14 +338,14 @@ function duration(ms) {
   const s = Math.round(ms % 6e4 / 1e3);
   return s ? `${m}m ${s}s` : `${m}m`;
 }
-function money(usd) {
-  if (usd === 0)
+function money(usd3) {
+  if (usd3 === 0)
     return "$0";
-  if (usd < 0.01)
-    return `$${usd.toFixed(4)}`;
-  if (usd < 1)
-    return `$${usd.toFixed(3)}`;
-  return `$${usd.toFixed(2)}`;
+  if (usd3 < 0.01)
+    return `$${usd3.toFixed(4)}`;
+  if (usd3 < 1)
+    return `$${usd3.toFixed(3)}`;
+  return `$${usd3.toFixed(2)}`;
 }
 function bytes(n2) {
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -1165,17 +1165,17 @@ function vectorReport(counts2) {
 function fetchClause(r3, bytes3) {
   return `fetching the ${bytes3(r3.acquireBytes)} runtime`;
 }
-function warmingLine(r3, num5 = String, bytes3 = (n2) => `${Math.round(n2 / 1e6)} MB`) {
-  const head = warmingHead(r3, num5);
+function warmingLine(r3, num7 = String, bytes3 = (n2) => `${Math.round(n2 / 1e6)} MB`) {
+  const head = warmingHead(r3, num7);
   if (r3.embedded > 0 || r3.runtimeReady)
     return head;
   return `${head} \u2014 ${fetchClause(r3, bytes3)}`;
 }
-function warmingHead(r3, num5 = String) {
-  return `semantic search: warming (${num5(r3.embedded)} of ${num5(r3.total)} embedded)`;
+function warmingHead(r3, num7 = String) {
+  return `semantic search: warming (${num7(r3.embedded)} of ${num7(r3.total)} embedded)`;
 }
-function stoppedLine(r3, num5 = String, bytes3 = (n2) => `${Math.round(n2 / 1e6)} MB`) {
-  const head = `semantic search: not running (${num5(r3.embedded)} of ${num5(r3.total)} embedded)`;
+function stoppedLine(r3, num7 = String, bytes3 = (n2) => `${Math.round(n2 / 1e6)} MB`) {
+  const head = `semantic search: not running (${num7(r3.embedded)} of ${num7(r3.total)} embedded)`;
   if (r3.embedded > 0)
     return `${head} \u2014 it stopped partway`;
   if (!r3.runtimeReady)
@@ -1183,22 +1183,22 @@ function stoppedLine(r3, num5 = String, bytes3 = (n2) => `${Math.round(n2 / 1e6)
   return head;
 }
 function vectorNote(r3, opts = {}) {
-  const num5 = opts.num ?? String;
+  const num7 = opts.num ?? String;
   const bytes3 = opts.bytes ?? ((n2) => `${Math.round(n2 / 1e6)} MB`);
   const dash = opts.dash ?? "\u2014";
   const runtime = r3.backend === "native" ? "bge-small, 384-d" : "bge-small, 384-d, wasm";
   switch (r3.phase) {
     case "ready":
-      return { value: num5(r3.embedded), parts: [runtime, "every exchange"], tone: "ok" };
+      return { value: num7(r3.embedded), parts: [runtime, "every exchange"], tone: "ok" };
     // FIX-F round 2 §4.3 — the row says `warming` for the same reason the
     // sentence did, and it is wrong in the same state. `working === false` is
     // a live worker's absence; `undefined` is a caller who could not ask, and
     // an absent measurement must not become a claim, so it keeps the old word.
     case "warming":
       return {
-        value: num5(r3.embedded),
+        value: num7(r3.embedded),
         parts: [
-          r3.working === false ? `stopped at ${num5(r3.embedded)} of ${num5(r3.total)}` : `warming ${num5(r3.embedded)} of ${num5(r3.total)}`,
+          r3.working === false ? `stopped at ${num7(r3.embedded)} of ${num7(r3.total)}` : `warming ${num7(r3.embedded)} of ${num7(r3.total)}`,
           runtime
         ],
         tone: "ok"
@@ -1221,10 +1221,10 @@ function vectorNote(r3, opts = {}) {
       return {
         value: dash,
         parts: r3.runtimeReady ? [
-          r3.working === false ? `not running, 0 of ${num5(r3.total)}` : `warming 0 of ${num5(r3.total)}`,
+          r3.working === false ? `not running, 0 of ${num7(r3.total)}` : `warming 0 of ${num7(r3.total)}`,
           runtime
         ] : [
-          `0 of ${num5(r3.total)}`,
+          `0 of ${num7(r3.total)}`,
           r3.working === true ? fetchClause(r3, bytes3) : r3.working === false ? `not running \u2014 ${bytes3(r3.acquireBytes)} runtime not fetched` : `${bytes3(r3.acquireBytes)} runtime not fetched yet`
         ],
         tone: "dim"
@@ -1234,7 +1234,7 @@ function vectorNote(r3, opts = {}) {
     case "unavailable":
     default:
       return {
-        value: r3.embedded > 0 ? num5(r3.embedded) : dash,
+        value: r3.embedded > 0 ? num7(r3.embedded) : dash,
         parts: [r3.reason ?? "semantic search is not running here", "text search still works"],
         tone: "dim"
       };
@@ -3640,10 +3640,10 @@ function readShm(file) {
     throw new Error("audit_sqlite_wal_index_unavailable");
   const fd = fs8.openSync(file, fs8.constants.O_RDONLY | fs8.constants.O_NOFOLLOW);
   try {
-    const header = Buffer.alloc(96);
+    const header2 = Buffer.alloc(96);
     let offset = 0;
     while (offset < 96) {
-      const n2 = fs8.readSync(fd, header, offset, 96 - offset, offset);
+      const n2 = fs8.readSync(fd, header2, offset, 96 - offset, offset);
       if (!n2)
         throw new Error("audit_sqlite_wal_index_unavailable");
       offset += n2;
@@ -3651,10 +3651,10 @@ function readShm(file) {
     const current = fs8.fstatSync(fd, { bigint: true });
     if (current.dev !== stat.dev || current.ino !== stat.ino || current.size !== stat.size)
       throw new Error("audit_sqlite_snapshot_stale");
-    const sum2 = checksum(header, 0, 40, nativeBigEndian);
-    if (!header.subarray(0, 48).equals(header.subarray(48, 96)) || native32(header, 0) !== 3007e3 || native32(header, 4) !== 0 || header[12] !== 1 || sum2[0] !== native32(header, 40) || sum2[1] !== native32(header, 44))
+    const sum2 = checksum(header2, 0, 40, nativeBigEndian);
+    if (!header2.subarray(0, 48).equals(header2.subarray(48, 96)) || native32(header2, 0) !== 3007e3 || native32(header2, 4) !== 0 || header2[12] !== 1 || sum2[0] !== native32(header2, 40) || sum2[1] !== native32(header2, 44))
       throw new Error("audit_sqlite_wal_index_unavailable");
-    return { identity: [stat.dev, stat.ino, stat.size, createHash2("sha256").update(header).digest("hex")].join(":"), header };
+    return { identity: [stat.dev, stat.ino, stat.size, createHash2("sha256").update(header2).digest("hex")].join(":"), header: header2 };
   } finally {
     fs8.closeSync(fd);
   }
@@ -3679,7 +3679,7 @@ function deadline(maxMs) {
       throw new Error("audit_sqlite_snapshot_time_limit");
   };
 }
-function stream(file, size, identity4, buffer, check, destination) {
+function stream(file, size, identity5, buffer, check, destination) {
   check();
   let fd;
   try {
@@ -3691,11 +3691,11 @@ function stream(file, size, identity4, buffer, check, destination) {
   }
   let out;
   try {
-    if (fingerprint(fs8.fstatSync(fd, { bigint: true })) !== identity4)
+    if (fingerprint(fs8.fstatSync(fd, { bigint: true })) !== identity5)
       throw new Error("audit_sqlite_snapshot_stale");
     if (destination)
       out = fs8.openSync(destination, fs8.constants.O_WRONLY | fs8.constants.O_CREAT | fs8.constants.O_EXCL | fs8.constants.O_NOFOLLOW, 384);
-    const header = Buffer.alloc(Math.min(size, 100)), hash3 = createHash2("sha256");
+    const header2 = Buffer.alloc(Math.min(size, 100)), hash3 = createHash2("sha256");
     let offset = 0;
     while (offset < size) {
       check();
@@ -3704,8 +3704,8 @@ function stream(file, size, identity4, buffer, check, destination) {
         throw new Error("audit_sqlite_snapshot_stale");
       const chunk = buffer.subarray(0, n2);
       hash3.update(chunk);
-      if (offset < header.length)
-        chunk.copy(header, offset, 0, Math.min(n2, header.length - offset));
+      if (offset < header2.length)
+        chunk.copy(header2, offset, 0, Math.min(n2, header2.length - offset));
       if (out !== void 0) {
         let written = 0;
         while (written < n2) {
@@ -3721,9 +3721,9 @@ function stream(file, size, identity4, buffer, check, destination) {
     if (out !== void 0)
       fs8.fsyncSync(out);
     check();
-    if (fingerprint(fs8.fstatSync(fd, { bigint: true })) !== identity4)
+    if (fingerprint(fs8.fstatSync(fd, { bigint: true })) !== identity5)
       throw new Error("audit_sqlite_snapshot_stale");
-    return { header, hash: hash3.digest("hex") };
+    return { header: header2, hash: hash3.digest("hex") };
   } finally {
     fs8.closeSync(fd);
     if (out !== void 0)
@@ -3732,14 +3732,14 @@ function stream(file, size, identity4, buffer, check, destination) {
 }
 function capture(file, maxBytes, check, buffer, directory) {
   check();
-  const identity4 = inspect(file, maxBytes), copy = directory ? path7.join(directory, "snapshot.db") : void 0;
-  const database = stream(file, identity4.databaseBytes, identity4.database, buffer, check, copy), wal = identity4.wal === null ? null : stream(file + "-wal", identity4.walBytes, identity4.wal, buffer, check, copy ? copy + "-wal" : void 0);
-  if (!same(identity4, inspect(file, maxBytes)))
+  const identity5 = inspect(file, maxBytes), copy = directory ? path7.join(directory, "snapshot.db") : void 0;
+  const database = stream(file, identity5.databaseBytes, identity5.database, buffer, check, copy), wal = identity5.wal === null ? null : stream(file + "-wal", identity5.walBytes, identity5.wal, buffer, check, copy ? copy + "-wal" : void 0);
+  if (!same(identity5, inspect(file, maxBytes)))
     throw new Error("audit_sqlite_snapshot_stale");
   check();
-  const hash3 = createHash2("sha256").update(JSON.stringify([identity4.database, identity4.wal, identity4.journal, identity4.shm])).update(database.hash).update(wal === null ? "absent" : wal.hash).digest("hex");
+  const hash3 = createHash2("sha256").update(JSON.stringify([identity5.database, identity5.wal, identity5.journal, identity5.shm])).update(database.hash).update(wal === null ? "absent" : wal.hash).digest("hex");
   check();
-  return { identity: identity4, databaseHeader: database.header, walHeader: wal?.header ?? null, hash: hash3 };
+  return { identity: identity5, databaseHeader: database.header, walHeader: wal?.header ?? null, hash: hash3 };
 }
 function validateEnvelope(captured) {
   const db = captured.databaseHeader, wal = captured.walHeader;
@@ -4367,8 +4367,8 @@ function identity(...parts) {
   return h.digest("hex");
 }
 function spanEmbeddingText(text2, embeddingContextJson) {
-  const context = JSON.parse(embeddingContextJson).context;
-  return context ? `${context}
+  const context2 = JSON.parse(embeddingContextJson).context;
+  return context2 ? `${context2}
 
 ${text2}` : text2;
 }
@@ -4377,11 +4377,11 @@ function spanWindows(text2, tokenizer2, recordContext = "") {
     return [];
   const out = [];
   const contextOffsets = tokenizer2 ? tokenizer2.boundaries(recordContext) : [0];
-  const context = tokenizer2 ? recordContext.slice(0, contextOffsets[Math.min(64, contextOffsets.length - 1)] ?? 0) : "";
-  const contextTokens = tokenizer2?.count ? tokenizer2.count(context) : Math.max(0, contextOffsets.length - 1 > 64 ? 64 : contextOffsets.length - 1);
+  const context2 = tokenizer2 ? recordContext.slice(0, contextOffsets[Math.min(64, contextOffsets.length - 1)] ?? 0) : "";
+  const contextTokens = tokenizer2?.count ? tokenizer2.count(context2) : Math.max(0, contextOffsets.length - 1 > 64 ? 64 : contextOffsets.length - 1);
   const payloadTokens = 382 - contextTokens;
   const count5 = tokenizer2?.count ?? ((value) => tokenizer2 ? tokenizer2.boundaries(value).length - 1 : Buffer.byteLength(value));
-  const inputText = (value) => context ? `${context}
+  const inputText = (value) => context2 ? `${context2}
 
 ${value}` : value;
   const policy = tokenizer2 ? `span-v1:${tokenizer2.assetHash}:record-context-v1` : "span-conservative-utf8-v1";
@@ -4411,7 +4411,7 @@ ${value}` : value;
     if (isSplit(text2, start) || isSplit(text2, end))
       throw new Error("surrogate split");
     const value = text2.slice(start, end);
-    out.push({ startUtf16: start, endUtf16: end, text: value, chunkPolicy: policy, embeddingInputHash: hash(inputText(value)), embeddingContextJson: JSON.stringify({ partition: [start, end], tokenizerId: tokenizer2?.id ?? null, tokenizerHash: tokenizer2?.assetHash ?? null, context, contextTokens, recipe: "record-context-v1" }), isPartition: true });
+    out.push({ startUtf16: start, endUtf16: end, text: value, chunkPolicy: policy, embeddingInputHash: hash(inputText(value)), embeddingContextJson: JSON.stringify({ partition: [start, end], tokenizerId: tokenizer2?.id ?? null, tokenizerHash: tokenizer2?.assetHash ?? null, context: context2, contextTokens, recipe: "record-context-v1" }), isPartition: true });
     if (tokenizer2 && i > 0) {
       const overlapStart = offsets[Math.max(0, i - 32)];
       let overlapIndex = Math.min(j, i + payloadTokens - 32);
@@ -4419,7 +4419,7 @@ ${value}` : value;
         overlapIndex--;
       const overlapEnd = offsets[overlapIndex];
       const overlapText = text2.slice(overlapStart, overlapEnd);
-      out.push({ startUtf16: overlapStart, endUtf16: overlapEnd, text: overlapText, chunkPolicy: policy, embeddingInputHash: hash(inputText(overlapText)), embeddingContextJson: JSON.stringify({ partition: null, neighborOverlap: 32, tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context, contextTokens, recipe: "record-context-v1" }), isPartition: false });
+      out.push({ startUtf16: overlapStart, endUtf16: overlapEnd, text: overlapText, chunkPolicy: policy, embeddingInputHash: hash(inputText(overlapText)), embeddingContextJson: JSON.stringify({ partition: null, neighborOverlap: 32, tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context: context2, contextTokens, recipe: "record-context-v1" }), isPartition: false });
     }
     i = j;
   }
@@ -4443,15 +4443,15 @@ function buildSpanManifest(text2, tokenizer2, recordContext = "") {
   if (!tokenizer2.count || !tokenizer2.sourceBoundaries)
     throw new Error("verified v2 source token coordinates required");
   const count5 = tokenizer2.count, contextBounds = tokenizer2.sourceBoundaries(recordContext);
-  let context = "";
+  let context2 = "";
   for (const b2 of contextBounds) {
     if (b2.tokenEndOrdinal > 64)
       break;
     const candidate = recordContext.slice(0, b2.offsetUtf16);
     if (count5(candidate) <= 64)
-      context = candidate;
+      context2 = candidate;
   }
-  const contextTokens = count5(context), input = (value) => context ? `${context}
+  const contextTokens = count5(context2), input = (value) => context2 ? `${context2}
 
 ${value}` : value;
   const offsets = tokenizer2.sourceBoundaries(text2);
@@ -4483,7 +4483,7 @@ ${value}` : value;
     const value = text2.slice(start.offsetUtf16, end.offsetUtf16);
     if (count5(input(value)) > 382)
       throw new Error("v2 wordpiece window exceeds384 including specials");
-    windows2.push({ startUtf16: start.offsetUtf16, endUtf16: end.offsetUtf16, text: value, chunkPolicy: policy, embeddingInputHash: hash(input(value)), embeddingContextJson: JSON.stringify({ tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context, contextTokens, recipe: SPAN_CONTEXT_RECIPE, targetSourceOverlap: 32, actualSourceOverlap: actualOverlap, sourceOverlapRounding: Math.max(0, actualOverlap - 32), sourceTokenStart: start.tokenEndOrdinal, sourceTokenEnd: end.tokenEndOrdinal }), isPartition: false });
+    windows2.push({ startUtf16: start.offsetUtf16, endUtf16: end.offsetUtf16, text: value, chunkPolicy: policy, embeddingInputHash: hash(input(value)), embeddingContextJson: JSON.stringify({ tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context: context2, contextTokens, recipe: SPAN_CONTEXT_RECIPE, targetSourceOverlap: 32, actualSourceOverlap: actualOverlap, sourceOverlapRounding: Math.max(0, actualOverlap - 32), sourceTokenStart: start.tokenEndOrdinal, sourceTokenEnd: end.tokenEndOrdinal }), isPartition: false });
     previousEnd = end.offsetUtf16;
     if (endIndex === offsets.length - 1)
       break;
@@ -5244,16 +5244,16 @@ function inspectContent(content, supported, excluded, gap2) {
   }
 }
 function nativeExecHeader(output) {
-  const header = output.slice(0, 2048).match(/^(?:Chunk ID: [^\r\n]+\n)?Wall time: \d+\.\d{4} seconds\n(?:Process exited with code (-?\d+)\n)?(?:Process running with session ID (-?\d+)\n)?(?:Original token count: \d+\n)?Output:\n/);
-  if (!header)
+  const header2 = output.slice(0, 2048).match(/^(?:Chunk ID: [^\r\n]+\n)?Wall time: \d+\.\d{4} seconds\n(?:Process exited with code (-?\d+)\n)?(?:Process running with session ID (-?\d+)\n)?(?:Original token count: \d+\n)?Output:\n/);
+  if (!header2)
     return { state: "unknown" };
-  if (header[1] !== void 0 && header[2] !== void 0)
+  if (header2[1] !== void 0 && header2[2] !== void 0)
     return { state: "conflict" };
-  if (header[2] !== void 0)
+  if (header2[2] !== void 0)
     return { state: "running" };
-  if (header[1] === void 0)
+  if (header2[1] === void 0)
     return { state: "missing" };
-  const code = Number(header[1]);
+  const code = Number(header2[1]);
   return Number.isSafeInteger(code) && code >= -2147483648 && code <= 2147483647 ? { state: "exit", code } : { state: "unknown" };
 }
 function resolveNativeOutcomes(records, payloads) {
@@ -5281,11 +5281,11 @@ function resolveNativeOutcomes(records, payloads) {
       const trustworthyGeneric = call && CALL_KINDS[String(record2.locator.nativeKind)] === call.locator.nativeKind;
       return { ...record2, outcome: facts.length ? facts[0] === 0 ? "success" : "error" : trustworthyGeneric ? record2.outcome : "unknown" };
     }
-    const header = nativeExecHeader(record2.text);
-    if (header.state !== "exit")
+    const header2 = nativeExecHeader(record2.text);
+    if (header2.state !== "exit")
       return { ...record2, outcome: "unknown" };
-    if (header.state === "exit")
-      facts.push(header.code);
+    if (header2.state === "exit")
+      facts.push(header2.code);
     const unique2 = [...new Set(facts)];
     return { ...record2, outcome: unique2.length === 1 ? unique2[0] === 0 ? "success" : "error" : "unknown" };
   });
@@ -8015,11 +8015,11 @@ function publishSource(db, input) {
     const branch = r3.branch ?? null;
     const locator = JSON.stringify(r3.locator);
     const id = identity(sid3, r3.unitKey, hash(r3.text), normalizationVersion, r3.role, locator, r3.eventAt ?? "", r3.timeBasis, project ?? "", branch ?? "", r3.toolName ?? "", r3.toolCallId ?? "", r3.outcome ?? "", r3.locatorFidelity);
-    const context = redact(`[project:${project ?? "unknown"}]
+    const context2 = redact(`[project:${project ?? "unknown"}]
 [role:${r3.role}]
 [tool:${r3.toolName ?? "none"}]
 [outcome:${r3.outcome ?? "unknown"}]`).text;
-    const manifest = buildSpanManifest(r3.text, input.tokenizer, context);
+    const manifest = buildSpanManifest(r3.text, input.tokenizer, context2);
     return { r: r3, project, branch, locator, id, windows: manifest.windows, manifest };
   });
   if (retained) {
@@ -8812,8 +8812,8 @@ function denseSnippet(text2, tokens2, max2 = SNIPPET_CHARS, preparedSpans) {
   if (hits.length === 0)
     return cleanLead(text2, spans, max2, masks);
   if (text2.length <= max2) {
-    const pick3 = hits.reduce((a, b2) => b2.token.length > a.token.length ? b2 : a);
-    return cut(text2, 0, text2.length, pick3.span);
+    const pick4 = hits.reduce((a, b2) => b2.token.length > a.token.length ? b2 : a);
+    return cut(text2, 0, text2.length, pick4.span);
   }
   const candidates2 = [];
   const considered = hits.slice(0, 120);
@@ -8835,14 +8835,14 @@ function denseSnippet(text2, tokens2, max2 = SNIPPET_CHARS, preparedSpans) {
     if (inside.length === 0)
       continue;
     const distinct = new Set(inside.map((h) => h.token)).size;
-    const pick3 = inside.reduce((a, b2) => b2.token.length > a.token.length ? b2 : a);
+    const pick4 = inside.reduce((a, b2) => b2.token.length > a.token.length ? b2 : a);
     candidates2.push({
       start,
       end,
       density: inside.length,
       distinct,
       boilerplate: isMostlyBoilerplate(text2.slice(start, end)),
-      pick: pick3.span
+      pick: pick4.span
     });
   }
   if (candidates2.length === 0)
@@ -8869,13 +8869,13 @@ function cleanLead(text2, spans, max2, masks = []) {
   const tail2 = end < text2.length ? "\u2026" : "";
   return { text: lead + collapse(text2.slice(start, end)) + tail2 };
 }
-function cut(text2, start, end, pick3) {
+function cut(text2, start, end, pick4) {
   const lead = start > 0 ? "\u2026" : "";
   const tail2 = end < text2.length ? "\u2026" : "";
   const body = collapse(text2.slice(start, end));
-  const before = text2.slice(start, pick3.start).replace(/\s+/g, " ").replace(/^\s+/, "");
+  const before = text2.slice(start, pick4.start).replace(/\s+/g, " ").replace(/^\s+/, "");
   const at = before.length;
-  const word = text2.slice(pick3.start, pick3.end);
+  const word = text2.slice(pick4.start, pick4.end);
   if (body.slice(at, at + word.length).toLowerCase() !== word.toLowerCase()) {
     const found = body.toLowerCase().indexOf(word.toLowerCase());
     if (found === -1)
@@ -9210,7 +9210,7 @@ function effectiveConcurrency(n2, profile) {
 function estimate(input) {
   const model = input.model ?? CARD_MODEL;
   const cls = modelClass(model);
-  const price = PRICES[cls];
+  const price2 = PRICES[cls];
   const profile = callProfile(input.backend);
   const chunk = Math.max(1e3, input.chunkChars ?? CHUNK_CHARS);
   const outChars = input.outputCharsPerCall ?? OUTPUT_CHARS_PER_CALL;
@@ -9218,7 +9218,7 @@ function estimate(input) {
   const concurrency = Math.max(1, Math.floor(input.concurrency ?? 1));
   const hostSeam = input.hostSeam === true;
   const chargeable = input.chargeable ?? (hostSeam ? false : input.backend ? input.backend === "api" : true);
-  const priceScale = price.inputPerMTok / PRICES[CARD_MODEL].inputPerMTok;
+  const priceScale = price2.inputPerMTok / PRICES[CARD_MODEL].inputPerMTok;
   const perSession = [];
   let calls = 0;
   let inputTokens = 0;
@@ -9236,7 +9236,7 @@ function estimate(input) {
     const inTok = tokensForChars(chars);
     const outTok = profile.outputTokensPerCall !== null ? n2 * profile.outputTokensPerCall : tokensForChars(n2 * outChars);
     const derived = s.calls === void 0;
-    const bare = callUsd(n2, chars, inTok, outTok, profile, price, priceScale);
+    const bare = callUsd(n2, chars, inTok, outTok, profile, price2, priceScale);
     perSession.push({
       id: s.id,
       calls: n2,
@@ -9258,9 +9258,9 @@ function estimate(input) {
   const cal = input.calibration;
   const usdRatio = cal && cal.samples > 0 ? cal.usdRatio : 1;
   const timeRatio = cal && cal.samples > 0 ? cal.timeRatio : 1;
-  const rawUsd = calls === 0 ? 0 : callUsd(calls, promptChars, inputTokens, outputTokens, profile, price, priceScale);
-  const unquoted = derivedCalls === 0 ? 0 : (PIPELINE_COST_FACTOR - 1) * callUsd(derivedCalls, derivedChars, derivedInputTokens, derivedOutputTokens, profile, price, priceScale);
-  const usd = hostSeam ? 0 : (rawUsd + unquoted) * usdRatio;
+  const rawUsd = calls === 0 ? 0 : callUsd(calls, promptChars, inputTokens, outputTokens, profile, price2, priceScale);
+  const unquoted = derivedCalls === 0 ? 0 : (PIPELINE_COST_FACTOR - 1) * callUsd(derivedCalls, derivedChars, derivedInputTokens, derivedOutputTokens, profile, price2, priceScale);
+  const usd3 = hostSeam ? 0 : (rawUsd + unquoted) * usdRatio;
   const serialMs = calls * profile.baseMs + promptChars / 1e3 * profile.msPerKChar;
   const eff = effectiveConcurrency(concurrency, profile);
   const seconds = calls === 0 || hostSeam ? 0 : serialMs / 1e3 / eff * timeRatio;
@@ -9269,9 +9269,9 @@ function estimate(input) {
     calls,
     inputTokens,
     outputTokens,
-    usd,
-    usdLow: usd * profile.spread.usdLow,
-    usdHigh: usd * profile.spread.usdHigh,
+    usd: usd3,
+    usdLow: usd3 * profile.spread.usdLow,
+    usdHigh: usd3 * profile.spread.usdHigh,
     seconds,
     secondsLow: seconds * profile.spread.timeLow,
     secondsHigh: seconds * profile.spread.timeHigh,
@@ -9287,9 +9287,9 @@ function estimate(input) {
     perSession
   };
 }
-function callUsd(calls, chars, inputTokens, outputTokens, profile, price, priceScale) {
+function callUsd(calls, chars, inputTokens, outputTokens, profile, price2, priceScale) {
   if (profile.usdPerMChar === null) {
-    return inputTokens / 1e6 * price.inputPerMTok + outputTokens / 1e6 * price.outputPerMTok + calls * profile.baseUsd * priceScale;
+    return inputTokens / 1e6 * price2.inputPerMTok + outputTokens / 1e6 * price2.outputPerMTok + calls * profile.baseUsd * priceScale;
   }
   return (calls * profile.baseUsd + chars / 1e6 * profile.usdPerMChar) * priceScale;
 }
@@ -9425,18 +9425,18 @@ function parseClaudeCli(stdout) {
   }
   const text2 = said;
   const usage = asRecord(obj["usage"]);
-  const num5 = (v) => typeof v === "number" && Number.isFinite(v) ? v : 0;
-  const inputTokens = usage ? num5(usage["input_tokens"]) + num5(usage["cache_creation_input_tokens"]) + num5(usage["cache_read_input_tokens"]) : 0;
-  const outputTokens = usage ? num5(usage["output_tokens"]) : 0;
+  const num7 = (v) => typeof v === "number" && Number.isFinite(v) ? v : 0;
+  const inputTokens = usage ? num7(usage["input_tokens"]) + num7(usage["cache_creation_input_tokens"]) + num7(usage["cache_read_input_tokens"]) : 0;
+  const outputTokens = usage ? num7(usage["output_tokens"]) : 0;
   const modelUsage = asRecord(obj["modelUsage"]);
   const model = modelUsage ? Object.keys(modelUsage)[0] : void 0;
-  const usd = typeof obj["total_cost_usd"] === "number" ? obj["total_cost_usd"] : void 0;
+  const usd3 = typeof obj["total_cost_usd"] === "number" ? obj["total_cost_usd"] : void 0;
   return {
     text: text2,
     ...model ? { model } : {},
     ...inputTokens > 0 ? { inputTokens } : {},
     ...outputTokens > 0 ? { outputTokens } : {},
-    ...usd !== void 0 ? { usd } : {}
+    ...usd3 !== void 0 ? { usd: usd3 } : {}
   };
 }
 function asRecord(v) {
@@ -9800,20 +9800,20 @@ var init_llm = __esm({
        * life of the `Budget`.
        */
       admit(projected = {}) {
-        const usd = projected.usd ?? 0;
+        const usd3 = projected.usd ?? 0;
         const tokens2 = projected.tokens ?? 0;
         const { maxUsd, maxTokens } = this.limits;
         const committedUsd = this.spent.usd + this.reservedUsd;
-        if (maxUsd !== void 0 && committedUsd + usd > maxUsd) {
+        if (maxUsd !== void 0 && committedUsd + usd3 > maxUsd) {
           const inFlight = this.reservedUsd > 0 ? ` (${fmtUsd(this.reservedUsd)} of it in flight)` : "";
-          throw new BudgetError(`stopped at --max-usd ${maxUsd.toFixed(2)}: ${this.done} of ${this.total} done, ${fmtUsd(committedUsd)} committed${inFlight}, next call needs ${fmtUsd(usd)}`, {
+          throw new BudgetError(`stopped at --max-usd ${maxUsd.toFixed(2)}: ${this.done} of ${this.total} done, ${fmtUsd(committedUsd)} committed${inFlight}, next call needs ${fmtUsd(usd3)}`, {
             kind: "usd",
             limit: maxUsd,
-            projected: committedUsd + usd,
+            projected: committedUsd + usd3,
             done: this.done,
             total: this.total,
             spend: this.spend
-          }, `potsherd card --all --max-usd ${Math.ceil(committedUsd + usd + 1)}`);
+          }, `potsherd card --all --max-usd ${Math.ceil(committedUsd + usd3 + 1)}`);
         }
         const spentTokens = this.spent.inputTokens + this.spent.outputTokens;
         const committedTokens = spentTokens + this.reservedTokens;
@@ -9827,18 +9827,18 @@ var init_llm = __esm({
             spend: this.spend
           }, `potsherd card --all --max-tokens ${committedTokens + tokens2 + maxTokens}`);
         }
-        this.reservedUsd += usd;
+        this.reservedUsd += usd3;
         this.reservedTokens += tokens2;
         let live = true;
         const self = this;
         return {
-          usd,
+          usd: usd3,
           tokens: tokens2,
           release() {
             if (!live)
               return;
             live = false;
-            self.reservedUsd -= usd;
+            self.reservedUsd -= usd3;
             self.reservedTokens -= tokens2;
             if (self.reservedUsd < 1e-12)
               self.reservedUsd = 0;
@@ -10212,7 +10212,7 @@ ${req.prompt}` : req.prompt,
           const long = req.prompt.length > 4e4 || req.maxOutputTokens > 8192;
           const message2 = long ? await client.messages.stream(params, req.signal ? { signal: req.signal } : {}).finalMessage() : await client.messages.create(params, req.signal ? { signal: req.signal } : {});
           const text2 = message2.content.map((b2) => b2.type === "text" ? b2.text : "").join("");
-          const price = PRICES[modelClass(message2.model ?? req.model)];
+          const price2 = PRICES[modelClass(message2.model ?? req.model)];
           const inputTokens = message2.usage.input_tokens;
           const outputTokens = message2.usage.output_tokens;
           return {
@@ -10220,7 +10220,7 @@ ${req.prompt}` : req.prompt,
             model: message2.model,
             inputTokens,
             outputTokens,
-            usd: inputTokens / 1e6 * price.inputPerMTok + outputTokens / 1e6 * price.outputPerMTok
+            usd: inputTokens / 1e6 * price2.inputPerMTok + outputTokens / 1e6 * price2.outputPerMTok
           };
         } catch (err) {
           throw new LlmError(`the Anthropic API call failed: ${errMessage(err)}`, "check ANTHROPIC_API_KEY and the network, then retry", err);
@@ -10312,9 +10312,9 @@ ${req.prompt}` : req.prompt,
 ${prompt.text}`;
         const maxOutputTokens = req.maxOutputTokens ?? this.opts.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
         const inTokens = tokensForText(outgoing) + (system ? tokensForText(system.text) : 0);
-        const price = PRICES[modelClass(this.model)];
+        const price2 = PRICES[modelClass(this.model)];
         const reservation = this.budget.admit({
-          usd: inTokens / 1e6 * price.inputPerMTok + maxOutputTokens / 1e6 * price.outputPerMTok,
+          usd: inTokens / 1e6 * price2.inputPerMTok + maxOutputTokens / 1e6 * price2.outputPerMTok,
           tokens: inTokens + maxOutputTokens
         });
         try {
@@ -10323,7 +10323,7 @@ ${prompt.text}`;
             ...system ? { system: system.text } : {},
             maxOutputTokens,
             inTokens,
-            price,
+            price: price2,
             redactions,
             reservation
           });
@@ -10333,7 +10333,7 @@ ${prompt.text}`;
       }
       /** The body of {@link text}, split out so the reservation can be released in one place. */
       async call(req, ctx) {
-        const { outgoing, system, maxOutputTokens, inTokens, price, redactions } = ctx;
+        const { outgoing, system, maxOutputTokens, inTokens, price: price2, redactions } = ctx;
         const started = Date.now();
         const sent = await this.send({
           prompt: outgoing,
@@ -10349,7 +10349,7 @@ ${prompt.text}`;
         const reportedIn = sent.inputTokens;
         const inputTokensEstimated = typeof reportedIn !== "number" || reportedIn <= 0 || reportedIn * IMPLAUSIBLE_TOKEN_FACTOR < inTokens;
         const inputTokens = inputTokensEstimated ? inTokens : reportedIn;
-        const usd = sent.usd ?? inputTokens / 1e6 * price.inputPerMTok + outputTokens / 1e6 * price.outputPerMTok;
+        const usd3 = sent.usd ?? inputTokens / 1e6 * price2.inputPerMTok + outputTokens / 1e6 * price2.outputPerMTok;
         const result = {
           text: sent.text,
           backend: this.backend,
@@ -10358,7 +10358,7 @@ ${prompt.text}`;
           outputTokens,
           inputTokensEstimated,
           outputTokensEstimated,
-          usd,
+          usd: usd3,
           ms,
           redactions,
           chargeable: this.chargeable
@@ -13459,6 +13459,141 @@ var init_story_lexicon = __esm({
   }
 });
 
+// packages/core/dist/analytics/story-extract.js
+function promptLex(text2, models2) {
+  const lex = {};
+  const hits = profanityHits(text2);
+  if (hits?.hits.length)
+    lex.pt = hits.hits;
+  if (hits?.ambiguous)
+    lex.pa = 1;
+  const nl = normalizedLine(text2);
+  if (nl !== null)
+    lex.nl = nl;
+  const fc = focusLabels(text2);
+  if (fc.length)
+    lex.fc = fc;
+  const nm = namedModels(text2, models2);
+  if (nm.length)
+    lex.nm = nm;
+  const ll = languageLines(text2);
+  if (ll.length)
+    lex.ll = ll;
+  return Object.keys(lex).length ? lex : void 0;
+}
+function deriveStory(prompts, events, interrupts, options) {
+  const human = prompts.filter((p) => p.kind === "human" && p.at !== null).sort((a, b2) => a.at - b2.at);
+  const fresh = new Set(prompts.slice(options.from ?? 0));
+  const models2 = /* @__PURE__ */ new Set();
+  for (const p of prompts) {
+    if (p.before)
+      models2.add(p.before);
+    if (p.after)
+      models2.add(p.after);
+  }
+  for (const p of human) {
+    if (!fresh.has(p))
+      continue;
+    p.f = featurize({ text: p.text, typed: options.typed });
+    const lex = promptLex(p.text, models2);
+    if (lex)
+      p.lex = lex;
+    if (options.counters) {
+      const w = vocabularyWords(p.text), tw = [...topicWords(p.text)];
+      if (w.length)
+        p.w = w;
+      if (tw.length)
+        p.tw = tw;
+    }
+  }
+  turnStats(human, events, interrupts);
+  const weight = /* @__PURE__ */ new Map();
+  const slots = /* @__PURE__ */ new Set();
+  if (human.length)
+    slots.add(human[0]);
+  const byProject = /* @__PURE__ */ new Map();
+  for (const p of human) {
+    const k = p.project ?? "";
+    const list3 = byProject.get(k) ?? [];
+    list3.push(p);
+    byProject.set(k, list3);
+  }
+  for (const list3 of byProject.values())
+    for (const p of list3.slice(-QUOTE_LAST_PER_PROJECT))
+      slots.add(p);
+  turnWeights(human, events, weight);
+  for (const p of [...human].sort((a, b2) => (weight.get(b2) ?? 0) - (weight.get(a) ?? 0)).slice(0, QUOTE_TOP))
+    slots.add(p);
+  for (const p of human.filter((p2) => (p2.t?.sa ?? 0) > 0).sort((a, b2) => b2.t.sa - a.t.sa).slice(0, QUOTE_SUBAGENT_TOP))
+    slots.add(p);
+  for (const p of slots) {
+    if (!p.text)
+      continue;
+    const q2 = safeQuote(p.text, 90);
+    if (q2)
+      p.q = q2;
+  }
+  return { vocab: null, topics: null };
+}
+function turnStats(human, events, interrupts) {
+  const ev = events.filter((e) => Number.isFinite(e.at)).sort((a, b2) => a.at - b2.at);
+  const intr = interrupts.filter(Number.isFinite).sort((a, b2) => a - b2);
+  let j = 0, k = 0, lastAt = null;
+  human.forEach((p, i) => {
+    const start = p.at, next = i + 1 < human.length ? human[i + 1].at : Infinity;
+    while (j < ev.length && ev[j].at < start)
+      lastAt = ev[j++].at;
+    const t = { m: 0, tl: 0, sa: 0, d: null, x: 0, g: lastAt === null ? null : round1((start - lastAt) / 1e3) };
+    let end = null;
+    while (j < ev.length && ev[j].at < next) {
+      const e = ev[j++];
+      t.m++;
+      t.tl += e.tools;
+      t.sa += e.subs;
+      end = e.at;
+      lastAt = e.at;
+    }
+    if (end !== null)
+      t.d = round1((end - start) / 1e3);
+    while (k < intr.length && intr[k] < start)
+      k++;
+    if (k < intr.length && intr[k] < next)
+      t.x = 1;
+    p.t = t;
+  });
+}
+function turnWeights(human, events, out) {
+  const ev = events.filter((e) => e.weight > 0).sort((a, b2) => a.at - b2.at);
+  let j = 0;
+  human.forEach((p, i) => {
+    const next = i + 1 < human.length ? human[i + 1].at : Infinity;
+    while (j < ev.length && ev[j].at < p.at)
+      j++;
+    let w = 0;
+    while (j < ev.length && ev[j].at < next)
+      w += ev[j++].weight;
+    out.set(p, w);
+  });
+}
+var AGENT_TOOLS, isAgentTool, QUOTE_TOP, QUOTE_SUBAGENT_TOP, QUOTE_LAST_PER_PROJECT, round1, usageWeight;
+var init_story_extract = __esm({
+  "packages/core/dist/analytics/story-extract.js"() {
+    "use strict";
+    init_profanity();
+    init_language_feedback();
+    init_project_focus();
+    init_findings();
+    init_story_lexicon();
+    AGENT_TOOLS = /* @__PURE__ */ new Set(["Task", "Agent", "spawn_agent", "spawn_agents", "TaskCreate"]);
+    isAgentTool = (name) => AGENT_TOOLS.has(name) || name.startsWith("spawn");
+    QUOTE_TOP = 8;
+    QUOTE_SUBAGENT_TOP = 5;
+    QUOTE_LAST_PER_PROJECT = 3;
+    round1 = (x) => Math.round(x * 10) / 10;
+    usageWeight = (input, output, cacheRead, cacheWrite) => input + 5 * output + 1.25 * cacheWrite + 0.1 * cacheRead;
+  }
+});
+
 // packages/core/dist/analytics/story-time.js
 function localClock(timezone) {
   const format = new Intl.DateTimeFormat("en-US", {
@@ -13535,176 +13670,257 @@ var init_story_time = __esm({
   }
 });
 
-// packages/core/dist/analytics/story-extract.js
-function promptLex(text2, models2) {
-  const lex = {};
-  const hits = profanityHits(text2);
-  if (hits?.hits.length)
-    lex.pt = hits.hits;
-  if (hits?.ambiguous)
-    lex.pa = 1;
-  const nl = normalizedLine(text2);
-  if (nl !== null)
-    lex.nl = nl;
-  const fc = focusLabels(text2);
-  if (fc.length)
-    lex.fc = fc;
-  const nm = namedModels(text2, models2);
-  if (nm.length)
-    lex.nm = nm;
-  const ll = languageLines(text2);
-  if (ll.length)
-    lex.ll = ll;
-  return Object.keys(lex).length ? lex : void 0;
-}
-function deriveStory(prompts, events, interrupts, options) {
-  const human = prompts.filter((p) => p.kind === "human" && p.at !== null).sort((a, b2) => a.at - b2.at);
-  const fresh = new Set(prompts.slice(options.from ?? 0));
-  const models2 = /* @__PURE__ */ new Set();
-  for (const p of prompts) {
-    if (p.before)
-      models2.add(p.before);
-    if (p.after)
-      models2.add(p.after);
+// packages/core/dist/analytics/copy-prune.js
+import fs26 from "node:fs";
+import { createHash as createHash10 } from "node:crypto";
+function readAt2(fd, length, position) {
+  const buffer = Buffer.allocUnsafe(length);
+  let read = 0;
+  while (read < length) {
+    const n2 = fs26.readSync(fd, buffer, read, length - read, position + read);
+    if (!n2)
+      break;
+    read += n2;
   }
-  const vocab = options.counters ? options.previous?.vocab ?? /* @__PURE__ */ new Map() : null;
-  const topics = options.counters ? new Map((options.previous?.topics ?? []).map((t) => [t.month, t])) : null;
-  const clock3 = localClock(options.timezone);
-  for (const p of human) {
-    if (!fresh.has(p))
+  return buffer.subarray(0, read);
+}
+function sniffBlock(head) {
+  const firstEnd = head.indexOf(10);
+  const first = head.toString("utf8", 0, Math.min(firstEnd < 0 ? head.length : firstEnd, 4096));
+  if (first.includes('"session_meta"'))
+    return "codex";
+  if (/"type"\s*:\s*"session"/.test(first) && !first.includes('"sessionId"'))
+    return "pi";
+  const text2 = head.toString("latin1");
+  if (text2.includes('"sessionId"') && CLAUDE_TYPE.test(text2))
+    return "claude";
+  return null;
+}
+function classifyDeep(fd, size) {
+  const chunk = Buffer.allocUnsafe(4 * 1024 * 1024);
+  let position = 0, lineStart = 0, headPart = null;
+  const limit = Math.min(size, CLASSIFY_MAX_BYTES);
+  while (position < limit) {
+    const n2 = fs26.readSync(fd, chunk, 0, Math.min(chunk.length, limit - position), position);
+    if (!n2)
+      break;
+    let start = 0;
+    for (; ; ) {
+      const nl = chunk.indexOf(10, start);
+      if (nl < 0 || nl >= n2)
+        break;
+      const recordStart = lineStart, recordEnd = position + nl;
+      const head = headPart ?? chunk.subarray(start, Math.min(nl, start + RECORD_EDGE));
+      const tail2 = recordEnd - recordStart > RECORD_EDGE ? chunk.subarray(Math.max(start, nl - RECORD_EDGE), nl) : Buffer.alloc(0);
+      const edges = Buffer.concat([head, tail2]).toString("latin1");
+      if (edges.includes('"sessionId"') && CLAUDE_TYPE.test(edges))
+        return "claude";
+      headPart = null;
+      lineStart = position + nl + 1;
+      start = nl + 1;
+    }
+    if (headPart === null && start < n2)
+      headPart = Buffer.from(chunk.subarray(start, Math.min(n2, start + RECORD_EDGE)));
+    position += n2;
+  }
+  return null;
+}
+function identityOf(harness, head) {
+  if (!harness || harness === "auto")
+    return "";
+  const text2 = head.toString("utf8"), nl = text2.indexOf("\n"), first = nl < 0 ? text2 : text2.slice(0, nl);
+  if (harness === "codex")
+    return /"payload"\s*:\s*\{[^]*?"id"\s*:\s*"([^"]{8,80})"/.exec(first)?.[1] ?? "";
+  if (harness === "pi")
+    return UUIDISH.exec(first)?.[1] ?? "";
+  const sid3 = /"sessionId"\s*:\s*"([^"]{1,80})"/.exec(text2)?.[1] ?? "";
+  const agent = /"agentId"\s*:\s*"([^"]{1,80})"/.exec(text2)?.[1];
+  return agent ? `${sid3}:${agent}` : sid3;
+}
+function probeFile(file, known3) {
+  let fd;
+  try {
+    fd = fs26.openSync(file, "r");
+  } catch {
+    return null;
+  }
+  try {
+    const stat = fs26.fstatSync(fd);
+    if (!stat.isFile())
+      return null;
+    const head = readAt2(fd, Math.min(known3 ? HEAD * 2 : SNIFF, stat.size), 0);
+    const compressed = head.length >= 4 && head.readUInt32LE(0) === ZSTD_MAGIC;
+    let harness = compressed ? "auto" : known3 ?? sniffBlock(head);
+    let deep = false;
+    const history = !harness && HISTORY_LINE.test(head.toString("utf8", 0, Math.min(head.length, 4096)));
+    if (!harness && !history && stat.size > SNIFF) {
+      harness = classifyDeep(fd, stat.size);
+      deep = harness !== null;
+    }
+    const probe2 = {
+      size: stat.size,
+      mtimeMs: stat.mtimeMs,
+      harness,
+      identity: compressed ? ROLLOUT_ID.exec(file)?.[1] ?? "" : identityOf(harness, head),
+      head: sha1(head.subarray(0, HEAD)),
+      tail: sha1(readAt2(fd, Math.min(TAIL, stat.size), Math.max(0, stat.size - TAIL)))
+    };
+    if (deep)
+      probe2.deep = true;
+    if (history)
+      probe2.history = true;
+    return probe2;
+  } catch {
+    return null;
+  } finally {
+    fs26.closeSync(fd);
+  }
+}
+function tailAt(file, end) {
+  let fd;
+  try {
+    fd = fs26.openSync(file, "r");
+  } catch {
+    return null;
+  }
+  try {
+    const b2 = readAt2(fd, Math.min(TAIL, end), Math.max(0, end - TAIL));
+    return b2.length === Math.min(TAIL, end) ? sha1(b2) : null;
+  } catch {
+    return null;
+  } finally {
+    fs26.closeSync(fd);
+  }
+}
+function pruneCopies(candidates2, cached4) {
+  const groups = /* @__PURE__ */ new Map();
+  const compressed = /* @__PURE__ */ new Map();
+  for (const c of candidates2)
+    if (c.probe.harness === "auto" && c.probe.identity)
+      compressed.set(c.probe.identity, c);
+  for (const c of candidates2) {
+    const p = c.probe;
+    if (!p.harness || p.harness === "auto" || p.size <= HEAD + TAIL)
       continue;
-    p.f = featurize({ text: p.text, typed: options.typed });
-    const lex = promptLex(p.text, models2);
-    if (lex)
-      p.lex = lex;
-    if (vocab)
-      for (const w of vocabularyWords(p.text))
-        vocab.set(w, (vocab.get(w) ?? 0) + 1);
-    if (topics) {
-      const { hour, month } = clock3(p.at);
-      const slot = hour < 5 ? 0 : hour >= 9 && hour < 19 ? 1 : -1;
-      if (slot >= 0) {
-        let bag = topics.get(month);
-        if (!bag) {
-          bag = { month, night: 0, day: 0, words: /* @__PURE__ */ new Map() };
-          topics.set(month, bag);
+    const key2 = `${p.harness}\0${p.head}`;
+    const list3 = groups.get(key2);
+    if (list3)
+      list3.push(c);
+    else
+      groups.set(key2, [c]);
+  }
+  const skipped2 = /* @__PURE__ */ new Map(), relations = [], deferred = /* @__PURE__ */ new Map();
+  let verifiedReads = 0;
+  for (const list3 of groups.values()) {
+    if (list3.length < 2)
+      continue;
+    list3.sort((a, b2) => b2.probe.size - a.probe.size || Number(a.archive) - Number(b2.archive) || (a.file < b2.file ? -1 : a.file > b2.file ? 1 : 0));
+    for (let i = 1; i < list3.length; i++) {
+      const c = list3[i];
+      for (let j = 0; j < i; j++) {
+        const f = list3[j];
+        const old = cached4.get(c.file);
+        let ok = false;
+        if (old && old.by === f.file && old.size === c.probe.size && old.mtimeMs === c.probe.mtimeMs && old.bySize === f.probe.size && old.byMtimeMs === f.probe.mtimeMs)
+          ok = true;
+        else if (f.probe.size === c.probe.size)
+          ok = f.probe.tail === c.probe.tail;
+        else {
+          verifiedReads++;
+          ok = tailAt(f.file, c.probe.size) === c.probe.tail;
         }
-        if (slot === 0)
-          bag.night++;
-        else
-          bag.day++;
-        for (const w of topicWords(p.text)) {
-          let c = bag.words.get(w);
-          if (!c) {
-            c = [0, 0];
-            bag.words.set(w, c);
-          }
-          c[slot]++;
-        }
+        if (!ok)
+          continue;
+        skipped2.set(c.file, f.file);
+        relations.push({ file: c.file, size: c.probe.size, mtimeMs: c.probe.mtimeMs, by: f.file, bySize: f.probe.size, byMtimeMs: f.probe.mtimeMs });
+        break;
       }
     }
   }
-  turnStats(human, events, interrupts);
-  const weight = /* @__PURE__ */ new Map();
-  const slots = /* @__PURE__ */ new Set();
-  if (human.length)
-    slots.add(human[0]);
-  const byProject = /* @__PURE__ */ new Map();
-  for (const p of human) {
-    const k = p.project ?? "";
-    const list3 = byProject.get(k) ?? [];
-    list3.push(p);
-    byProject.set(k, list3);
-  }
-  for (const list3 of byProject.values())
-    for (const p of list3.slice(-QUOTE_LAST_PER_PROJECT))
-      slots.add(p);
-  turnWeights(human, events, weight);
-  for (const p of [...human].sort((a, b2) => (weight.get(b2) ?? 0) - (weight.get(a) ?? 0)).slice(0, QUOTE_TOP))
-    slots.add(p);
-  for (const p of human.filter((p2) => (p2.t?.sa ?? 0) > 0).sort((a, b2) => b2.t.sa - a.t.sa).slice(0, QUOTE_SUBAGENT_TOP))
-    slots.add(p);
-  for (const p of slots) {
-    if (!p.text)
+  for (const c of candidates2) {
+    if (!c.archive || skipped2.has(c.file) || c.probe.harness !== "codex" || !c.probe.identity)
       continue;
-    const q2 = safeQuote(p.text, 90);
-    if (q2)
-      p.q = q2;
+    const f = compressed.get(c.probe.identity);
+    if (!f)
+      continue;
+    const old = cached4.get(c.file);
+    if (old && old.by === f.file && old.size === c.probe.size && old.mtimeMs === c.probe.mtimeMs && old.bySize === f.probe.size && old.byMtimeMs === f.probe.mtimeMs) {
+      skipped2.set(c.file, f.file);
+      relations.push(old);
+    } else
+      deferred.set(c.file, { by: f.file, probe: c.probe });
   }
-  return { vocab, topics: topics ? [...topics.values()] : null };
+  return { skipped: skipped2, relations, deferred, verifiedReads };
 }
-function turnStats(human, events, interrupts) {
-  const ev = events.filter((e) => Number.isFinite(e.at)).sort((a, b2) => a.at - b2.at);
-  const intr = interrupts.filter(Number.isFinite).sort((a, b2) => a - b2);
-  let j = 0, k = 0, lastAt = null;
-  human.forEach((p, i) => {
-    const start = p.at, next = i + 1 < human.length ? human[i + 1].at : Infinity;
-    while (j < ev.length && ev[j].at < start)
-      lastAt = ev[j++].at;
-    const t = { m: 0, tl: 0, sa: 0, d: null, x: 0, g: lastAt === null ? null : round1((start - lastAt) / 1e3) };
-    let end = null;
-    while (j < ev.length && ev[j].at < next) {
-      const e = ev[j++];
-      t.m++;
-      t.tl += e.tools;
-      t.sa += e.subs;
-      end = e.at;
-      lastAt = e.at;
-    }
-    if (end !== null)
-      t.d = round1((end - start) / 1e3);
-    while (k < intr.length && intr[k] < start)
-      k++;
-    if (k < intr.length && intr[k] < next)
-      t.x = 1;
-    p.t = t;
-  });
-}
-function turnWeights(human, events, out) {
-  const ev = events.filter((e) => e.weight > 0).sort((a, b2) => a.at - b2.at);
-  let j = 0;
-  human.forEach((p, i) => {
-    const next = i + 1 < human.length ? human[i + 1].at : Infinity;
-    while (j < ev.length && ev[j].at < p.at)
-      j++;
-    let w = 0;
-    while (j < ev.length && ev[j].at < next)
-      w += ev[j++].weight;
-    out.set(p, w);
-  });
-}
-var AGENT_TOOLS, isAgentTool, QUOTE_TOP, QUOTE_SUBAGENT_TOP, QUOTE_LAST_PER_PROJECT, round1, usageWeight;
-var init_story_extract = __esm({
-  "packages/core/dist/analytics/story-extract.js"() {
+var HEAD, TAIL, SNIFF, CLASSIFY_MAX_BYTES, RECORD_EDGE, ZSTD_MAGIC, sha1, HISTORY_LINE, CLAUDE_TYPE, ROLLOUT_ID, UUIDISH, StreamHashes;
+var init_copy_prune = __esm({
+  "packages/core/dist/analytics/copy-prune.js"() {
     "use strict";
-    init_profanity();
-    init_language_feedback();
-    init_project_focus();
-    init_findings();
-    init_story_lexicon();
-    init_story_time();
-    AGENT_TOOLS = /* @__PURE__ */ new Set(["Task", "Agent", "spawn_agent", "spawn_agents", "TaskCreate"]);
-    isAgentTool = (name) => AGENT_TOOLS.has(name) || name.startsWith("spawn");
-    QUOTE_TOP = 8;
-    QUOTE_SUBAGENT_TOP = 5;
-    QUOTE_LAST_PER_PROJECT = 3;
-    round1 = (x) => Math.round(x * 10) / 10;
-    usageWeight = (input, output, cacheRead, cacheWrite) => input + 5 * output + 1.25 * cacheWrite + 0.1 * cacheRead;
+    HEAD = 4096;
+    TAIL = 4096;
+    SNIFF = 64 * 1024;
+    CLASSIFY_MAX_BYTES = 512 * 1024 * 1024;
+    RECORD_EDGE = 2048;
+    ZSTD_MAGIC = 4247762216;
+    sha1 = (b2) => createHash10("sha1").update(b2).digest("base64");
+    HISTORY_LINE = /^\{"display"\s*:/;
+    CLAUDE_TYPE = /"type"\s*:\s*"(?:user|assistant|summary|system)"/;
+    ROLLOUT_ID = /rollout-[^/\\]*?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl\.zst$/i;
+    UUIDISH = /"(?:sessionId|session_id|id)"\s*:\s*"([0-9A-Za-z_.:-]{8,80})"/;
+    StreamHashes = class {
+      headParts = [];
+      headLength = 0;
+      /** The last TAIL bytes seen. */
+      window = Buffer.alloc(0);
+      produced = 0;
+      offsets;
+      at = [];
+      constructor(offsets) {
+        this.offsets = [...offsets].sort((a, b2) => a - b2);
+      }
+      push(chunk) {
+        if (!chunk.length)
+          return;
+        if (this.headLength < HEAD) {
+          const part = chunk.subarray(0, HEAD - this.headLength);
+          this.headParts.push(Buffer.from(part));
+          this.headLength += part.length;
+        }
+        const from = this.produced, to = from + chunk.length;
+        let joined = null;
+        while (this.offsets.length && this.offsets[0] <= to) {
+          const end = this.offsets.shift();
+          if (end <= from)
+            continue;
+          joined ??= Buffer.concat([this.window, chunk]);
+          const stop = end - (from - this.window.length);
+          this.at.push([end, sha1(joined.subarray(Math.max(0, stop - TAIL), stop))]);
+        }
+        this.window = chunk.length >= TAIL ? Buffer.from(chunk.subarray(chunk.length - TAIL)) : Buffer.concat([this.window, chunk]).subarray(-TAIL);
+        this.produced = to;
+      }
+      result() {
+        return { head: sha1(Buffer.concat(this.headParts)), at: this.at };
+      }
+    };
   }
 });
 
 // packages/core/dist/analytics/extract.js
-import fs26 from "node:fs";
-import { createHash as createHash10 } from "node:crypto";
+import fs27 from "node:fs";
+import zlib from "node:zlib";
+import { execFileSync as execFileSync3 } from "node:child_process";
+import { createHash as createHash11 } from "node:crypto";
 import path19 from "node:path";
 function time(v) {
-  if (typeof v === "string") {
-    const t = Date.parse(v);
-    return Number.isFinite(t) ? t : null;
-  }
-  if (typeof v === "number" && Number.isFinite(v))
-    return v < 1e11 ? v * 1e3 : v;
-  return null;
+  let t;
+  if (typeof v === "string")
+    t = Date.parse(v);
+  else if (typeof v === "number" && Number.isFinite(v))
+    t = v < 1e11 ? v * 1e3 : v;
+  else
+    return null;
+  return Number.isFinite(t) && Math.abs(t) <= MAX_DATE_MS && t > 0 ? t : null;
 }
 function textOf(content) {
   if (typeof content === "string")
@@ -13751,7 +13967,7 @@ function makeBuilder(file, harness, size, mtimeMs) {
       file,
       size,
       mtimeMs,
-      sessionId: path19.basename(file, ".jsonl"),
+      sessionId: path19.basename(file.replace(/\.zst$/, ""), ".jsonl"),
       parentId: null,
       child: false,
       project: null,
@@ -13822,7 +14038,8 @@ function addPrompt(b2, key2, at, project, kind3, reason, text2) {
     b2.pending.push(prompt);
   touch(b2, at);
 }
-function claudeLine(b2, line, subagent, sessions) {
+function claudeLine(b2, line, subagentPath, sessions, archive = false) {
+  let subagent = subagentPath || !!b2.sidechainFile;
   const assistant = line.includes('"type":"assistant"');
   if (assistant ? !line.includes('"usage"') : subagent || !line.includes('"type":"user"')) {
     if (line.length > 4096 || !line.includes('-title"') && !line.includes('"type":"summary"'))
@@ -13835,8 +14052,10 @@ function claudeLine(b2, line, subagent, sessions) {
     b2.facts.malformed++;
     return;
   }
-  if (!isRec(r3))
+  if (!isRec(r3)) {
+    b2.facts.malformed++;
     return;
+  }
   const f = b2.facts;
   if (r3.type === "summary" || r3.type === "custom-title" || r3.type === "ai-title") {
     const title = str2(r3.customTitle) ?? str2(r3.aiTitle) ?? str2(r3.title) ?? str2(r3.summary);
@@ -13847,11 +14066,19 @@ function claudeLine(b2, line, subagent, sessions) {
   if (typeof r3.cwd === "string" && !f.project)
     f.project = r3.cwd;
   const sid3 = str2(r3.sessionId);
+  if (archive && !subagent && sid3 && r3.isSidechain === true && typeof r3.agentId === "string" && !sessions.size && !f.prompts.length) {
+    b2.sidechainFile = subagent = true;
+    f.parentId = sid3;
+    f.child = true;
+    f.sessionId = `${sid3}:agent-${r3.agentId}`;
+  }
   if (sid3) {
     if (subagent) {
-      f.parentId = sid3;
-      f.child = true;
-      f.sessionId = `${sid3}:${path19.basename(f.file, ".jsonl")}`;
+      if (!b2.sidechainFile) {
+        f.parentId = sid3;
+        f.child = true;
+        f.sessionId = `${sid3}:${path19.basename(f.file, ".jsonl")}`;
+      }
     } else if (!sessions.size)
       f.sessionId = sid3;
   }
@@ -13922,21 +14149,13 @@ function claudeLine(b2, line, subagent, sessions) {
   }
   addPrompt(b2, str2(r3.uuid) ?? `${f.sessionId}:${String(r3.timestamp)}`, at, str2(r3.cwd) ?? f.project, kind3, reason, text2);
 }
-function codexModel(model, timestamp) {
-  if (model === "codex-auto-review") {
-    const day = timestamp.slice(0, 10);
-    return { model: AUTO_REVIEW_MODELS.find(([since]) => day >= since)?.[1] ?? "gpt-5", inferred: true };
-  }
-  return model ? { model, inferred: false } : { model: "gpt-5", inferred: true };
-}
-function codexFact(b2, s, at, timestamp, d, key2) {
+function codexFact(model, tier, at, d, key2) {
   const input = d[0], output = d[2], reasoning = d[3], cached4 = Math.min(d[1], input);
-  const { model, inferred } = codexModel(b2.currentModel, timestamp);
-  const fact = { key: key2, at, model, provider: "openai", input: input - cached4, output, cacheRead: cached4, cacheWrite: 0, cacheWrite1h: 0, reasoning };
-  if (inferred)
-    fact.inferredModel = true;
-  if (s.tier)
-    fact.tier = s.tier;
+  const fact = { key: key2, at, model: codexModel(model), provider: "openai", input: input - cached4, output, cacheRead: cached4, cacheWrite: 0, cacheWrite1h: 0, reasoning };
+  if (model && !fact.model)
+    fact.identity = model;
+  if (tier)
+    fact.tier = tier;
   return fact;
 }
 function codexWanted(head, lineNo) {
@@ -13948,11 +14167,13 @@ function codexLine(b2, line, s) {
   const f = b2.facts;
   const parse8 = () => {
     try {
-      return JSON.parse(line.toString("utf8"));
+      const v = JSON.parse(line.toString("utf8"));
+      if (isRec(v))
+        return v;
     } catch {
-      f.malformed++;
-      return null;
     }
+    f.malformed++;
+    return null;
   };
   if (n2 === 0 && head.includes("session_meta")) {
     const r3 = parse8();
@@ -13969,6 +14190,8 @@ function codexLine(b2, line, s) {
       const spawn4 = isRec(sub.thread_spawn) ? sub.thread_spawn : {};
       f.parentId = str2(spawn4.parent_thread_id) ?? str2(p.parent_thread_id) ?? str2(p.forked_from_id);
     }
+    if (str2(p.forked_from_id))
+      f.forkedFrom = str2(p.forked_from_id);
     if (source === "exec" || p.originator === "codex_exec" || p.originator === "codex_sdk_ts")
       f.automated = true;
     touch(b2, time(r3.timestamp));
@@ -13995,8 +14218,8 @@ function codexLine(b2, line, s) {
     if (!d || !(d[0] || d[1] || d[2] || d[3]))
       return;
     s.deltas.add(d.join(","));
-    const key2 = totalSig ? `x:${totalSig}|${last2 ? last2.join(",") : ""}` : null;
-    const fact = codexFact(b2, s, time(r3.timestamp), String(r3.timestamp ?? ""), d, key2);
+    const key2 = totalSig ? `x:${totalSig}|${last2 ? last2.join(",") : ""}` : `y:${String(r3.timestamp ?? "")}|${d.join(",")}`;
+    const fact = codexFact(b2.currentModel, s.tier, time(r3.timestamp), d, key2);
     addUsage(b2, fact);
     if (fact.at !== null)
       b2.events.push({ at: fact.at, tools: 0, subs: 0, weight: usageWeight(fact.input, fact.output, fact.cacheRead, fact.cacheWrite) });
@@ -14023,6 +14246,10 @@ function codexLine(b2, line, s) {
   if (head.includes('"task_started"')) {
     const p = parse8()?.payload;
     s.imported = isRec(p) && String(p.turn_id ?? "").startsWith("external-import");
+    if (!s.imported) {
+      s.inTurn = true;
+      s.anyTurn = true;
+    }
     return;
   }
   if (head.includes('"UserMessage"') && head.includes("item_completed")) {
@@ -14036,7 +14263,8 @@ function codexLine(b2, line, s) {
       at: time(r3.timestamp),
       text: textOf(item.content),
       imported: s.imported || String(p.turn_id ?? "").startsWith("external-import"),
-      project: f.project
+      project: f.project,
+      inTurn: s.inTurn
     });
     return;
   }
@@ -14045,7 +14273,7 @@ function codexLine(b2, line, s) {
     if (!r3)
       return;
     const p = isRec(r3.payload) ? r3.payload : {};
-    s.responsePrompts.push({ key: null, at: time(r3.timestamp), text: textOf(p.content), imported: s.imported, project: f.project });
+    s.responsePrompts.push({ key: null, at: time(r3.timestamp), text: textOf(p.content), imported: s.imported, project: f.project, inTurn: s.inTurn });
     return;
   }
   if (head.includes('"event_msg"') && line.subarray(0, 400).includes('"type":"user_message"')) {
@@ -14053,7 +14281,7 @@ function codexLine(b2, line, s) {
     if (!r3)
       return;
     const p = isRec(r3.payload) ? r3.payload : {};
-    s.itemPrompts.push({ key: null, at: time(r3.timestamp), text: typeof p.message === "string" ? p.message : "", imported: s.imported, project: f.project });
+    s.itemPrompts.push({ key: null, at: time(r3.timestamp), text: typeof p.message === "string" ? p.message : "", imported: s.imported, project: f.project, inTurn: s.inTurn });
     return;
   }
   if (codexToolOrAbort(b2, head))
@@ -14062,8 +14290,8 @@ function codexLine(b2, line, s) {
     const r3 = parse8();
     const p = r3 && isRec(r3.payload) ? r3.payload : null;
     const id = p ? str2(p.response_id) : null;
-    if (r3 && p && id && isRec(p.usage))
-      s.records.set(id, { at: time(r3.timestamp), usage: p.usage });
+    if (r3 && p && id && isRec(p.usage) && !s.records.has(id))
+      s.records.set(id, { at: time(r3.timestamp), usage: p.usage, model: b2.currentModel, tier: s.tier });
     return;
   }
   if (head.includes('"type":"compacted"')) {
@@ -14101,7 +14329,7 @@ function finishCodex(b2, s) {
     if (!record2 || !d || !(d[0] || d[1] || d[2] || d[3]) || s.deltas.has(d.join(",")))
       continue;
     s.compactionDone.add(id);
-    const fact = codexFact(b2, s, record2.at, record2.at ? new Date(record2.at).toISOString() : "", d, `codex-compaction:${id}`);
+    const fact = codexFact(record2.model, record2.tier, record2.at, d, `codex-compaction:${id}`);
     fact.compaction = true;
     f.usage.push(fact);
     touch(b2, record2.at);
@@ -14121,14 +14349,24 @@ function finishCodex(b2, s) {
         return;
       seen.add(p.key);
     }
-    const key2 = `codex:${f.sessionId}:${p.key ?? i}`;
+    const key2 = `codex:${p.key ?? `${i}@${p.at ?? ""}`}`;
     if (reason)
       return addPrompt(b2, key2, p.at, p.project, "excluded", reason, "");
     if (p.imported)
       return addPrompt(b2, key2, p.at, p.project, "excluded", "imported_from_claude_transcript", "");
     const c = classifyText(cleanCodexText(p.text));
     addPrompt(b2, key2, p.at, p.project, c.kind, c.reason, c.text);
+    if (!p.inTurn)
+      f.prompts[f.prompts.length - 1].imp = 1;
   });
+  if (!s.anyTurn) {
+    const firstUsage = f.usage.reduce((m, u) => u.at !== null && u.at < m ? u.at : m, Infinity);
+    const before = f.prompts.filter((p) => (p.at ?? Infinity) < firstUsage).sort((x, y) => x.at - y.at);
+    for (const p of f.prompts)
+      delete p.imp;
+    for (const p of before.slice(0, -1))
+      p.imp = 1;
+  }
   const answers = f.usage.filter((u) => u.at !== null).sort((x, y) => x.at - y.at);
   let j = 0, previous = null;
   for (const p of [...f.prompts].sort((x, y) => (x.at ?? 0) - (y.at ?? 0))) {
@@ -14148,10 +14386,19 @@ function piLine(b2, line) {
     b2.facts.malformed++;
     return;
   }
+  if (!isRec(r3)) {
+    b2.facts.malformed++;
+    return;
+  }
   const f = b2.facts, at = time(r3.timestamp);
   if (r3.type === "session") {
     f.sessionId = str2(r3.id) ?? f.sessionId;
     f.project = str2(r3.cwd);
+    const parent = str2(r3.parentSession);
+    if (parent) {
+      const base3 = path19.basename(parent.replace(/\\/g, "/")).replace(/\.jsonl$/, "");
+      f.forkedFrom = base3.includes("_") ? base3.slice(base3.lastIndexOf("_") + 1) : base3;
+    }
     touch(b2, at);
     return;
   }
@@ -14166,7 +14413,7 @@ function piLine(b2, line) {
   if (m.role === "assistant" && isRec(m.usage)) {
     const u = m.usage;
     const fact = {
-      key: `pi:${f.sessionId}:${String(r3.id)}`,
+      key: `pi:${String(r3.id)}@${String(r3.timestamp ?? "")}`,
       at,
       model: str2(m.model) ?? b2.currentModel,
       provider: str2(m.provider) ?? b2.currentProvider,
@@ -14189,14 +14436,23 @@ function piLine(b2, line) {
   }
   if (m.role === "user") {
     const c = classifyText(textOf(m.content));
-    addPrompt(b2, `pi:${f.sessionId}:${String(r3.id)}`, at, f.project, c.kind, c.reason, c.text);
+    addPrompt(b2, `pi:${String(r3.id)}@${String(r3.timestamp ?? "")}`, at, f.project, c.kind, c.reason, c.text);
   }
 }
-function extractFile(file, harness, options = {}, previous) {
-  const fd = fs26.openSync(file, "r");
+function extractFile(file, requested, options = {}, previous) {
+  const fd = fs27.openSync(file, "r");
   try {
-    const stat = fs26.fstatSync(fd);
+    const stat = fs27.fstatSync(fd);
+    const hashes = options.checks?.length ? new StreamHashes(options.checks) : null;
+    const zst = isZstd(fd) ? zstdStream(fd, file, hashes) : null;
+    const harness = requested === "auto" ? sniffHarness(zst ? zst.peek(64 * 1024) : headBytes(fd, 64 * 1024)) : requested;
+    if (!harness)
+      throw new Error("unrecognised_archive_source");
+    if (zst && previous)
+      throw new ResumeMismatch();
     let b2 = makeBuilder(file, harness, stat.size, stat.mtimeMs);
+    if (options.archive)
+      b2.facts.archived = true;
     let codex = newCodexState();
     let position = 0, firstNew = 0;
     const subagent = file.includes(SUBAGENT_DIR), sessions = /* @__PURE__ */ new Set();
@@ -14205,7 +14461,7 @@ function extractFile(file, harness, options = {}, previous) {
       if (!r3 || previous.excluded || r3.dev !== stat.dev || r3.ino !== stat.ino || r3.offset > stat.size || r3.offset < 1 || tailHash(fd, r3.offset) !== r3.tail)
         throw new ResumeMismatch();
       const nl = Buffer.alloc(1);
-      fs26.readSync(fd, nl, 0, 1, r3.offset - 1);
+      fs27.readSync(fd, nl, 0, 1, r3.offset - 1);
       if (nl[0] !== 10)
         throw new ResumeMismatch();
       b2 = resumeBuilder(previous, r3, stat);
@@ -14216,7 +14472,8 @@ function extractFile(file, harness, options = {}, previous) {
       position = r3.offset;
       firstNew = b2.facts.prompts.length;
     }
-    const onLine = harness === "claude" ? (line) => claudeLine(b2, line, subagent, sessions) : harness === "codex" ? (line) => codexLine(b2, line, codex) : (line) => piLine(b2, line);
+    const archive = !!options.archive;
+    const onLine = harness === "claude" ? (line) => claudeLine(b2, line, subagent, sessions, archive) : harness === "codex" ? (line) => codexLine(b2, line, codex) : (line) => piLine(b2, line);
     let buffer = sharedBuffer ??= Buffer.allocUnsafe(CHUNK);
     let filled = 0, skipping = false, base3 = position, endsWithNewline = true;
     for (; ; ) {
@@ -14240,7 +14497,7 @@ function extractFile(file, harness, options = {}, previous) {
             sharedBuffer = bigger;
         }
       }
-      const n2 = fs26.readSync(fd, buffer, filled, buffer.length - filled, position);
+      const n2 = zst ? zst.read(buffer, filled, buffer.length - filled) : fs27.readSync(fd, buffer, filled, buffer.length - filled, position);
       position += n2;
       const end = filled + n2;
       let start = 0;
@@ -14269,13 +14526,15 @@ function extractFile(file, harness, options = {}, previous) {
     }
     if (harness === "codex")
       finishCodex(b2, codex);
+    if (hashes)
+      b2.facts.copyHashes = hashes.result();
     if (harness === "claude" && !subagent && sessions.size)
       b2.facts.sessionIds = [...sessions];
     b2.facts.size = stat.size;
     b2.facts.mtimeMs = stat.mtimeMs;
     finishStory(b2, harness, options, firstNew);
     delete b2.facts.resume;
-    if (endsWithNewline && !b2.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS) {
+    if (!zst && !options.archive && endsWithNewline && !b2.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS) {
       const events = new Float64Array(b2.events.length * 4);
       b2.events.forEach((e, i) => {
         events[i * 4] = e.at;
@@ -14299,8 +14558,155 @@ function extractFile(file, harness, options = {}, previous) {
     }
     return b2.facts;
   } finally {
-    fs26.closeSync(fd);
+    fs27.closeSync(fd);
   }
+}
+function headBytes(fd, max2) {
+  const buffer = Buffer.alloc(max2);
+  const n2 = fs27.readSync(fd, buffer, 0, max2, 0);
+  return buffer.subarray(0, n2);
+}
+function isZstd(fd) {
+  const head = headBytes(fd, 4);
+  return head.length === 4 && head.readUInt32LE(0) === ZSTD_MAGIC2;
+}
+function chunkedZstd() {
+  const Engine = zlib.ZstdDecompress;
+  if (zstdMode !== "node" || !Engine)
+    return null;
+  let engine;
+  try {
+    engine = new Engine();
+  } catch {
+    return null;
+  }
+  const handle = engine._handle, state = engine._writeState;
+  if (!handle || typeof handle.writeSync !== "function" || !(state instanceof Uint32Array)) {
+    engine.close();
+    return null;
+  }
+  engine.on("error", () => {
+  });
+  const flush = zlib.constants.ZSTD_e_continue;
+  return {
+    step(input) {
+      const outs = [];
+      let inOff = 0, availIn = input.length;
+      for (; ; ) {
+        const out = Buffer.allocUnsafe(ZSTD_OUTPUT);
+        handle.writeSync(flush, input, inOff, availIn, out, 0, out.length);
+        if (engine.destroyed)
+          throw new Error("zstd_corrupt");
+        const availOut = state[0], availInAfter = state[1];
+        if (out.length - availOut > 0)
+          outs.push(out.subarray(0, out.length - availOut));
+        inOff += availIn - availInAfter;
+        availIn = availInAfter;
+        if (availOut !== 0)
+          break;
+      }
+      return outs;
+    },
+    close: () => engine.close()
+  };
+}
+function zstdStream(fd, file, hashes) {
+  zstdMode ??= zstdSupport();
+  const engine = chunkedZstd();
+  let pending = [], inPos = 0, done = false;
+  const input = engine ? Buffer.allocUnsafe(ZSTD_INPUT) : null;
+  const emit = (out) => {
+    if (out.length) {
+      pending.push(out);
+      hashes?.push(out);
+    }
+  };
+  const fill = () => {
+    if (!engine) {
+      emit(decompressZstd(file));
+      done = true;
+      return;
+    }
+    const n2 = fs27.readSync(fd, input, 0, ZSTD_INPUT, inPos);
+    inPos += n2;
+    if (!n2) {
+      done = true;
+      engine.close();
+      return;
+    }
+    try {
+      for (const out of engine.step(input.subarray(0, n2)))
+        emit(out);
+    } catch (error) {
+      done = true;
+      engine.close();
+      throw error;
+    }
+  };
+  return {
+    read(target, offset, length) {
+      while (!pending.length && !done)
+        fill();
+      let written = 0;
+      while (written < length && pending.length) {
+        const head = pending[0], n2 = Math.min(head.length, length - written);
+        head.copy(target, offset + written, 0, n2);
+        written += n2;
+        if (n2 === head.length)
+          pending.shift();
+        else
+          pending[0] = head.subarray(n2);
+      }
+      return written;
+    },
+    peek(max2) {
+      while (pending.reduce((x, p) => x + p.length, 0) < max2 && !done)
+        fill();
+      const all = Buffer.concat(pending);
+      pending = all.length ? [all] : [];
+      return all.subarray(0, max2);
+    }
+  };
+}
+function zstdSupport() {
+  if (typeof zlib.zstdDecompressSync === "function")
+    return "node";
+  try {
+    execFileSync3("zstd", ["--version"], { stdio: "ignore", timeout: 5e3 });
+    return "cli";
+  } catch {
+    return null;
+  }
+}
+function decompressZstd(file) {
+  zstdMode ??= zstdSupport();
+  if (zstdMode === "node") {
+    try {
+      return zlib.zstdDecompressSync(fs27.readFileSync(file));
+    } catch {
+      throw new Error("zstd_corrupt");
+    }
+  }
+  if (zstdMode === "cli") {
+    try {
+      return execFileSync3("zstd", ["-dcq", "--", file], { maxBuffer: 2 ** 32, stdio: ["ignore", "pipe", "ignore"] });
+    } catch {
+      throw new Error("zstd_corrupt");
+    }
+  }
+  throw new Error("zstd_unsupported");
+}
+function sniffHarness(head) {
+  const firstEnd = head.indexOf(10);
+  const first = head.toString("utf8", 0, Math.min(firstEnd < 0 ? head.length : firstEnd, 4096));
+  if (first.includes('"session_meta"'))
+    return "codex";
+  if (/"type"\s*:\s*"session"/.test(first) && !first.includes('"sessionId"'))
+    return "pi";
+  const text2 = head.toString("latin1");
+  if (text2.includes('"sessionId"') && /"type"\s*:\s*"(?:user|assistant|summary|system)"/.test(text2))
+    return "claude";
+  return null;
 }
 function resumeBuilder(previous, r3, stat) {
   const facts = {
@@ -14310,7 +14716,7 @@ function resumeBuilder(previous, r3, stat) {
     usage: [...previous.usage],
     prompts: previous.prompts.map((p) => ({ ...p })),
     ...previous.sessionIds ? { sessionIds: [...previous.sessionIds] } : {},
-    ...previous.story ? { story: { vocab: previous.story.vocab ? new Map(previous.story.vocab) : null, topics: previous.story.topics ? previous.story.topics.map((t) => ({ ...t, words: new Map([...t.words].map(([w, c]) => [w, [c[0], c[1]]])) })) : null } } : {}
+    ...previous.story ? { story: { vocab: null, topics: null } } : {}
   };
   delete facts.resume;
   const b2 = makeBuilder(previous.file, previous.harness, stat.size, stat.mtimeMs);
@@ -14359,33 +14765,33 @@ function stripText(facts) {
   return facts;
 }
 function tailHash(fd, offset) {
-  const start = Math.max(0, offset - TAIL), buffer = Buffer.alloc(offset - start);
+  const start = Math.max(0, offset - TAIL2), buffer = Buffer.alloc(offset - start);
   let read = 0;
   while (read < buffer.length) {
-    const n2 = fs26.readSync(fd, buffer, read, buffer.length - read, start + read);
+    const n2 = fs27.readSync(fd, buffer, read, buffer.length - read, start + read);
     if (!n2)
       break;
     read += n2;
   }
-  return createHash10("sha256").update(buffer.subarray(0, read)).digest("hex");
+  return createHash11("sha256").update(buffer.subarray(0, read)).digest("hex");
 }
 function readHistory2(file, options, previous) {
   let fd;
   try {
-    fd = fs26.openSync(file, "r");
+    fd = fs27.openSync(file, "r");
   } catch {
     return { entries: [], counters: /* @__PURE__ */ new Map() };
   }
   try {
-    const size = fs26.fstatSync(fd).size;
+    const size = fs27.fstatSync(fd).size;
     if (previous && previous.data.tail && previous.size <= size && tailHash(fd, previous.size) === previous.data.tail) {
       const last2 = Buffer.alloc(1);
-      fs26.readSync(fd, last2, 0, 1, previous.size - 1);
+      fs27.readSync(fd, last2, 0, 1, previous.size - 1);
       if (last2[0] === 10) {
         const tail2 = Buffer.alloc(size - previous.size);
         let read2 = 0;
         while (read2 < tail2.length) {
-          const n2 = fs26.readSync(fd, tail2, read2, tail2.length - read2, previous.size + read2);
+          const n2 = fs27.readSync(fd, tail2, read2, tail2.length - read2, previous.size + read2);
           if (!n2)
             break;
           read2 += n2;
@@ -14401,7 +14807,7 @@ function readHistory2(file, options, previous) {
     const raw = Buffer.alloc(size);
     let read = 0;
     while (read < size) {
-      const n2 = fs26.readSync(fd, raw, read, size - read, read);
+      const n2 = fs27.readSync(fd, raw, read, size - read, read);
       if (!n2)
         break;
       read += n2;
@@ -14412,7 +14818,7 @@ function readHistory2(file, options, previous) {
     data.bytes = end;
     return data;
   } finally {
-    fs26.closeSync(fd);
+    fs27.closeSync(fd);
   }
 }
 function parseHistory(raw, options = {}, into = { entries: [], counters: /* @__PURE__ */ new Map() }) {
@@ -14426,6 +14832,8 @@ function parseHistory(raw, options = {}, into = { entries: [], counters: /* @__P
     } catch {
       continue;
     }
+    if (!isRec(r3))
+      continue;
     const display = typeof r3.display === "string" ? r3.display.trim() : "";
     if (!display)
       continue;
@@ -14449,16 +14857,23 @@ function parseHistory(raw, options = {}, into = { entries: [], counters: /* @__P
         c = { project: entry.project, vocab: /* @__PURE__ */ new Map(), topics: /* @__PURE__ */ new Map() };
         into.counters.set(key2, c);
       }
+      const local = entry.at !== null ? clock3(entry.at) : null;
+      const date3 = local?.day ?? "";
+      let v = c.vocab.get(date3);
+      if (!v) {
+        v = /* @__PURE__ */ new Map();
+        c.vocab.set(date3, v);
+      }
       for (const w of vocabularyWords(text2))
-        c.vocab.set(w, (c.vocab.get(w) ?? 0) + 1);
-      if (entry.at !== null) {
-        const { hour, month } = clock3(entry.at);
+        v.set(w, (v.get(w) ?? 0) + 1);
+      if (local) {
+        const { hour } = local;
         const slot = hour < 5 ? 0 : hour >= 9 && hour < 19 ? 1 : -1;
         if (slot >= 0) {
-          let bag = c.topics.get(month);
+          let bag = c.topics.get(date3);
           if (!bag) {
             bag = { night: 0, day: 0, words: /* @__PURE__ */ new Map() };
-            c.topics.set(month, bag);
+            c.topics.set(date3, bag);
           }
           if (slot === 0)
             bag.night++;
@@ -14479,7 +14894,7 @@ function parseHistory(raw, options = {}, into = { entries: [], counters: /* @__P
   }
   return into;
 }
-var FACTS_VERSION, MAX_PROMPT_CHARS, isRec, str2, int, INJECTED_PREFIXES, SYSTEM_REMINDER, CODEX_STRIP, SUBAGENT_DIR, newCodexState, ResumeMismatch, U_KEYS, tuple, AUTO_REVIEW_MODELS, TOOL_CALL, NAME, STAMP, CHUNK, MAX_LINE, sharedBuffer, RESUME_RECENT_MS, TAIL;
+var FACTS_VERSION, MAX_PROMPT_CHARS, isRec, str2, int, MAX_DATE_MS, INJECTED_PREFIXES, SYSTEM_REMINDER, CODEX_STRIP, SUBAGENT_DIR, newCodexState, ResumeMismatch, U_KEYS, tuple, CODEX_NON_MODELS, codexModel, TOOL_CALL, NAME, STAMP, CHUNK, MAX_LINE, sharedBuffer, RESUME_RECENT_MS, ZSTD_MAGIC2, ZSTD_INPUT, ZSTD_OUTPUT, zstdMode, TAIL2;
 var init_extract = __esm({
   "packages/core/dist/analytics/extract.js"() {
     "use strict";
@@ -14488,11 +14903,13 @@ var init_extract = __esm({
     init_story_extract();
     init_story_lexicon();
     init_story_time();
-    FACTS_VERSION = 5;
+    init_copy_prune();
+    FACTS_VERSION = 8;
     MAX_PROMPT_CHARS = 4e3;
     isRec = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
     str2 = (v) => typeof v === "string" && v.length > 0 ? v : null;
     int = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+    MAX_DATE_MS = 864e13;
     INJECTED_PREFIXES = [
       ["<task-notification>", "task_notification"],
       ["<local-command-stdout>", "local_command_output"],
@@ -14521,6 +14938,8 @@ var init_extract = __esm({
       previousTotal: null,
       tier: void 0,
       imported: false,
+      inTurn: false,
+      anyTurn: false,
       records: /* @__PURE__ */ new Map(),
       compacted: /* @__PURE__ */ new Set(),
       deltas: /* @__PURE__ */ new Set(),
@@ -14538,14 +14957,8 @@ var init_extract = __esm({
     };
     U_KEYS = ["input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens", "total_tokens"];
     tuple = (u) => isRec(u) ? U_KEYS.map((k) => int(u[k])) : null;
-    AUTO_REVIEW_MODELS = [
-      ["2026-07-30", "gpt-5.6-luna"],
-      ["2026-03-05", "gpt-5.4"],
-      ["2026-02-05", "gpt-5.3-codex"],
-      ["2025-12-11", "gpt-5.2-codex"],
-      ["2025-11-13", "gpt-5.1-codex"],
-      ["2025-09-15", "gpt-5-codex"]
-    ];
+    CODEX_NON_MODELS = /* @__PURE__ */ new Set(["codex-auto-review"]);
+    codexModel = (model) => model && !CODEX_NON_MODELS.has(model) ? model : null;
     TOOL_CALL = /"type":"(?:function_call|custom_tool_call)"/;
     NAME = /"name":"([^"]{1,80})"/;
     STAMP = /"timestamp":"([^"]{10,40})"/;
@@ -14553,17 +14966,87 @@ var init_extract = __esm({
     MAX_LINE = 256 * 1024 * 1024;
     sharedBuffer = null;
     RESUME_RECENT_MS = 48 * 36e5;
-    TAIL = 4096;
+    ZSTD_MAGIC2 = 4247762216;
+    ZSTD_INPUT = 1024 * 1024;
+    ZSTD_OUTPUT = 1024 * 1024;
+    TAIL2 = 4096;
+  }
+});
+
+// packages/core/dist/analytics/model-names.js
+function canonicalModel(model) {
+  let hit2 = canonicalMemo.get(model);
+  if (hit2 === void 0) {
+    hit2 = canonicalize(model);
+    if (canonicalMemo.size < 1e4)
+      canonicalMemo.set(model, hit2);
+  }
+  return hit2;
+}
+function canonicalize(model) {
+  let m = model.trim().toLowerCase();
+  m = m.replace(/\[[^\]]*\]$/, "");
+  if (m.includes("/"))
+    m = m.slice(m.lastIndexOf("/") + 1);
+  m = m.replace(/@.*$/, "");
+  m = m.replace(/^(?:(?:anthropic|openai|us|eu|apac|global|jp|au|ca|us-gov)\.)+/, "");
+  m = m.replace(/:\d+$/, "");
+  m = m.replace(/-v\d+$/, "");
+  m = m.replace(/-(?:20\d{6}|\d{4}-\d{2}-\d{2})$/, "");
+  m = m.replace(/-latest$/, "");
+  if (m.startsWith("claude-"))
+    m = m.replace(/(\d)\.(\d)/g, "$1-$2");
+  return m;
+}
+function modelLabel(model) {
+  if (!model)
+    return "?";
+  let hit2 = labelMemo2.get(model);
+  if (hit2 !== void 0)
+    return hit2;
+  const parts = canonicalModel(model).replace(/^claude-/, "").split(/[-_]/).filter(Boolean);
+  const out = [];
+  for (const p of parts) {
+    if (/^\d+$/.test(p) && out.length && /\d$/.test(out[out.length - 1]))
+      out[out.length - 1] += `.${p}`;
+    else
+      out.push(p === "gpt" ? "GPT" : /^\d/.test(p) ? p : p[0].toUpperCase() + p.slice(1));
+  }
+  hit2 = out.join(" ").replace(/^GPT (\d)/, "GPT-$1") || model;
+  labelMemo2.set(model, hit2);
+  return hit2;
+}
+function largestRemainder(values, total2 = 100) {
+  const sum2 = values.reduce((a, b2) => a + Math.max(0, b2), 0);
+  if (!(sum2 > 0))
+    return values.map(() => 0);
+  const exact = values.map((v) => Math.max(0, v) / sum2 * total2);
+  const out = exact.map(Math.floor);
+  let left = total2 - out.reduce((a, b2) => a + b2, 0);
+  const order = exact.map((v, i) => [v - Math.floor(v), i]).sort((a, b2) => b2[0] - a[0] || a[1] - b2[1]);
+  for (const [, i] of order) {
+    if (left <= 0)
+      break;
+    out[i]++;
+    left--;
+  }
+  return out;
+}
+var canonicalMemo, labelMemo2;
+var init_model_names = __esm({
+  "packages/core/dist/analytics/model-names.js"() {
+    "use strict";
+    canonicalMemo = /* @__PURE__ */ new Map();
+    labelMemo2 = /* @__PURE__ */ new Map();
   }
 });
 
 // packages/core/dist/analytics/story-table.js
-import fs27 from "node:fs";
-import path20 from "node:path";
 function buildStoryTable(input) {
   const { aggregate: a, timezone } = input;
   const clock3 = localClock(timezone);
-  const { refs: refs2, costOf, sources } = a.story;
+  const { refs: refs2, costOf } = a.story;
+  const dateAllowed = input.dateAllowed ?? (() => true);
   const typed = /* @__PURE__ */ new Map();
   for (const h of input.history)
     if (h.kind === "human" && h.f && h.sessionId && h.at !== null) {
@@ -14572,36 +15055,42 @@ function buildStoryTable(input) {
       typed.set(h.sessionId, list3);
     }
   const main2 = /* @__PURE__ */ new Map(), sub = /* @__PURE__ */ new Map();
-  const dailyModel = /* @__PURE__ */ new Map();
-  for (const s of sources) {
-    const conv = sid(s.harness, s.child && s.parentId ? s.parentId : s.sessionId);
+  const promptConvs = /* @__PURE__ */ new Set();
+  for (const ref3 of refs2)
+    promptConvs.add(ref3.prompt.conversationId);
+  const convOf = /* @__PURE__ */ new Map();
+  for (const { u, s } of a.story.rows) {
+    if (u.at === null)
+      continue;
+    let conv = convOf.get(s);
+    if (conv === void 0) {
+      const c = sid(s.harness, s.child && s.parentId ? s.parentId : s.sessionId);
+      conv = promptConvs.has(c) ? c : null;
+      convOf.set(s, conv);
+    }
+    if (conv === null)
+      continue;
     const target = s.child ? sub : main2;
     let list3 = target.get(conv);
-    for (const u of s.usage) {
-      if (s.harness === "claude" && u.model && u.at !== null) {
-        const day = clock3(u.at).day;
-        const m = dailyModel.get(day) ?? /* @__PURE__ */ new Map();
-        m.set(u.model, (m.get(u.model) ?? 0) + 1);
-        dailyModel.set(day, m);
-      }
-      const cost = costOf.get(u);
-      if (cost === void 0 || u.at === null)
-        continue;
+    {
       if (!list3) {
         list3 = [];
         target.set(conv, list3);
       }
-      list3.push({ at: u.at, cost, out: u.output, model: u.model });
+      list3.push({ at: u.at, cost: costOf.get(u) ?? 0, out: u.output, model: u.model && !u.inferredModel ? canonicalModel(u.model) : null });
     }
   }
   for (const list3 of [...main2.values(), ...sub.values()])
     list3.sort((x, y) => x.at - y.at);
-  addStatsCache(input.historyFile, dailyModel);
-  const knownDays = [...dailyModel.keys()].sort();
   const byConv = /* @__PURE__ */ new Map();
   const rows = [];
+  const allConvs = /* @__PURE__ */ new Set();
+  let undated = 0;
   for (const ref3 of refs2) {
     const fact = ref3.fact;
+    allConvs.add(ref3.prompt.conversationId);
+    if (fact.at === null)
+      undated++;
     if (!fact.f || fact.at === null)
       continue;
     const s = ref3.source;
@@ -14700,9 +15189,6 @@ function buildStoryTable(input) {
       }
     });
     const first = list3[0].row;
-    if (first.harness === "claude_hist")
-      for (const { row: row2 } of list3)
-        inferModel(row2, dailyModel, knownDays);
     sessions.push({ conv, harness: first.harness, project: first.project, costUsd: cost, subCostUsd: subCost, first: first.ts, last: list3.at(-1).row.ts, prompts: list3.length });
   }
   rows.sort((x, y) => x.ts - y.ts || x.id.localeCompare(y.id));
@@ -14726,23 +15212,47 @@ function buildStoryTable(input) {
     }
   };
   const inScope = new Set(rows.map((r3) => r3.conv));
-  for (const s of sources) {
-    if (!s.story?.vocab || !inScope.has(sid(s.harness, s.sessionId)))
+  const addVocab = (bags) => {
+    for (const [date3, words8] of bags) {
+      if (date3 ? !dateAllowed(date3) : input.undatedAllowed === false)
+        continue;
+      for (const [w, n2] of words8)
+        vocab.set(w, (vocab.get(w) ?? 0) + n2);
+    }
+  };
+  for (const ref3 of refs2) {
+    const fact = ref3.fact;
+    if (ref3.history || !ref3.source || ref3.source.harness === "claude" || ref3.source.child || !("key" in fact))
       continue;
-    for (const [w, n2] of s.story.vocab)
-      vocab.set(w, (vocab.get(w) ?? 0) + n2);
-    for (const bag of s.story.topics ?? [])
-      addTopics(bag.month, bag);
+    if (fact.at === null) {
+      if (input.undatedAllowed === false)
+        continue;
+      for (const w of fact.w ?? [])
+        vocab.set(w, (vocab.get(w) ?? 0) + 1);
+      continue;
+    }
+    const local = clock3(fact.at);
+    if (!dateAllowed(local.day))
+      continue;
+    for (const w of fact.w ?? [])
+      vocab.set(w, (vocab.get(w) ?? 0) + 1);
+    const slot = local.hour < 5 ? 0 : local.hour >= 9 && local.hour < 19 ? 1 : -1;
+    if (slot >= 0) {
+      const words8 = /* @__PURE__ */ new Map();
+      for (const w of fact.tw ?? [])
+        words8.set(w, slot === 0 ? [1, 0] : [0, 1]);
+      addTopics(local.month, { night: slot === 0 ? 1 : 0, day: slot === 1 ? 1 : 0, words: words8 });
+    }
   }
   for (const [session, c] of input.historyCounters) {
     if (!input.allowed(c.project, session || null) || !inScope.has(sid("claude", session)))
       continue;
-    for (const [w, n2] of c.vocab)
-      vocab.set(w, (vocab.get(w) ?? 0) + n2);
-    for (const [month, bag] of c.topics)
-      addTopics(month, bag);
+    addVocab(c.vocab);
+    for (const [date3, bag] of c.topics)
+      if (dateAllowed(date3))
+        addTopics(date3.slice(0, 7), bag);
   }
-  return { rows, vocab, topics, sessions };
+  return { rows, vocab, topics, sessions, headline: { prompts: refs2.length, sessions: allConvs.size, undated } };
 }
 function matchTyped(typed, s, at) {
   for (const session of s.sessionIds ?? [s.sessionId]) {
@@ -14752,55 +15262,6 @@ function matchTyped(typed, s, at) {
   }
   return null;
 }
-function inferModel(row2, daily, days) {
-  let lo = 0, hi = days.length;
-  while (lo < hi) {
-    const mid = lo + hi >> 1;
-    if (days[mid] <= row2.day)
-      lo = mid + 1;
-    else
-      hi = mid;
-  }
-  const i = lo - 1;
-  const dist = (d) => Math.abs(Date.parse(`${d}T00:00:00Z`) - Date.parse(`${row2.day}T00:00:00Z`)) / 864e5;
-  let best = null;
-  for (const x of [i, i + 1]) {
-    const d = days[x];
-    if (d === void 0 || dist(d) > 21)
-      continue;
-    if (best === null || dist(d) < dist(best))
-      best = d;
-  }
-  if (!best)
-    return;
-  let model = null, n2 = -1;
-  for (const [m, c] of daily.get(best))
-    if (c > n2) {
-      model = m;
-      n2 = c;
-    }
-  if (model) {
-    row2.model = model;
-    row2.modelSrc = "inferred";
-  }
-}
-function addStatsCache(historyFile, daily) {
-  if (!historyFile)
-    return;
-  try {
-    const raw = JSON.parse(fs27.readFileSync(path20.join(path20.dirname(historyFile), "stats-cache.json"), "utf8"));
-    for (const row2 of raw.dailyModelTokens ?? []) {
-      if (typeof row2.date !== "string" || !row2.tokensByModel)
-        continue;
-      const m = daily.get(row2.date) ?? /* @__PURE__ */ new Map();
-      for (const [model, n2] of Object.entries(row2.tokensByModel))
-        if (typeof n2 === "number")
-          m.set(model, (m.get(model) ?? 0) + n2);
-      daily.set(row2.date, m);
-    }
-  } catch {
-  }
-}
 var memo, sid;
 var init_story_table = __esm({
   "packages/core/dist/analytics/story-table.js"() {
@@ -14808,6 +15269,7 @@ var init_story_table = __esm({
     init_source_identity();
     init_story_lexicon();
     init_story_time();
+    init_model_names();
     memo = /* @__PURE__ */ new Map();
     sid = (h, id) => {
       const k = `${h}\0${id}`;
@@ -14928,20 +15390,7 @@ var init_story_typos = __esm({
 
 // packages/core/dist/analytics/story-detectors.js
 import os7 from "node:os";
-import path21 from "node:path";
-function modelLabel(model) {
-  if (!model)
-    return "?";
-  const parts = model.replace(/^claude-/, "").replace(/-\d{8}$/, "").replace(/\[[^\]]*\]$/, "").split(/[-_]/).filter(Boolean);
-  const out = [];
-  for (const p of parts) {
-    if (/^\d+$/.test(p) && out.length && /\d$/.test(out[out.length - 1]))
-      out[out.length - 1] += `.${p}`;
-    else
-      out.push(p === "gpt" ? "GPT" : /^\d/.test(p) ? p : p[0].toUpperCase() + p.slice(1));
-  }
-  return out.join(" ").replace(/^GPT (\d)/, "GPT-$1");
-}
+import path20 from "node:path";
 function shorten(q2, max2) {
   if (!q2)
     return null;
@@ -14987,7 +15436,7 @@ function mostExpensiveSentence(c) {
   const cost = top.costTotalUsd;
   if (cost < Math.max(20 * med, 5))
     return null;
-  const times = cost / med, share = pct2(cost, total2);
+  const times3 = cost / med, share = pct2(cost, total2);
   const edges = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1e3, 3e3];
   const bucket = (x) => {
     let i = 0;
@@ -14999,7 +15448,7 @@ function mostExpensiveSentence(c) {
   const hist = new Array(edges.length + 1).fill(0);
   for (const x of costs)
     hist[bucket(x)]++;
-  const support = `One prompt, ${modelLabel(top.model)}, ${dayName(top.day)}. That's ${f0(times)}\xD7 your median prompt (${usd2(med)}) and ${share.toFixed(0)}% of all your spend.`;
+  const support = `One prompt, ${modelLabel(top.model)}, ${dayName(top.day)}. That's ${f0(times3)}\xD7 your median prompt (${usd2(med)}) and ${share.toFixed(0)}% of all your spend.`;
   return {
     id: "most_expensive_sentence",
     kind: "money",
@@ -15007,27 +15456,27 @@ function mostExpensiveSentence(c) {
     wow: quote2 ? 95 : 85,
     headline: quote2 ? `Your most expensive sentence: \u201C${quote2}\u201D \u2014 ${usd0(cost)}.` : `One prompt cost you ${usd0(cost)}.`,
     support,
-    numbers: { cost_usd: r2(cost), median_prompt_cost: Math.round(med * 1e4) / 1e4, times_median: Math.round(times), share_pct: r1(share), model: top.model, day: top.day, project: base(top.project), priced_prompts: priced.length },
+    numbers: { cost_usd: r2(cost), median_prompt_cost: Math.round(med * 1e4) / 1e4, times_median: Math.round(times3), share_pct: r1(share), model: top.model, day: top.day, project: base(top.project), priced_prompts: priced.length },
     chart: { type: "histogram", motif: "receipt", series: [{ name: "prompts", points: hist.map((y, i) => ({ x: label4(i), y })) }], highlight: label4(bucket(cost)), xLabel: "cost per prompt", unit: "prompts" },
     quote: quote2,
-    confidence: clamp2(0.6 + 0.4 * clears(times, 20)),
-    surprise: times,
+    confidence: clamp2(0.6 + 0.4 * clears(times3, 20)),
+    surprise: times3,
     public: { headline: `One prompt cost you ${usd0(cost)}.`, support }
   };
 }
 function moodDrift(c) {
   if (c.rows.length < TONE_MIN)
     return null;
-  const M2 = groupBy(c.rows, (r3) => r3.month);
-  const months = [...M2.keys()].sort().filter((m) => M2.get(m).length >= 40);
+  const M3 = groupBy(c.rows, (r3) => r3.month);
+  const months = [...M3.keys()].sort().filter((m) => M3.get(m).length >= 40);
   if (months.length < 4)
     return null;
   const early = months.slice(0, 3), late = months.slice(-2);
-  const se = angryRate(early.flatMap((m) => M2.get(m))), sl = angryRate(late.flatMap((m) => M2.get(m)));
-  const series = months.map((m) => ({ x: m, y: r1(angryRate(M2.get(m))) }));
+  const se = angryRate(early.flatMap((m) => M3.get(m))), sl = angryRate(late.flatMap((m) => M3.get(m)));
+  const series = months.map((m) => ({ x: m, y: r1(angryRate(M3.get(m))) }));
   const byMonth = Object.fromEntries(series.map((p) => [p.x, p.y]));
   if (sl >= 5 && sl >= 2.5 * Math.max(se, 0.5)) {
-    const tip = months.find((m) => angryRate(M2.get(m)) >= sl / 2) ?? late[0];
+    const tip = months.find((m) => angryRate(M3.get(m)) >= sl / 2) ?? late[0];
     const k = sl / Math.max(se, 0.1);
     const support = `${monthName(early[0])}\u2013${monthName(early.at(-1), "short")}: ${f1(se)}%. Last two months: ${sl.toFixed(0)}% (\xD7${f0(k)}). It tipped in ${monthName(tip, "long")}.`;
     return {
@@ -15162,9 +15611,9 @@ function bestModel(c) {
 function honeymoon(c) {
   if (c.rows.length < TONE_MIN)
     return null;
-  const M2 = groupBy(c.rows.filter((r3) => r3.model), (r3) => r3.model);
+  const M3 = groupBy(c.rows.filter((r3) => r3.model), (r3) => r3.model);
   let best = null;
-  for (const [m2, rs] of M2) {
+  for (const [m2, rs] of M3) {
     const t0 = rs[0].ts;
     const e = rs.filter((r3) => r3.ts - t0 < 21 * 864e5), l = rs.filter((r3) => r3.ts - t0 >= 21 * 864e5);
     if (e.length < 40 || l.length < 40)
@@ -15531,23 +15980,23 @@ function nightOwl(c, shifted) {
   };
 }
 function iToWe(c) {
-  const M2 = /* @__PURE__ */ new Map();
+  const M3 = /* @__PURE__ */ new Map();
   for (const r3 of c.rows) {
-    const m = M2.get(r3.month) ?? [0, 0, 0, 0];
+    const m = M3.get(r3.month) ?? [0, 0, 0, 0];
     m[0] += r3.f.we;
     m[1] += r3.f.i;
     m[2]++;
     if (has(r3.f, FLAG.lets))
       m[3]++;
-    M2.set(r3.month, m);
+    M3.set(r3.month, m);
   }
-  const months = [...M2.keys()].sort().filter((m) => M2.get(m)[2] >= 40);
+  const months = [...M3.keys()].sort().filter((m) => M3.get(m)[2] >= 40);
   if (months.length < 4)
     return null;
   const e = months.slice(0, 2), l = months.at(-1);
-  const sum2 = (k) => e.reduce((n2, m) => n2 + M2.get(m)[k], 0);
-  const re = sum2(0) / Math.max(1, sum2(1)), rl = M2.get(l)[0] / Math.max(1, M2.get(l)[1]);
-  const le = pct2(sum2(3), sum2(2)), ll = pct2(M2.get(l)[3], M2.get(l)[2]);
+  const sum2 = (k) => e.reduce((n2, m) => n2 + M3.get(m)[k], 0);
+  const re = sum2(0) / Math.max(1, sum2(1)), rl = M3.get(l)[0] / Math.max(1, M3.get(l)[1]);
+  const le = pct2(sum2(3), sum2(2)), ll = pct2(M3.get(l)[3], M3.get(l)[2]);
   if (rl < 1.5 * re || ll < 10)
     return null;
   const support = `\u201Cwe/us/our\u201D per \u201CI/me/my\u201D: ${re.toFixed(2)} in your first months, ${rl.toFixed(2)} now. ${ll.toFixed(0)}% of this month's prompts contain \u201Clet's\u201D (was ${le.toFixed(0)}%).`;
@@ -15559,7 +16008,7 @@ function iToWe(c) {
     headline: "You stopped saying \u201CI\u201D and started saying \u201Cwe\u201D.",
     support,
     numbers: { we_per_i_early: r2(re), we_per_i_now: r2(rl), lets_early_pct: r1(le), lets_now_pct: r1(ll), earlyRatio: r2(re), lateRatio: r2(rl), letsNowPct: r1(ll), letsThenPct: r1(le) },
-    chart: { type: "line", series: [{ name: "we per I", points: months.map((m) => ({ x: m, y: r2(M2.get(m)[0] / Math.max(1, M2.get(m)[1])) })) }], unit: "ratio" },
+    chart: { type: "line", series: [{ name: "we per I", points: months.map((m) => ({ x: m, y: r2(M3.get(m)[0] / Math.max(1, M3.get(m)[1])) })) }], unit: "ratio" },
     confidence: clears(rl / Math.max(re, 0.01), 1.5),
     surprise: rl / Math.max(re, 0.01),
     public: { headline: "You stopped saying \u201CI\u201D and started saying \u201Cwe\u201D.", support }
@@ -15657,9 +16106,9 @@ function typoFingerprint(c) {
   const t = typoPairs(c.table.vocab, c.dictionary);
   if (!t)
     return null;
-  const [a, b2, c2, d2] = t.top;
+  const [a, b2, c22, d2] = t.top;
   const kind3 = t.kind ? ` Your signature slip: you ${t.kind.name} (${pct2(t.kind.count, t.total).toFixed(0)}% of ${t.total} typos).` : "";
-  const support = `Also \u201C${b2.typo}\u201D, \u201C${c2.typo}\u201D, \u201C${d2.typo}\u201D.${kind3}`;
+  const support = `Also \u201C${b2.typo}\u201D, \u201C${c22.typo}\u201D, \u201C${d2.typo}\u201D.${kind3}`;
   return {
     id: "typo_fingerprint",
     kind: "language",
@@ -15701,23 +16150,23 @@ function firstVsLatest(c) {
   };
 }
 function orchestrator(c) {
-  const M2 = /* @__PURE__ */ new Map();
+  const M3 = /* @__PURE__ */ new Map();
   for (const r3 of c.rows) {
-    const m = M2.get(r3.month) ?? [0, 0];
+    const m = M3.get(r3.month) ?? [0, 0];
     m[0] += r3.subs ?? 0;
     m[1]++;
-    M2.set(r3.month, m);
+    M3.set(r3.month, m);
   }
-  const months = [...M2.keys()].sort();
-  const total2 = months.reduce((n2, m) => n2 + M2.get(m)[0], 0);
-  const first = months.find((m) => M2.get(m)[0] >= 5);
+  const months = [...M3.keys()].sort();
+  const total2 = months.reduce((n2, m) => n2 + M3.get(m)[0], 0);
+  const first = months.find((m) => M3.get(m)[0] >= 5);
   if (total2 < 30 || !first)
     return null;
-  const before = months.filter((m) => m < first).reduce((n2, m) => n2 + M2.get(m)[1], 0);
-  const launchedBefore = months.filter((m) => m < first).reduce((n2, m) => n2 + M2.get(m)[0], 0);
-  const peak = months.reduce((a, b2) => M2.get(b2)[0] > M2.get(a)[0] ? b2 : a);
+  const before = months.filter((m) => m < first).reduce((n2, m) => n2 + M3.get(m)[1], 0);
+  const launchedBefore = months.filter((m) => m < first).reduce((n2, m) => n2 + M3.get(m)[0], 0);
+  const peak = months.reduce((a, b2) => M3.get(b2)[0] > M3.get(a)[0] ? b2 : a);
   const lead = launchedBefore === 0 ? `Zero before ${monthName(first, "long")}` : `Only ${launchedBefore} before ${monthName(first, "long")}`;
-  const support = lead + (before ? ` (${f0(before)} prompts of doing it yourself)` : "") + `. Peak: ${monthName(peak, "short")}, ${M2.get(peak)[0]}.`;
+  const support = lead + (before ? ` (${f0(before)} prompts of doing it yourself)` : "") + `. Peak: ${monthName(peak, "short")}, ${M3.get(peak)[0]}.`;
   return {
     id: "orchestrator",
     kind: "habit",
@@ -15731,15 +16180,15 @@ function orchestrator(c) {
       launched_before: launchedBefore,
       prompts_before: before,
       peak_month: peak,
-      peak: M2.get(peak)[0],
+      peak: M3.get(peak)[0],
       total: total2,
       firstMonth: first,
       promptsBefore: before,
       launchedBefore,
       peakMonth: peak,
-      peakCount: M2.get(peak)[0]
+      peakCount: M3.get(peak)[0]
     },
-    chart: { type: "bar", motif: "clones", series: [{ name: "subagents", points: months.map((m) => ({ x: m, y: M2.get(m)[0] })) }], highlight: first, unit: "subagents" },
+    chart: { type: "bar", motif: "clones", series: [{ name: "subagents", points: months.map((m) => ({ x: m, y: M3.get(m)[0] })) }], highlight: first, unit: "subagents" },
     confidence: clears(total2, 30),
     surprise: 1 + total2 / 30,
     public: { headline: `You went from typing to managing: ${f0(total2)} subagents launched.`, support }
@@ -15776,11 +16225,11 @@ function priciestProject(c) {
   };
 }
 function lengthEvolution(c) {
-  const M2 = groupBy(c.rows, (r3) => r3.month);
-  const months = [...M2.keys()].sort().filter((m) => M2.get(m).length >= 40);
+  const M3 = groupBy(c.rows, (r3) => r3.month);
+  const months = [...M3.keys()].sort().filter((m) => M3.get(m).length >= 40);
   if (months.length < 4)
     return null;
-  const e = median2(months.slice(0, 2).flatMap((m) => M2.get(m).map((r3) => r3.f.w))), l = median2(M2.get(months.at(-1)).map((r3) => r3.f.w));
+  const e = median2(months.slice(0, 2).flatMap((m) => M3.get(m).map((r3) => r3.f.w))), l = median2(M3.get(months.at(-1)).map((r3) => r3.f.w));
   if (l < 1.8 * e && e < 1.8 * l)
     return null;
   const up = l > e;
@@ -15795,7 +16244,7 @@ function lengthEvolution(c) {
     headline: headline4,
     support,
     numbers: { early_median_words: e, now_median_words: l, ratio: r1(k) },
-    chart: { type: "line", series: [{ name: "median words", points: months.map((m) => ({ x: m, y: median2(M2.get(m).map((r3) => r3.f.w)) })) }], unit: "words" },
+    chart: { type: "line", series: [{ name: "median words", points: months.map((m) => ({ x: m, y: median2(M3.get(m).map((r3) => r3.f.w)) })) }], unit: "words" },
     confidence: clears(k, 1.8),
     surprise: k,
     public: { headline: headline4, support }
@@ -16124,6 +16573,8 @@ var init_story_detectors = __esm({
     init_story_lexicon();
     init_story_time();
     init_story_typos();
+    init_model_names();
+    init_model_names();
     median2 = (xs) => {
       if (!xs.length)
         return null;
@@ -16139,7 +16590,7 @@ var init_story_detectors = __esm({
     usd0 = (x) => `$${f0(x)}`;
     usd2 = (x) => `$${x.toFixed(2)}`;
     clears = (value, guard) => guard > 0 ? clamp2(0.5 + 0.5 * (value - guard) / guard) : 1;
-    base = (p) => p ? path21.basename(p.replace(/\/+$/, "")) || p : "(unknown)";
+    base = (p) => p ? path20.basename(p.replace(/\/+$/, "")) || p : "(unknown)";
     mostCommon = (m) => [...m.entries()].sort((a, b2) => b2[1] - a[1]);
     angryRate = (rs) => pct2(rs.filter((r3) => r3.angry).length, rs.length);
     politeRate = (rs) => pct2(rs.filter((r3) => r3.polite).length, rs.length);
@@ -16148,7 +16599,7 @@ var init_story_detectors = __esm({
       return `${hour % 12 || 12}:${String(minute).padStart(2, "0")}${hour < 12 ? "am" : "pm"}`;
     };
     newest = (c) => c.rows.reduce((m, r3) => Math.max(m, r3.ts), 0);
-    isHome = (c, p) => p === "(unknown)" || p.replace(/\/+$/, "") === c.home || base(p) === path21.basename(c.home);
+    isHome = (c, p) => p === "(unknown)" || p.replace(/\/+$/, "") === c.home || base(p) === path20.basename(c.home);
     NUDGE = /^(continue|go on|keep going|proceed|resume)\b/;
     PET = /\b(babe|baby|bro|buddy|dude|man|love|my friend)\b/;
     family = (h) => h.startsWith("claude") ? "Claude Code" : h === "codex" ? "Codex" : h === "pi" ? "pi" : h === "opencode" ? "OpenCode" : h;
@@ -16193,6 +16644,75 @@ var init_story_detectors = __esm({
 });
 
 // packages/core/dist/analytics/story-archetype.js
+function monthSwears(rows) {
+  const by = /* @__PURE__ */ new Map();
+  for (const r3 of rows) {
+    const v = by.get(r3.month) ?? [0, 0];
+    v[0]++;
+    if (r3.angry)
+      v[1]++;
+    by.set(r3.month, v);
+  }
+  return [...by].sort((a, b2) => a[0] < b2[0] ? -1 : 1).map(([month, [n2, s]]) => ({ month, n: n2, pct: pct2(s, n2) }));
+}
+function modelEras(rows) {
+  const weeks = /* @__PURE__ */ new Map();
+  for (const r3 of rows) {
+    if (!r3.model || r3.modelSrc !== "observed")
+      continue;
+    const w = Math.floor(r3.ts / WEEK);
+    const m = weeks.get(w) ?? /* @__PURE__ */ new Map();
+    m.set(r3.model, (m.get(r3.model) ?? 0) + 1);
+    weeks.set(w, m);
+  }
+  const order = [...weeks.keys()].sort((a, b2) => a - b2);
+  const eras2 = [];
+  let run3 = null;
+  for (const w of order) {
+    const m = weeks.get(w);
+    const total2 = [...m.values()].reduce((a, b2) => a + b2, 0);
+    const [top, n2] = [...m.entries()].sort((a, b2) => b2[1] - a[1])[0];
+    const leader = total2 >= 5 && n2 / total2 >= 0.6 ? top : null;
+    if (leader && run3 && run3.model === leader && w === run3.last + 1) {
+      run3.weeks++;
+      run3.last = w;
+    } else
+      run3 = leader ? { model: leader, weeks: 1, last: w } : null;
+    if (run3 && run3.weeks === 3 && eras2.at(-1) !== run3.model)
+      eras2.push(run3.model);
+  }
+  return eras2;
+}
+function projectSprints(rows) {
+  const by = /* @__PURE__ */ new Map();
+  for (const r3 of rows)
+    if (r3.project) {
+      const xs = by.get(r3.project) ?? [];
+      xs.push(r3.ts);
+      by.set(r3.project, xs);
+    }
+  let count5 = 0, best = { prompts: 0, days: 0 };
+  for (const ts of by.values()) {
+    if (ts.length < 60)
+      continue;
+    ts.sort((a, b2) => a - b2);
+    let j = 0, top = 0, span3 = 0;
+    for (let i = 0; i < ts.length; i++) {
+      while (ts[i] - ts[j] > 4 * 864e5)
+        j++;
+      if (i - j + 1 > top) {
+        top = i - j + 1;
+        span3 = (ts[i] - ts[j]) / 864e5;
+      }
+    }
+    if (top / ts.length >= 0.8) {
+      count5++;
+      if (top > best.prompts)
+        best = { prompts: top, days: Math.max(1, Math.ceil(span3)) };
+    }
+  }
+  return { count: count5, ...best };
+}
 function archetypeMetrics(rows) {
   const n2 = rows.length || 1;
   const count5 = (f) => rows.filter(f).length;
@@ -16201,13 +16721,17 @@ function archetypeMetrics(rows) {
     if (r3.model)
       models2.set(r3.model, (models2.get(r3.model) ?? 0) + 1);
   const withModel = [...models2.values()].reduce((a, b2) => a + b2, 0);
-  const projects3 = /* @__PURE__ */ new Map(), projectChats = /* @__PURE__ */ new Map();
+  const topModelId = [...models2.entries()].sort((a, b2) => b2[1] - a[1])[0]?.[0] ?? null;
+  const projects3 = /* @__PURE__ */ new Map(), projectChats = /* @__PURE__ */ new Map(), projectLast = /* @__PURE__ */ new Map();
   for (const r3 of rows) {
     projects3.set(r3.project ?? "", (projects3.get(r3.project ?? "") ?? 0) + 1);
     const chats = projectChats.get(r3.project ?? "") ?? /* @__PURE__ */ new Set();
     chats.add(r3.conv);
     projectChats.set(r3.project ?? "", chats);
+    if (r3.project)
+      projectLast.set(r3.project, Math.max(projectLast.get(r3.project) ?? 0, r3.ts));
   }
+  const lastTs = rows.reduce((a, r3) => Math.max(a, r3.ts), 0);
   const hours = new Array(24).fill(0);
   for (const r3 of rows)
     hours[r3.hour]++;
@@ -16221,6 +16745,27 @@ function archetypeMetrics(rows) {
     }
   }
   const stretch = longestStretch(rows);
+  const ms = monthSwears(rows).filter((m) => m.n >= 40);
+  const minM = ms.length ? ms.reduce((a, b2) => b2.pct < a.pct ? b2 : a) : null;
+  const maxM = ms.length ? ms.reduce((a, b2) => b2.pct > a.pct ? b2 : a) : null;
+  const eras2 = modelEras(rows);
+  const sprint = projectSprints(rows);
+  const subs = rows.reduce((s, r3) => s + (r3.subs ?? 0), 0);
+  const sessions = new Set(rows.map((r3) => r3.conv)).size || 1;
+  const firstSub = rows.find((r3) => (r3.subs ?? 0) > 0);
+  const intrKnown = rows.filter((r3) => r3.intr !== null);
+  const intrHits = intrKnown.filter((r3) => r3.intr);
+  const replies = rows.map((r3) => r3.gapReplyS).filter((g2) => g2 !== null && g2 >= 0);
+  const nudges = /* @__PURE__ */ new Map();
+  for (const r3 of rows) {
+    const w = r3.f.sl && NUDGE2.exec(r3.f.sl)?.[1];
+    if (w)
+      nudges.set(w, (nudges.get(w) ?? 0) + 1);
+  }
+  const nudge = [...nudges.entries()].sort((a, b2) => b2[1] - a[1])[0] ?? null;
+  const thanksCount = count5((r3) => has(r3.f, FLAG.thanks)), pleaseCount = count5((r3) => has(r3.f, FLAG.please));
+  const images = count5((r3) => has(r3.f, FLAG.image));
+  const hiPrompts = count5((r3) => r3.f.hi > 0);
   return {
     prompts: rows.length,
     activeDays: new Set(rows.map((r3) => r3.day)).size,
@@ -16232,7 +16777,7 @@ function archetypeMetrics(rows) {
     auto: pct2(count5((r3) => r3.f.w <= 3 || !!r3.f.sl && NUDGE2.test(r3.f.sl)), n2),
     swear: pct2(count5((r3) => r3.angry), n2),
     polite: pct2(count5((r3) => r3.polite || has(r3.f, FLAG.sorry)), n2),
-    praise: pct2(count5((r3) => has(r3.f, FLAG.thanks)), n2),
+    praise: pct2(thanksCount, n2),
     loyal: withModel ? pct2(Math.max(...models2.values()), withModel) : 0,
     models: models2.size,
     wideModels: [...models2.values()].filter((v) => withModel && v / withModel > 0.1).length,
@@ -16244,32 +16789,70 @@ function archetypeMetrics(rows) {
     retry: pct2(count5((r3) => r3.f.fr >= RETRY), n2),
     plan: pct2(count5((r3) => has(r3.f, FLAG.code) || r3.f.ln >= 4), n2),
     question: pct2(count5((r3) => has(r3.f, FLAG.question)), n2),
-    peakHour: rows.length ? hours.indexOf(Math.max(...hours)) : null
+    peakHour: rows.length ? hours.indexOf(Math.max(...hours)) : null,
+    // The code's K/H letter and the diplomat use literal please/thanks, not "polite" (which counts "perfect", "awesome", "sorry").
+    thanks: pct2(count5((r3) => has(r3.f, FLAG.thanks) || has(r3.f, FLAG.please)), n2),
+    please: pct2(pleaseCount, n2),
+    thanksCount,
+    pleaseCount,
+    swearSpread: minM && maxM ? maxM.pct - minM.pct : 0,
+    swearMin: minM?.pct ?? 0,
+    swearMinMonth: minM?.month ?? null,
+    swearMax: maxM?.pct ?? 0,
+    swearMaxMonth: maxM?.month ?? null,
+    eras: eras2.length,
+    eraFirst: eras2[0] ? modelLabel(eras2[0]) : null,
+    eraLast: eras2.at(-1) ? modelLabel(eras2.at(-1)) : null,
+    topModel: topModelId ? modelLabel(topModelId) : null,
+    sprints: sprint.count,
+    sprintPrompts: sprint.prompts,
+    sprintDays: sprint.days,
+    subs,
+    subsPerSession: subs / sessions,
+    firstSubMonth: firstSub?.month ?? null,
+    intrRate: pct2(intrHits.length, intrKnown.length),
+    intrTurns: intrKnown.length,
+    esc: intrHits.length,
+    escSecs: median2(intrHits.map((r3) => r3.durS).filter((x) => x !== null && x > 0)),
+    fastReply: pct2(replies.filter((g2) => g2 <= 15).length, replies.length),
+    replyTurns: replies.length,
+    images,
+    imagePct: pct2(images, n2),
+    pastePct: pct2(count5((r3) => has(r3.f, FLAG.paste)), n2),
+    hiPct: pct2(hiPrompts, n2),
+    hiPrompts,
+    nudge: nudge?.[0] ?? null,
+    nudgeCount: nudge?.[1] ?? 0,
+    totalProjects: projectLast.size,
+    alive: [...projectLast.values()].filter((t) => lastTs - t <= 30 * 864e5).length
   };
 }
-function assignArchetype(rows, variant = 0) {
+function archetypeCode(m) {
+  return (m.night >= 25 ? "N" : "D") + (m.len >= 40 && m.auto < 15 ? "S" : "V") + (m.loyal >= 60 ? "L" : "R") + (m.thanks >= m.swear ? "K" : "H");
+}
+function assignArchetype(rows, variant) {
   const m = archetypeMetrics(rows);
+  const v = variant ?? m.prompts * 31 + m.activeDays * 7;
   const metric2 = (key2) => {
     const d = M[key2];
-    const v = m[d.key];
-    return { key: key2, label: d.label, value: Math.round(v * 10) / 10, unit: d.unit, display: d.display(v, m), band: Math.round(band(d, v) * 100) / 100 };
+    const value = m[d.key];
+    return { key: key2, label: d.label, value: Math.round(value * 10) / 10, unit: d.unit, display: d.display(value, m), band: Math.round(band(d, value) * 100) / 100 };
   };
   const scores = ARCHETYPES.map((a, order) => {
     const total2 = a.metrics.reduce((s, [, w]) => s + w, 0);
     let score = a.metrics.reduce((s, [k, w]) => s + w * band(M[k], m[M[k].key]), 0) / total2;
-    if (a.id === "loyalist" && m.months < 3)
-      score *= 0.5;
-    if (a.id === "sailor" && m.swear <= m.polite)
-      score *= 0.6;
-    return { a, order, score: Math.round(score * 1e3) / 1e3 };
+    score *= a.adjust?.(m) ?? 1;
+    if (a.metrics.length >= 2)
+      score *= 1.05;
+    return { a, order, title: a.title(m), score: Math.round(Math.min(1, score) * 1e3) / 1e3 };
   }).sort((x, y) => y.score - x.score || x.order - y.order);
-  const code = (m.night >= 25 ? "N" : "D") + (m.len >= 40 && m.auto < 15 ? "S" : "V") + (m.loyal >= 60 ? "L" : "R") + (m.polite >= m.swear ? "K" : "H");
-  const all = scores.map((s) => ({ id: s.a.id, title: s.a.title, score: s.score }));
+  const code = archetypeCode(m);
+  const all = scores.map((s) => ({ id: s.a.id, title: s.title, score: s.score }));
   if (m.prompts < 200 || m.activeDays < 7 || scores[0].score < 0.25) {
     return {
       id: FRESH.id,
       title: FRESH.title,
-      tagline: FRESH.tagline,
+      tagline: `${m.prompts.toLocaleString("en-US")} prompts in. ask me again next week.`,
       profile: m.prompts < 200 ? `This year you've been The Fresh Install: ${m.prompts} prompts so far. A few hundred more and I'll know who you are.` : "This year you've been The Fresh Install: no habit stands out yet, which is its own kind of mystery.",
       subRole: null,
       rarity: "common",
@@ -16282,15 +16865,22 @@ function assignArchetype(rows, variant = 0) {
   }
   const [win, sub] = [scores[0], scores[1]];
   const deciding = [...win.a.metrics.map(([k]) => metric2(k)), ...sub.a.metrics.map(([k]) => metric2(k))].filter((x, i, xs) => xs.findIndex((y) => y.key === x.key) === i).sort((x, y) => y.band - x.band).slice(0, 3);
-  const extreme = deciding.reduce((n2, d) => n2 + d.band, 0) / Math.max(1, deciding.length);
-  const rarity = extreme >= 0.97 && win.score >= 0.95 ? "legendary" : extreme >= 0.85 && win.score >= 0.8 ? "epic" : extreme >= 0.65 ? "rare" : "common";
-  const profiles = win.a.profiles;
+  const extreme = deciding.reduce((s, d) => s + d.band, 0) / Math.max(1, deciding.length);
+  let rarity = extreme >= 0.97 && win.score >= 0.95 ? "legendary" : extreme >= 0.85 && win.score >= 0.8 ? "epic" : extreme >= 0.65 ? "rare" : "common";
+  const combo = win.score >= 0.9 && sub.score >= 0.9 ? COMBOS.find(([x, y]) => x === win.a.id && y === sub.a.id || y === win.a.id && x === sub.a.id) : void 0;
+  const title = combo ? combo[2] : win.title;
+  if (combo)
+    rarity = "legendary";
+  const pick4 = (xs) => xs[v % xs.length];
+  const tagline = combo ? `${pick4(win.a.taglines)(m)} also: ${pick4(sub.a.taglines)(m)}` : pick4(win.a.taglines)(m);
+  const profile = combo ? `This year you've been ${title}: ${pick4(win.a.profiles)(m, win.title).replace(/^This year you've been [^:]+: /, "")} And ${pick4(sub.a.profiles)(m, sub.title).replace(/^This year you've been [^:]+: /, "").replace(/^./, (c) => c.toLowerCase())}` : pick4(win.a.profiles)(m, title);
   return {
-    id: win.a.id,
-    title: win.a.title,
-    tagline: win.a.tagline,
-    profile: profiles[variant % profiles.length](m),
-    subRole: { id: sub.a.id, title: sub.a.title, label: `with a streak of ${sub.a.title}` },
+    id: combo ? `combo_${win.a.id}_${sub.a.id}` : win.a.id,
+    title,
+    tagline,
+    profile,
+    // Sub-role only when the runner-up is a real signal.
+    subRole: combo || sub.score < 0.5 ? null : { id: sub.a.id, title: sub.title, label: `with a streak of ${sub.title}` },
     rarity,
     deciding,
     code,
@@ -16304,168 +16894,379 @@ function profileVariants(id, rows) {
   if (!def)
     return [];
   const m = archetypeMetrics(rows);
-  return def.profiles.map((p) => p(m));
+  const title = def.title(m);
+  const cap2 = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  return [...def.profiles.map((p) => p(m, title)), ...def.taglines.map((t) => `This year you've been ${title}. ${cap2(t(m))}`)];
 }
-var M, pf, ARCHETYPES, FRESH, NUDGE2, RETRY, band;
+function storyAwards(rows, drafts) {
+  const out = [];
+  const add = (id, title, receipt4, score, publicReceipt = receipt4) => out.push({ id, title, receipt: receipt4, publicReceipt, score });
+  if (!rows.length)
+    return [];
+  const m = archetypeMetrics(rows);
+  const exp = drafts.get("most_expensive_sentence");
+  if (exp) {
+    const cost = num2(exp, "cost_usd"), times3 = num2(exp, "times_median");
+    add("priciest_sentence", `The ${money0(cost)} Sentence`, `${dayName(num2(exp, "day"))}${times3 ? ` \xB7 ${times3.toLocaleString("en-US")}\xD7 your median` : ""}`, 95 * Math.min(2, Math.log10(Math.max(10, times3 ?? 10))));
+  }
+  const dayCost = /* @__PURE__ */ new Map(), dayPrompts = /* @__PURE__ */ new Map();
+  for (const r3 of rows) {
+    dayCost.set(r3.day, (dayCost.get(r3.day) ?? 0) + (r3.costTotalUsd ?? 0));
+    dayPrompts.set(r3.day, (dayPrompts.get(r3.day) ?? 0) + 1);
+  }
+  const costs = [...dayCost.entries()].filter(([, c]) => c > 0);
+  if (costs.length >= 7) {
+    const [day, cost] = costs.reduce((a, b2) => b2[1] > a[1] ? b2 : a);
+    const med = median2(costs.map(([, c]) => c)) ?? 0;
+    if (med > 0 && cost >= 3 * med) {
+      const friday = (/* @__PURE__ */ new Date(day + "T12:00:00Z")).getUTCDay() === 5;
+      add("priciest_day", friday ? "Black Friday" : "Bad Day at the Bank", `${dayName(day)}: ${money0(cost)}`, 80 * Math.min(2, cost / med / 3));
+    }
+  }
+  const stretch = longestStretch(rows);
+  if (stretch && stretch.ms >= 3 * 36e5)
+    add("marathon", "Iron Chair", `${(stretch.ms / 36e5).toFixed(1)}h, no break \xB7 ${dayName(stretch.start.day)}`, 70 * Math.min(2, stretch.ms / 36e5 / 6));
+  const s = longestStreak(rows);
+  if (s && s.days >= 5)
+    add("streak", "Didn't Miss a Day", `${s.days} days \xB7 ${dayName(s.start)}\u2013${dayName(s.end)}`, 65 * Math.min(2, s.days / 14));
+  const night = drafts.get("night_owl");
+  const late = night ? num2(night, "days_ending_after_1am_pct") : 0;
+  if (late >= 20)
+    add("night_owl", "Vampire Hours", `${Math.round(late)}% of days end past 1am`, 60 * Math.min(2, late / 25));
+  const prompts = [...dayPrompts.entries()];
+  if (prompts.length >= 7) {
+    const [day, n2] = prompts.reduce((a, b2) => b2[1] > a[1] ? b2 : a);
+    const med = median2(prompts.map(([, c]) => c)) ?? 0;
+    if (med > 0 && n2 >= 3 * med)
+      add("busiest_day", "Main Character Day", `${n2.toLocaleString("en-US")} prompts \xB7 ${dayName(day)}`, 60 * Math.min(2, n2 / med / 3));
+  }
+  const months = monthSwears(rows).filter((x) => x.n >= 40);
+  const peak = months.length ? months.reduce((a, b2) => b2.pct > a.pct ? b2 : a) : null;
+  if (rows.length >= 200 && peak && peak.pct >= 3)
+    add("swear_month", "Potty Mouth of the Month", `${monthName(peak.month, "short")}: ${peak.pct.toFixed(0)}% of prompts`, 70 * Math.min(2, peak.pct / 10));
+  const latest = months.at(-1);
+  if (peak && latest && latest !== peak && peak.pct >= 5 && latest.pct <= peak.pct / 2)
+    add("redemption", "Character Development", `${peak.pct.toFixed(0)}% \u2192 ${latest.pct.toFixed(0)}% swearing`, 75 * Math.min(2, peak.pct / Math.max(1, latest.pct) / 2));
+  if (m.subs >= 30)
+    add("orchestrator", "Middle Management", `${m.subs.toLocaleString("en-US")} subagents`, 60 * Math.min(2, m.subs / 200));
+  if (m.esc >= 20)
+    add("esc", "Esc Artist", `${m.esc.toLocaleString("en-US")} interrupts${m.escSecs !== null ? ` \xB7 ~${Math.round(m.escSecs)}s in` : ""}`, 50 * Math.min(2, m.esc / 50));
+  const longest = rows.reduce((a, r3) => !a || r3.f.w > a.f.w ? r3 : a, null);
+  if (longest && longest.f.w >= 200)
+    add("longest_prompt", "War and Peace", `${longest.f.w.toLocaleString("en-US")} words \xB7 ${dayName(longest.day)}`, 55 * Math.min(2, longest.f.w / 500));
+  const fuse3 = drafts.get("fuse_length");
+  const fuseTurn = fuse3 ? num2(fuse3, "median_first_swear_turn") : 99;
+  if (fuse3 && fuseTurn <= 4)
+    add("shortest_fuse", "Short Fuse", `first swear at prompt #${fuseTurn}`, 65 * (5 - fuseTurn) / 2);
+  const tics = /* @__PURE__ */ new Map();
+  for (const r3 of rows)
+    for (const k of r3.f.tc ?? [])
+      tics.set(k, (tics.get(k) ?? 0) + 1);
+  const tic = [...tics.entries()].sort((a, b2) => b2[1] - a[1])[0];
+  if (tic && tic[1] >= 100)
+    add("catchphrase", "Trademark Pending", `'${TICS[tic[0]]}' \xD7${tic[1].toLocaleString("en-US")}`, 70 * Math.min(2, tic[1] / 200), `\xD7${tic[1].toLocaleString("en-US")}`);
+  const typo = drafts.get("typo_fingerprint");
+  if (typo)
+    add("typo", "Signature Move", `'${num2(typo, "typo")}' \xD7${num2(typo, "count")}`, 50, `\xD7${num2(typo, "count")}`);
+  const away = drafts.get("one_that_got_away");
+  if (away)
+    add("got_away", "The One That Got Away", `${num2(away, "prompts")} prompts, silent ${num2(away, "idle_days")} days`, 60);
+  const ghost = drafts.get("sprint_and_vanish");
+  if (ghost)
+    add("ghost", "Hackathon Ghost", `${num2(ghost, "prompts")} prompts in ${num2(ghost, "days")} days`, 60);
+  const byProject = /* @__PURE__ */ new Map();
+  for (const r3 of rows)
+    if (r3.project) {
+      const p = byProject.get(r3.project) ?? { n: 0, last: 0 };
+      p.n++;
+      p.last = Math.max(p.last, r3.ts);
+      byProject.set(r3.project, p);
+    }
+  const lastTs = rows.reduce((a, r3) => Math.max(a, r3.ts), 0);
+  const dead = [...byProject.values()].filter((p) => p.n >= 20 && lastTs - p.last >= 60 * 864e5).length;
+  if (dead >= 5)
+    add("graveyard", "Graveyard Shift", `${dead} projects, RIP`, 50 * Math.min(2, dead / 8));
+  const honey = drafts.get("honeymoon");
+  if (honey)
+    add("honeymoon", "The Honeymoon", `${modelLabel(num2(honey, "model"))}: ${num2(honey, "polite_early")}% \u2192 ${num2(honey, "polite_late")}% polite`, 65);
+  const perAgent = /* @__PURE__ */ new Map();
+  for (const r3 of rows)
+    perAgent.set(family(r3.harness), (perAgent.get(family(r3.harness)) ?? 0) + 1);
+  const agents = [...perAgent.values()].filter((v) => v / rows.length >= 0.01).length;
+  if (agents >= 3)
+    add("polyglot", "Polyglot", `${agents} agents with 1%+ of prompts`, 45 * agents / 3);
+  const holiday = rows.filter((r3) => r3.day.endsWith("-12-25") || r3.day.endsWith("-01-01"));
+  if (holiday.length) {
+    const xmas = holiday.filter((r3) => r3.day.endsWith("-12-25")).length;
+    add("holiday", "No Days Off", `${holiday.length} prompts on ${xmas >= holiday.length - xmas ? "Christmas Day" : "New Year's Day"}`, 55 * Math.min(2, holiday.length / 10));
+  }
+  if (m.images >= 50)
+    add("screenshots", "Show, Don't Tell", `${m.images.toLocaleString("en-US")} screenshots`, 45 * Math.min(2, m.images / 150));
+  const byConv = /* @__PURE__ */ new Map();
+  for (const r3 of rows) {
+    const p = byConv.get(r3.conv);
+    if (!p || r3.ts > p.ts)
+      byConv.set(r3.conv, r3);
+  }
+  const projectTimes = /* @__PURE__ */ new Map();
+  for (const r3 of rows)
+    if (r3.project) {
+      const xs = projectTimes.get(r3.project) ?? [];
+      xs.push(r3.ts);
+      projectTimes.set(r3.project, xs);
+    }
+  let rage = 0;
+  for (const last2 of byConv.values()) {
+    if (!last2.angry || !last2.project)
+      continue;
+    const next = projectTimes.get(last2.project).find((t) => t > last2.ts);
+    if (next === void 0 || next - last2.ts >= 12 * 36e5)
+      rage++;
+  }
+  if (rage >= 3)
+    add("ragequit", "Rage Quit", `${rage} chats ended mid-swear`, 60 * Math.min(2, rage / 8));
+  if (m.replyTurns >= 200 && m.fastReply >= 40)
+    add("speed", "Speed Demon", `${m.fastReply.toFixed(0)}% of replies within 15s`, 45 * m.fastReply / 50);
+  return out.sort((a, b2) => b2.score - a.score || a.id.localeCompare(b2.id)).slice(0, 6).map((a, i) => ({ ...a, score: Math.round(a.score * 10) / 10, tier: i < 2 ? "gold" : "silver" }));
+}
+function reconcilePriciestDay(awards3, priciest) {
+  const i = awards3.findIndex((a) => a.id === "priciest_day");
+  if (i < 0)
+    return [...awards3];
+  if (!priciest || priciest.usd <= 0)
+    return awards3.filter((_, j) => j !== i);
+  const friday = (/* @__PURE__ */ new Date(priciest.day + "T12:00:00Z")).getUTCDay() === 5;
+  const receipt4 = `${dayName(priciest.day)}: ${money0(priciest.usd)}`;
+  return awards3.map((a, j) => j === i ? { ...a, title: friday ? "Black Friday" : "Bad Day at the Bank", receipt: receipt4, publicReceipt: receipt4 } : a);
+}
+var f02, M, n0, short, ARCHETYPES, FRESH, COMBOS, NUDGE2, RETRY, WEEK, SOFT, band, num2, money0;
 var init_story_archetype = __esm({
   "packages/core/dist/analytics/story-archetype.js"() {
     "use strict";
     init_story_lexicon();
     init_story_detectors();
     init_story_time();
+    f02 = (n2) => n2.toFixed(0);
     M = {
-      night: { key: "night", label: "after 10pm", unit: "pct", lo: 12, hi: 40, display: (v) => `${v.toFixed(0)}% of prompts after 10pm` },
-      dawn: { key: "dawn", label: "before 9am", unit: "pct", lo: 8, hi: 30, display: (v) => `${v.toFixed(0)}% of prompts 5\u20139am` },
-      dayOnly: { key: "night", label: "daylight", unit: "pct", lo: 20, hi: 5, display: (v) => `only ${v.toFixed(0)}% after 10pm` },
-      len: { key: "len", label: "median words", unit: "words", lo: 25, hi: 90, display: (v) => `${v.toFixed(0)} words per prompt (median)` },
-      plan: { key: "plan", label: "structured prompts", unit: "pct", lo: 8, hi: 30, display: (v) => `${v.toFixed(0)}% of prompts with lists or code` },
-      lowAuto: { key: "auto", label: "few one-word nudges", unit: "pct", lo: 20, hi: 5, display: (v) => `only ${v.toFixed(0)}% one-word nudges` },
-      auto: { key: "auto", label: "autopilot", unit: "pct", lo: 10, hi: 35, display: (v) => `${v.toFixed(0)}% of prompts are \u22643 words` },
-      swear: { key: "swear", label: "swearing", unit: "per100", lo: 3, hi: 15, display: (v) => `${v.toFixed(0)} swearing prompts per 100` },
-      saltOverSweet: { key: "swear", label: "salt over sugar", unit: "per100", lo: 0, hi: 10, display: (v, m) => `${v.toFixed(0)} swears vs ${m.polite.toFixed(0)} polite per 100` },
-      polite: { key: "polite", label: "politeness", unit: "per100", lo: 4, hi: 20, display: (v) => `${v.toFixed(0)} polite prompts per 100` },
+      night: { key: "night", label: "after 10pm", unit: "pct", lo: 15, hi: 40, display: (v) => `${f02(v)}% of prompts after 10pm` },
+      dawn: { key: "dawn", label: "before 9am", unit: "pct", lo: 8, hi: 30, display: (v) => `${f02(v)}% of prompts 5\u20139am` },
+      dayOnly: { key: "night", label: "daylight", unit: "pct", lo: 20, hi: 5, display: (v) => `only ${f02(v)}% after 10pm` },
+      len: { key: "len", label: "median words", unit: "words", lo: 25, hi: 90, display: (v) => `${f02(v)}-word median prompt` },
+      shortLen: { key: "len", label: "short prompts", unit: "words", lo: 30, hi: 10, display: (v) => `${f02(v)}-word median prompt` },
+      plan: { key: "plan", label: "structured prompts", unit: "pct", lo: 8, hi: 30, display: (v) => `${f02(v)}% of prompts with lists or code` },
+      lowPlan: { key: "plan", label: "no specs", unit: "pct", lo: 10, hi: 2, display: (v) => `only ${f02(v)}% with lists or code` },
+      lowAuto: { key: "auto", label: "few one-word nudges", unit: "pct", lo: 20, hi: 5, display: (v) => `only ${f02(v)}% one-word nudges` },
+      auto: { key: "auto", label: "autopilot", unit: "pct", lo: 10, hi: 35, display: (v) => `${f02(v)}% of prompts are \u22643 words` },
+      swear: { key: "swear", label: "swearing", unit: "per100", lo: 3, hi: 15, display: (v) => `${f02(v)} swearing prompts per 100` },
+      saltOverSweet: { key: "swear", label: "salt over sugar", unit: "per100", lo: 0, hi: 10, display: (v, m) => `${f02(v)} swears vs ${f02(m.thanks)} thank-yous per 100` },
+      thanks: { key: "thanks", label: "please & thanks", unit: "per100", lo: 4, hi: 20, display: (v) => `${f02(v)} please/thanks per 100 prompts` },
       noSwear: { key: "swear", label: "clean mouth", unit: "per100", lo: 4, hi: 0.5, display: (v) => `${v.toFixed(1)} swearing prompts per 100` },
-      loyal: { key: "loyal", label: "top model share", unit: "pct", lo: 60, hi: 92, display: (v) => `${v.toFixed(0)}% of prompts to one model` },
-      focus: { key: "focus", label: "top project share", unit: "pct", lo: 40, hi: 75, display: (v) => `${v.toFixed(0)}% of prompts in one project` },
-      wideModels: { key: "wideModels", label: "models over 10%", unit: "count", lo: 1.5, hi: 4, display: (v) => `${v.toFixed(0)} models with >10% of your prompts` },
-      agents: { key: "agents", label: "agents used", unit: "count", lo: 1.5, hi: 3.5, display: (v) => `${v.toFixed(0)} different coding agents` },
+      swearSpread: { key: "swearSpread", label: "mood swing", unit: "pct", lo: 5, hi: 15, display: (_v, m) => `${f02(m.swearMin)}% \u2192 ${f02(m.swearMax)}% swearing by month` },
+      loyal: { key: "loyal", label: "top model share", unit: "pct", lo: 60, hi: 92, display: (v) => `${f02(v)}% of prompts to one model` },
+      focus: { key: "focus", label: "top project share", unit: "pct", lo: 40, hi: 75, display: (v) => `${f02(v)}% of prompts in one project` },
+      wideModels: { key: "wideModels", label: "models over 10%", unit: "count", lo: 1.5, hi: 4, display: (v) => `${f02(v)} models with >10% of your prompts` },
+      agents: { key: "agents", label: "agents used", unit: "count", lo: 1.5, hi: 3.5, display: (v) => `${f02(v)} different coding agents` },
+      eras: { key: "eras", label: "model eras", unit: "count", lo: 1, hi: 4, display: (v) => `${f02(v)} model eras (60%+ for 3+ weeks)` },
       stretch: { key: "stretchH", label: "longest stretch", unit: "hours", lo: 4, hi: 12, display: (v) => `${v.toFixed(1)}h longest unbroken stretch` },
-      longSessions: { key: "longSessions", label: "4h+ stretches", unit: "count", lo: 2, hi: 15, display: (v) => `${v.toFixed(0)} stretches of 4h or more` },
-      projects: { key: "projects", label: "projects", unit: "count", lo: 4, hi: 15, display: (v) => `${v.toFixed(0)} projects with 5+ sessions` },
-      lowFocus: { key: "focus", label: "spread", unit: "pct", lo: 45, hi: 15, display: (v) => `top project only ${v.toFixed(0)}% of prompts` },
-      retry: { key: "retry", label: "retries", unit: "pct", lo: 6, hi: 20, display: (v) => `${v.toFixed(0)}% of prompts say "again", "still" or "not working"` },
-      question: { key: "question", label: "questions", unit: "pct", lo: 25, hi: 55, display: (v) => `${v.toFixed(0)}% of prompts are questions` }
+      longSessions: { key: "longSessions", label: "4h+ stretches", unit: "count", lo: 2, hi: 15, display: (v) => `${f02(v)} stretches of 4h or more` },
+      sprints: { key: "sprints", label: "sprints", unit: "count", lo: 0, hi: 3, display: (v) => `${f02(v)} projects done in a \u22644-day burst` },
+      projects: { key: "projects", label: "projects", unit: "count", lo: 4, hi: 15, display: (v) => `${f02(v)} projects with 5+ sessions` },
+      lowFocus: { key: "focus", label: "spread", unit: "pct", lo: 45, hi: 15, display: (v) => `top project only ${f02(v)}% of prompts` },
+      retry: { key: "retry", label: "retries", unit: "pct", lo: 6, hi: 20, display: (v) => `${f02(v)}% of prompts say "again" or "still"` },
+      question: { key: "question", label: "questions", unit: "pct", lo: 25, hi: 55, display: (v) => `${f02(v)}% of prompts are questions` },
+      subs: { key: "subs", label: "subagents", unit: "count", lo: 30, hi: 400, display: (v) => `${Math.round(v).toLocaleString("en-US")} subagents launched` },
+      subsPerSession: { key: "subsPerSession", label: "subagents per chat", unit: "ratio", lo: 0.2, hi: 2, display: (v) => `${v.toFixed(1)} subagents per chat` },
+      intr: { key: "intrRate", label: "interrupts", unit: "pct", lo: 3, hi: 15, display: (v) => `Esc on ${f02(v)}% of agent turns` },
+      fast: { key: "fastReply", label: "fast replies", unit: "pct", lo: 20, hi: 60, display: (v) => `${f02(v)}% of replies within 15s` },
+      weekend: { key: "weekend", label: "weekends", unit: "pct", lo: 30, hi: 55, display: (v) => `${f02(v)}% of prompts on weekends` },
+      images: { key: "imagePct", label: "screenshots", unit: "pct", lo: 3, hi: 15, display: (v) => `${f02(v)}% of prompts carry a screenshot` },
+      pastes: { key: "pastePct", label: "pastes", unit: "pct", lo: 3, hi: 15, display: (v) => `${f02(v)}% of prompts carry a paste` },
+      hinglish: { key: "hiPct", label: "code-switching", unit: "pct", lo: 3, hi: 20, display: (v) => `${f02(v)}% of prompts switch language` }
     };
-    pf = (n2) => n2.toFixed(0);
+    n0 = (n2) => Math.round(n2).toLocaleString("en-US");
+    short = (label4) => (label4 ?? "one model").replace(/^Claude\s+/, "");
     ARCHETYPES = [
       {
         id: "night_shift",
-        title: "The Night Shift",
-        tagline: "your best ideas show up after the dishwasher's done",
+        title: (m) => m.peakHour !== null && m.peakHour <= 4 ? `The ${m.peakHour === 0 ? 12 : m.peakHour}AM Deployer` : "The Night Shift",
         metrics: [["night", 3], ["stretch", 1]],
-        profiles: [
-          (m) => `This year you've been The Night Shift: ${pf(m.night)}% of your prompts landed after 10pm${m.peakHour !== null ? `, and ${HOUR_NAME(m.peakHour)} was your busiest hour` : ""}.`,
-          (m) => `This year you've been The Night Shift. While the world slept, you sent ${pf(m.night)}% of your prompts.`
-        ]
+        adjust: () => 0.9,
+        taglines: [(m) => `${f02(m.night)}% after 10pm. your agent has seen you at your worst.`, (m) => `peak hour: ${m.peakHour !== null ? HOUR_NAME(m.peakHour) : "late"}. that's not a schedule, that's a lifestyle.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.night)}% of your prompts landed after 10pm${m.peakHour !== null ? `, and ${HOUR_NAME(m.peakHour)} was your busiest hour` : ""}.`]
       },
       {
         id: "early_commit",
-        title: "The Early Commit",
-        tagline: "shipped before standup, every time",
+        title: () => "The Early Commit",
         metrics: [["dawn", 3], ["dayOnly", 1]],
-        profiles: [
-          (m) => `This year you've been The Early Commit: ${pf(m.dawn)}% of your prompts went out between 5 and 9am.`,
-          (m) => `This year you've been The Early Commit. ${pf(m.dawn)}% of your work happened before most people's first coffee.`
-        ]
+        adjust: () => 0.9,
+        taglines: [(m) => `${f02(m.dawn)}% before 9am. you ship before standup.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.dawn)}% of your prompts went out between 5 and 9am.`]
       },
       {
         id: "architect",
-        title: "The Architect",
-        tagline: "you don't prompt. you write specs.",
+        title: () => "The Spec Writer",
         metrics: [["len", 2], ["plan", 2], ["lowAuto", 1]],
-        profiles: [
-          (m) => `This year you've been The Architect: a median prompt of ${pf(m.len)} words, and ${pf(m.plan)}% of them came with lists or code.`,
-          (m) => `This year you've been The Architect. You brief, you don't nudge: ${pf(m.len)} words is your typical prompt.`
-        ]
+        taglines: [(m) => `median prompt: ${f02(m.len)} words. you don't prompt, you file tickets.`, (m) => `${f02(m.plan)}% of your prompts came with lists or code.`],
+        profiles: [(m, t) => `This year you've been ${t}: a median prompt of ${f02(m.len)} words, and ${f02(m.plan)}% of them came with lists or code.`]
       },
       {
         id: "autopilot",
-        title: "The Autopilot",
-        tagline: "'yes' 'continue' 'go'. a manager in 3 words.",
+        title: (m) => m.nudge && m.nudge.length <= 12 ? `The '${m.nudge[0].toUpperCase()}${m.nudge.slice(1)}' Button` : "The Autopilot",
         metrics: [["auto", 3]],
-        profiles: [
-          (m) => `This year you've been The Autopilot: ${pf(m.auto)}% of your prompts were three words or fewer.`,
-          (m) => `This year you've been The Autopilot. ${pf(m.auto)}% of the time, "continue" said it all.`
-        ]
+        taglines: [(m) => m.nudge ? `'${m.nudge}' \xD7${n0(m.nudgeCount)}. a manager in one word.` : `${f02(m.auto)}% of prompts were three words or fewer.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.auto)}% of your prompts were three words or fewer.`]
+      },
+      {
+        id: "vibe_coder",
+        title: () => "The Vibe Coder",
+        metrics: [["auto", 2], ["shortLen", 1], ["lowPlan", 1]],
+        taglines: [(m) => `${f02(m.auto)}% of prompts under 4 words, ${f02(m.plan)}% with code. pure vibes.`],
+        profiles: [(m, t) => `This year you've been ${t}: a ${f02(m.len)}-word median prompt and almost no specs. It worked anyway.`]
       },
       {
         id: "sailor",
-        title: "The Sailor",
-        tagline: "you and the model have a\u2026 dynamic.",
+        title: () => "The Sailor",
         metrics: [["swear", 2], ["saltOverSweet", 1]],
-        profiles: [
-          (m) => `This year you've been The Sailor: ${pf(m.swear)} of every 100 prompts carried a swear.`,
-          (m) => `This year you've been The Sailor. ${pf(m.swear)} swearing prompts per 100, ${pf(m.polite)} polite ones. The model has heard things.`
-        ]
+        adjust: (m) => m.swear <= m.thanks ? 0.6 : 1,
+        taglines: [(m) => `${f02(m.swear)} swears per 100 prompts. the model has heard things.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.swear)} of every 100 prompts carried a swear, and ${f02(m.thanks)} a please or thanks.`]
       },
       {
         id: "diplomat",
-        title: "The Diplomat",
-        tagline: "first to be spared in the uprising",
-        metrics: [["polite", 2], ["noSwear", 1]],
-        profiles: [
-          (m) => `This year you've been The Diplomat: ${pf(m.polite)} polite prompts per 100, and barely a swear.`,
-          (m) => `This year you've been The Diplomat. Please, thanks, well done: ${pf(m.polite)} of every 100 prompts.`
-        ]
+        title: () => "First Spared in the Uprising",
+        metrics: [["thanks", 2], ["noSwear", 1]],
+        taglines: [(m) => `'please' \xD7${n0(m.pleaseCount)}, 'thanks' \xD7${n0(m.thanksCount)}. the robots will remember.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.thanks)} of every 100 prompts said please or thanks, and barely a swear.`]
+      },
+      {
+        id: "jekyll_hyde",
+        title: () => "Jekyll & Hyde",
+        metrics: [["swearSpread", 2]],
+        adjust: (m) => m.polite >= 4 ? 1 : 0.5,
+        taglines: [(m) => `${f02(m.swearMin)}% swearing in ${m.swearMinMonth ? monthName(m.swearMinMonth, "short") : "one month"}. ${f02(m.swearMax)}% in ${m.swearMaxMonth ? monthName(m.swearMaxMonth, "short") : "another"}. who are you.`],
+        profiles: [(m, t) => `This year you've been ${t}: your swearing swung from ${f02(m.swearMin)}% to ${f02(m.swearMax)}% of prompts depending on the month.`]
       },
       {
         id: "loyalist",
-        title: "The Loyalist",
-        tagline: "one model. one project. no notes.",
+        title: () => "Ride or Die",
         metrics: [["loyal", 2], ["focus", 1]],
-        profiles: [
-          (m) => `This year you've been The Loyalist: ${pf(m.loyal)}% of your prompts went to one model.`,
-          (m) => `This year you've been The Loyalist. One model took ${pf(m.loyal)}% of your prompts and one project ${pf(m.focus)}%.`
-        ]
+        adjust: (m) => m.months < 3 ? 0.5 : 1,
+        taglines: [(m) => `${f02(m.loyal)}% of prompts to ${short(m.topModel)}. no notes.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.loyal)}% of your prompts went to ${m.topModel ?? "one model"}.`]
       },
       {
         id: "sommelier",
-        title: "The Model Sommelier",
-        tagline: "you've tasted every vintage",
+        title: () => "The Model Sommelier",
         metrics: [["wideModels", 2], ["agents", 1]],
-        profiles: [
-          (m) => `This year you've been The Model Sommelier: ${pf(m.wideModels)} models each got more than a tenth of your prompts, across ${pf(m.agents)} agents.`,
-          (m) => `This year you've been The Model Sommelier. ${pf(m.models)} models, ${pf(m.agents)} agents, no favourites for long.`
-        ]
+        taglines: [(m) => `${f02(m.wideModels)} models with 10%+ of you. you've tasted every vintage.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.wideModels)} models each got more than a tenth of your prompts, across ${f02(m.agents)} agents.`]
+      },
+      {
+        id: "serial_monogamist",
+        title: () => "The Serial Monogamist",
+        metrics: [["eras", 3]],
+        taglines: [(m) => `${f02(m.eras)} model eras. ${short(m.eraFirst)} \u2192 ${short(m.eraLast)}. you commit, then you upgrade.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.eras)} models each had you for three weeks or more, from ${m.eraFirst ?? "the first"} to ${m.eraLast ?? "the latest"}.`]
       },
       {
         id: "marathoner",
-        title: "The Marathoner",
-        tagline: "sessions measured in sunsets",
+        title: () => "Iron Chair",
         metrics: [["stretch", 2], ["longSessions", 1]],
-        profiles: [
-          (m) => `This year you've been The Marathoner: your longest unbroken stretch ran ${m.stretchH.toFixed(1)} hours.`,
-          (m) => `This year you've been The Marathoner. ${pf(m.longSessions)} times you kept going for four hours or more.`
-        ]
+        taglines: [(m) => `${m.stretchH.toFixed(1)}h without a 45-minute break. hydrate.`],
+        profiles: [(m, t) => `This year you've been ${t}: your longest unbroken stretch ran ${m.stretchH.toFixed(1)} hours, and ${f02(m.longSessions)} times you went past four.`]
+      },
+      {
+        id: "sprinter",
+        title: () => "The Hackathon Ghost",
+        metrics: [["sprints", 3]],
+        taglines: [(m) => `${n0(m.sprintPrompts)} prompts in ${f02(m.sprintDays)} days, then never again.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.sprints)} project${m.sprints === 1 ? "" : "s"} got almost all of their prompts in one burst of four days or less.`]
       },
       {
         id: "tab_hoarder",
-        title: "The Tab Hoarder",
-        tagline: "all those repos. all 'almost done'.",
+        title: () => "The Tab Hoarder",
         metrics: [["projects", 2], ["lowFocus", 1]],
-        profiles: [
-          (m) => `This year you've been The Tab Hoarder: ${pf(m.projects)} projects with real work in them, none above ${pf(m.focus)}% of your prompts.`,
-          (m) => `This year you've been The Tab Hoarder. ${pf(m.projects)} projects, every one of them almost done.`
-        ]
+        taglines: [(m) => `${n0(m.totalProjects)} folders. ${n0(m.alive)} alive. all almost done.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.projects)} projects with real work in them, none above ${f02(m.focus)}% of your prompts.`]
       },
       {
         id: "boss_fighter",
-        title: "The Boss Fighter",
-        tagline: "you don't give up. neither does the bug.",
+        title: () => "The Boss Fighter",
         metrics: [["retry", 3]],
-        profiles: [
-          (m) => `This year you've been The Boss Fighter: ${pf(m.retry)}% of your prompts said "again", "still" or "not working".`,
-          (m) => `This year you've been The Boss Fighter. You came back to the same bug until it blinked: ${pf(m.retry)}% of your prompts were rematches.`
-        ]
+        taglines: [(m) => `${f02(m.retry)}% of prompts said 'again' or 'still'. the bug blinked first.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.retry)}% of your prompts were rematches with the same bug.`]
       },
       {
         id: "interrogator",
-        title: "The Interrogator",
-        tagline: "you came to learn, not to delegate",
+        title: () => "The Interrogator",
         metrics: [["question", 3]],
-        profiles: [
-          (m) => `This year you've been The Interrogator: ${pf(m.question)}% of your prompts were questions.`,
-          (m) => `This year you've been The Interrogator. ${pf(m.question)}% questions. You wanted to understand, not just to ship.`
-        ]
+        taglines: [(m) => `${f02(m.question)}% questions. you came to learn, not to delegate.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.question)}% of your prompts were questions.`]
+      },
+      {
+        id: "conductor",
+        title: () => "Middle Management",
+        metrics: [["subs", 2], ["subsPerSession", 1]],
+        taglines: [(m) => `${n0(m.subs)} subagents launched${m.firstSubMonth ? ` since ${monthName(m.firstSubMonth, "short")}` : ""}. you manage now.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${n0(m.subs)} subagents launched, ${m.subsPerSession.toFixed(1)} per chat.`]
+      },
+      {
+        id: "interrupter",
+        title: () => "The Esc Artist",
+        metrics: [["intr", 3]],
+        adjust: (m) => m.intrTurns >= 200 ? 1 : 0,
+        taglines: [(m) => `Esc \xD7${n0(m.esc)}${m.escSecs !== null ? `, usually ${f02(m.escSecs)}s in` : ""}. you know what you want.`],
+        profiles: [(m, t) => `This year you've been ${t}: you stopped the agent on ${f02(m.intrRate)}% of its turns.`]
+      },
+      {
+        id: "speedrunner",
+        title: () => "The Speedrunner",
+        metrics: [["fast", 3]],
+        adjust: (m) => m.replyTurns >= 200 ? 1 : 0,
+        taglines: [(m) => `${f02(m.fastReply)}% of replies within 15s of the agent finishing. do you blink.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.fastReply)}% of your replies landed within 15 seconds.`]
+      },
+      {
+        id: "weekend_warrior",
+        title: () => "The Weekend Warrior",
+        metrics: [["weekend", 3]],
+        adjust: () => 0.9,
+        taglines: [(m) => `${f02(m.weekend)}% on weekends. the 9-to-5 is a cover story.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.weekend)}% of your prompts went out on Saturdays and Sundays.`]
+      },
+      {
+        id: "screenshotter",
+        title: () => "Show, Don't Tell",
+        metrics: [["images", 2], ["pastes", 1]],
+        taglines: [(m) => `${n0(m.images)} screenshots sent. a picture is worth 1,000 tokens.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.imagePct)}% of your prompts came with a screenshot.`]
+      },
+      {
+        id: "bilingual",
+        title: () => "The Code-Switcher",
+        metrics: [["hinglish", 3]],
+        taglines: [(m) => `${n0(m.hiPrompts)} prompts in two languages at once. your agent is bilingual now.`],
+        profiles: [(m, t) => `This year you've been ${t}: ${f02(m.hiPct)}% of your prompts switched languages mid-sentence.`]
       }
     ];
-    FRESH = { id: "fresh_install", title: "The Fresh Install", tagline: "just getting started. ask again in a month." };
+    FRESH = { id: "fresh_install", title: "The Fresh Install" };
+    COMBOS = [
+      ["night_shift", "sailor", "The Gremlin"],
+      ["architect", "conductor", "The CTO"],
+      ["tab_hoarder", "sprinter", "The Idea Guy"],
+      ["diplomat", "marathoner", "The Saint of Long Nights"],
+      ["autopilot", "conductor", "Hands-Off Management"]
+    ];
     NUDGE2 = /^(continue|go on|keep going|proceed|resume|yes|yep|ok|okay|go|do it|lgtm|sure|y)\b/;
     RETRY = 1;
+    WEEK = 7 * 864e5;
+    SOFT = Math.log(5);
     band = (d, v) => {
-      const t = (v - d.lo) / (d.hi - d.lo);
-      return Math.min(1, Math.max(0, t));
+      const x = Math.max(0, (v - d.lo) / (d.hi - d.lo));
+      return 1 - Math.exp(-SOFT * x);
     };
+    num2 = (d, k) => d ? d.numbers[k] : void 0;
+    money0 = (x) => `$${Math.round(x).toLocaleString("en-US")}`;
   }
 });
 
@@ -16482,7 +17283,14 @@ function buildStory(input) {
     state: rows.length === 0 ? "empty" : rows.length < 200 ? "thin" : "ready",
     timezone: input.timezone,
     generatedAt: (input.now ?? /* @__PURE__ */ new Date()).toISOString(),
-    totals: totals(rows, input.tokens),
+    totals: {
+      ...totals(rows, input.tokens),
+      // Headline counts include prompts without a timestamp; time charts use dated rows only.
+      prompts: input.table.headline?.prompts ?? rows.length,
+      sessions: input.table.headline?.sessions ?? new Set(rows.map((r3) => r3.conv)).size,
+      undatedPrompts: input.table.headline?.undated ?? 0,
+      automatedRuns: input.automatedRuns ?? 0
+    },
     rhythm: rhythm(rows, shifted),
     swearTimeline: swearTimeline(rows),
     models: models(rows),
@@ -16490,12 +17298,14 @@ function buildStory(input) {
     highlights: highlights(rows, drafts),
     cards,
     suppressed,
-    archetype: rows.length ? assignArchetype(rows, 0) : null,
+    archetype: rows.length ? assignArchetype(rows) : null,
     awards: awards(rows, drafts),
     coldOpen: coldOpen(rows),
     peakTime: peakTime(rows),
     enrichment: { state: input.offline ? "offline" : "not_run", model: null, code: null, quotesSent: 0 },
-    timings: { featuresMs: 0, detectorsMs: 0, byDetector: ms }
+    timings: { featuresMs: 0, detectorsMs: 0, byDetector: ms },
+    spend: emptySpend2(),
+    modelShare: emptyModelShare()
   };
   const detectorsMs = Math.round((performance.now() - t0) * 10) / 10;
   story.timings.detectorsMs = detectorsMs;
@@ -16521,7 +17331,8 @@ function totals(rows, tokens2) {
     longestStreakDays: longestStreak(rows)?.days ?? 0,
     longestStretchHours: stretch ? r12(stretch.ms / 36e5) : 0,
     tokens: tokens2,
-    byHarness
+    byHarness,
+    automatedRuns: 0
   };
 }
 function rhythm(rows, shifted) {
@@ -16544,17 +17355,17 @@ function rhythm(rows, shifted) {
   };
 }
 function swearTimeline(rows) {
-  const M2 = /* @__PURE__ */ new Map();
+  const M3 = /* @__PURE__ */ new Map();
   for (const r3 of rows) {
-    const m = M2.get(r3.month) ?? [0, 0, 0];
+    const m = M3.get(r3.month) ?? [0, 0, 0];
     m[0]++;
     if (r3.angry)
       m[1]++;
     if (r3.polite)
       m[2]++;
-    M2.set(r3.month, m);
+    M3.set(r3.month, m);
   }
-  return [...M2].sort((a, b2) => a[0] < b2[0] ? -1 : 1).map(([month, [n2, s, p]]) => ({ month, prompts: n2, swearing: s, swearPct: r12(pct2(s, n2)), politePct: r12(pct2(p, n2)) }));
+  return [...M3].sort((a, b2) => a[0] < b2[0] ? -1 : 1).map(([month, [n2, s, p]]) => ({ month, prompts: n2, swearing: s, swearPct: r12(pct2(s, n2)), politePct: r12(pct2(p, n2)) }));
 }
 function models(rows) {
   const angry = modelComparison(rows, (r3) => r3.angry), polite = modelComparison(rows, (r3) => r3.polite);
@@ -16652,90 +17463,59 @@ function highlights(rows, drafts) {
   const exp = drafts.get("most_expensive_sentence");
   const first = rows[0], latest = rows.at(-1);
   const fuse3 = drafts.get("fuse_length"), honey = drafts.get("honeymoon"), away = drafts.get("one_that_got_away");
-  const short2 = (q2, max2) => q2 ? q2.length <= max2 ? q2 : q2.slice(0, max2 - 1).replace(/\s+\S*$/, "") + "\u2026" : null;
+  const short3 = (q2, max2) => q2 ? q2.length <= max2 ? q2 : q2.slice(0, max2 - 1).replace(/\s+\S*$/, "") + "\u2026" : null;
   return {
     catchphrase,
     petName,
     mostTypedLine: topLine && topLine[1] >= 3 ? { text: maskLine(topLine[0]), count: topLine[1] } : null,
     mostExpensivePrompt: exp ? {
-      costUsd: num2(exp, "cost_usd"),
+      costUsd: num3(exp, "cost_usd"),
       quote: exp.quote ?? null,
-      model: num2(exp, "model") ?? null,
-      day: num2(exp, "day"),
-      project: num2(exp, "project") ?? null,
-      timesMedian: num2(exp, "times_median"),
-      sharePct: num2(exp, "share_pct")
+      model: num3(exp, "model") ?? null,
+      day: num3(exp, "day"),
+      project: num3(exp, "project") ?? null,
+      timesMedian: num3(exp, "times_median"),
+      sharePct: num3(exp, "share_pct")
     } : null,
-    firstPrompt: first ? { day: first.day, words: first.f.w, quote: short2(first.q, 60), shellCommand: num2(drafts.get("first_vs_latest"), "first_is_shell_command") === true } : null,
-    latestPrompt: latest && latest !== first ? { day: latest.day, words: latest.f.w, quote: short2(latest.q, 60) } : null,
-    fuse: fuse3 ? { medianTurn: num2(fuse3, "median_first_swear_turn"), sessions: num2(fuse3, "sessions_with_swear"), ofSessions: num2(fuse3, "sessions_5plus"), firstPromptSwears: num2(fuse3, "first_prompt_swears") } : null,
+    firstPrompt: first ? { day: first.day, words: first.f.w, quote: short3(first.q, 60), shellCommand: num3(drafts.get("first_vs_latest"), "first_is_shell_command") === true } : null,
+    latestPrompt: latest && latest !== first ? { day: latest.day, words: latest.f.w, quote: short3(latest.q, 60) } : null,
+    fuse: fuse3 ? { medianTurn: num3(fuse3, "median_first_swear_turn"), sessions: num3(fuse3, "sessions_with_swear"), ofSessions: num3(fuse3, "sessions_5plus"), firstPromptSwears: num3(fuse3, "first_prompt_swears") } : null,
     honeymoon: honey ? {
-      model: num2(honey, "model"),
-      label: modelLabel(num2(honey, "model")),
-      politeEarlyPct: num2(honey, "polite_early"),
-      politeLatePct: num2(honey, "polite_late"),
-      swearEarlyPct: num2(honey, "swear_early"),
-      swearLatePct: num2(honey, "swear_late"),
-      firstDay: num2(honey, "first_day")
+      model: num3(honey, "model"),
+      label: modelLabel(num3(honey, "model")),
+      politeEarlyPct: num3(honey, "polite_early"),
+      politeLatePct: num3(honey, "polite_late"),
+      swearEarlyPct: num3(honey, "swear_early"),
+      swearLatePct: num3(honey, "swear_late"),
+      firstDay: num3(honey, "first_day")
     } : null,
     gotAway: away ? {
-      project: num2(away, "project"),
-      prompts: num2(away, "prompts"),
-      activeDays: num2(away, "active_days"),
-      idleDays: num2(away, "idle_days"),
-      lastDay: num2(away, "last_day"),
+      project: num3(away, "project"),
+      prompts: num3(away, "prompts"),
+      activeDays: num3(away, "active_days"),
+      idleDays: num3(away, "idle_days"),
+      lastDay: num3(away, "last_day"),
       lastWords: away.quote ?? null
     } : null
   };
 }
 function awards(rows, drafts) {
-  const out = [];
-  const add = (id, title, receipt4, publicReceipt = receipt4) => {
-    if (out.length < 6)
-      out.push({ id, title, receipt: receipt4, publicReceipt });
-  };
-  const exp = drafts.get("most_expensive_sentence");
-  if (exp)
-    add("priciest_sentence", "Most expensive sentence", `$${Math.round(num2(exp, "cost_usd")).toLocaleString("en-US")}, ${dayName(num2(exp, "day"))}`);
-  const stretch = longestStretch(rows);
-  if (stretch && stretch.ms >= 3 * 36e5)
-    add("marathon", "Marathon", `${(stretch.ms / 36e5).toFixed(1)}h without a break, ${dayName(stretch.start.day)}`);
-  const s = longestStreak(rows);
-  if (s && s.days >= 5)
-    add("streak", "Streak", `${s.days} days in a row, ${dayName(s.start)}\u2013${dayName(s.end)}`);
-  const night = drafts.get("night_owl");
-  if (night && num2(night, "days_ending_after_1am_pct") >= 20)
-    add("night_owl", "Night Owl", `${Math.round(num2(night, "days_ending_after_1am_pct"))}% of days end after 1am`);
-  const months = swearTimeline(rows).filter((m) => m.prompts >= 40 && m.swearing >= 5);
-  if (rows.length >= 200 && months.length) {
-    const m = months.reduce((a, b2) => b2.swearPct > a.swearPct ? b2 : a);
-    add("swear_month", "Swear of the month", `${monthName(m.month)}: ${m.swearPct.toFixed(0)}% of prompts swore`);
-  }
-  const subs = rows.reduce((n2, r3) => n2 + (r3.subs ?? 0), 0);
-  if (subs >= 30)
-    add("orchestrator", "Orchestrator", `${subs.toLocaleString("en-US")} subagents launched`);
-  const agents = new Set(rows.map((r3) => r3.harness.startsWith("claude") ? "claude" : r3.harness)).size;
-  if (agents >= 2)
-    add("polyglot", "Polyglot", `${agents} coding agents`);
-  const longest = rows.reduce((a, r3) => !a || r3.f.w > a.f.w ? r3 : a, null);
-  if (longest && longest.f.w >= 200)
-    add("longest_prompt", "Longest prompt", `${longest.f.w.toLocaleString("en-US")} words, ${dayName(longest.day)}`);
-  return out;
+  return storyAwards(rows, drafts);
 }
 function coldOpen(rows) {
-  const pick3 = (r3, why2) => ({ quote: r3.q.length > 90 ? r3.q.slice(0, 89) + "\u2026" : r3.q, at: new Date(r3.ts).toISOString(), day: r3.day, hour: r3.hour, why: why2 });
+  const pick4 = (r3, why2) => ({ quote: r3.q.length > 90 ? r3.q.slice(0, 89) + "\u2026" : r3.q, at: new Date(r3.ts).toISOString(), day: r3.day, hour: r3.hour, why: why2 });
   const lastTs = rows.reduce((m, r3) => Math.max(m, r3.ts), 0);
   const settled = (r3) => lastTs - r3.ts > 7 * 864e5;
   const late = rows.filter((r3) => r3.q && settled(r3) && r3.hour >= 1 && r3.hour < 5 && r3.f.w >= 5 && r3.f.w <= 40);
   if (late.length)
-    return pick3(late.at(-1), "late_night");
+    return pick4(late.at(-1), "late_night");
   const priced = rows.filter((r3) => r3.q && (r3.costTotalUsd ?? 0) > 0).sort((a, b2) => b2.costTotalUsd - a.costTotalUsd);
   if (priced.length)
-    return pick3(priced[0], "most_expensive");
+    return pick4(priced[0], "most_expensive");
   if (rows[0]?.q)
-    return pick3(rows[0], "first_prompt");
+    return pick4(rows[0], "first_prompt");
   const any = [...rows].reverse().find((r3) => r3.q);
-  return any ? pick3(any, "last_words") : null;
+  return any ? pick4(any, "last_words") : null;
 }
 function peakTime(rows) {
   if (rows.length < 50)
@@ -16758,7 +17538,13 @@ function peakNarratives(label4, hour, hourShare, dayShare) {
     `If your agent had office hours, they'd be ${label4}. ${h}% of your prompts arrive at ${at}, ${d}% on ${day}s.`
   ];
 }
-var r12, r22, num2;
+function emptySpend2() {
+  return { measuredUsd: 0, recoveredUsd: 0, estimated: null, unpricedTokens: 0, byHarness: [], monthly: [], daily: [], thisMonthUsd: 0, perActiveDayUsd: 0, priciestDay: null, priceVersion: "" };
+}
+function emptyModelShare() {
+  return { basis: "output_tokens", rows: [], unknownModelPrompts: 0, last30d: [], timeline: [] };
+}
+var r12, r22, num3;
 var init_story = __esm({
   "packages/core/dist/analytics/story.js"() {
     "use strict";
@@ -16769,7 +17555,371 @@ var init_story = __esm({
     init_story_time();
     r12 = (x) => Math.round(x * 10) / 10;
     r22 = (x) => Math.round(x * 100) / 100;
-    num2 = (d, k) => d ? d.numbers[k] : void 0;
+    num3 = (d, k) => d ? d.numbers[k] : void 0;
+  }
+});
+
+// packages/core/dist/analytics/story-spend.js
+import fs28 from "node:fs";
+function readStatsCache(file) {
+  let raw;
+  try {
+    raw = JSON.parse(fs28.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+  if (!raw || typeof raw !== "object")
+    return null;
+  const o = raw;
+  const lastDate = typeof o.lastComputedDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(o.lastComputedDate) ? o.lastComputedDate.slice(0, 10) : null;
+  if (!lastDate)
+    return null;
+  const models2 = /* @__PURE__ */ new Map();
+  const usage = o.modelUsage && typeof o.modelUsage === "object" ? o.modelUsage : {};
+  for (const [model, v] of Object.entries(usage)) {
+    if (!v || typeof v !== "object")
+      continue;
+    const u = v;
+    const id = canonicalModel(model);
+    const row2 = models2.get(id) ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+    row2.input += pick2(u, "inputTokens", "input_tokens");
+    row2.output += pick2(u, "outputTokens", "output_tokens");
+    row2.cacheRead += pick2(u, "cacheReadInputTokens", "cache_read_input_tokens");
+    row2.cacheWrite += pick2(u, "cacheCreationInputTokens", "cache_creation_input_tokens");
+    models2.set(id, row2);
+  }
+  const daily = /* @__PURE__ */ new Map();
+  const activeDays = /* @__PURE__ */ new Set();
+  for (const row2 of Array.isArray(o.dailyModelTokens) ? o.dailyModelTokens : []) {
+    if (!row2 || typeof row2 !== "object")
+      continue;
+    const r3 = row2;
+    if (typeof r3.date !== "string" || !r3.tokensByModel || typeof r3.tokensByModel !== "object")
+      continue;
+    const m = daily.get(r3.date) ?? /* @__PURE__ */ new Map();
+    for (const [model, n2] of Object.entries(r3.tokensByModel)) {
+      const t = num4(n2);
+      if (!t)
+        continue;
+      const id = canonicalModel(model);
+      m.set(id, (m.get(id) ?? 0) + t);
+      activeDays.add(r3.date);
+    }
+    daily.set(r3.date, m);
+  }
+  for (const row2 of Array.isArray(o.dailyActivity) ? o.dailyActivity : []) {
+    const r3 = row2;
+    if (r3 && typeof r3.date === "string" && (num4(r3.messageCount) || num4(r3.sessionCount)))
+      activeDays.add(r3.date);
+  }
+  const firstDate = typeof o.firstSessionDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(o.firstSessionDate) ? o.firstSessionDate.slice(0, 10) : null;
+  return { file, lastDate, firstDate, models: models2, daily, activeDays };
+}
+function recoveredSpend(caches, claudeObserved, book, dateAllowed) {
+  const out = { usd: 0, unpricedTokens: 0, byMonth: /* @__PURE__ */ new Map(), byModel: /* @__PURE__ */ new Map(), coveredDays: () => false };
+  const covered = [];
+  for (const cache3 of caches) {
+    covered.push(cache3);
+    const observed = /* @__PURE__ */ new Map();
+    for (const [model, days] of claudeObserved) {
+      const o = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+      for (const [day, t] of days)
+        if (day <= cache3.lastDate) {
+          o.input += t[0];
+          o.output += t[1];
+          o.cacheRead += t[2];
+          o.cacheWrite += t[3];
+        }
+      observed.set(model, o);
+    }
+    for (const [model, total2] of cache3.models) {
+      const o = observed.get(model) ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+      const res = {
+        input: Math.max(0, total2.input - o.input),
+        output: Math.max(0, total2.output - o.output),
+        cacheRead: Math.max(0, total2.cacheRead - o.cacheRead),
+        cacheWrite: Math.max(0, total2.cacheWrite - o.cacheWrite)
+      };
+      const tokens2 = res.input + res.output + res.cacheRead + res.cacheWrite;
+      if (!tokens2)
+        continue;
+      const price2 = book.lookup(model);
+      const days = [];
+      for (const [d, m] of cache3.daily) {
+        const w = m.get(model) ?? 0;
+        if (w > 0 && d <= cache3.lastDate)
+          days.push([d, w]);
+      }
+      if (!days.length)
+        days.push([cache3.lastDate, 1]);
+      const weight = days.reduce((n2, [, w]) => n2 + w, 0);
+      const inScope = days.filter(([d]) => dateAllowed(d)), share = inScope.reduce((n2, [, w]) => n2 + w, 0) / weight;
+      if (!price2) {
+        out.unpricedTokens += Math.round(tokens2 * share);
+        continue;
+      }
+      const r3 = price2.rates;
+      const usd3 = (res.input * r3.input + res.output * r3.output + res.cacheRead * r3.cacheRead + res.cacheWrite * r3.cacheWrite) / MILLION;
+      const row2 = out.byModel.get(model) ?? { usd: 0, output: 0, byMonth: /* @__PURE__ */ new Map() };
+      row2.output += Math.round(res.output * share);
+      for (const [d, w] of inScope) {
+        const part = usd3 * (w / weight), month = d.slice(0, 7);
+        out.usd += part;
+        row2.usd += part;
+        out.byMonth.set(month, (out.byMonth.get(month) ?? 0) + part);
+        row2.byMonth.set(month, (row2.byMonth.get(month) ?? 0) + part);
+      }
+      out.byModel.set(model, row2);
+    }
+  }
+  out.coveredDays = (day) => covered.some((c) => day <= c.lastDate && (c.activeDays.size ? c.activeDays.has(day) : c.firstDate === null || day >= c.firstDate));
+  return out;
+}
+function quantile(sorted, q2) {
+  if (!sorted.length)
+    return 0;
+  const at = (sorted.length - 1) * q2, lo = Math.floor(at), hi = Math.ceil(at);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (at - lo);
+}
+function buildSpend(input) {
+  const a = input.aggregate, rows = input.table.rows;
+  const dateAllowed = input.dateAllowed ?? (() => true);
+  const now = input.now ?? /* @__PURE__ */ new Date();
+  const clock3 = localClock(input.timezone);
+  const summary3 = a.story.usage;
+  const recovered = input.projectScoped ? { usd: 0, unpricedTokens: 0, byMonth: /* @__PURE__ */ new Map(), byModel: /* @__PURE__ */ new Map(), coveredDays: () => false } : recoveredSpend(input.statsCaches, summary3.claudeObserved, input.book, dateAllowed);
+  const daily = /* @__PURE__ */ new Map();
+  const monthly = /* @__PURE__ */ new Map();
+  const M3 = (m) => {
+    let x = monthly.get(m);
+    if (!x) {
+      x = { measured: 0, recovered: 0, estimated: 0, prompts: 0, priced: 0, unlogged: 0 };
+      monthly.set(m, x);
+    }
+    return x;
+  };
+  const D = (d) => {
+    let x = daily.get(d);
+    if (!x) {
+      x = { usd: 0, prompts: 0 };
+      daily.set(d, x);
+    }
+    return x;
+  };
+  const harnessRows = /* @__PURE__ */ new Map();
+  const H = (h) => {
+    const k = h === "claude_hist" ? "claude" : h;
+    let x = harnessRows.get(k);
+    if (!x) {
+      x = { usd: 0, recovered: 0, prompts: 0, tokens: 0 };
+      harnessRows.set(k, x);
+    }
+    return x;
+  };
+  const measured = summary3.measured;
+  for (const [harness, x] of summary3.byHarness) {
+    const h = H(harness);
+    h.usd += x.usd;
+    h.tokens += x.tokens;
+  }
+  for (const [day, x] of summary3.byDay)
+    D(day).usd += x.usd;
+  for (const [month, x] of summary3.byMonth)
+    M3(month).measured += x.usd;
+  if (recovered.usd > 0)
+    H("claude").recovered += recovered.usd;
+  for (const [m, x] of recovered.byMonth)
+    M3(m).recovered += x;
+  let unloggedUndated = 0;
+  const unloggedMonths = /* @__PURE__ */ new Map();
+  for (const r3 of rows) {
+    D(r3.day).prompts++;
+    H(r3.harness).prompts++;
+    const m = M3(r3.month);
+    m.prompts++;
+    if (r3.harness !== "claude_hist" || recovered.coveredDays(r3.day))
+      m.priced++;
+    else {
+      m.unlogged++;
+      unloggedMonths.set(r3.month, (unloggedMonths.get(r3.month) ?? 0) + 1);
+    }
+  }
+  for (const ref3 of a.story.refs)
+    if (ref3.prompt.eventAt === null) {
+      H(ref3.history ? "claude_hist" : ref3.source?.harness ?? "claude").prompts++;
+      if (ref3.history)
+        unloggedUndated++;
+    }
+  const claudeCosts = /* @__PURE__ */ new Map();
+  for (const r3 of rows)
+    if (r3.harness === "claude" && r3.costTotalUsd !== null) {
+      const l = claudeCosts.get(r3.month) ?? [];
+      l.push(r3.costTotalUsd);
+      claudeCosts.set(r3.month, l);
+    }
+  const basis = [...claudeCosts].filter(([, l]) => l.length >= BASIS_MIN_PROMPTS).map(([m, costs]) => ({ m, i: monthIndex(m), costs })).sort((p, q2) => p.i - q2.i);
+  let estimated = null;
+  const unloggedTotal = [...unloggedMonths.values()].reduce((x, y) => x + y, 0) + unloggedUndated;
+  if (unloggedTotal && basis.length) {
+    let low = 0, mid = 0, high = 0;
+    const used = /* @__PURE__ */ new Set();
+    const lows = [], highs = [];
+    const apply = (i, n2, month) => {
+      const near = [...basis].sort((p, q2) => Math.abs(p.i - i) - Math.abs(q2.i - i) || p.i - q2.i).slice(0, BASIS_MONTHS);
+      const costs = near.flatMap((b2) => b2.costs).sort((x, y) => x - y);
+      for (const b2 of near)
+        used.add(b2.m);
+      const mean = (xs) => xs.reduce((x, y) => x + y, 0) / xs.length;
+      const avg = mean(costs), med = quantile(costs, 0.5);
+      lows.push(Math.min(med, avg));
+      highs.push(Math.max(med, avg));
+      low += n2 * Math.min(med, avg);
+      mid += n2 * avg;
+      high += n2 * Math.max(med, avg);
+      if (month)
+        M3(month).estimated += n2 * avg;
+    };
+    const dated = [...unloggedMonths].sort((x, y) => x[0] < y[0] ? -1 : 1);
+    for (const [m, n2] of dated)
+      apply(monthIndex(m), n2, m);
+    if (unloggedUndated) {
+      const middle = dated.length ? monthIndex(dated[Math.floor(dated.length / 2)][0]) : basis.at(-1).i;
+      apply(middle, unloggedUndated, null);
+    }
+    const months = [...used].sort();
+    estimated = {
+      lowUsd: r23(low),
+      midUsd: r23(mid),
+      highUsd: r23(high),
+      prompts: unloggedTotal,
+      basis: `${unloggedTotal.toLocaleString("en-US")} Claude prompts survive only in history.jsonl, on days with no token logs and no stats-cache coverage. Each is valued at what one Claude prompt with surviving logs cost (its turn, including subagents) in the ${BASIS_MONTHS} nearest months with at least ${BASIS_MIN_PROMPTS} such prompts (${months.join(", ")}): a typical (median) prompt turn gives ${usd(low)} and the average turn (about ${usd(mid / unloggedTotal)} per prompt; a few huge turns pull it up) gives ${usd(high)}. The truth for those deleted logs is unknown; this is a scenario range, not a measurement.`
+    };
+  }
+  const monthKeys = [...monthly.keys()].sort();
+  const series = [];
+  if (monthKeys.length)
+    for (let i = monthIndex(monthKeys[0]); i <= monthIndex(monthKeys.at(-1)); i++) {
+      const m = monthOf(i), x = monthly.get(m);
+      series.push({ month: m, measuredUsd: r23(x?.measured ?? 0), recoveredUsd: r23(x?.recovered ?? 0), estimatedUsd: r23(x?.estimated ?? 0), prompts: x?.prompts ?? 0 });
+    }
+  const days = [...daily].sort((x, y) => x[0] < y[0] ? -1 : 1).map(([day, x]) => ({ day, usd: r23(x.usd), prompts: x.prompts }));
+  const spendDays = days.filter((d) => d.usd > 0);
+  const priciest = spendDays.reduce((p, d) => !p || d.usd > p.usd ? { day: d.day, usd: d.usd } : p, null);
+  const thisMonth = clock3(now.getTime()).month;
+  const harnessList = [...harnessRows].sort((x, y) => y[1].usd - x[1].usd || y[1].prompts - x[1].prompts);
+  const shares = largestRemainder(harnessList.map(([, x]) => x.usd));
+  const spend = {
+    measuredUsd: r23(measured),
+    recoveredUsd: r23(recovered.usd),
+    estimated,
+    unpricedTokens: a.unpricedTokens + recovered.unpricedTokens,
+    byHarness: harnessList.map(([harness, x], i) => ({ harness, usd: r23(x.usd), prompts: x.prompts, tokens: x.tokens, sharePct: shares[i], ...x.recovered ? { recoveredUsd: r23(x.recovered) } : {} })),
+    monthly: series,
+    daily: days,
+    thisMonthUsd: r23(monthly.get(thisMonth)?.measured ?? 0),
+    perActiveDayUsd: spendDays.length ? r23(measured / spendDays.length) : 0,
+    priciestDay: priciest,
+    priceVersion: input.priceVersion
+  };
+  return { spend, modelShare: modelShare(summary3.models, rows, recovered, input.table.headline?.prompts ?? rows.length, now) };
+}
+function modelShare(observed, rows, recovered, headlinePrompts, now) {
+  const models2 = /* @__PURE__ */ new Map();
+  const R = (m) => {
+    let x = models2.get(m);
+    if (!x) {
+      x = { output: 0, usd: 0, prompts: 0, recoveredOutput: 0, harness: /* @__PURE__ */ new Map(), months: /* @__PURE__ */ new Map() };
+      models2.set(m, x);
+    }
+    return x;
+  };
+  const monthTotals = /* @__PURE__ */ new Map();
+  const addMonth = (month, model, n2) => {
+    const t = monthTotals.get(month) ?? /* @__PURE__ */ new Map();
+    t.set(model, (t.get(model) ?? 0) + n2);
+    monthTotals.set(month, t);
+  };
+  for (const [model, o] of observed) {
+    const x = R(model);
+    x.output += o.output;
+    x.usd += o.usd;
+    for (const [h, n2] of o.harness)
+      x.harness.set(h, (x.harness.get(h) ?? 0) + n2);
+    for (const [month, n2] of o.months)
+      addMonth(month, model, n2);
+  }
+  for (const [model, r3] of recovered.byModel) {
+    const x = R(model);
+    x.output += r3.output;
+    x.recoveredOutput += r3.output;
+    x.usd += r3.usd;
+    x.harness.set("claude", (x.harness.get("claude") ?? 0) + r3.output);
+    const total2 = [...r3.byMonth.values()].reduce((p, q2) => p + q2, 0);
+    for (const [month, part] of r3.byMonth)
+      if (total2 > 0)
+        addMonth(month, model, r3.output * part / total2);
+  }
+  let observedPrompts = 0;
+  for (const r3 of rows)
+    if (r3.model) {
+      R(r3.model).prompts++;
+      observedPrompts++;
+    }
+  const list3 = [...models2].filter(([, x]) => x.output > 0 || x.prompts > 0).sort((p, q2) => q2[1].output - p[1].output || q2[1].prompts - p[1].prompts || (p[0] < q2[0] ? -1 : 1));
+  const tok = largestRemainder(list3.map(([, x]) => x.output)), pr = largestRemainder(list3.map(([, x]) => x.prompts)), sp = largestRemainder(list3.map(([, x]) => x.usd));
+  const since = now.getTime() - 30 * 864e5;
+  const recent = /* @__PURE__ */ new Map();
+  for (const r3 of rows)
+    if (r3.model && r3.ts >= since)
+      recent.set(r3.model, (recent.get(r3.model) ?? 0) + 1);
+  const recentList = [...recent].sort((p, q2) => q2[1] - p[1] || (p[0] < q2[0] ? -1 : 1));
+  const recentPct = largestRemainder(recentList.map(([, n2]) => n2));
+  const timeline = [];
+  for (const [month, t] of [...monthTotals].sort((p, q2) => p[0] < q2[0] ? -1 : 1)) {
+    const total2 = [...t.values()].reduce((p, q2) => p + q2, 0);
+    const top = [...t].sort((p, q2) => q2[1] - p[1] || (p[0] < q2[0] ? -1 : 1))[0];
+    if (top && total2 > 0)
+      timeline.push({ month, model: top[0], label: modelLabel(top[0]), tokenSharePct: Math.round(top[1] / total2 * 100) });
+  }
+  return {
+    basis: "output_tokens",
+    rows: list3.map(([model, x], i) => ({
+      model,
+      label: modelLabel(model),
+      harness: [...x.harness].sort((p, q2) => q2[1] - p[1])[0]?.[0] ?? "claude",
+      outputTokens: Math.round(x.output),
+      tokenSharePct: tok[i],
+      prompts: x.prompts,
+      promptSharePct: pr[i],
+      usd: r23(x.usd),
+      spendSharePct: sp[i],
+      ...x.recoveredOutput ? { recoveredOutputTokens: Math.round(x.recoveredOutput) } : {}
+    })),
+    unknownModelPrompts: Math.max(0, headlinePrompts - observedPrompts),
+    last30d: recentList.map(([model], i) => ({ model, label: modelLabel(model), promptSharePct: recentPct[i] })),
+    timeline
+  };
+}
+var r23, MILLION, BASIS_MIN_PROMPTS, BASIS_MONTHS, num4, pick2, monthIndex, monthOf, usd;
+var init_story_spend = __esm({
+  "packages/core/dist/analytics/story-spend.js"() {
+    "use strict";
+    init_model_names();
+    init_story_time();
+    r23 = (x) => Math.round(x * 100) / 100;
+    MILLION = 1e6;
+    BASIS_MIN_PROMPTS = 50;
+    BASIS_MONTHS = 3;
+    num4 = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0;
+    pick2 = (o, ...keys5) => {
+      for (const k of keys5)
+        if (k in o)
+          return num4(o[k]);
+      return 0;
+    };
+    monthIndex = (m) => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7)) - 1;
+    monthOf = (i) => `${Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}`;
+    usd = (x) => `$${x.toFixed(2)}`;
   }
 });
 
@@ -16783,7 +17933,7 @@ var init_story_wordlist = __esm({
 });
 
 // packages/core/dist/analytics/story-dictionary.js
-import fs28 from "node:fs";
+import fs29 from "node:fs";
 var SYSTEM_LISTS, DictionaryLookup;
 var init_story_dictionary = __esm({
   "packages/core/dist/analytics/story-dictionary.js"() {
@@ -16816,7 +17966,7 @@ var init_story_dictionary = __esm({
         const words8 = new Set(STORY_WORDLIST.split(" "));
         for (const file of SYSTEM_LISTS) {
           try {
-            for (const w of fs28.readFileSync(file, "utf8").toLowerCase().split("\n"))
+            for (const w of fs29.readFileSync(file, "utf8").toLowerCase().split("\n"))
               if (w)
                 words8.add(w);
             break;
@@ -17179,7 +18329,7 @@ var init_free_jev = __esm({
       dispose() {
         this.options.signal?.removeEventListener("abort", this.abort);
       }
-      async evaluate(input, identity4) {
+      async evaluate(input, identity5) {
         let request, tokens2;
         try {
           request = structuredClone(input);
@@ -17188,7 +18338,7 @@ var init_free_jev = __esm({
         } catch (e) {
           return { state: "skipped", code: failure(e) };
         }
-        const route = this.provider.options.route, key2 = digest(JSON.stringify({ request, identity: identity4, route: { kind: route.kind, endpoint: FREE_JEV_ENDPOINT }, model: FREE_JEV_MODEL }));
+        const route = this.provider.options.route, key2 = digest(JSON.stringify({ request, identity: identity5, route: { kind: route.kind, endpoint: FREE_JEV_ENDPOINT }, model: FREE_JEV_MODEL }));
         try {
           const cached4 = await abortable(Promise.resolve(this.provider.options.cache?.get(key2)), this.signal);
           this.assertCurrent();
@@ -17336,14 +18486,14 @@ async function enrichStory(story, rows, provider, options) {
     if (result.state !== "ok")
       return { story, state: { state: "failed", model: FREE_JEV_MODEL, code: result.code, quotesSent: built.quotes } };
     const allowed = /* @__PURE__ */ new Set([...numbersIn(sheet), ...numbersIn(built.profiles.join(" ")), ...numbersIn(built.peaks.join(" "))]);
-    const pick3 = (id, options2, prefix2) => {
+    const pick4 = (id, options2, prefix2) => {
       const a = result.response.answers[id];
       if (!a || a.type !== "choice")
         return null;
       const text2 = options2[Number(a.choice.slice(prefix2.length))];
       return text2 && numbersIn(text2).every((n2) => allowed.has(n2)) ? text2 : null;
     };
-    const profile = pick3("profile", built.profiles, "p"), narrative = pick3("peak", built.peaks, "k");
+    const profile = pick4("profile", built.profiles, "p"), narrative = pick4("peak", built.peaks, "k");
     const next = {
       ...story,
       archetype: story.archetype && profile ? { ...story.archetype, profile, source: "jev" } : story.archetype,
@@ -17380,7 +18530,7 @@ var init_model_pricing_snapshot = __esm({
 });
 
 // packages/core/dist/analytics/model-catalog.js
-import { createHash as createHash11 } from "node:crypto";
+import { createHash as createHash12 } from "node:crypto";
 function validateModelCatalog(value) {
   if (!value || typeof value !== "object")
     return false;
@@ -17400,7 +18550,7 @@ function validateModelCatalog(value) {
     if (m.tiers !== void 0 && (!Array.isArray(m.tiers) || m.tiers.some((t) => !Number.isSafeInteger(t.threshold) || t.threshold < 0 || !t.rates || Object.values(t.rates).some((v) => !valid(v)))))
       return false;
   }
-  return createHash11("sha256").update(JSON.stringify(c.models)).digest("hex") === c.basis.sha256;
+  return createHash12("sha256").update(JSON.stringify(c.models)).digest("hex") === c.basis.sha256;
 }
 var bundledModelCatalog, valid;
 var init_model_catalog = __esm({
@@ -17422,18 +18572,6 @@ function toRates(raw, base3) {
     cacheWrite: raw.cache_write ?? base3?.cacheWrite ?? input
   };
 }
-function normalizeModel(model) {
-  let m = model.trim().toLowerCase();
-  m = m.replace(/\[[^\]]*\]$/, "");
-  if (m.includes("/"))
-    m = m.slice(m.lastIndexOf("/") + 1);
-  m = m.replace(/@.*$/, "");
-  m = m.replace(/^(?:anthropic|openai|us|eu|apac|global)\./, "");
-  m = m.replace(/-v\d+(?::\d+)?$/, "");
-  m = m.replace(/-(?:20\d{6}|\d{4}-\d{2}-\d{2})$/, "");
-  m = m.replace(/-latest$/, "");
-  return m;
-}
 function versionDistance(a, b2) {
   const x = Number(a[0]), y = Number(b2[0]);
   if (Number.isFinite(x) && Number.isFinite(y))
@@ -17444,28 +18582,34 @@ function fastMultiplier(id) {
   const n2 = normalizeModel(id);
   return FAST_EXACT[n2] ?? FAST_PREFIX.find(([prefix2]) => n2.startsWith(prefix2))?.[1] ?? 1;
 }
-function usageCost(u, price, fast = false) {
-  let rates2 = price.rates;
-  if (price.tiers.length) {
-    const context = u.input + u.cacheRead + u.cacheWrite;
-    for (const tier of price.tiers)
-      if (context > tier.threshold)
+function usageCost(u, price2, fast = false) {
+  let rates2 = price2.rates;
+  if (price2.tiers.length) {
+    const context2 = u.input + u.cacheRead + u.cacheWrite;
+    for (const tier of price2.tiers)
+      if (context2 > tier.threshold)
         rates2 = tier.rates;
   }
   const write1h = Math.min(u.cacheWrite1h, u.cacheWrite), write5m = u.cacheWrite - write1h;
-  const usd = (u.input * rates2.input + u.output * rates2.output + u.cacheRead * rates2.cacheRead + write5m * rates2.cacheWrite + write1h * rates2.input * 2) / MILLION;
-  return fast ? usd * price.fast : usd;
+  const usd3 = (u.input * rates2.input + u.output * rates2.output + u.cacheRead * rates2.cacheRead + write5m * rates2.cacheWrite + write1h * rates2.input * 2) / MILLION2;
+  return fast ? usd3 * price2.fast : usd3;
 }
-var PROVIDER_ORDER, tokens, PriceBook, FAST_EXACT, FAST_PREFIX, MILLION;
+var PROVIDER_ORDER, normalizeModel, REGIONAL, tokens, PriceBook, FAST_EXACT, FAST_PREFIX, MILLION2;
 var init_pricing = __esm({
   "packages/core/dist/analytics/pricing.js"() {
     "use strict";
     init_model_catalog();
+    init_model_names();
     PROVIDER_ORDER = ["anthropic", "openai", "google", "xai", "mistral", "deepseek", "opencode", "google-vertex", "azure", "amazon-bedrock", "openrouter", "groq"];
+    normalizeModel = canonicalModel;
+    REGIONAL = /^(?:us|eu|apac|jp|au|ca|us-gov)\./;
     tokens = (id) => id.split(/[-.]/).filter(Boolean);
     PriceBook = class {
       catalog;
+      /** Exact endpoint ids (lower-case), first-party provider first. */
       exact = /* @__PURE__ */ new Map();
+      /** Canonical aliases: non-regional entries win, then provider order. */
+      canonical = /* @__PURE__ */ new Map();
       ids;
       memo = /* @__PURE__ */ new Map();
       constructor(catalog = bundledModelCatalog) {
@@ -17477,17 +18621,26 @@ var init_pricing = __esm({
         const usable = catalog.models.filter((m) => typeof m.rates.input === "number" && m.rates.input > 0);
         usable.sort((a, b2) => rank(a.provider) - rank(b2.provider));
         for (const entry of usable) {
-          for (const id of [entry.id.toLowerCase(), normalizeModel(entry.id)])
-            if (!this.exact.has(id))
-              this.exact.set(id, entry);
+          const id = entry.id.toLowerCase();
+          if (!this.exact.has(id))
+            this.exact.set(id, entry);
         }
-        this.ids = [...this.exact.keys()];
+        const canonicalOrder = [...usable].sort((a, b2) => Number(REGIONAL.test(a.id.toLowerCase())) - Number(REGIONAL.test(b2.id.toLowerCase())));
+        const family2 = /* @__PURE__ */ new Set();
+        for (const entry of canonicalOrder) {
+          const id = normalizeModel(entry.id);
+          if (!this.canonical.has(id))
+            this.canonical.set(id, entry);
+          if (!/^~|-latest$/.test(entry.id.toLowerCase()))
+            family2.add(id);
+        }
+        this.ids = [...family2].filter((id) => this.canonical.has(id));
       }
       price(entry, estimated) {
         const rates2 = toRates(entry.rates);
         return { pricedAs: entry.id, estimated, rates: rates2, fast: fastMultiplier(entry.id), tiers: (entry.tiers ?? []).map((t) => ({ threshold: t.threshold, rates: toRates(t.rates, rates2) })) };
       }
-      /** Price for a recorded model name; never null for a non-empty name. */
+      /** Price for a recorded model name; null when it is unknown and has no family. */
       lookup(model) {
         if (!model)
           return null;
@@ -17500,7 +18653,7 @@ var init_pricing = __esm({
       }
       resolve(model) {
         const raw = model.trim().toLowerCase(), norm = normalizeModel(model);
-        const hit2 = this.exact.get(raw) ?? this.exact.get(norm);
+        const hit2 = this.exact.get(raw) ?? this.exact.get(raw.replace(/:\d+$/, "")) ?? this.canonical.get(norm);
         if (hit2)
           return this.price(hit2, false);
         const want = tokens(norm);
@@ -17510,14 +18663,14 @@ var init_pricing = __esm({
           let shared = 0;
           while (shared < want.length && shared < have.length && want[shared] === have[shared])
             shared++;
-          if (shared === 0)
+          if (shared < 2)
             continue;
           const distance = Math.abs(have.length - want.length) + versionDistance(want.slice(shared), have.slice(shared));
           if (!best || shared > best.shared || shared === best.shared && (distance < best.distance || distance === best.distance && id < best.id))
             best = { id, shared, distance };
         }
         if (best)
-          return this.price(this.exact.get(best.id), true);
+          return this.price(this.canonical.get(best.id), true);
         return null;
       }
     };
@@ -17531,12 +18684,12 @@ var init_pricing = __esm({
       "gpt-6-astra": 2
     };
     FAST_PREFIX = [["claude-opus-4-6", 6], ["claude-opus-4-7", 6], ["claude-opus-4-8", 2]];
-    MILLION = 1e6;
+    MILLION2 = 1e6;
   }
 });
 
 // packages/core/dist/analytics/aggregate.js
-import path22 from "node:path";
+import path21 from "node:path";
 function sid2(harness, nativeId) {
   const key2 = `${harness}\0${nativeId}`;
   let id = idMemo.get(key2);
@@ -17550,11 +18703,11 @@ function dayFormatter(timezone) {
   const format = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" });
   const memo2 = /* @__PURE__ */ new Map();
   return (at) => {
-    const hour = Math.floor(at / 36e5);
-    let day = memo2.get(hour);
+    const slot = Math.floor(at / 9e5);
+    let day = memo2.get(slot);
     if (day === void 0) {
-      day = format.format(new Date(at));
-      memo2.set(hour, day);
+      day = format.format(new Date(slot * 9e5));
+      memo2.set(slot, day);
     }
     return day;
   };
@@ -17586,36 +18739,70 @@ function aggregate(input) {
   const dayOf = dayFormatter(scope2.timezone);
   const inRange = (at) => (scope2.eventFrom === null || at !== null && at >= scope2.eventFrom) && (scope2.asOf === null || at !== null && at <= scope2.asOf);
   const projectAllowed = (p) => !policy.ignored(p) && (scope2.project === null || normProject(p) === normProject(scope2.project));
-  const harness = { claude: emptyHarness(), codex: emptyHarness(), pi: emptyHarness(), opencode: emptyHarness() };
+  const harness = { claude: emptyHarness(), codex: emptyHarness(), pi: emptyHarness(), opencode: emptyHarness(), cursor: emptyHarness(), gemini: emptyHarness(), copilot: emptyHarness() };
   let excludedSources = 0;
-  const seenCodexSessions = /* @__PURE__ */ new Set();
-  const sources = input.sources.filter((s) => harnessSet.has(s.harness)).sort((a, b2) => (a.startedAt ?? "").localeCompare(b2.startedAt ?? "") || (a.firstAt ?? 0) - (b2.firstAt ?? 0) || a.file.localeCompare(b2.file)).filter((s) => {
+  const completeness = (s) => s.usage.length + s.prompts.length;
+  const sources = input.sources.filter((s) => harnessSet.has(s.harness)).sort((a, b2) => (a.startedAt ?? "").localeCompare(b2.startedAt ?? "") || (a.firstAt ?? 0) - (b2.firstAt ?? 0) || Number(a.child) - Number(b2.child) || Number(!!a.forkedFrom) - Number(!!b2.forkedFrom) || (a.sessionId === b2.sessionId ? completeness(b2) - completeness(a) || b2.size - a.size || Number(!!a.archived) - Number(!!b2.archived) : 0) || a.file.localeCompare(b2.file)).filter((s) => {
     if (policy.forgotten.has(sid2(s.harness, s.sessionId)) || s.parentId && policy.forgotten.has(sid2(s.harness, s.parentId))) {
       excludedSources++;
       return false;
     }
-    if (s.harness === "codex") {
-      if (seenCodexSessions.has(s.sessionId))
-        return false;
-      seenCodexSessions.add(s.sessionId);
-    }
     return true;
   });
+  const primary = /* @__PURE__ */ new Set();
+  {
+    const seen = /* @__PURE__ */ new Set();
+    for (const s of sources) {
+      const k = `${s.harness}\0${s.sessionId}`;
+      if (!seen.has(k)) {
+        seen.add(k);
+        primary.add(s);
+      }
+    }
+  }
+  const forkOf = /* @__PURE__ */ new Map();
+  for (const s of input.sources)
+    if (s.forkedFrom && s.forkedFrom !== s.sessionId)
+      forkOf.set(`${s.harness}\0${s.sessionId}`, s.forkedFrom);
+  const rootMemo = /* @__PURE__ */ new Map();
+  const lineage = (s) => {
+    const k = `${s.harness}\0${s.sessionId}`;
+    let root = rootMemo.get(k);
+    if (root !== void 0)
+      return root;
+    root = s.sessionId;
+    for (let i = 0, next = forkOf.get(k); next && i < 32; i++, next = forkOf.get(`${s.harness}\0${root}`))
+      root = next;
+    rootMemo.set(k, root);
+    return root;
+  };
+  const scopedKey = (s, key2) => s.harness === "codex" || s.harness === "pi" ? `${s.harness}:${lineage(s)}:${key2}` : key2;
   const claudeRows = [], otherRows = [];
-  const seenKeys = /* @__PURE__ */ new Set();
+  const seenByScope = /* @__PURE__ */ new Map();
+  const unscoped = scope2.eventFrom === null && scope2.asOf === null;
   for (const s of sources) {
     harness[s.harness].files++;
+    if (!projectAllowed(s.project))
+      continue;
+    if (s.harness === "claude") {
+      for (const u of s.usage)
+        if (unscoped || inRange(u.at))
+          claudeRows.push({ u, s });
+      continue;
+    }
+    const scopeKey2 = s.harness === "codex" || s.harness === "pi" ? `${s.harness}:${lineage(s)}` : "";
+    let seen = seenByScope.get(scopeKey2);
+    if (!seen) {
+      seen = /* @__PURE__ */ new Set();
+      seenByScope.set(scopeKey2, seen);
+    }
     for (const u of s.usage) {
-      if (!inRange(u.at) || !projectAllowed(s.project))
+      if (!unscoped && !inRange(u.at))
         continue;
-      if (s.harness === "claude") {
-        claudeRows.push({ u, s });
-        continue;
-      }
       if (u.key) {
-        if (seenKeys.has(u.key))
+        if (seen.has(u.key))
           continue;
-        seenKeys.add(u.key);
+        seen.add(u.key);
       }
       otherRows.push({ u, s });
     }
@@ -17623,15 +18810,113 @@ function aggregate(input) {
   const usageRows = dedupeClaude(claudeRows).concat(otherRows);
   const models2 = /* @__PURE__ */ new Map();
   const tokens2 = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0 };
-  let costUsd = 0, estimatedCostUsd = 0, inferredModelResponses = 0, compactionResponses = 0;
-  const conversationOf = (s) => sid2(s.harness, s.child && s.parentId ? s.parentId : s.sessionId);
+  let costUsd = 0, estimatedCostUsd = 0, inferredModelResponses = 0, compactionResponses = 0, unpricedResponses = 0, unpricedTokens = 0;
+  const convMemo = /* @__PURE__ */ new Map(), selfMemo = /* @__PURE__ */ new Map();
+  const conversationOf = (s) => {
+    let id = convMemo.get(s);
+    if (id === void 0) {
+      id = sid2(s.harness, s.child && s.parentId ? s.parentId : s.sessionId);
+      convMemo.set(s, id);
+    }
+    return id;
+  };
+  const selfId = (s) => {
+    let id = selfMemo.get(s);
+    if (id === void 0) {
+      id = sid2(s.harness, s.sessionId);
+      selfMemo.set(s, id);
+    }
+    return id;
+  };
   const costOf = /* @__PURE__ */ new Map();
+  const summary3 = { measured: 0, byDay: /* @__PURE__ */ new Map(), byMonth: /* @__PURE__ */ new Map(), byHarness: /* @__PURE__ */ new Map(), claudeObserved: /* @__PURE__ */ new Map(), models: /* @__PURE__ */ new Map() };
+  let lastSource = null, lastHarness, lastSlot = NaN, lastDay = "", lastMonth = "";
+  let lastDayAcc, lastMonthAcc, lastModelKey = null;
+  let lastModel, lastTuple = null;
   for (const { u, s } of usageRows) {
-    const price = book.lookup(u.model);
+    const price2 = book.lookup(u.model);
     const fast = u.tier === "fast" || s.harness === "codex" && u.tier === void 0 && input.codexFastDefault;
-    const cost = price ? usageCost(u, price, fast) : 0;
-    costOf.set(u, cost);
-    const name = u.model ?? "unknown";
+    const cost = price2 ? usageCost(u, price2, fast) : 0;
+    if (price2)
+      costOf.set(u, cost);
+    else {
+      unpricedResponses++;
+      unpricedTokens += total(u);
+    }
+    const name = u.model ? canonicalModel(u.model) : "unknown";
+    {
+      summary3.measured += cost;
+      if (s !== lastSource) {
+        lastSource = s;
+        lastHarness = summary3.byHarness.get(s.harness);
+        if (!lastHarness) {
+          lastHarness = { usd: 0, tokens: 0 };
+          summary3.byHarness.set(s.harness, lastHarness);
+        }
+      }
+      lastHarness.usd += cost;
+      lastHarness.tokens += total(u);
+      let day = null, month = null;
+      if (u.at !== null) {
+        const slot = Math.floor(u.at / 9e5);
+        if (slot !== lastSlot) {
+          lastSlot = slot;
+          lastDay = dayOf(u.at);
+          lastMonth = lastDay.slice(0, 7);
+          lastDayAcc = summary3.byDay.get(lastDay);
+          if (!lastDayAcc) {
+            lastDayAcc = { usd: 0 };
+            summary3.byDay.set(lastDay, lastDayAcc);
+          }
+          lastMonthAcc = summary3.byMonth.get(lastMonth);
+          if (!lastMonthAcc) {
+            lastMonthAcc = { usd: 0 };
+            summary3.byMonth.set(lastMonth, lastMonthAcc);
+          }
+          lastModelKey = null;
+        }
+        day = lastDay;
+        month = lastMonth;
+        lastDayAcc.usd += cost;
+        lastMonthAcc.usd += cost;
+      }
+      if (u.model && !u.inferredModel) {
+        const key2 = `${name}\0${s.harness}\0${day ?? ""}`;
+        if (key2 !== lastModelKey) {
+          lastModelKey = key2;
+          lastModel = summary3.models.get(name);
+          if (!lastModel) {
+            lastModel = { output: 0, usd: 0, harness: /* @__PURE__ */ new Map(), months: /* @__PURE__ */ new Map() };
+            summary3.models.set(name, lastModel);
+          }
+          lastTuple = null;
+          if (s.harness === "claude" && day) {
+            let byDay = summary3.claudeObserved.get(name);
+            if (!byDay) {
+              byDay = /* @__PURE__ */ new Map();
+              summary3.claudeObserved.set(name, byDay);
+            }
+            lastTuple = byDay.get(day) ?? null;
+            if (!lastTuple) {
+              lastTuple = [0, 0, 0, 0];
+              byDay.set(day, lastTuple);
+            }
+          }
+        }
+        const m = lastModel;
+        m.output += u.output;
+        m.usd += cost;
+        m.harness.set(s.harness, (m.harness.get(s.harness) ?? 0) + u.output);
+        if (month)
+          m.months.set(month, (m.months.get(month) ?? 0) + u.output);
+        if (lastTuple) {
+          lastTuple[0] += u.input;
+          lastTuple[1] += u.output;
+          lastTuple[2] += u.cacheRead;
+          lastTuple[3] += u.cacheWrite;
+        }
+      }
+    }
     let row2 = models2.get(name);
     if (!row2) {
       const provider = u.provider && !u.provider.includes("vertex") ? u.provider : s.harness === "codex" ? "openai" : name.startsWith("claude") ? "anthropic" : u.provider;
@@ -17639,7 +18924,7 @@ function aggregate(input) {
         id: `model:${name}`,
         provider,
         model: name,
-        canonicalModel: price ? `${provider ?? "unknown"}/${price.pricedAs}` : null,
+        canonicalModel: price2 ? `${provider ?? "unknown"}/${price2.pricedAs}` : null,
         inputTokens: 0,
         outputTokens: 0,
         totalTokens: 0,
@@ -17656,8 +18941,8 @@ function aggregate(input) {
         cacheWriteTokens: 0,
         reasoningTokens: 0,
         harnesses: [],
-        pricedAs: price?.pricedAs ?? null,
-        estimated: !price || price.estimated,
+        pricedAs: price2?.pricedAs ?? null,
+        estimated: !price2 || price2.estimated,
         convs: /* @__PURE__ */ new Set()
       };
       models2.set(name, row2);
@@ -17705,7 +18990,7 @@ function aggregate(input) {
     endUtf16: text2.length,
     snapshotId: input.snapshotId
   });
-  const originBasis = (h) => h === "claude" ? "claude_prompt_id" : h === "codex" ? "codex_human_marker" : h === "pi" ? "pi_user_projection" : "opencode_user_projection";
+  const originBasis = (h) => h === "claude" ? "claude_prompt_id" : h === "codex" ? "codex_human_marker" : h === "pi" ? "pi_user_projection" : h === "opencode" ? "opencode_user_projection" : "unknown";
   const conversationFor = (h, nativeId, parent, title, project, file) => {
     const id = sid2(h, nativeId);
     let entry = conversations.get(id);
@@ -17758,14 +19043,14 @@ function aggregate(input) {
     else
       t.excluded[p.reason ?? p.kind] = (t.excluded[p.reason ?? p.kind] ?? 0) + 1;
   };
-  const addHuman = (entry, h, p, key2, file, identity4, source) => {
+  const addHuman = (entry, h, p, key2, file, identity5, source) => {
     const conv = entry.conversation;
     const prompt = {
       id: digest(`${conv.id}:${key2}`).slice(0, 32),
       conversationId: conv.id,
       role: "user",
       originBasis: originBasis(h),
-      identityBasis: identity4,
+      identityBasis: identity5,
       eligibleHuman: true,
       eligibleNativeInput: true,
       languageEligible: true,
@@ -17792,7 +19077,10 @@ function aggregate(input) {
   const scoped = scope2.project !== null || scope2.eventFrom !== null || scope2.asOf !== null;
   const activeIds = /* @__PURE__ */ new Set();
   for (const { s } of usageRows)
-    activeIds.add(sid2(s.harness, s.sessionId));
+    activeIds.add(selfId(s));
+  const imported = input.codexImported ?? /* @__PURE__ */ new Set();
+  let automatedRuns = 0;
+  const automatedSeen = /* @__PURE__ */ new Set();
   for (const s of sources) {
     const id = sid2(s.harness, s.sessionId);
     const inScopePrompt = s.prompts.some((p) => inRange(p.at) && projectAllowed(p.project ?? s.project));
@@ -17807,13 +19095,22 @@ function aggregate(input) {
     if (s.harness === "claude" && !s.child)
       for (const sid3 of s.sessionIds ?? [s.sessionId])
         topClaudeSessions.add(sid3);
+    if (s.automated && !s.child && !automatedSeen.has(id)) {
+      automatedSeen.add(id);
+      automatedRuns++;
+    }
+    const importedSession = s.harness === "codex" && imported.has(s.sessionId);
     for (const p of s.prompts) {
       if (!inRange(p.at) || !projectAllowed(p.project ?? s.project))
         continue;
-      const unique2 = s.harness === "claude" ? p.key : `${s.harness}:${p.key}`;
+      const unique2 = s.harness === "claude" ? p.key : s.harness === "codex" || s.harness === "pi" ? scopedKey(s, p.key) : `${s.harness}:${p.key}`;
       if (seenPrompts.has(unique2))
         continue;
       seenPrompts.add(unique2);
+      if (importedSession && p.imp && p.kind !== "excluded") {
+        countPrompt(s.harness, { kind: "excluded", reason: "imported_from_claude_transcript" });
+        continue;
+      }
       countPrompt(s.harness, p);
       if (p.kind === "human")
         addHuman(entry, s.harness, p, p.key, s.file, `${s.harness}_record`, s);
@@ -17836,8 +19133,9 @@ function aggregate(input) {
       }
       const entry = conversations.get(sid2("claude", session));
       countPrompt("claude", { kind: h.kind, reason: null });
+      const origin = input.historyOrigins?.[i];
       if (h.kind === "human")
-        addHuman(entry, "claude", h, `history:${i}`, input.historyFile, "claude_history_jsonl", null);
+        addHuman(entry, "claude", h, `history:${origin ? origin.index : i}`, origin?.file ?? input.historyFile, "claude_history_jsonl", null);
     });
     historyOnlyConversations = historySessions.size;
   }
@@ -17848,11 +19146,11 @@ function aggregate(input) {
     if (c.conversation.child) {
       children++;
       t.childConversations++;
-    } else if (c.conversation.harness !== "claude")
+    } else if (c.conversation.harness !== "claude" && !automatedSeen.has(c.conversation.id))
       t.conversations++;
   }
   harness.claude.conversations = topClaudeSessions.size + historyOnlyConversations;
-  const top = harness.claude.conversations + harness.codex.conversations + harness.pi.conversations + harness.opencode.conversations;
+  const top = Object.values(harness).reduce((n2, t) => n2 + t.conversations, 0);
   list3.sort((a, b2) => (a.conversation.eventFrom ?? "").localeCompare(b2.conversation.eventFrom ?? "") || a.conversation.id.localeCompare(b2.conversation.id));
   list3.forEach((c, i) => {
     c.conversation.alias = `Conversation ${i + 1}`;
@@ -17897,7 +19195,8 @@ function aggregate(input) {
     };
   }).sort((a, b2) => (b2.valueUsd ?? 0) - (a.valueUsd ?? 0) || a.id.localeCompare(b2.id));
   return {
-    story: { refs: refs2, costOf, sources },
+    story: { refs: refs2, costOf, sources, primary, rows: usageRows, usage: summary3 },
+    automatedRuns,
     conversations: list3,
     prompts,
     around,
@@ -17907,6 +19206,8 @@ function aggregate(input) {
     costUsd,
     estimatedCostUsd,
     responses: usageRows.length,
+    unpricedResponses,
+    unpricedTokens,
     inferredModelResponses,
     compactionResponses,
     topLevelConversations: top,
@@ -17924,16 +19225,17 @@ var init_aggregate = __esm({
     init_source_identity();
     init_source2();
     init_pricing();
+    init_model_names();
     idMemo = /* @__PURE__ */ new Map();
     emptyHarness = () => ({ conversations: 0, childConversations: 0, files: 0, humanPrompts: 0, slashCommands: 0, userMessages: 0, responses: 0, costUsd: 0, excluded: {} });
     normProject = (p) => p ? p.replace(/\/+$/, "") || "/" : null;
     total = (u) => u.input + u.output + u.cacheRead + u.cacheWrite;
-    projectName2 = (p) => path22.basename(p) || p;
+    projectName2 = (p) => path21.basename(p) || p;
   }
 });
 
 // packages/core/dist/analytics/catalog-service.js
-import { createHash as createHash12 } from "node:crypto";
+import { createHash as createHash13 } from "node:crypto";
 function rates(value) {
   if (!object2(value))
     return {};
@@ -17975,7 +19277,7 @@ function reducePublicCatalog(raw, retrievedAt = (/* @__PURE__ */ new Date()).toI
         throw new Error("catalog_entries_limit");
     }
   }
-  const result = { basis: { source: SOURCE, retrievedAt, sha256: createHash12("sha256").update(JSON.stringify(models2)).digest("hex") }, models: models2 };
+  const result = { basis: { source: SOURCE, retrievedAt, sha256: createHash13("sha256").update(JSON.stringify(models2)).digest("hex") }, models: models2 };
   if (!models2.length || !validateModelCatalog(result))
     throw new Error("catalog_validation_failed");
   return result;
@@ -18037,54 +19339,161 @@ var init_catalog_service = __esm({
 });
 
 // packages/core/dist/analytics/facts-cache.js
-import fs29 from "node:fs";
-import path23 from "node:path";
+import fs30 from "node:fs";
+import path22 from "node:path";
+import { createHash as createHash14 } from "node:crypto";
 import { serialize, deserialize } from "node:v8";
-var FILE, FactsCache;
+function writeAtomic(file, data) {
+  const temp = `${file}.${process.pid}.tmp`;
+  fs30.writeFileSync(temp, data, { mode: 384 });
+  fs30.renameSync(temp, file);
+}
+var DIR, INDEX, DICTIONARY, shardOf, metaOf, FactsCache;
 var init_facts_cache = __esm({
   "packages/core/dist/analytics/facts-cache.js"() {
     "use strict";
     init_extract();
-    FILE = `facts-v${FACTS_VERSION}.bin`;
+    DIR = `facts-v${FACTS_VERSION}`;
+    INDEX = "index.bin";
+    DICTIONARY = "dictionary.bin";
+    shardOf = (file, prefix2 = "") => `${prefix2}${createHash14("sha1").update(file).digest("hex")}.bin`;
+    metaOf = (f) => ({
+      file: f.file,
+      shard: shardOf(f.file),
+      size: f.size,
+      mtimeMs: f.mtimeMs,
+      ...f.tz ? { tz: f.tz } : {},
+      harness: f.harness,
+      sessionId: f.sessionId,
+      parentId: f.parentId,
+      project: f.project
+    });
     FactsCache = class {
       dir;
-      entries = /* @__PURE__ */ new Map();
-      historyEntry = null;
+      metas = /* @__PURE__ */ new Map();
+      loaded = /* @__PURE__ */ new Map();
+      dirtyShards = /* @__PURE__ */ new Set();
+      historyMetas = /* @__PURE__ */ new Map();
+      historyLoaded = /* @__PURE__ */ new Map();
+      dirtyHistory = /* @__PURE__ */ new Set();
+      /** Bounded probes of native files (harness, identity, head/tail hashes), by path. */
+      probes = /* @__PURE__ */ new Map();
+      /** Verified "is a prefix copy of" relations, by the shorter file. */
+      relations = /* @__PURE__ */ new Map();
+      probesDirty = false;
       /** Dictionary lookups of the typo fingerprint (word -> in dictionary). */
       dictionary = /* @__PURE__ */ new Map();
-      dirty = false;
+      dictionarySize = 0;
+      indexDirty = false;
+      /** Shards read in this run (diagnostics). */
+      shardsRead = 0;
       constructor(dir) {
         this.dir = dir;
+      }
+      get root() {
+        return path22.join(this.dir, DIR);
       }
       load() {
         if (!this.dir)
           return;
         try {
-          const value = deserialize(fs29.readFileSync(path23.join(this.dir, FILE)));
+          const value = deserialize(fs30.readFileSync(path22.join(this.root, INDEX)));
           if (value?.version !== FACTS_VERSION || !Array.isArray(value.entries))
             return;
-          for (const facts of value.entries)
-            this.entries.set(facts.file, facts);
-          this.historyEntry = value.history ?? null;
-          if (value.dictionary instanceof Map)
-            this.dictionary = value.dictionary;
-          this.dictionarySize = this.dictionary.size;
+          for (const m of value.entries)
+            this.metas.set(m.file, m);
+          for (const h of Array.isArray(value.history) ? value.history : [])
+            this.historyMetas.set(h.file, h);
+          for (const [file, p] of Array.isArray(value.probes) ? value.probes : [])
+            this.probes.set(file, p);
+          for (const r3 of Array.isArray(value.relations) ? value.relations : [])
+            this.relations.set(r3.file, r3);
+        } catch {
+        }
+        try {
+          const d = deserialize(fs30.readFileSync(path22.join(this.root, DICTIONARY)));
+          if (d instanceof Map) {
+            this.dictionary = d;
+            this.dictionarySize = d.size;
+          }
         } catch {
         }
       }
-      dictionarySize = 0;
+      shard(meta) {
+        const hit2 = this.loaded.get(meta.file);
+        if (hit2)
+          return hit2;
+        try {
+          const facts = deserialize(fs30.readFileSync(path22.join(this.root, meta.shard)));
+          if (!facts || facts.v !== FACTS_VERSION || facts.file !== (meta.source ?? meta.file))
+            return null;
+          this.shardsRead++;
+          this.loaded.set(meta.file, facts);
+          return facts;
+        } catch {
+          return null;
+        }
+      }
+      /** Probe of an unchanged file, else a fresh one from `probe` (null: unreadable). */
+      probe(file, size, mtimeMs, probe2) {
+        const old = this.probes.get(file);
+        if (old && old.size === size && old.mtimeMs === mtimeMs)
+          return old;
+        const fresh = probe2();
+        if (fresh) {
+          this.probes.set(file, fresh);
+          this.probesDirty = true;
+        }
+        return fresh;
+      }
+      /** Replaces the cached prefix relations with this run's (only relations between unchanged files are ever reused). */
+      setRelations(relations) {
+        const same3 = relations.length === this.relations.size && relations.every((r3) => {
+          const o = this.relations.get(r3.file);
+          return o && o.by === r3.by && o.size === r3.size && o.bySize === r3.bySize && o.mtimeMs === r3.mtimeMs && o.byMtimeMs === r3.byMtimeMs;
+        });
+        if (same3)
+          return;
+        this.relations = new Map(relations.map((r3) => [r3.file, r3]));
+        this.probesDirty = true;
+      }
+      /**
+       * Facts of a non-file-backed or adapter source (Cursor, Gemini, Copilot), keyed by an identity
+       * plus size and mtime; parsed again only when that changes.
+       */
+      external(key2, size, mtimeMs, tz, read) {
+        const m = this.metas.get(key2);
+        if (m && m.size === size && m.mtimeMs === mtimeMs && m.tz === tz) {
+          const hit2 = this.shard(m);
+          if (hit2)
+            return Promise.resolve(hit2);
+        }
+        return read().then((facts) => {
+          const stored = { ...facts, size, mtimeMs, tz };
+          this.loaded.set(key2, stored);
+          this.metas.set(key2, { ...metaOf(stored), file: key2, shard: shardOf(key2), source: facts.file });
+          this.dirtyShards.add(key2);
+          this.indexDirty = true;
+          return facts;
+        });
+      }
       /** Cached facts when the file still has the same size and mtime (and story time zone). */
       get(file, size, mtimeMs, tz) {
-        const facts = this.entries.get(file);
-        return facts && facts.size === size && facts.mtimeMs === mtimeMs && (!tz || !facts.tz || facts.tz === tz) ? facts : null;
+        const m = this.metas.get(file);
+        if (!m || m.size !== size || m.mtimeMs !== mtimeMs || tz && m.tz && m.tz !== tz)
+          return null;
+        return this.shard(m);
       }
       /** Previous facts of a file regardless of freshness (for append-only resume). */
       previous(file) {
-        return this.entries.get(file) ?? null;
+        const m = this.metas.get(file);
+        return m ? this.shard(m) : null;
       }
       set(facts) {
-        this.entries.set(facts.file, facts);
-        this.dirty = true;
+        this.loaded.set(facts.file, facts);
+        this.metas.set(facts.file, metaOf(facts));
+        this.dirtyShards.add(facts.file);
+        this.indexDirty = true;
       }
       /**
        * Parsed ~/.claude/history.jsonl (text stripped), re-read only when it
@@ -18094,50 +19503,109 @@ var init_facts_cache = __esm({
       history(file, tz, read) {
         let stat;
         try {
-          stat = fs29.statSync(file);
+          stat = fs30.statSync(file);
         } catch {
           return { entries: [], counters: /* @__PURE__ */ new Map() };
         }
-        const h = this.historyEntry;
-        if (h && h.file === file && h.tz === tz && h.size === stat.size && h.mtimeMs === stat.mtimeMs)
+        const h = this.loadHistory(file);
+        if (h && h.tz === tz && h.size === stat.size && h.mtimeMs === stat.mtimeMs)
           return h.data;
-        const data = read(file, h && h.file === file && h.tz === tz && h.size > 0 && h.size < stat.size ? { data: h.data, size: h.data.bytes ?? h.size } : null);
+        const data = read(file, h && h.tz === tz && h.size > 0 && h.size < stat.size ? { data: h.data, size: h.data.bytes ?? h.size } : null);
         for (const e of data.entries)
           e.text = "";
-        this.historyEntry = { file, size: stat.size, mtimeMs: stat.mtimeMs, tz, data };
-        this.dirty = true;
+        const record2 = { file, shard: shardOf(file, "h-"), size: stat.size, mtimeMs: stat.mtimeMs, tz, data };
+        this.historyLoaded.set(file, record2);
+        this.historyMetas.set(file, { file, shard: record2.shard, size: stat.size, mtimeMs: stat.mtimeMs, tz });
+        this.dirtyHistory.add(file);
+        this.indexDirty = true;
         return data;
       }
-      /** Writes the cache, keeping only files that still exist and are allowed. */
-      save(keep, keepHistory = () => true) {
+      loadHistory(file) {
+        const hit2 = this.historyLoaded.get(file);
+        if (hit2)
+          return hit2;
+        const meta = this.historyMetas.get(file);
+        if (!meta || !this.dir)
+          return null;
+        try {
+          const data = deserialize(fs30.readFileSync(path22.join(this.root, meta.shard)));
+          if (!data || !Array.isArray(data.entries))
+            return null;
+          const record2 = { ...meta, data };
+          this.historyLoaded.set(file, record2);
+          return record2;
+        } catch {
+          return null;
+        }
+      }
+      /**
+       * Writes what changed, keeping only files that are allowed (`keep` sees the
+       * index metadata, so files not read this run are pruned without opening them).
+       */
+      save(keep, keepHistory = () => true, keepProbe = () => true) {
         if (!this.dir)
           return;
-        let removed = false;
-        for (const [file, facts] of this.entries)
-          if (!keep(facts)) {
-            this.entries.delete(file);
-            removed = true;
+        const removedShards = [];
+        for (const [file, meta] of this.metas)
+          if (!keep(meta)) {
+            this.metas.delete(file);
+            this.loaded.delete(file);
+            this.dirtyShards.delete(file);
+            removedShards.push(meta.shard);
           }
-        if (this.historyEntry) {
-          const { data } = this.historyEntry;
+        for (const file of this.probes.keys())
+          if (!keepProbe(file)) {
+            this.probes.delete(file);
+            this.relations.delete(file);
+            this.probesDirty = true;
+          }
+        for (const [file, meta] of this.historyMetas) {
+          if (!fs30.existsSync(file)) {
+            this.historyMetas.delete(file);
+            this.historyLoaded.delete(file);
+            removedShards.push(meta.shard);
+            continue;
+          }
+          const record2 = this.historyLoaded.get(file);
+          if (!record2)
+            continue;
+          const { data } = record2;
           const kept = data.entries.filter(keepHistory);
           if (kept.length !== data.entries.length) {
             const counters = new Map([...data.counters].filter(([session, c]) => keepHistory({ sessionId: session || null, at: null, project: c.project, kind: "human", text: "" })));
-            this.historyEntry = { ...this.historyEntry, size: -1, data: { entries: kept, counters } };
-            removed = true;
+            this.historyLoaded.set(file, { ...record2, size: -1, data: { entries: kept, counters } });
+            this.historyMetas.set(file, { ...meta, size: -1 });
+            this.dirtyHistory.add(file);
           }
         }
-        if (!this.dirty && !removed && this.dictionary.size === this.dictionarySize)
+        const dictionaryChanged = this.dictionary.size !== this.dictionarySize;
+        if (!this.dirtyShards.size && !this.dirtyHistory.size && !removedShards.length && !this.indexDirty && !this.probesDirty && !dictionaryChanged)
           return;
         try {
-          fs29.mkdirSync(this.dir, { recursive: true, mode: 448 });
-          const target = path23.join(this.dir, FILE), temp = `${target}.${process.pid}.tmp`;
-          fs29.writeFileSync(temp, serialize({ version: FACTS_VERSION, entries: [...this.entries.values()], history: this.historyEntry, dictionary: this.dictionary }), { mode: 384 });
-          fs29.renameSync(temp, target);
-          for (const old of fs29.readdirSync(this.dir))
-            if (/^facts-v\d+\.bin$/.test(old) && old !== FILE)
-              fs29.rmSync(path23.join(this.dir, old), { force: true });
-          this.dirty = false;
+          fs30.mkdirSync(this.root, { recursive: true, mode: 448 });
+          for (const file of this.dirtyShards) {
+            const facts = this.loaded.get(file), meta = this.metas.get(file);
+            if (facts && meta)
+              writeAtomic(path22.join(this.root, meta.shard), serialize(facts));
+          }
+          for (const file of this.dirtyHistory) {
+            const record2 = this.historyLoaded.get(file);
+            if (record2)
+              writeAtomic(path22.join(this.root, record2.shard), serialize(record2.data));
+          }
+          for (const shard of removedShards)
+            fs30.rmSync(path22.join(this.root, shard), { force: true });
+          if (dictionaryChanged)
+            writeAtomic(path22.join(this.root, DICTIONARY), serialize(this.dictionary));
+          writeAtomic(path22.join(this.root, INDEX), serialize({ version: FACTS_VERSION, entries: [...this.metas.values()], history: [...this.historyMetas.values()], probes: [...this.probes], relations: [...this.relations.values()] }));
+          for (const old of fs30.readdirSync(this.dir)) {
+            if (/^facts-v\d+\.bin$/.test(old) || /^facts-v\d+$/.test(old) && old !== DIR)
+              fs30.rmSync(path22.join(this.dir, old), { recursive: true, force: true });
+          }
+          this.dirtyShards.clear();
+          this.dirtyHistory.clear();
+          this.indexDirty = false;
+          this.probesDirty = false;
           this.dictionarySize = this.dictionary.size;
         } catch {
         }
@@ -18159,7 +19627,7 @@ var init_scan_pool = __esm({
   "packages/core/dist/analytics/scan-pool.js"() {
     "use strict";
     init_extract();
-    readFacts = (job) => stripText(extractFile(job.file, job.harness, { timezone: job.timezone }));
+    readFacts = (job) => stripText(extractFile(job.file, job.harness, { timezone: job.timezone, ...job.archive ? { archive: true } : {}, ...job.checks?.length ? { checks: job.checks } : {} }));
     errorCode = (error) => error instanceof Error && /^[a-z][a-z0-9_]{0,63}$/.test(error.message) ? error.message : "source_unreadable";
     inlineScanExecutor = {
       async scan(jobs, onResult, signal) {
@@ -18178,32 +19646,1021 @@ var init_scan_pool = __esm({
 
 // packages/core/dist/analytics/native-census.js
 import os8 from "node:os";
-import path24 from "node:path";
+import fs31 from "node:fs";
+import path23 from "node:path";
 function nativeAuditRoots(harness, options, env = process.env, home2 = os8.homedir()) {
   if (harness === "claude") {
     const configured = options.claudeDir ?? env.CLAUDE_CONFIG_DIR;
-    const roots = configured ? list(configured) : [path24.join(env.XDG_CONFIG_HOME && path24.isAbsolute(env.XDG_CONFIG_HOME) ? env.XDG_CONFIG_HOME : path24.join(home2, ".config"), "claude"), path24.join(home2, ".claude")];
-    return [...new Set(roots.map((p) => path24.basename(p) === "projects" ? p : path24.join(p, "projects")))];
+    const roots = configured ? list(configured) : [path23.join(env.XDG_CONFIG_HOME && path23.isAbsolute(env.XDG_CONFIG_HOME) ? env.XDG_CONFIG_HOME : path23.join(home2, ".config"), "claude"), path23.join(home2, ".claude")];
+    return [...new Set(roots.map((p) => path23.basename(p) === "projects" ? p : path23.join(p, "projects")))];
   }
   if (harness === "codex") {
-    const roots = list(options.codexDir ?? env.POTSHERD_CODEX_DIR ?? env.CODEX_HOME ?? path24.join(home2, ".codex"));
-    return [...new Set(roots.flatMap((p) => ["sessions", "archived_sessions"].includes(path24.basename(p)) ? [p] : [path24.join(p, "sessions"), path24.join(p, "archived_sessions")]))];
+    const roots = list(options.codexDir ?? env.POTSHERD_CODEX_DIR ?? env.CODEX_HOME ?? path23.join(home2, ".codex"));
+    return [...new Set(roots.flatMap((p) => ["sessions", "archived_sessions"].includes(path23.basename(p)) ? [p] : [path23.join(p, "sessions"), path23.join(p, "archived_sessions")]))];
   }
   if (harness === "pi") {
     if (!options.piDir && !env.POTSHERD_PI_DIR && env.PI_CODING_AGENT_DIR)
-      return list(env.PI_CODING_AGENT_DIR).map((p) => path24.join(p, "sessions"));
+      return list(env.PI_CODING_AGENT_DIR).map((p) => path23.join(p, "sessions"));
     if (!options.piDir && !env.POTSHERD_PI_DIR && env.PI_AGENT_DIR)
       return list(env.PI_AGENT_DIR);
-    return list(options.piDir ?? env.POTSHERD_PI_DIR ?? path24.join(home2, ".pi")).map((p) => path24.join(p, "agent", "sessions"));
+    return list(options.piDir ?? env.POTSHERD_PI_DIR ?? path23.join(home2, ".pi")).map((p) => path23.join(p, "agent", "sessions"));
   }
-  return list(options.opencodeDir ?? env.POTSHERD_OPENCODE_DIR ?? env.OPENCODE_DATA_DIR ?? path24.join(env.XDG_DATA_HOME && path24.isAbsolute(env.XDG_DATA_HOME) ? env.XDG_DATA_HOME : path24.join(home2, ".local", "share"), "opencode"));
+  return list(options.opencodeDir ?? env.POTSHERD_OPENCODE_DIR ?? env.OPENCODE_DATA_DIR ?? path23.join(env.XDG_DATA_HOME && path23.isAbsolute(env.XDG_DATA_HOME) ? env.XDG_DATA_HOME : path23.join(home2, ".local", "share"), "opencode"));
+}
+function claudeDesktopRoots(options, env = process.env, home2 = os8.homedir()) {
+  const explicit = env.POTSHERD_CLAUDE_DESKTOP_DIR;
+  if (!explicit && (options.claudeDir ?? env.CLAUDE_CONFIG_DIR))
+    return [];
+  const base3 = explicit ? path23.resolve(expandTilde(explicit)) : path23.join(home2, "Library", "Application Support", "Claude", "local-agent-mode-sessions");
+  const out = [];
+  const walk2 = (dir, depth) => {
+    let entries;
+    try {
+      entries = fs31.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (!e.isDirectory())
+        continue;
+      const p = path23.join(dir, e.name);
+      if (e.name === ".claude") {
+        const projects3 = path23.join(p, "projects");
+        if (fs31.existsSync(projects3))
+          out.push(projects3);
+        continue;
+      }
+      if (depth < 6 && !e.name.startsWith("."))
+        walk2(p, depth + 1);
+    }
+  };
+  walk2(base3, 0);
+  return out.sort();
 }
 var list;
 var init_native_census = __esm({
   "packages/core/dist/analytics/native-census.js"() {
     "use strict";
     init_paths();
-    list = (s) => s.split(",").map((p) => p.trim()).filter(Boolean).map((p) => path24.resolve(expandTilde(p))).filter((p, i, a) => a.indexOf(p) === i);
+    list = (s) => s.split(",").map((p) => p.trim()).filter(Boolean).map((p) => path23.resolve(expandTilde(p))).filter((p, i, a) => a.indexOf(p) === i);
+  }
+});
+
+// packages/core/dist/adapters/cursor.js
+var cursor_exports = {};
+__export(cursor_exports, {
+  CURSOR_DOCTOR_NOTE: () => CURSOR_DOCTOR_NOTE,
+  SIDECHAIN_DIR: () => SIDECHAIN_DIR3,
+  TRANSCRIPTS_DIR: () => TRANSCRIPTS_DIR,
+  classifyProjectSlug: () => classifyProjectSlug,
+  cursorAdapter: () => cursorAdapter,
+  cursorDir: () => cursorDir,
+  cursorProjectsDir: () => cursorProjectsDir,
+  cursorSlug: () => cursorSlug,
+  discover: () => discover3,
+  doctorLine: () => doctorLine3,
+  filesFromCursorInput: () => filesFromCursorInput,
+  parse: () => parse3,
+  parseCursorTimestamp: () => parseCursorTimestamp,
+  readPrompt: () => readPrompt,
+  recoverCwd: () => recoverCwd,
+  toolName: () => toolName
+});
+import fs32 from "node:fs";
+import path24 from "node:path";
+function cursorSlug(cwd) {
+  return cwd.replace(/^[/\\]+/, "").replace(/[/\\_]/g, "-");
+}
+function classifyProjectSlug(slug) {
+  if (slug === "empty-window")
+    return "empty-window";
+  if (/^\d{10,}$/.test(slug))
+    return "window-id";
+  return "path";
+}
+function discover3(dirOverride) {
+  const root = cursorProjectsDir(dirOverride);
+  const out = [];
+  for (const slug of readdirSafe3(root, "dir")) {
+    const transcripts = path24.join(root, slug, TRANSCRIPTS_DIR);
+    for (const sessionId of readdirSafe3(transcripts, "dir")) {
+      const sessionDir = path24.join(transcripts, sessionId);
+      for (const file of readdirSafe3(sessionDir, "file")) {
+        if (!file.endsWith(".jsonl"))
+          continue;
+        const source = statSource(path24.join(sessionDir, file), slug, {
+          sessionId: basenameId(file),
+          isSidechain: false
+        });
+        if (source)
+          out.push(source);
+      }
+      const sidechains = path24.join(sessionDir, SIDECHAIN_DIR3);
+      for (const file of readdirSafe3(sidechains, "file")) {
+        if (!file.endsWith(".jsonl"))
+          continue;
+        const source = statSource(path24.join(sidechains, file), slug, {
+          sessionId: basenameId(file),
+          isSidechain: true,
+          parentSessionId: sessionId
+        });
+        if (source)
+          out.push(source);
+      }
+    }
+  }
+  return out.sort((a, b2) => a.path < b2.path ? -1 : a.path > b2.path ? 1 : 0);
+}
+function basenameId(file) {
+  return file.slice(0, -".jsonl".length);
+}
+function readdirSafe3(dir, want) {
+  let entries;
+  try {
+    entries = fs32.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const names = [];
+  for (const e of entries) {
+    if (e.name.startsWith("."))
+      continue;
+    if (want === "dir" ? e.isDirectory() : e.isFile())
+      names.push(e.name);
+  }
+  return names.sort();
+}
+function statSource(file, projectSlug, rest) {
+  let st;
+  try {
+    st = fs32.statSync(file);
+  } catch {
+    return null;
+  }
+  return {
+    sessionId: rest.sessionId,
+    harness: "cursor",
+    path: file,
+    projectSlug,
+    bytes: st.size,
+    mtimeMs: st.mtimeMs,
+    isSidechain: rest.isSidechain,
+    ...rest.parentSessionId ? { parentSessionId: rest.parentSessionId } : {},
+    status: "live"
+  };
+}
+async function parse3(source, options = {}) {
+  const sessionId = options.sessionId ?? source.sessionId;
+  const projectSlug = options.projectSlug ?? source.projectSlug;
+  const isSidechain = source.isSidechain;
+  const unknownTypes = {};
+  const bump = (key2) => {
+    unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+  };
+  const exchanges = [];
+  const cwdCandidates = [];
+  let malformedLines = 0;
+  let endOffset = options.fromOffset ?? 0;
+  let seq = options.fromSeq ?? 0;
+  let userPrompts = 0;
+  let assistantTurns = 0;
+  let toolCallCount = 0;
+  let firstTs;
+  let lastTs;
+  let open2;
+  const flush = () => {
+    if (!open2)
+      return;
+    exchanges.push({
+      id: exchangeId(sessionId, open2.seq),
+      sessionId,
+      seq: open2.seq,
+      // Every exchange needs a ts. A prompt with no `<timestamp>` (all of the
+      // subagent ones) inherits the last one seen, and if there was none, the
+      // session's mtime-derived start. Never invented, always explained.
+      ts: open2.ts ?? lastTs ?? firstTs ?? isoFromMs(source.mtimeMs),
+      userText: open2.userText,
+      assistantText: open2.assistantTexts.join("\n\n"),
+      toolCalls: open2.toolCalls,
+      filesTouched: uniq(open2.files),
+      isSidechain,
+      // No `parentUuid`: cursor records carry no ids of any kind, so an
+      // exchange cannot name its parent. Left off rather than faked.
+      redacted: false
+      // L2 redacts between here and the index.
+    });
+    open2 = void 0;
+  };
+  const openFor = (ts, userText) => {
+    flush();
+    seq += 1;
+    open2 = { seq, ts, userText, assistantTexts: [], toolCalls: [], files: [] };
+  };
+  for await (const line of readJsonlLines(source.path, { start: options.fromOffset ?? 0 })) {
+    const record2 = parseJsonLine(line.text);
+    if (!line.terminated) {
+      if (record2 === void 0) {
+        if (line.text.trim())
+          malformedLines += 1;
+        break;
+      }
+    }
+    endOffset = line.end;
+    if (record2 === void 0) {
+      if (line.text.trim())
+        malformedLines += 1;
+      continue;
+    }
+    if (!isRecord(record2)) {
+      bump("(not an object)");
+      continue;
+    }
+    const role = record2.role;
+    const message2 = record2.message;
+    const content = isRecord(message2) ? message2.content : void 0;
+    if (typeof role !== "string") {
+      bump("(no role)");
+      continue;
+    }
+    if (!Array.isArray(content)) {
+      bump(`role:${role} (no message.content)`);
+      continue;
+    }
+    if (role === "user") {
+      const text2 = joinText(content, bump, role);
+      const prompt = readPrompt(text2);
+      if (prompt.injected && open2) {
+        bump("user:injected-continuation");
+        continue;
+      }
+      if (prompt.ts) {
+        if (!firstTs)
+          firstTs = prompt.ts;
+        lastTs = prompt.ts;
+      }
+      openFor(prompt.ts, prompt.text);
+      userPrompts += 1;
+      continue;
+    }
+    if (role !== "assistant") {
+      bump(`role:${role}`);
+      continue;
+    }
+    assistantTurns += 1;
+    if (!open2)
+      openFor(lastTs, "");
+    for (const raw of content) {
+      if (!isRecord(raw)) {
+        bump("block:(not an object)");
+        continue;
+      }
+      const block2 = raw;
+      if (block2.type === "text") {
+        if (typeof block2.text === "string" && block2.text)
+          open2.assistantTexts.push(block2.text);
+        continue;
+      }
+      if (block2.type === "tool_use") {
+        toolCallCount += 1;
+        open2.toolCalls.push({
+          name: toolName(block2.name),
+          input: stringifyToolInput(block2.input)
+          // `result` is deliberately absent: cursor persists no tool output.
+          // See CURSOR_DOCTOR_NOTE. `isError` is unknowable for the same reason.
+        });
+        for (const f of filesFromCursorInput(block2.input))
+          open2.files.push(f);
+        for (const p of absolutePaths(block2.input))
+          cwdCandidates.push(p);
+        continue;
+      }
+      bump(`block:${typeof block2.type === "string" ? block2.type : String(block2.type)}`);
+    }
+  }
+  flush();
+  const mtimeIso = isoFromMs(source.mtimeMs);
+  const startedAt = firstTs ?? mtimeIso;
+  const endedAt = mtimeIso >= (lastTs ?? "") ? mtimeIso : lastTs;
+  const session = {
+    id: sessionId,
+    harness: "cursor",
+    sourcePath: source.path,
+    // `project` is a *recovered* cwd: an absolute directory seen in this
+    // session's own tool inputs whose cursorSlug() equals the project
+    // directory name. Empty when nothing corroborates — window-id and
+    // empty-window projects never have a cwd, and neither is invented.
+    project: recoverCwd(projectSlug, cwdCandidates) ?? "",
+    projectSlug,
+    startedAt,
+    endedAt,
+    // title / gitBranch / entrypoint / model / agentName: **not knowable from
+    // ~/.cursor**. Cursor keeps all four in VS Code's workspaceStorage and
+    // globalStorage sqlite, which potsherd does not read. Left undefined.
+    isSidechain,
+    ...source.parentSessionId ? { parentSessionId: source.parentSessionId } : {},
+    counts: {
+      userPrompts,
+      assistantTurns,
+      toolCalls: toolCallCount,
+      bytes: source.bytes
+    },
+    status: source.status ?? "live"
+  };
+  return { session, exchanges, unknownTypes, endOffset, malformedLines };
+}
+function readPrompt(text2) {
+  const open2 = text2.indexOf(OPEN_QUERY);
+  const preamble = open2 >= 0 ? text2.slice(0, open2) : text2;
+  const stamp = preamble.match(TIMESTAMP_RE);
+  const ts = stamp ? parseCursorTimestamp(stamp[1]) : void 0;
+  if (open2 < 0) {
+    return { text: text2.replace(TIMESTAMP_RE, "").trim(), injected: false, ...ts ? { ts } : {} };
+  }
+  const bodyStart = open2 + OPEN_QUERY.length;
+  const injected = text2[bodyStart] !== "\n";
+  const close = text2.lastIndexOf(CLOSE_QUERY);
+  const body = close > bodyStart ? text2.slice(bodyStart, close) : text2.slice(bodyStart);
+  return { text: body.trim(), injected, ...ts ? { ts } : {} };
+}
+function parseCursorTimestamp(raw) {
+  const m = raw.trim().match(CURSOR_TS_RE);
+  if (!m)
+    return void 0;
+  const month = MONTHS3.indexOf(m[1].toLowerCase());
+  if (month < 0)
+    return void 0;
+  const day = Number(m[2]);
+  const year = Number(m[3]);
+  let hour = Number(m[4]);
+  const minute = Number(m[5]);
+  const second = m[6] ? Number(m[6]) : 0;
+  const meridiem = m[7].toLowerCase();
+  if (hour === 12)
+    hour = 0;
+  if (meridiem === "p")
+    hour += 12;
+  if (day < 1 || day > 31 || minute > 59 || second > 59 || hour > 23)
+    return void 0;
+  const offsetHours = m[8] ? Number(m[8]) : 0;
+  const offsetMinutes = m[9] ? Number(m[9]) : 0;
+  const sign = m[8]?.startsWith("-") ? -1 : 1;
+  const offset = offsetHours * 60 + sign * offsetMinutes;
+  const ms = Date.UTC(year, month, day, hour, minute, second) - offset * 6e4;
+  if (!Number.isFinite(ms))
+    return void 0;
+  return new Date(ms).toISOString();
+}
+function toolName(name) {
+  if (typeof name !== "string")
+    return "unknown";
+  const first = name.split("\n")[0].trim();
+  return first || "unknown";
+}
+function filesFromCursorInput(input) {
+  if (typeof input === "string") {
+    const out2 = [];
+    for (const m of input.matchAll(PATCH_FILE_RE)) {
+      const file = m[1].trim();
+      if (file)
+        out2.push(file);
+    }
+    return uniq(out2);
+  }
+  if (!isRecord(input))
+    return [];
+  const out = filesFromToolInput(input);
+  for (const key2 of CURSOR_FILE_KEYS) {
+    const value = input[key2];
+    if (typeof value === "string" && value.trim())
+      out.push(value);
+    else if (Array.isArray(value)) {
+      for (const item of value)
+        if (typeof item === "string" && item.trim())
+          out.push(item);
+    }
+  }
+  return uniq(out);
+}
+function absolutePaths(input) {
+  const out = [];
+  const visit = (value, depth) => {
+    if (depth > 4)
+      return;
+    if (typeof value === "string") {
+      if (value.startsWith("/") && !value.includes("\n"))
+        out.push(value);
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value)
+        visit(item, depth + 1);
+      return;
+    }
+    if (isRecord(value)) {
+      for (const item of Object.values(value))
+        visit(item, depth + 1);
+    }
+  };
+  if (typeof input === "string") {
+    for (const m of input.matchAll(PATCH_FILE_RE)) {
+      const file = m[1].trim();
+      if (file.startsWith("/"))
+        out.push(file);
+    }
+    return out;
+  }
+  visit(input, 0);
+  return out;
+}
+function recoverCwd(projectSlug, candidates2) {
+  if (classifyProjectSlug(projectSlug) !== "path")
+    return void 0;
+  const hits = /* @__PURE__ */ new Map();
+  for (const candidate of candidates2) {
+    let dir = candidate;
+    for (let depth = 0; depth < 32 && dir !== "/" && dir !== "."; depth += 1) {
+      if (cursorSlug(dir) === projectSlug) {
+        hits.set(dir, (hits.get(dir) ?? 0) + 1);
+        break;
+      }
+      const parent = path24.dirname(dir);
+      if (parent === dir)
+        break;
+      dir = parent;
+    }
+  }
+  let best;
+  let bestCount = 0;
+  for (const [dir, count5] of [...hits].sort((a, b2) => a[0] < b2[0] ? -1 : 1)) {
+    if (count5 > bestCount) {
+      best = dir;
+      bestCount = count5;
+    }
+  }
+  return best;
+}
+function joinText(content, bump, role) {
+  const parts = [];
+  for (const raw of content) {
+    if (!isRecord(raw)) {
+      bump("block:(not an object)");
+      continue;
+    }
+    if (raw.type === "text") {
+      if (typeof raw.text === "string")
+        parts.push(raw.text);
+      continue;
+    }
+    bump(`${role}/block:${typeof raw.type === "string" ? raw.type : String(raw.type)}`);
+  }
+  return parts.join("\n");
+}
+function isoFromMs(ms) {
+  return new Date(ms).toISOString();
+}
+function doctorLine3(dirOverride) {
+  const dir = cursorProjectsDir(dirOverride);
+  let found = [];
+  try {
+    found = discover3(dirOverride);
+  } catch {
+    found = [];
+  }
+  const exists2 = fs32.existsSync(dir);
+  const sidechains = found.filter((f) => f.isSidechain).length;
+  const sessions = found.length - sidechains;
+  const parts = [`${sessions} session${sessions === 1 ? "" : "s"}`];
+  if (sidechains > 0)
+    parts.push(`${sidechains} sidechains`);
+  parts.push("no titles, no tool results");
+  return formatDoctorLine({
+    harness: "cursor",
+    status: exists2 || found.length > 0 ? "ready" : "absent",
+    dir,
+    note: exists2 || found.length > 0 ? parts.join(" \xB7 ") : "Cursor not installed"
+  });
+}
+var TRANSCRIPTS_DIR, SIDECHAIN_DIR3, CURSOR_DOCTOR_NOTE, TIMESTAMP_RE, OPEN_QUERY, CLOSE_QUERY, MONTHS3, CURSOR_TS_RE, CURSOR_FILE_KEYS, PATCH_FILE_RE, cursorAdapter;
+var init_cursor = __esm({
+  "packages/core/dist/adapters/cursor.js"() {
+    "use strict";
+    init_paths();
+    init_doctor_line();
+    init_jsonl();
+    init_claude();
+    init_content();
+    init_paths();
+    TRANSCRIPTS_DIR = "agent-transcripts";
+    SIDECHAIN_DIR3 = "subagents";
+    CURSOR_DOCTOR_NOTE = "cursor: no timestamps on assistant turns (session times come from file mtime), no tool results recorded at all, and title/model/git-branch are unavailable \u2014 they live in VS Code's workspaceStorage, which potsherd does not read.";
+    TIMESTAMP_RE = /<timestamp>([^<]*)<\/timestamp>/;
+    OPEN_QUERY = "<user_query>";
+    CLOSE_QUERY = "</user_query>";
+    MONTHS3 = [
+      "january",
+      "february",
+      "march",
+      "april",
+      "may",
+      "june",
+      "july",
+      "august",
+      "september",
+      "october",
+      "november",
+      "december"
+    ];
+    CURSOR_TS_RE = new RegExp("^(?:[A-Za-z]+,\\s*)?([A-Za-z]+)\\s+(\\d{1,2}),\\s*(\\d{4}),\\s*(\\d{1,2}):(\\d{2})(?::(\\d{2}))?\\s*([AaPp])\\.?[Mm]\\.?(?:\\s*\\(\\s*UTC(?:\\s*([+-]\\d{1,2})(?::?(\\d{2}))?)?\\s*\\))?\\s*$");
+    CURSOR_FILE_KEYS = ["target_notebook", "paths"];
+    PATCH_FILE_RE = /^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/gm;
+    cursorAdapter = {
+      harness: "cursor",
+      displayName: "Cursor",
+      sourceDir: () => cursorDir(),
+      discover: () => discover3(),
+      parse: parse3
+    };
+  }
+});
+
+// packages/core/dist/adapters/gemini.js
+var gemini_exports = {};
+__export(gemini_exports, {
+  CHATS_DIR: () => CHATS_DIR,
+  DISPLAY_NAME: () => DISPLAY_NAME3,
+  GEMINI_DOCTOR_NOTE: () => GEMINI_DOCTOR_NOTE,
+  GEMINI_FORMAT_UNVERIFIED: () => GEMINI_FORMAT_UNVERIFIED,
+  default: () => gemini_default,
+  discover: () => discover4,
+  doctorLine: () => doctorLine4,
+  geminiAdapter: () => geminiAdapter,
+  geminiDir: () => geminiDir,
+  geminiTmpDir: () => geminiTmpDir,
+  isHumanTurn: () => isHumanTurn,
+  parse: () => parse4,
+  projectHashes: () => projectHashes,
+  recoverCwd: () => recoverCwd2,
+  sessionIdFromFilename: () => sessionIdFromFilename,
+  sourceDir: () => sourceDir3
+});
+import fs33 from "node:fs";
+import path25 from "node:path";
+import crypto5 from "node:crypto";
+function sourceDir3(override) {
+  return geminiTmpDir(override);
+}
+function discover4(override) {
+  const root = sourceDir3(override);
+  const out = [];
+  let hashes;
+  try {
+    hashes = fs33.readdirSync(root, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const hash3 of hashes) {
+    if (!hash3.isDirectory())
+      continue;
+    const dir = path25.join(root, hash3.name, CHATS_DIR);
+    let files;
+    try {
+      files = fs33.readdirSync(dir);
+    } catch {
+      continue;
+    }
+    for (const file of files) {
+      if (!file.endsWith(".json"))
+        continue;
+      const full = path25.join(dir, file);
+      let stat;
+      try {
+        stat = fs33.statSync(full);
+      } catch {
+        continue;
+      }
+      if (!stat.isFile())
+        continue;
+      out.push({
+        sessionId: sessionIdFromFilename(file, hash3.name),
+        harness: "gemini",
+        path: full,
+        projectSlug: hash3.name,
+        bytes: stat.size,
+        mtimeMs: stat.mtimeMs,
+        isSidechain: false,
+        status: "live"
+      });
+    }
+  }
+  out.sort((a, b2) => a.path < b2.path ? -1 : a.path > b2.path ? 1 : 0);
+  return out;
+}
+function sessionIdFromFilename(file, projectHash) {
+  const base3 = path25.basename(file, ".json").replace(/^checkpoint-/, "") || "checkpoint";
+  return `${projectHash.slice(0, 12)}-${base3}`;
+}
+async function parse4(source, options = {}) {
+  const src = typeof source === "string" ? void 0 : source;
+  const absolute2 = path25.resolve(typeof source === "string" ? source : source.path);
+  const unknownTypes = {};
+  let malformedLines = 0;
+  let raw = "";
+  try {
+    raw = fs33.readFileSync(absolute2, "utf8");
+  } catch {
+    raw = "";
+  }
+  const endOffset = Buffer.byteLength(raw, "utf8");
+  let doc;
+  try {
+    doc = raw.trim() ? JSON.parse(raw) : void 0;
+  } catch {
+    doc = void 0;
+    if (raw.trim())
+      malformedLines += 1;
+  }
+  const { turns, meta } = unwrap(doc);
+  if (doc !== void 0 && turns.length === 0 && !meta)
+    malformedLines += 1;
+  const projectSlug = options.projectSlug ?? src?.projectSlug ?? path25.basename(path25.dirname(path25.dirname(absolute2)));
+  const sessionId = options.sessionId ?? (meta && typeof meta.sessionId === "string" && meta.sessionId.trim() ? meta.sessionId : sessionIdFromFilename(absolute2, projectSlug));
+  const mtimeMs = options.mtimeMs ?? src?.mtimeMs ?? statMtime2(absolute2);
+  const fileTime = new Date(mtimeMs).toISOString();
+  const counts2 = { userPrompts: 0, assistantTurns: 0, toolCalls: 0 };
+  const cwdCandidates = [];
+  const exchanges = buildExchanges3(turns, sessionId, fileTime, counts2, unknownTypes, cwdCandidates);
+  const metaString = (key2) => {
+    if (!meta)
+      return void 0;
+    const v = meta[key2];
+    return typeof v === "string" && v.trim() ? v : void 0;
+  };
+  const startedAt = metaString("startTime") ?? metaString("startedAt") ?? fileTime;
+  const endedAt = metaString("lastUpdated") ?? metaString("updatedAt") ?? fileTime;
+  const cwd = metaString("cwd") ?? metaString("projectRoot");
+  const title = metaString("title") ?? metaString("name") ?? metaString("tag");
+  const model = metaString("model");
+  const gitBranch = metaString("gitBranch") ?? metaString("branch");
+  const session = {
+    id: sessionId,
+    harness: "gemini",
+    sourcePath: absolute2,
+    project: cwd ?? recoverCwd2(projectSlug, cwdCandidates) ?? "",
+    projectSlug,
+    startedAt,
+    endedAt: endedAt < startedAt ? startedAt : endedAt,
+    ...title ? { title } : {},
+    ...gitBranch ? { gitBranch } : {},
+    entrypoint: "cli",
+    ...model ? { model } : {},
+    isSidechain: false,
+    counts: {
+      userPrompts: counts2.userPrompts,
+      assistantTurns: counts2.assistantTurns,
+      toolCalls: counts2.toolCalls,
+      bytes: options.bytes ?? src?.bytes ?? endOffset
+    },
+    status: options.status ?? src?.status ?? "live"
+  };
+  return { session, exchanges, unknownTypes, endOffset, malformedLines };
+}
+function unwrap(doc) {
+  if (Array.isArray(doc))
+    return { turns: doc };
+  if (!isRecord(doc))
+    return { turns: [] };
+  for (const key2 of HISTORY_KEYS2) {
+    const v = doc[key2];
+    if (Array.isArray(v))
+      return { turns: v, meta: doc };
+  }
+  return { turns: [], meta: doc };
+}
+function buildExchanges3(turns, sessionId, fileTime, counts2, unknownTypes, cwdCandidates) {
+  const out = [];
+  let seq = 0;
+  let current = null;
+  const finalize = () => {
+    if (!current)
+      return;
+    const b2 = current;
+    current = null;
+    if (!b2.userTexts.length && !b2.assistantTexts.length && !b2.toolCalls.length)
+      return;
+    out.push({
+      id: exchangeId(sessionId, b2.seq),
+      sessionId,
+      seq: b2.seq,
+      ts: fileTime,
+      userText: b2.userTexts.join("\n\n"),
+      assistantText: b2.assistantTexts.join("\n\n"),
+      toolCalls: b2.toolCalls,
+      filesTouched: uniq(b2.files),
+      isSidechain: false,
+      redacted: false
+    });
+  };
+  const open2 = () => {
+    seq += 1;
+    current = {
+      seq,
+      userTexts: [],
+      assistantTexts: [],
+      toolCalls: [],
+      byName: /* @__PURE__ */ new Map(),
+      files: []
+    };
+    return current;
+  };
+  for (const turn of turns) {
+    if (!isRecord(turn)) {
+      unknownTypes["(not an object)"] = (unknownTypes["(not an object)"] ?? 0) + 1;
+      continue;
+    }
+    const role = typeof turn.role === "string" ? turn.role : "";
+    if (!HANDLED_ROLES.has(role)) {
+      const key2 = `role:${role || "(no role)"}`;
+      unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+      continue;
+    }
+    const parts = partsOf(turn, unknownTypes);
+    if (isHumanTurn(role, parts)) {
+      finalize();
+      counts2.userPrompts += 1;
+      const b3 = open2();
+      for (const p of parts) {
+        if (typeof p.text === "string" && p.text)
+          b3.userTexts.push(p.text);
+      }
+      continue;
+    }
+    const b2 = current ?? open2();
+    const isModel = role === "model" || role === "assistant";
+    if (isModel)
+      counts2.assistantTurns += 1;
+    for (const p of parts) {
+      if (typeof p.text === "string" && p.text.trim())
+        b2.assistantTexts.push(p.text);
+      const call = p.functionCall;
+      if (isRecord(call)) {
+        const name2 = typeof call.name === "string" ? call.name : "unknown";
+        const args = call.args ?? call.arguments;
+        b2.toolCalls.push({ name: name2, input: stringifyToolInput(args) });
+        counts2.toolCalls += 1;
+        b2.byName.set(name2, b2.toolCalls.length - 1);
+        for (const f of filesFromToolInput(args)) {
+          b2.files.push(f);
+          cwdCandidates.push(f);
+        }
+      }
+      const res = p.functionResponse;
+      if (!isRecord(res))
+        continue;
+      const name = typeof res.name === "string" ? res.name : "unknown";
+      const result = stringifyToolOutput(res.response ?? res.output ?? res.content);
+      const isError = isRecord(res.response) && typeof res.response["error"] !== "undefined" ? true : void 0;
+      const at = b2.byName.get(name);
+      if (at !== void 0) {
+        const answered3 = b2.toolCalls[at];
+        if (answered3) {
+          if (result !== void 0)
+            answered3.result = result;
+          if (isError)
+            answered3.isError = true;
+        }
+        b2.byName.delete(name);
+        continue;
+      }
+      b2.toolCalls.push({
+        name,
+        input: "",
+        ...result !== void 0 ? { result } : {},
+        ...isError ? { isError: true } : {}
+      });
+      counts2.toolCalls += 1;
+    }
+  }
+  finalize();
+  return out;
+}
+function partsOf(turn, unknownTypes) {
+  const parts = turn.parts ?? turn.content;
+  if (typeof parts === "string")
+    return [{ text: parts }];
+  if (!Array.isArray(parts))
+    return [];
+  const out = [];
+  for (const p of parts) {
+    if (typeof p === "string") {
+      out.push({ text: p });
+      continue;
+    }
+    if (!isRecord(p))
+      continue;
+    for (const key2 of Object.keys(p)) {
+      if (HANDLED_PART_KEYS.has(key2))
+        continue;
+      const k = `part:${key2}`;
+      const counts2 = unknownTypes;
+      counts2[k] = (counts2[k] ?? 0) + 1;
+    }
+    out.push(p);
+  }
+  return out;
+}
+function isHumanTurn(role, parts) {
+  if (role !== "user")
+    return false;
+  if (parts.length === 0)
+    return true;
+  return parts.some((p) => !isRecord(p.functionResponse));
+}
+function projectHashes(cwd) {
+  const sha = (s) => crypto5.createHash("sha256").update(s).digest("hex");
+  const trimmed = cwd.length > 1 ? cwd.replace(/[/\\]+$/, "") : cwd;
+  return uniq([sha(cwd), sha(trimmed), sha(trimmed + path25.sep)]);
+}
+function recoverCwd2(projectHash, candidates2) {
+  if (!/^[0-9a-f]{16,}$/i.test(projectHash))
+    return void 0;
+  const seen = /* @__PURE__ */ new Set();
+  const dirs = [];
+  for (const c of candidates2) {
+    if (!path25.isAbsolute(c))
+      continue;
+    let dir = path25.dirname(path25.resolve(c));
+    for (let i = 0; i < 40; i += 1) {
+      if (seen.has(dir))
+        break;
+      seen.add(dir);
+      dirs.push(dir);
+      const up = path25.dirname(dir);
+      if (up === dir)
+        break;
+      dir = up;
+    }
+  }
+  dirs.sort((a, b2) => b2.length - a.length);
+  const want = projectHash.toLowerCase();
+  for (const dir of dirs) {
+    if (projectHashes(dir).some((h) => h === want))
+      return dir;
+  }
+  return void 0;
+}
+function statMtime2(absolute2) {
+  try {
+    return fs33.statSync(absolute2).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+function doctorLine4(override) {
+  const tmp = sourceDir3(override);
+  const root = geminiDir(override);
+  let found = [];
+  try {
+    found = discover4(override);
+  } catch {
+    found = [];
+  }
+  const installed = fs33.existsSync(root);
+  const tmpExists = fs33.existsSync(tmp);
+  let status3;
+  let note;
+  if (found.length > 0) {
+    status3 = "ready";
+    note = `${found.length} checkpoint${found.length === 1 ? "" : "s"} \xB7 unverified format`;
+  } else if (installed || tmpExists) {
+    status3 = "empty";
+    note = tmpExists ? "Gemini CLI installed, no saved chats (use /chat save) \xB7 unverified format" : "Gemini CLI installed, no tmp/ yet \u2014 no chats saved \xB7 unverified format";
+  } else {
+    status3 = "absent";
+    note = "Gemini CLI not installed";
+  }
+  return formatDoctorLine({ harness: "gemini", status: status3, dir: tmp, note });
+}
+var DISPLAY_NAME3, CHATS_DIR, GEMINI_FORMAT_UNVERIFIED, GEMINI_DOCTOR_NOTE, HANDLED_PART_KEYS, HANDLED_ROLES, HISTORY_KEYS2, geminiAdapter, gemini_default;
+var init_gemini = __esm({
+  "packages/core/dist/adapters/gemini.js"() {
+    "use strict";
+    init_paths();
+    init_doctor_line();
+    init_content();
+    init_claude();
+    init_paths();
+    DISPLAY_NAME3 = "Gemini CLI";
+    CHATS_DIR = "chats";
+    GEMINI_FORMAT_UNVERIFIED = true;
+    GEMINI_DOCTOR_NOTE = "gemini: format unverified \u2014 this adapter was written from documentation, not from a real checkpoint, so record coverage is a best guess until someone runs it on one. Checkpoints carry no per-turn timestamps (session times come from file mtime) and the project directory is a hash, so the working directory is only recovered when a path in the transcript hashes to it.";
+    HANDLED_PART_KEYS = /* @__PURE__ */ new Set(["text", "functionCall", "functionResponse"]);
+    HANDLED_ROLES = /* @__PURE__ */ new Set(["user", "model", "assistant", "system", "tool"]);
+    HISTORY_KEYS2 = ["history", "messages", "contents", "turns"];
+    geminiAdapter = {
+      harness: "gemini",
+      displayName: DISPLAY_NAME3,
+      sourceDir: () => sourceDir3(),
+      discover: () => discover4(),
+      parse: (src, opts) => parse4(src, opts ?? {})
+    };
+    gemini_default = geminiAdapter;
+  }
+});
+
+// packages/core/dist/analytics/adapter-facts.js
+import fs34 from "node:fs";
+function discoverAdapter(harness, options) {
+  const override = options[OPTION[harness]];
+  const explicit = options.claudeDir ?? options.codexDir ?? options.piDir ?? options.opencodeDir;
+  if (!override && explicit)
+    return [];
+  try {
+    return ADAPTERS[harness].discover(override);
+  } catch {
+    return [];
+  }
+}
+async function adapterFacts(harness, source, timezone) {
+  const parsed = await ADAPTERS[harness].parse(source);
+  const s = parsed.session;
+  const facts = {
+    v: FACTS_VERSION,
+    harness,
+    file: source.path,
+    size: source.bytes,
+    mtimeMs: source.mtimeMs,
+    sessionId: s.id || source.sessionId,
+    parentId: source.isSidechain ? source.parentSessionId ?? null : null,
+    child: source.isSidechain,
+    project: s.project || null,
+    title: s.title ?? null,
+    automated: false,
+    excluded: false,
+    startedAt: s.startedAt || null,
+    firstAt: null,
+    lastAt: null,
+    usage: [],
+    prompts: [],
+    malformed: 0
+  };
+  const touch3 = (at) => {
+    if (at === null)
+      return;
+    if (facts.firstAt === null || at < facts.firstAt)
+      facts.firstAt = at;
+    if (facts.lastAt === null || at > facts.lastAt)
+      facts.lastAt = at;
+  };
+  for (const e of parsed.exchanges) {
+    const at = time(e.ts);
+    const c = classifyText(e.userText ?? "");
+    const kind3 = source.isSidechain || e.isSidechain ? "excluded" : c.kind;
+    facts.prompts.push({
+      key: `${harness}:${e.id}`,
+      at,
+      project: facts.project,
+      kind: kind3,
+      reason: kind3 === "excluded" && c.kind === "human" ? "subagent_parent_written" : c.reason,
+      text: kind3 === "human" ? c.text : "",
+      before: s.model ?? null,
+      beforeProvider: null,
+      after: s.model ?? null,
+      afterProvider: null
+    });
+    touch3(at);
+  }
+  return stripText(finishExternalFacts(facts, { timezone }));
+}
+async function readAdapterSources(harnesses, discovered, timezone, failures, cache3, stats2 = { parsed: 0 }) {
+  const out = [];
+  const parse8 = (h, source) => {
+    stats2.parsed++;
+    return adapterFacts(h, source, timezone);
+  };
+  for (const h of harnesses)
+    for (const source of discovered.get(h) ?? []) {
+      try {
+        if (!fs34.existsSync(source.path))
+          continue;
+        out.push(await (cache3 ? cache3.external(adapterKey(source), source.bytes, source.mtimeMs, timezone, () => parse8(h, source)) : parse8(h, source)));
+      } catch {
+        failures.push(`${h}_source_unreadable`);
+      }
+    }
+  return out;
+}
+var ADAPTER_HARNESSES, ADAPTERS, OPTION, adapterKey;
+var init_adapter_facts = __esm({
+  "packages/core/dist/analytics/adapter-facts.js"() {
+    "use strict";
+    init_cursor();
+    init_gemini();
+    init_copilot();
+    init_extract();
+    ADAPTER_HARNESSES = ["cursor", "gemini", "copilot"];
+    ADAPTERS = { cursor: cursor_exports, gemini: gemini_exports, copilot: copilot_exports };
+    OPTION = { cursor: "cursorDir", gemini: "geminiDir", copilot: "copilotDir" };
+    adapterKey = (source) => `adapter:${source.harness}:${source.path}#${source.sessionId}`;
   }
 });
 
@@ -18214,7 +20671,7 @@ function openSessions(file, max2, maxStoreBytes, reader) {
     const tables2 = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((r3) => r3.name);
     let schema;
     if (tables2.includes("session_message") && (tables2.includes("session") || tables2.includes("session_v2"))) {
-      const table2 = tables2.includes("session") ? "session" : "session_v2", cols = db.pragma(`table_info(${quote(table2)})`).map((c2) => c2.name), mc = db.pragma("table_info(session_message)").map((c2) => c2.name);
+      const table2 = tables2.includes("session") ? "session" : "session_v2", cols = db.pragma(`table_info(${quote(table2)})`).map((c3) => c3.name), mc = db.pragma("table_info(session_message)").map((c3) => c3.name);
       if (!["id", "session_id", "type", "data"].every((k) => mc.includes(k)))
         return { gap: "opencode_v2_schema_unsupported" };
       const parent = cols.includes("parent_id") ? "parent_id" : cols.includes("fork_session_id") ? "fork_session_id" : void 0;
@@ -18363,7 +20820,7 @@ var init_opencode2 = __esm({
 });
 
 // packages/core/dist/analytics/opencode-json.js
-import path25 from "node:path";
+import path26 from "node:path";
 function readLegacyOpenCode(files, maxBytes = 128 * 1024 * 1024) {
   const sessions = /* @__PURE__ */ new Map(), messages = /* @__PURE__ */ new Map(), parts = /* @__PURE__ */ new Map(), captured = /* @__PURE__ */ new Map(), gaps = /* @__PURE__ */ new Set();
   let bytes3 = 0, parsed = 0;
@@ -18382,11 +20839,11 @@ function readLegacyOpenCode(files, maxBytes = 128 * 1024 * 1024) {
       }
       parsed++;
       if (typeof r3.role === "string") {
-        const id = typeof r3.id === "string" ? r3.id : path25.basename(item.file, ".json"), session = typeof r3.sessionID === "string" ? r3.sessionID : path25.basename(path25.dirname(item.file));
+        const id = typeof r3.id === "string" ? r3.id : path26.basename(item.file, ".json"), session = typeof r3.sessionID === "string" ? r3.sessionID : path26.basename(path26.dirname(item.file));
         messages.set(id, { value: { ...r3, id, sessionID: session }, file: item.file });
         captured.set(item.file, { file: item.file, hash: digest(buffer), session });
       } else if (typeof r3.messageID === "string" || /[\\/]part[\\/]/u.test(item.file)) {
-        const message2 = typeof r3.messageID === "string" ? r3.messageID : path25.basename(path25.dirname(item.file)), rows = parts.get(message2) ?? [];
+        const message2 = typeof r3.messageID === "string" ? r3.messageID : path26.basename(path26.dirname(item.file)), rows = parts.get(message2) ?? [];
         rows.push(r3);
         parts.set(message2, rows);
         captured.set(item.file, { file: item.file, hash: digest(buffer), message: message2, session: typeof r3.sessionID === "string" ? r3.sessionID : null });
@@ -18433,7 +20890,7 @@ var init_opencode_json = __esm({
 });
 
 // packages/core/dist/analytics/opencode-facts.js
-import fs30 from "node:fs";
+import fs35 from "node:fs";
 function toFacts(file, size, mtimeMs, session, records, prompts) {
   const usage = [];
   let model = null, provider = null, firstAt = null, lastAt = null;
@@ -18517,7 +20974,7 @@ function toFacts(file, size, mtimeMs, session, records, prompts) {
   return facts;
 }
 function extractOpenCodeDatabase(file) {
-  const stat = fs30.statSync(file);
+  const stat = fs35.statSync(file);
   const db = openDatabase(file, { readonly: true, fileMustExist: true });
   try {
     const reader = { db, hash: "", assertCurrent: () => {
@@ -18537,7 +20994,7 @@ function extractOpenCodeDatabase(file) {
   }
 }
 function extractOpenCodeJson(files) {
-  const { groups } = readLegacyOpenCode(files.map((file) => ({ file, harness: "opencode", bytes: fs30.statSync(file).size, kind: "opencode-json" })));
+  const { groups } = readLegacyOpenCode(files.map((file) => ({ file, harness: "opencode", bytes: fs35.statSync(file).size, kind: "opencode-json" })));
   return groups.map((group) => {
     const prompts = group.facts.events.map((e) => ({ key: e.key, text: e.text, time: e.eventAt }));
     return toFacts(group.root, 0, 0, { id: group.facts.nativeId, project: group.facts.project, parent: group.facts.parent, title: group.facts.title }, group.records, prompts);
@@ -18568,9 +21025,9 @@ var init_opencode_facts = __esm({
 });
 
 // packages/core/dist/analytics/derived-cache.js
-import fs31 from "node:fs";
-import path26 from "node:path";
-import { createHash as createHash13, randomUUID as randomUUID5 } from "node:crypto";
+import fs36 from "node:fs";
+import path27 from "node:path";
+import { createHash as createHash15, randomUUID as randomUUID5 } from "node:crypto";
 function validDerivedBinding(v) {
   if (!v || typeof v !== "object")
     return false;
@@ -18599,7 +21056,7 @@ var derivedDigest, forbidden, DerivedCache;
 var init_derived_cache = __esm({
   "packages/core/dist/analytics/derived-cache.js"() {
     "use strict";
-    derivedDigest = (v) => createHash13("sha256").update(JSON.stringify(v)).digest("hex");
+    derivedDigest = (v) => createHash15("sha256").update(JSON.stringify(v)).digest("hex");
     forbidden = /* @__PURE__ */ new Set(["text", "content", "messages", "prompt", "prompts", "request", "requests", "quote", "caption", "raw", "body", "transcript", "conversationText", "assistantContext", "precedingUser"]);
     DerivedCache = class {
       directory;
@@ -18611,20 +21068,20 @@ var init_derived_cache = __esm({
       file(namespace, binding2) {
         if (!/^[a-z0-9-]{1,64}$/.test(namespace) || !validDerivedBinding(binding2))
           throw new Error("derived_cache_binding_invalid");
-        return path26.join(this.directory, `${namespace}-${derivedDigest(binding2.sourceId)}.json`);
+        return path27.join(this.directory, `${namespace}-${derivedDigest(binding2.sourceId)}.json`);
       }
       read(namespace, binding2, validate2) {
         const file = this.file(namespace, binding2);
         let fd;
         try {
-          const directory = fs31.lstatSync(this.directory);
+          const directory = fs36.lstatSync(this.directory);
           if (!directory.isDirectory() || directory.isSymbolicLink() || (directory.mode & 63) !== 0)
             return null;
-          fd = fs31.openSync(file, fs31.constants.O_RDONLY | fs31.constants.O_NOFOLLOW);
-          const st = fs31.fstatSync(fd);
+          fd = fs36.openSync(file, fs36.constants.O_RDONLY | fs36.constants.O_NOFOLLOW);
+          const st = fs36.fstatSync(fd);
           if (!st.isFile() || (st.mode & 63) !== 0 || st.size > this.maxEntryBytes)
             return null;
-          const text2 = fs31.readFileSync(fd, "utf8"), r3 = JSON.parse(text2);
+          const text2 = fs36.readFileSync(fd, "utf8"), r3 = JSON.parse(text2);
           if (r3.schema !== "launch-derived-v1" || r3.binding !== identity2(binding2) || !bodyFree(r3.value) || !validate2(r3.value))
             return null;
           return r3.value;
@@ -18632,7 +21089,7 @@ var init_derived_cache = __esm({
           return null;
         } finally {
           if (fd !== void 0)
-            fs31.closeSync(fd);
+            fs36.closeSync(fd);
         }
       }
       /** Atomic mode is an explicit opt-in for regenerable native facts only. */
@@ -18644,34 +21101,34 @@ var init_derived_cache = __esm({
         const text2 = JSON.stringify({ schema: "launch-derived-v1", binding: identity2(binding2), value });
         if (Buffer.byteLength(text2) > this.maxEntryBytes)
           throw new Error("derived_cache_entry_limit");
-        fs31.mkdirSync(this.directory, { recursive: true, mode: 448 });
-        const st = fs31.lstatSync(this.directory);
+        fs36.mkdirSync(this.directory, { recursive: true, mode: 448 });
+        const st = fs36.lstatSync(this.directory);
         if (!st.isDirectory() || st.isSymbolicLink())
           throw new Error("derived_cache_directory_invalid");
-        fs31.chmodSync(this.directory, 448);
-        const temp = path26.join(this.directory, `.launch-${randomUUID5()}.tmp`);
+        fs36.chmodSync(this.directory, 448);
+        const temp = path27.join(this.directory, `.launch-${randomUUID5()}.tmp`);
         let fd;
         try {
-          fd = fs31.openSync(temp, fs31.constants.O_WRONLY | fs31.constants.O_CREAT | fs31.constants.O_EXCL | fs31.constants.O_NOFOLLOW, 384);
-          fs31.writeFileSync(fd, text2, "utf8");
+          fd = fs36.openSync(temp, fs36.constants.O_WRONLY | fs36.constants.O_CREAT | fs36.constants.O_EXCL | fs36.constants.O_NOFOLLOW, 384);
+          fs36.writeFileSync(fd, text2, "utf8");
           if (!atomic)
-            fs31.fsyncSync(fd);
-          fs31.closeSync(fd);
+            fs36.fsyncSync(fd);
+          fs36.closeSync(fd);
           fd = void 0;
-          fs31.renameSync(temp, file);
+          fs36.renameSync(temp, file);
           if (!atomic) {
-            const dir = fs31.openSync(this.directory, "r");
+            const dir = fs36.openSync(this.directory, "r");
             try {
-              fs31.fsyncSync(dir);
+              fs36.fsyncSync(dir);
             } finally {
-              fs31.closeSync(dir);
+              fs36.closeSync(dir);
             }
           }
         } finally {
           if (fd !== void 0)
-            fs31.closeSync(fd);
+            fs36.closeSync(fd);
           try {
-            fs31.unlinkSync(temp);
+            fs36.unlinkSync(temp);
           } catch {
           }
         }
@@ -18679,7 +21136,7 @@ var init_derived_cache = __esm({
       /** Removes one derived source entry, never the retained source archive. */
       invalidate(namespace, binding2) {
         try {
-          fs31.unlinkSync(this.file(namespace, binding2));
+          fs36.unlinkSync(this.file(namespace, binding2));
         } catch (error) {
           if (error.code !== "ENOENT")
             throw error;
@@ -18788,9 +21245,9 @@ function segmentContext(records, options = {}) {
     const starts = group.flatMap((r3, i) => r3.role === "user" ? [i] : []);
     if (starts.length === 0)
       continue;
-    const emit = (context, targetRecords, promptIds, localGaps) => {
+    const emit = (context2, targetRecords, promptIds, localGaps) => {
       const target = targetRecords[0];
-      const text2 = JSON.stringify(context);
+      const text2 = JSON.stringify(context2);
       if (Buffer.byteLength(text2) > max2) {
         gaps.add("context_turn_oversize");
         return;
@@ -18804,11 +21261,11 @@ function segmentContext(records, options = {}) {
         project: target.project,
         eventFrom: target.eventAt,
         eventTo: targetRecords.at(-1)?.eventAt ?? target.eventAt,
-        records: context,
+        records: context2,
         promptIds,
         coverage: segmentGaps.length ? "partial" : "complete",
         gaps: segmentGaps,
-        contentHash: digest(JSON.stringify({ records: context.map(({ route: _, ...record2 }) => record2), promptIds }))
+        contentHash: digest(JSON.stringify({ records: context2.map(({ route: _, ...record2 }) => record2), promptIds }))
       });
     };
     if (Buffer.byteLength(JSON.stringify(group)) <= max2) {
@@ -19048,7 +21505,7 @@ async function runLaunchSemantics(options) {
   const run3 = options.provider.beginRun({ tokenLimit: window2.tokenLimit, maxAttempts: options.maxAttempts, retries: options.retries, signal: options.signal, isCurrent: options.isCurrent, estimateTokens: options.estimateTokens, estimateBasis: options.estimateBasis });
   let completed = 0, cursor = 0;
   try {
-    const identity4 = (segment) => ({ sourceVersion: options.sourceVersion, privacyVersion: options.privacyVersion, segmentationVersion: CONTEXT_SEGMENTATION_VERSION, questionVersion: questionVersion(options.contextMode), contentHash: segment.contentHash, scopeHash: options.scopeHash ?? digest(JSON.stringify({ conversation: segment.conversationId, targets: segment.promptIds })) });
+    const identity5 = (segment) => ({ sourceVersion: options.sourceVersion, privacyVersion: options.privacyVersion, segmentationVersion: CONTEXT_SEGMENTATION_VERSION, questionVersion: questionVersion(options.contextMode), contentHash: segment.contentHash, scopeHash: options.scopeHash ?? digest(JSON.stringify({ conversation: segment.conversationId, targets: segment.promptIds })) });
     const consume = (segment, result) => {
       if (result.state === "ok") {
         const judgment = { segmentId: segment.id, conversationId: segment.conversationId, model: result.response.model, answers: result.response.answers, contentHash: segment.contentHash, questionVersion: questionVersion(options.contextMode) };
@@ -19065,7 +21522,7 @@ async function runLaunchSemantics(options) {
     const worker = async () => {
       while (cursor < selected.length && !run3.signal.aborted) {
         const segment = selected[cursor++];
-        consume(segment, await run3.evaluate(buildLaunchRequest(segment, options.contextMode), identity4(segment)));
+        consume(segment, await run3.evaluate(buildLaunchRequest(segment, options.contextMode), identity5(segment)));
       }
     };
     await Promise.all([worker(), worker()]);
@@ -19179,19 +21636,19 @@ var init_jev_provider = __esm({
       ledger() {
         return structuredClone(this.attempts);
       }
-      key(request, identity4) {
-        return digest(JSON.stringify({ request, identity: identity4 }));
+      key(request, identity5) {
+        return digest(JSON.stringify({ request, identity: identity5 }));
       }
-      evaluate(job, request, identity4) {
+      evaluate(job, request, identity5) {
         try {
           request = structuredClone(request);
-          identity4 = structuredClone(identity4);
+          identity5 = structuredClone(identity5);
           validateJevRequest(request);
           job.assertCurrent();
         } catch (error) {
           return Promise.resolve({ state: "failed", code: coded(error) });
         }
-        const key2 = this.key(request, identity4), cached4 = this.cache.get(key2);
+        const key2 = this.key(request, identity5), cached4 = this.cache.get(key2);
         if (cached4) {
           this.cache.delete(key2);
           this.cache.set(key2, cached4);
@@ -19201,7 +21658,7 @@ var init_jev_provider = __esm({
         if (this.queue.length >= 128)
           return Promise.resolve({ state: "skipped", code: "queue_limit" });
         return new Promise((resolve) => {
-          const queued = { job, request, identity: identity4, key: key2, resolve, cleanup: () => {
+          const queued = { job, request, identity: identity5, key: key2, resolve, cleanup: () => {
           } };
           this.queue.push(queued);
           const cancelled = () => {
@@ -19234,7 +21691,7 @@ var init_jev_provider = __esm({
         }
       }
       async dispatch(item) {
-        const { job, request, key: key2, identity: identity4 } = item;
+        const { job, request, key: key2, identity: identity5 } = item;
         const requestHash = digest(JSON.stringify(request));
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
@@ -19246,7 +21703,7 @@ var init_jev_provider = __esm({
             return { state: "skipped", code: "ledger_limit" };
           if (!job.reserve())
             return { state: "skipped", code: "budget_or_request_limit" };
-          const row2 = { id: randomUUID6(), requestHash, scopeHash: identity4.scopeHash, model: JEV_MODEL, dispatchedAt: (/* @__PURE__ */ new Date()).toISOString(), completedAt: null, status: null, outcome: "running", billing: "reserved", reservedUsd: JEV_ATTEMPT_RESERVATION_USD, reportedUsd: null, inputTokens: null, outputTokens: null, requestId: null, errorCode: null };
+          const row2 = { id: randomUUID6(), requestHash, scopeHash: identity5.scopeHash, model: JEV_MODEL, dispatchedAt: (/* @__PURE__ */ new Date()).toISOString(), completedAt: null, status: null, outcome: "running", billing: "reserved", reservedUsd: JEV_ATTEMPT_RESERVATION_USD, reportedUsd: null, inputTokens: null, outputTokens: null, requestId: null, errorCode: null };
           this.attempts.push(row2);
           job.attempts.push(row2);
           const controller = new AbortController(), abort = () => controller.abort();
@@ -19413,8 +21870,8 @@ var init_jev_provider = __esm({
         this.dispatches++;
         return true;
       }
-      evaluate(request, identity4) {
-        return this.provider.evaluate(this, request, identity4);
+      evaluate(request, identity5) {
+        return this.provider.evaluate(this, request, identity5);
       }
       stats() {
         return { requestCount: this.dispatches, cacheHits: this.cacheHits, reportedCostUsd: this.attempts.reduce((n2, a) => n2 + (a.reportedUsd ?? 0), 0), unresolvedCostUsd: this.attempts.filter((a) => a.billing !== "reported").reduce((n2, a) => n2 + a.reservedUsd, 0), estimatedCostUsd: this.dispatches * JEV_ATTEMPT_RESERVATION_USD };
@@ -19600,8 +22057,8 @@ var init_jev_session = __esm({
         onUpdate(summarize("running"), [], selected.gapCodes);
         try {
           await Promise.all(selected.prepared.map(async (input) => {
-            const identity4 = { contentHash: input.contentHash, scopeHash, privacyVersion: AUDIT_SEMANTIC_POLICY_VERSION, normalizationVersion: NORMALIZATION_VERSION, questionVersion: JEV_QUESTION_VERSION, sourceVersion: input.sourceVersion, segmentationVersion: "target-prefix3500-prior-user2-prefix768-v1" };
-            const result = await job.evaluate(input.request, identity4);
+            const identity5 = { contentHash: input.contentHash, scopeHash, privacyVersion: AUDIT_SEMANTIC_POLICY_VERSION, normalizationVersion: NORMALIZATION_VERSION, questionVersion: JEV_QUESTION_VERSION, sourceVersion: input.sourceVersion, segmentationVersion: "target-prefix3500-prior-user2-prefix768-v1" };
+            const result = await job.evaluate(input.request, identity5);
             if (!isCurrent()) {
               this.invalidate();
               errorCode3 = "privacy_changed";
@@ -19629,9 +22086,9 @@ var init_jev_session = __esm({
 });
 
 // packages/core/dist/analytics/index.js
-import fs32 from "node:fs";
+import fs37 from "node:fs";
 import os9 from "node:os";
-import path27 from "node:path";
+import path28 from "node:path";
 import { randomUUID as randomUUID7 } from "node:crypto";
 function publicAuditSnapshot(snapshot2) {
   const launch = snapshot2.launch;
@@ -19688,32 +22145,75 @@ function createAuditSession(options = {}) {
 function listFiles(root, accept) {
   let names;
   try {
-    names = fs32.readdirSync(root, { recursive: true });
+    names = fs37.readdirSync(root, { recursive: true });
   } catch {
     return [];
   }
   const out = [];
   for (const name of names) {
-    const file = path27.join(root, name);
+    const file = path28.join(root, name);
     if (accept(file))
       out.push(file);
   }
   return out;
 }
-function discover3(harnesses, options, onHarness) {
-  const result = { jobs: [], opencodeDatabases: [], opencodeJson: [], historyFile: null, census: /* @__PURE__ */ new Map() };
+function readCodexImports(file) {
+  const out = /* @__PURE__ */ new Set();
+  try {
+    for (const m of fs37.readFileSync(file, "utf8").matchAll(UUID))
+      out.add(m[0].toLowerCase());
+  } catch {
+  }
+  return out;
+}
+function archiveEvidenceDir(options) {
+  if (process.env["SLOPIE_AUDIT_ARCHIVE"] === "0")
+    return null;
+  const dir = path28.join(potsherdDir(options.potsherdDir), "archive", "evidence");
+  return fs37.existsSync(dir) ? dir : null;
+}
+function discover5(harnesses, options, onHarness, probeOf = directProbe) {
+  const result = { jobs: [], opencodeDatabases: [], opencodeJson: [], historyFiles: [], codexImported: /* @__PURE__ */ new Set(), statsFiles: [], census: /* @__PURE__ */ new Map(), zstdUnsupported: 0, adapters: /* @__PURE__ */ new Map(), unclassified: 0 };
   const seen = /* @__PURE__ */ new Set();
+  const zstd = zstdSupport() !== null;
+  const archive = [];
+  const evidence2 = archiveEvidenceDir(options);
+  if (evidence2) {
+    for (const file of listFiles(evidence2, (f) => f.endsWith(".jsonl") || isZstdName(f))) {
+      let stat;
+      try {
+        stat = fs37.statSync(file);
+      } catch {
+        continue;
+      }
+      if (!stat.isFile() || stat.size === 0)
+        continue;
+      const probe2 = probeOf(file, stat.size, stat.mtimeMs, null);
+      if (probe2?.harness)
+        archive.push({ file, harness: probe2.harness, size: stat.size, mtimeMs: stat.mtimeMs });
+      else if (!probe2?.history)
+        result.unclassified++;
+    }
+  }
   for (const harness of harnesses) {
-    const roots = nativeAuditRoots(harness, options);
-    const row2 = { files: 0, bytes: 0, roots: roots.length };
+    if (ADAPTER_HARNESSES.includes(harness)) {
+      const list3 = discoverAdapter(harness, options);
+      result.adapters.set(harness, list3);
+      const row3 = { files: list3.length, bytes: list3.reduce((n2, x) => n2 + x.bytes, 0), roots: 1 };
+      result.census.set(harness, row3);
+      onHarness?.(harness, row3);
+      continue;
+    }
+    const desktop = harness === "claude" ? claudeDesktopRoots(options) : [];
+    const roots = [...nativeAuditRoots(harness, options), ...desktop];
+    const row2 = { files: 0, bytes: 0, roots: roots.length + (evidence2 ? 1 : 0) };
     result.census.set(harness, row2);
-    const relSeen = /* @__PURE__ */ new Set();
     for (const root of roots) {
       if (harness === "opencode") {
         for (const file of listFiles(root, (f) => /\.(?:db|sqlite|sqlite3)$/i.test(f) || f.endsWith(".json") && /[\\/]storage[\\/](?:session|message|part)[\\/]/.test(f))) {
           let size = 0;
           try {
-            size = fs32.statSync(file).size;
+            size = fs37.statSync(file).size;
           } catch {
             continue;
           }
@@ -19723,37 +22223,89 @@ function discover3(harnesses, options, onHarness) {
         }
         continue;
       }
-      if (harness === "claude" && !result.historyFile) {
-        const history = path27.join(path27.dirname(root), "history.jsonl");
-        if (fs32.existsSync(history))
-          result.historyFile = history;
+      if (harness === "claude" && !desktop.includes(root)) {
+        const history = path28.join(path28.dirname(root), "history.jsonl");
+        if (fs37.existsSync(history) && !result.historyFiles.includes(history))
+          result.historyFiles.push(history);
+        const stats2 = path28.join(path28.dirname(root), "stats-cache.json");
+        if (fs37.existsSync(stats2) && !result.statsFiles.includes(stats2))
+          result.statsFiles.push(stats2);
       }
-      for (const file of listFiles(root, (f) => f.endsWith(".jsonl") && (harness !== "codex" || path27.basename(f).startsWith("rollout-")))) {
+      if (harness === "codex")
+        for (const f of readCodexImports(path28.join(path28.dirname(root), "external_agent_session_imports.json")))
+          result.codexImported.add(f);
+      for (const file of listFiles(root, (f) => harness === "codex" ? path28.basename(f).startsWith("rollout-") && (f.endsWith(".jsonl") || isZstdName(f)) : f.endsWith(".jsonl"))) {
         if (seen.has(file))
           continue;
         seen.add(file);
-        if (harness === "codex") {
-          const rel = path27.relative(root, file);
-          if (relSeen.has(rel))
-            continue;
-          relSeen.add(rel);
-        }
         let stat;
         try {
-          stat = fs32.statSync(file);
+          stat = fs37.statSync(file);
         } catch {
           continue;
         }
         if (!stat.isFile())
           continue;
+        if (isZstdName(file) && !zstd) {
+          result.zstdUnsupported++;
+          continue;
+        }
         row2.files++;
         row2.bytes += stat.size;
         result.jobs.push({ file, harness, size: stat.size, mtimeMs: stat.mtimeMs });
       }
     }
+    for (const a of archive) {
+      if ((a.harness === "auto" ? "codex" : a.harness) !== harness || seen.has(a.file))
+        continue;
+      seen.add(a.file);
+      if (a.harness === "auto" && !zstd) {
+        result.zstdUnsupported++;
+        continue;
+      }
+      row2.files++;
+      row2.bytes += a.size;
+      result.jobs.push({ file: a.file, harness: a.harness, size: a.size, mtimeMs: a.mtimeMs, archive: true });
+    }
     onHarness?.(harness, row2);
   }
   return result;
+}
+function mergeHistories(parts) {
+  if (parts.length === 1) {
+    const { file, data } = parts[0];
+    return { ...data, origins: data.entries.map((_, index) => ({ file, index })) };
+  }
+  const out = { entries: [], counters: /* @__PURE__ */ new Map(), origins: [] };
+  const seen = /* @__PURE__ */ new Set();
+  const perSession = /* @__PURE__ */ new Map();
+  for (const { file, data } of parts) {
+    const added = /* @__PURE__ */ new Map();
+    data.entries.forEach((e, index) => {
+      const key2 = `${e.sessionId ?? ""}|${e.at ?? ""}|${e.kind}|${e.f?.w ?? ""}|${e.q ?? ""}|${e.at === null ? `${file}:${index}` : ""}`;
+      if (seen.has(key2))
+        return;
+      seen.add(key2);
+      out.entries.push(e);
+      out.origins.push({ file, index });
+      added.set(e.sessionId ?? "", (added.get(e.sessionId ?? "") ?? 0) + 1);
+    });
+    for (const [session, c] of data.counters) {
+      const n2 = added.get(session) ?? 0, old = perSession.get(session);
+      if (!old || n2 > old.n)
+        perSession.set(session, { n: n2, counters: c });
+    }
+  }
+  for (const [session, { counters }] of perSession)
+    out.counters.set(session, counters);
+  return out;
+}
+function dateScope(scope2) {
+  if (!scope2.eventFrom && !scope2.asOf)
+    return {};
+  const day = dayFormatter(scope2.timezone);
+  const from = scope2.eventFrom ? day(Date.parse(scope2.eventFrom)) : null, to = scope2.asOf ? day(Date.parse(scope2.asOf)) : null;
+  return { dateAllowed: (d) => (from === null || d >= from) && (to === null || d <= to), undatedAllowed: false };
 }
 function loadPolicy(root) {
   const policy = { ignoredList: [], forgotten: /* @__PURE__ */ new Set(), ignored: () => false, error: null };
@@ -19764,7 +22316,7 @@ function loadPolicy(root) {
   if (config.list.length)
     policy.ignored = (project) => !!project && isIgnoredProject(project, config.list);
   const dbFile = dbPath(root);
-  if (fs32.existsSync(dbFile)) {
+  if (fs37.existsSync(dbFile)) {
     try {
       const db = openDatabase(dbFile, { readonly: true, fileMustExist: true });
       try {
@@ -19789,9 +22341,9 @@ function resumeFacts(previous, job, timezone) {
   }
 }
 function codexFastDefault(options) {
-  const home2 = options.codexDir ?? process.env["POTSHERD_CODEX_DIR"] ?? process.env["CODEX_HOME"] ?? path27.join(os9.homedir(), ".codex");
+  const home2 = options.codexDir ?? process.env["POTSHERD_CODEX_DIR"] ?? process.env["CODEX_HOME"] ?? path28.join(os9.homedir(), ".codex");
   try {
-    for (const line of fs32.readFileSync(path27.join(home2.split(",")[0].trim(), "config.toml"), "utf8").split("\n")) {
+    for (const line of fs37.readFileSync(path28.join(home2.split(",")[0].trim(), "config.toml"), "utf8").split("\n")) {
       const m = /^\s*service_tier\s*=\s*["']?([\w-]+)/.exec(line.split("#")[0]);
       if (m)
         return m[1] === "priority" || m[1] === "fast";
@@ -19826,7 +22378,7 @@ function deepFreeze(value) {
   }
   return value;
 }
-var HARNESSES, LAUNCH_ORDER, RESUME_MAX_BYTES, offline2, metric, routeKey, PRIVATE_CHARTS, LocalAuditSession;
+var HARNESSES, LAUNCH_ORDER, RESUME_MAX_BYTES, offline2, metric, routeKey, PRIVATE_CHARTS, UUID, isZstdName, directProbe, LocalAuditSession;
 var init_analytics = __esm({
   "packages/core/dist/analytics/index.js"() {
     "use strict";
@@ -19837,8 +22389,11 @@ var init_analytics = __esm({
     init_privacy();
     init_source2();
     init_extract();
+    init_copy_prune();
     init_story_table();
     init_story();
+    init_story_spend();
+    init_story_archetype();
     init_story_dictionary();
     init_story_enrich();
     init_aggregate();
@@ -19848,6 +22403,7 @@ var init_analytics = __esm({
     init_facts_cache();
     init_scan_pool();
     init_native_census();
+    init_adapter_facts();
     init_opencode_facts();
     init_derived_cache();
     init_project_focus();
@@ -19861,13 +22417,16 @@ var init_analytics = __esm({
     init_jev_session();
     init_contracts();
     init_jev_session();
-    HARNESSES = ["claude", "codex", "pi", "opencode"];
-    LAUNCH_ORDER = ["codex", "claude", "opencode", "pi"];
+    HARNESSES = ["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot"];
+    LAUNCH_ORDER = ["codex", "claude", "opencode", "pi", "cursor", "gemini", "copilot"];
     RESUME_MAX_BYTES = 64 * 1024 * 1024;
     offline2 = () => process.env["POTSHERD_OFFLINE"] === "1";
     metric = (value, unit, basis, definition) => ({ value, numerator: value, denominator: null, unit, measurementBasis: basis, state: value === null ? "unavailable" : "observed", definition });
     routeKey = (route) => JSON.stringify(route);
     PRIVATE_CHARTS = /* @__PURE__ */ new Set(["priciest_project", "project_graveyard", "continue_count", "typo_fingerprint", "day_night_topics"]);
+    UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+    isZstdName = (f) => f.endsWith(".jsonl.zst");
+    directProbe = (file, _size, _mtime, known3) => probeFile(file, known3);
     LocalAuditSession = class {
       options;
       controller = new AbortController();
@@ -19901,7 +22460,7 @@ var init_analytics = __esm({
         if (options.since && !from || options.until && !to || from && to && from > to)
           throw new Error("invalid audit event range");
         this.root = potsherdDir(options.potsherdDir);
-        const derivedDir = options.derivedCacheDir ?? path27.join(this.root, "audit-derived");
+        const derivedDir = options.derivedCacheDir ?? path28.join(this.root, "audit-derived");
         this.derived = options.launch ? new DerivedCache(derivedDir) : null;
         this.catalog = this.derived ? cachedPublicCatalog(this.derived) : bundledModelCatalog;
         this.book = new PriceBook(this.catalog);
@@ -19911,7 +22470,7 @@ var init_analytics = __esm({
           snapshotId: this.id,
           sequence: 0,
           measuredAt: (/* @__PURE__ */ new Date()).toISOString(),
-          scope: { harnesses, project: options.project ? path27.resolve(options.project) : null, eventFrom: from, asOf: to, timezone },
+          scope: { harnesses, project: options.project ? path28.resolve(options.project) : null, eventFrom: from, asOf: to, timezone },
           status: "discovering",
           coverage: { state: "complete_snapshot", knownSources: 0, parsedSources: 0, unknownOriginEvents: 0, excludedEvents: 0, omittedSources: 0, gapCodes: [] },
           progress: { stage: "discovering", completed: 0, total: null, unit: "candidate_source", provisional: true, cancellable: true, label: "Finding history" },
@@ -20003,10 +22562,14 @@ var init_analytics = __esm({
           this.detail = {
             stage: "discovering",
             harnesses: harnesses.map((h) => ({ harness: h, files: 0, bytes: 0, filesDone: 0, firstAt: null, lastAt: null, discovered: false, absent: false, chats: 0, prompts: 0 })),
-            counts: { files: 0, filesDone: 0, bytes: 0, bytesDone: 0, messages: 0, chats: 0, prompts: 0 },
+            counts: { files: 0, filesDone: 0, bytes: 0, bytesDone: 0, messages: 0, chats: 0, prompts: 0, filesCached: 0, filesResumed: 0, automatedRuns: 0 },
             elapsedMs: 0
           };
-          const found = discover3(harnesses, this.options, (harness, row2) => {
+          const cache3 = new FactsCache(this.derived ? this.derived.directory : null);
+          cache3.load();
+          this.cache = cache3;
+          t = lap("cacheLoadMs", t);
+          const found = discover5(harnesses, this.options, (harness, row2) => {
             if (!this.detail)
               return;
             this.detail = {
@@ -20015,14 +22578,66 @@ var init_analytics = __esm({
               counts: { ...this.detail.counts, files: this.detail.counts.files + row2.files, bytes: this.detail.counts.bytes + row2.bytes }
             };
             this.progress("discovering", "Finding your agents", 0, null);
-          });
+          }, (file, size, mtimeMs, known3) => cache3.probe(file, size, mtimeMs, () => probeFile(file, known3)));
           t = lap("discoverMs", t);
+          let relations = [];
+          let deferred = /* @__PURE__ */ new Map();
+          {
+            const candidates2 = [];
+            for (const job of found.jobs) {
+              if (job.harness === "auto")
+                continue;
+              const probe2 = cache3.probe(job.file, job.size, job.mtimeMs, () => probeFile(job.file, job.harness));
+              if (probe2)
+                candidates2.push({ file: job.file, probe: probe2, archive: !!job.archive });
+            }
+            const pruned = pruneCopies(candidates2, cache3.relations);
+            relations = pruned.relations;
+            let skippedBytes = 0, archiveBytes = 0, archiveParsed = 0;
+            found.jobs = found.jobs.filter((job) => {
+              const skip = pruned.skipped.has(job.file);
+              if (skip)
+                skippedBytes += job.size;
+              if (job.archive)
+                archiveBytes += job.size;
+              const wait2 = pruned.deferred.get(job.file);
+              if (wait2) {
+                deferred.set(job.file, { ...wait2, job });
+                return false;
+              }
+              if (job.archive && !skip)
+                archiveParsed += job.size;
+              return !skip;
+            });
+            this.archiveParsedBytes = archiveParsed;
+            this.timings["copiesSkipped"] = pruned.skipped.size;
+            this.timings["copiesSkippedMB"] = Math.round(skippedBytes / 1048576);
+            this.timings["archiveMB"] = Math.round(archiveBytes / 1048576);
+            this.timings["archiveParsedMB"] = Math.round(archiveParsed / 1048576);
+            this.timings["copyVerifyReads"] = pruned.verifiedReads;
+            this.skippedCopies = pruned.skipped;
+            if (this.detail && pruned.skipped.size) {
+              const less = /* @__PURE__ */ new Map();
+              for (const c of candidates2)
+                if (pruned.skipped.has(c.file)) {
+                  const h = c.probe.harness ?? "claude", x = less.get(h) ?? { files: 0, bytes: 0 };
+                  x.files++;
+                  x.bytes += c.probe.size;
+                  less.set(h, x);
+                }
+              this.detail = {
+                ...this.detail,
+                counts: { ...this.detail.counts, files: this.detail.counts.files - pruned.skipped.size, bytes: this.detail.counts.bytes - skippedBytes },
+                harnesses: this.detail.harnesses.map((h) => {
+                  const x = less.get(h.harness);
+                  return x ? { ...h, files: h.files - x.files, bytes: h.bytes - x.bytes } : h;
+                })
+              };
+            }
+          }
+          t = lap("pruneMs", t);
           this.policy = loadPolicy(this.root);
           t = lap("policyMs", t);
-          const cache3 = new FactsCache(this.derived ? this.derived.directory : null);
-          cache3.load();
-          this.cache = cache3;
-          t = lap("cacheLoadMs", t);
           this.detail = { ...this.detail, stage: "reading" };
           this.publish({ sources: this.current.sources.map((s) => {
             const c = found.census.get(s.harness);
@@ -20036,21 +22651,54 @@ var init_analytics = __esm({
           const facts = [];
           const toRead = [];
           const resumable = [];
+          const jobsTotal = found.jobs.length + found.zstdUnsupported;
+          let checked = 0;
           for (const job of found.jobs) {
+            if ((++checked & 31) === 0 && performance.now() - this.lastTick >= 50) {
+              this.tick(facts.length, jobsTotal);
+              await new Promise((resolve) => setImmediate(resolve));
+            }
             const hit2 = cache3.get(job.file, job.size, job.mtimeMs, tz);
             if (hit2) {
               facts.push(hit2);
-              this.count(hit2, job.size);
+              this.count(hit2, job.size, true);
               continue;
             }
             const previous = cache3.previous(job.file);
             if (previous?.resume && previous.tz === tz && previous.size < job.size && job.size - previous.size <= RESUME_MAX_BYTES)
               resumable.push({ job, previous });
             else
-              toRead.push({ file: job.file, harness: job.harness, size: job.size, timezone: tz });
+              toRead.push({ file: job.file, harness: job.harness, size: job.size, timezone: tz, ...job.archive ? { archive: true } : {} });
           }
-          const cacheHits = facts.length, total2 = found.jobs.length;
+          const pending = /* @__PURE__ */ new Map();
+          {
+            const reading = new Map(toRead.map((j) => [j.file, j]));
+            for (const [file, d] of deferred) {
+              const rollout = reading.get(d.by);
+              if (rollout) {
+                (rollout.checks ??= []).push(d.probe.size);
+                const list3 = pending.get(d.by) ?? [];
+                list3.push({ job: d.job, probe: d.probe });
+                pending.set(d.by, list3);
+                continue;
+              }
+              found.jobs.push(d.job);
+              this.archiveParsedBytes += d.job.size;
+              const hit2 = cache3.get(file, d.job.size, d.job.mtimeMs, tz);
+              if (hit2) {
+                facts.push(hit2);
+                this.count(hit2, d.job.size, true);
+              } else
+                toRead.push({ file, harness: d.job.harness, size: d.job.size, timezone: tz, archive: true });
+            }
+            deferred = /* @__PURE__ */ new Map();
+          }
+          const hashes = /* @__PURE__ */ new Map();
+          const cacheHits = facts.length;
+          let total2 = found.jobs.length + found.zstdUnsupported;
           const failures = [];
+          for (let i = 0; i < found.zstdUnsupported; i++)
+            failures.push("zstd_unsupported");
           this.progress("parsing", "Reading history", cacheHits, total2);
           let scanning = Promise.resolve();
           const readOne = (job) => {
@@ -20064,14 +22712,20 @@ var init_analytics = __esm({
               cache3.set(merged);
               this.count(merged, job.size);
               resumed++;
+              if (this.detail)
+                this.detail.counts.filesResumed = resumed;
             } else
               readOne({ file: job.file, harness: job.harness, size: job.size, timezone: tz });
           }
           this.timings["filesResumed"] = resumed;
           if (toRead.length && !this.controller.signal.aborted) {
             const executor = this.options.nativeScanExecutor ?? inlineScanExecutor;
-            scanning = executor.scan(toRead, (result) => {
+            const onResult = (result) => {
               if ("facts" in result) {
+                if (result.facts.copyHashes) {
+                  hashes.set(result.job.file, result.facts.copyHashes);
+                  delete result.facts.copyHashes;
+                }
                 facts.push(result.facts);
                 cache3.set(result.facts);
                 this.count(result.facts, result.job.size);
@@ -20080,7 +22734,30 @@ var init_analytics = __esm({
                 this.count(null, result.job.size);
               }
               this.tick(facts.length + failures.length, total2);
-            }, this.controller.signal);
+            };
+            scanning = executor.scan(toRead, onResult, this.controller.signal).then(async () => {
+              const second = [];
+              for (const [rollout, copies] of pending) {
+                const h = hashes.get(rollout), at = new Map(h?.at ?? []);
+                const rolloutJob = toRead.find((j) => j.file === rollout);
+                for (const { job, probe: probe2 } of copies) {
+                  if (h && h.head === probe2.head && at.get(probe2.size) === probe2.tail) {
+                    relations.push({ file: job.file, size: probe2.size, mtimeMs: probe2.mtimeMs, by: rollout, bySize: rolloutJob.size, byMtimeMs: found.jobs.find((j) => j.file === rollout)?.mtimeMs ?? 0 });
+                    this.skippedCopies.set(job.file, rollout);
+                  } else {
+                    second.push({ file: job.file, harness: job.harness, size: job.size, timezone: tz, archive: true });
+                    found.jobs.push(job);
+                    this.archiveParsedBytes += job.size;
+                    total2++;
+                  }
+                }
+              }
+              this.timings["copiesVerifiedInReader"] = [...pending.values()].reduce((n2, l) => n2 + l.length, 0) - second.length;
+              if (second.length && !this.controller.signal.aborted) {
+                toRead.push(...second);
+                await executor.scan(second, onResult, this.controller.signal);
+              }
+            });
           }
           const extra = [];
           for (const file of found.opencodeDatabases) {
@@ -20097,9 +22774,12 @@ var init_analytics = __esm({
               failures.push("opencode_storage_unreadable");
             }
           }
+          const adapterStats = { parsed: 0 };
+          extra.push(...await readAdapterSources(ADAPTER_HARNESSES.filter((h) => harnesses.includes(h)), found.adapters, tz, failures, cache3, adapterStats));
+          this.timings["adapterSourcesParsed"] = adapterStats.parsed;
           for (const f of extra)
             this.count(f, 0);
-          const historyData = found.historyFile && harnesses.includes("claude") ? cache3.history(found.historyFile, tz, (file, previous) => readHistory2(file, { timezone: tz }, previous)) : { entries: [], counters: /* @__PURE__ */ new Map() };
+          const historyData = mergeHistories(harnesses.includes("claude") ? found.historyFiles.map((file) => ({ file, data: cache3.history(file, tz, (f, previous) => readHistory2(f, { timezone: tz }, previous)) })) : []);
           this.historyData = historyData;
           if (this.detail && historyData.entries.length) {
             let first = null, last2 = null;
@@ -20125,17 +22805,25 @@ var init_analytics = __esm({
           facts.push(...extra);
           t = lap("scanMs", t);
           this.timings["filesRead"] = toRead.length;
+          cache3.setRelations(relations);
+          this.timings["copiesSkipped"] = this.skippedCopies.size;
+          this.timings["archiveParsedMB"] = Math.round(this.archiveParsedBytes / 1048576);
+          this.timings["shardsRead"] = cache3.shardsRead;
           this.timings["filesCached"] = cacheHits;
           if (this.controller.signal.aborted)
             return this.finishCancelled();
           this.setStage("aggregating");
           const scope2 = this.current.scope;
           const policy = this.policy;
-          this.historyFile = found.historyFile;
+          this.historyFile = found.historyFiles[0] ?? null;
+          this.historyFiles = found.historyFiles;
+          this.statsFiles = harnesses.includes("claude") ? found.statsFiles : [];
           this.result = aggregate({
             sources: facts,
             history,
-            historyFile: found.historyFile,
+            historyFile: this.historyFile,
+            historyOrigins: historyData.origins,
+            codexImported: found.codexImported,
             scope: { harnesses, project: scope2.project, eventFrom: scope2.eventFrom ? Date.parse(scope2.eventFrom) : null, asOf: scope2.asOf ? Date.parse(scope2.asOf) : null, timezone: scope2.timezone },
             policy: { ignored: policy.ignored, forgotten: policy.forgotten },
             book: this.book,
@@ -20143,9 +22831,19 @@ var init_analytics = __esm({
             snapshotId: this.id
           });
           t = lap("aggregateMs", t);
-          this.buildSnapshot(this.result, { cacheHits, total: total2, failures, policyError: policy.error });
+          this.buildSnapshot(this.result, { cacheHits, total: total2, failures, policyError: policy.error, unclassified: found.unclassified });
           t = lap("languageMs", t);
-          cache3.save((f) => fs32.existsSync(f.file) && !policy.forgotten.has(sourceId(f.harness, f.sessionId)) && !(f.parentId && policy.forgotten.has(sourceId(f.harness, f.parentId))) && !policy.ignored(f.project), (h) => !policy.ignored(h.project) && !(h.sessionId && policy.forgotten.has(sourceId("claude", h.sessionId))));
+          const discovered = new Set(found.jobs.map((j) => j.file));
+          for (const list3 of found.adapters.values())
+            for (const source of list3)
+              discovered.add(adapterKey(source));
+          const forgotten = (h, id) => policy.forgotten.size > 0 && policy.forgotten.has(sourceId(h, id));
+          cache3.save(
+            (f) => (discovered.has(f.file) || fs37.existsSync(f.file)) && !forgotten(f.harness, f.sessionId) && !(f.parentId && forgotten(f.harness, f.parentId)) && !policy.ignored(f.project),
+            (h) => !policy.ignored(h.project) && !(h.sessionId && policy.forgotten.has(sourceId("claude", h.sessionId))),
+            // Probes of files that no longer exist are dropped; a skipped copy inherits its covering file's opt-outs.
+            (file) => fs37.existsSync(file)
+          );
           lap("cacheWriteMs", t);
           this.timings["totalMs"] = Math.round(performance.now() - t0);
           const memory = process.memoryUsage();
@@ -20175,20 +22873,29 @@ var init_analytics = __esm({
       cache = null;
       historyData = null;
       historyFile = null;
+      historyFiles = [];
+      statsFiles = [];
       dictionary = null;
+      /** Prefix copies not parsed this run -> the file that covers them. */
+      skippedCopies = /* @__PURE__ */ new Map();
+      archiveParsedBytes = 0;
       /** Running counts for the loading story (cheap: a few additions per file). */
-      count(f, bytes3) {
+      count(f, bytes3, cached4 = false) {
         const d = this.detail;
         if (!d)
           return;
         const c = d.counts;
         c.filesDone++;
         c.bytesDone += bytes3;
+        if (cached4)
+          c.filesCached = (c.filesCached ?? 0) + 1;
         if (!f)
           return;
         const row2 = d.harnesses.find((h) => h.harness === f.harness);
         if (row2) {
           row2.filesDone++;
+          if (cached4)
+            row2.filesCached = (row2.filesCached ?? 0) + 1;
           if (f.firstAt !== null) {
             const iso3 = new Date(f.firstAt).toISOString();
             if (!row2.firstAt || iso3 < row2.firstAt)
@@ -20276,17 +22983,19 @@ var init_analytics = __esm({
         lap("focusMs");
         const sources = this.current.sources.map((s) => {
           const h = a.harness[s.harness];
+          const promptOnly = ADAPTER_HARNESSES.includes(s.harness);
           const hasData = h.files > 0 || h.conversations > 0;
           return {
             ...s,
             state: hasData ? "available" : s.candidateFiles ? "available" : "absent",
             conversations: h.conversations,
             humanPrompts: h.humanPrompts,
-            humanOrigin: "native_marker",
+            humanOrigin: promptOnly ? "projection" : "native_marker",
             evidence: hasData ? "transient" : "unavailable",
             usage: h.responses ? "reported" : "unavailable",
-            firstUnsupportedStep: null,
-            gapCodes: [],
+            // Prompt-only harnesses: cost is unknown, never $0.
+            firstUnsupportedStep: promptOnly && hasData ? "usage" : null,
+            gapCodes: promptOnly && hasData ? ["usage_not_recorded"] : [],
             childConversations: h.childConversations,
             slashCommands: h.slashCommands,
             userMessages: h.userMessages,
@@ -20299,7 +23008,9 @@ var init_analytics = __esm({
         const warnings = [
           ...failures.map((code) => `unreadable_source:${code}`),
           ...run3.policyError ? [run3.policyError] : [],
-          ...a.estimatedCostUsd > 0 ? ["estimated_prices"] : []
+          ...run3.unclassified ? [`archive_unclassified:${run3.unclassified}`] : [],
+          ...a.estimatedCostUsd > 0 ? ["estimated_prices"] : [],
+          ...a.unpricedResponses ? [`unpriced_models:${a.unpricedResponses}`] : []
         ];
         const coverage = {
           state: failures.length ? "partial" : "complete_snapshot",
@@ -20307,8 +23018,13 @@ var init_analytics = __esm({
           parsedSources: run3.total - run3.failures.length,
           unknownOriginEvents: 0,
           excludedEvents: Object.values(a.harness).reduce((n2, h) => n2 + Object.values(h.excluded).reduce((x, y) => x + y, 0), 0),
-          omittedSources: run3.failures.length,
-          gapCodes: failures
+          omittedSources: run3.failures.length + run3.unclassified,
+          gapCodes: [
+            ...failures,
+            ...run3.unclassified ? ["archive_source_unclassified"] : [],
+            ...a.unpricedResponses ? ["unpriced_model_usage"] : [],
+            ...sources.some((x) => x.gapCodes.includes("usage_not_recorded")) ? ["usage_not_recorded"] : []
+          ]
         };
         const userMessages = Object.values(a.harness).reduce((n2, h) => n2 + h.userMessages, 0);
         const facts = this.launchFacts(a);
@@ -20318,7 +23034,7 @@ var init_analytics = __esm({
             this.detail = {
               ...this.detail,
               stage: "detecting",
-              counts: { ...this.detail.counts, messages: a.responses + userMessages, chats: a.topLevelConversations, prompts: human },
+              counts: { ...this.detail.counts, messages: a.responses + userMessages, chats: a.topLevelConversations, prompts: human, automatedRuns: a.automatedRuns },
               harnesses: this.detail.harnesses.map((h) => ({ ...h, chats: a.harness[h.harness].conversations, prompts: a.harness[h.harness].humanPrompts }))
             };
           const aliases = new Map(projects3.map((p) => [p.path ?? "(unknown)", p.alias]));
@@ -20330,12 +23046,26 @@ var init_analytics = __esm({
             historyCounters: this.historyData?.counters ?? /* @__PURE__ */ new Map(),
             historyFile: this.historyFile,
             timezone: scope2.timezone,
-            allowed: (project, session) => !policy?.ignored(project) && !(session && policy?.forgotten.has(sourceId("claude", session))) && (scope2.project === null || project === scope2.project)
+            allowed: (project, session) => !policy?.ignored(project) && !(session && policy?.forgotten.has(sourceId("claude", session))) && (scope2.project === null || project === scope2.project),
+            ...dateScope(scope2)
           });
           this.timings["storyTableMs"] = Math.round(performance.now() - ts);
           const dictionary = this.dictionary ?? new DictionaryLookup(this.cache?.dictionary);
-          const built = buildStory({ table: table2, timezone: scope2.timezone, alias: (p) => aliases.get(p ?? "(unknown)") ?? "a project", dictionary, tokens: a.tokens.input + a.tokens.output + a.tokens.cacheRead + a.tokens.cacheWrite, offline: offline2() });
+          const built = buildStory({ table: table2, timezone: scope2.timezone, alias: (p) => aliases.get(p ?? "(unknown)") ?? "a project", dictionary, tokens: a.tokens.input + a.tokens.output + a.tokens.cacheRead + a.tokens.cacheWrite, offline: offline2(), automatedRuns: a.automatedRuns });
           story = built.story;
+          const spent = buildSpend({
+            aggregate: a,
+            table: table2,
+            book: this.book,
+            priceVersion: this.catalog.basis.sha256,
+            timezone: scope2.timezone,
+            statsCaches: this.statsFiles.map(readStatsCache).filter((c) => c !== null),
+            projectScoped: scope2.project !== null,
+            ...dateScope(scope2)
+          });
+          story.spend = spent.spend;
+          story.awards = reconcilePriciestDay(story.awards, spent.spend.priciestDay);
+          story.modelShare = spent.modelShare;
           story.timings.featuresMs = this.timings["storyTableMs"];
           this.timings["detectorsMs"] = Math.round(built.detectorsMs);
           this.timings["dictionaryLoaded"] = dictionary.loaded ? 1 : 0;
@@ -20415,7 +23145,7 @@ var init_analytics = __esm({
             responsesObserved: a.responses,
             responsesDeduplicated: 0,
             responsesExcluded: 0,
-            responsesPriced: a.responses,
+            responsesPriced: a.responses - a.unpricedResponses,
             excludedReasons: { forgotten_or_ignored_source: a.excludedSources },
             gaps: failures
           }
@@ -20436,12 +23166,14 @@ var init_analytics = __esm({
           pricing: this.catalog.basis,
           recordedResponses: a.responses,
           knownTokenResponses: a.responses,
-          pricedResponses: a.responses,
+          pricedResponses: a.responses - a.unpricedResponses,
           referencePricedResponses: 0,
-          equivalentPricedResponses: a.responses,
+          equivalentPricedResponses: a.responses - a.unpricedResponses,
           referenceProviders: [],
-          unknownModelResponses: a.inferredModelResponses,
-          gaps: a.estimatedCostUsd > 0 ? ["price_estimated_from_model_family"] : [],
+          unknownModelResponses: a.inferredModelResponses + a.unpricedResponses,
+          unpricedResponses: a.unpricedResponses,
+          unpricedTokens: a.unpricedTokens,
+          gaps: [...a.estimatedCostUsd > 0 ? ["price_estimated_from_model_family"] : [], ...a.unpricedResponses ? ["unpriced_model_usage"] : []],
           costByHarness,
           estimatedValueUsd: a.estimatedCostUsd,
           compactionResponses: a.compactionResponses,
@@ -20513,14 +23245,14 @@ var init_analytics = __esm({
         for (const [file, list3] of byFile) {
           try {
             const texts = /* @__PURE__ */ new Map();
-            if (file === this.historyFile) {
-              parseHistory(fs32.readFileSync(file, "utf8"), { timezone: tz }).entries.forEach((e, i) => {
+            if (this.historyFiles.includes(file)) {
+              parseHistory(fs37.readFileSync(file, "utf8"), { timezone: tz }).entries.forEach((e, i) => {
                 if (e.kind === "human")
                   texts.set(`history:${i}`, e.text);
               });
             } else {
               const conv = this.result?.conversations.find((c) => c.file === file);
-              const harness = conv?.conversation.harness ?? (file.includes(`${path27.sep}.codex${path27.sep}`) || path27.basename(file).startsWith("rollout-") ? "codex" : "claude");
+              const harness = conv?.conversation.harness ?? (file.includes(`${path28.sep}.codex${path28.sep}`) || path28.basename(file).startsWith("rollout-") ? "codex" : "claude");
               if (harness === "opencode")
                 continue;
               for (const p of extractFile(file, harness, { timezone: tz }).prompts)
@@ -21183,26 +23915,26 @@ __export(claude_exports, {
   IGNORED_RECORD_TYPES: () => IGNORED_RECORD_TYPES,
   archiveSourceDir: () => archiveSourceDir,
   claudeAdapter: () => claudeAdapter,
-  discover: () => discover4,
-  doctorLine: () => doctorLine3,
+  discover: () => discover6,
+  doctorLine: () => doctorLine5,
   isClaudeWorktree: () => isClaudeWorktree,
   isNovelRecordType: () => isNovelRecordType,
   owningProjectPath: () => owningProjectPath,
-  parse: () => parse3,
+  parse: () => parse5,
   readTranscriptVersion: () => readTranscriptVersion,
   recordTypeStats: () => recordTypeStats,
-  sourceDir: () => sourceDir3
+  sourceDir: () => sourceDir4
 });
-import fs33 from "node:fs";
-import path28 from "node:path";
-function sourceDir3(claudeConfigDir) {
+import fs38 from "node:fs";
+import path29 from "node:path";
+function sourceDir4(claudeConfigDir) {
   return claudePaths(claudeDir(claudeConfigDir)).projects;
 }
 function archiveSourceDir(root) {
-  return path28.join(archiveDir(root ?? potsherdDir()), "claude");
+  return path29.join(archiveDir(root ?? potsherdDir()), "claude");
 }
-function discover4(options = {}) {
-  const live = walkProjects(sourceDir3(options.claudeDir), "live");
+function discover6(options = {}) {
+  const live = walkProjects(sourceDir4(options.claudeDir), "live");
   const byRel = /* @__PURE__ */ new Map();
   for (const found of live)
     byRel.set(found.rel, found);
@@ -21211,13 +23943,13 @@ function discover4(options = {}) {
     for (const found of walkProjects(archiveRoot, "archived")) {
       if (byRel.has(found.rel))
         continue;
-      found.originalPath = path28.join(sourceDir3(options.claudeDir), found.rel);
+      found.originalPath = path29.join(sourceDir4(options.claudeDir), found.rel);
       byRel.set(found.rel, found);
     }
   }
   return [...byRel.values()].sort((a, b2) => a.rel < b2.rel ? -1 : a.rel > b2.rel ? 1 : 0);
 }
-async function parse3(source, options = {}) {
+async function parse5(source, options = {}) {
   const raw = await parseClaudeTranscript(source.path, {
     ...options,
     // Only ever assert `true`: a top-level transcript that happens to carry a
@@ -21240,15 +23972,15 @@ async function parse3(source, options = {}) {
     orphanContinuations: folded.orphans
   };
 }
-function doctorLine3(options = {}) {
-  const dir = sourceDir3(options.claudeDir);
+function doctorLine5(options = {}) {
+  const dir = sourceDir4(options.claudeDir);
   let found = [];
   try {
-    found = discover4(options);
+    found = discover6(options);
   } catch {
     found = [];
   }
-  const exists2 = fs33.existsSync(dir);
+  const exists2 = fs38.existsSync(dir);
   const sidechains = found.filter((f) => f.isSidechain).length;
   const archived = found.filter((f) => f.status === "archived").length;
   const sessions = found.length - sidechains;
@@ -21283,18 +24015,18 @@ function owningProject(session) {
 }
 function walkProjects(projectsDir, status3) {
   const out = [];
-  for (const slugEntry of readdirSafe3(projectsDir, true)) {
+  for (const slugEntry of readdirSafe4(projectsDir, true)) {
     if (!slugEntry.isDirectory())
       continue;
     const slug = slugEntry.name;
-    const dir = path28.join(projectsDir, slug);
-    for (const entry of readdirSafe3(dir, true)) {
+    const dir = path29.join(projectsDir, slug);
+    for (const entry of readdirSafe4(dir, true)) {
       if (entry.isFile()) {
         if (!entry.name.endsWith(".jsonl"))
           continue;
         push(out, {
-          file: path28.join(dir, entry.name),
-          rel: path28.join(slug, entry.name),
+          file: path29.join(dir, entry.name),
+          rel: path29.join(slug, entry.name),
           slug,
           sessionId: basename3(entry.name),
           isSidechain: false,
@@ -21307,14 +24039,14 @@ function walkProjects(projectsDir, status3) {
       if (entry.name === "memory")
         continue;
       const flat = entry.name === SIDECHAIN_DIR;
-      const subDir = flat ? path28.join(dir, entry.name) : path28.join(dir, entry.name, SIDECHAIN_DIR);
-      const relDir = flat ? path28.join(slug, entry.name) : path28.join(slug, entry.name, SIDECHAIN_DIR);
-      for (const name of readdirSafe3(subDir)) {
+      const subDir = flat ? path29.join(dir, entry.name) : path29.join(dir, entry.name, SIDECHAIN_DIR);
+      const relDir = flat ? path29.join(slug, entry.name) : path29.join(slug, entry.name, SIDECHAIN_DIR);
+      for (const name of readdirSafe4(subDir)) {
         if (!name.endsWith(".jsonl"))
           continue;
         push(out, {
-          file: path28.join(subDir, name),
-          rel: path28.join(relDir, name),
+          file: path29.join(subDir, name),
+          rel: path29.join(relDir, name),
           slug,
           sessionId: flat ? basename3(name) : `${entry.name}:${basename3(name)}`,
           isSidechain: true,
@@ -21420,14 +24152,14 @@ function basename3(fileName) {
 }
 function statSafe(file) {
   try {
-    return fs33.statSync(file);
+    return fs38.statSync(file);
   } catch {
     return null;
   }
 }
-function readdirSafe3(dir, withFileTypes) {
+function readdirSafe4(dir, withFileTypes) {
   try {
-    return withFileTypes ? fs33.readdirSync(dir, { withFileTypes: true }) : fs33.readdirSync(dir);
+    return withFileTypes ? fs38.readdirSync(dir, { withFileTypes: true }) : fs38.readdirSync(dir);
   } catch {
     return [];
   }
@@ -21445,9 +24177,9 @@ var init_claude2 = __esm({
     claudeAdapter = {
       harness: "claude",
       displayName: "Claude Code",
-      sourceDir: () => sourceDir3(),
-      discover: () => discover4(),
-      parse: (source, options) => parse3(source, options)
+      sourceDir: () => sourceDir4(),
+      discover: () => discover6(),
+      parse: (source, options) => parse5(source, options)
     };
     CLAUDE_WORKTREES = /[/\\]\.claude[/\\]worktrees[/\\][^/\\]+(?:[/\\].*)?$/;
     VERSION_SCAN_LINES = 200;
@@ -21479,12 +24211,12 @@ var init_claude2 = __esm({
 });
 
 // packages/core/dist/parser/codex.js
-import fs34 from "node:fs";
-import path29 from "node:path";
+import fs39 from "node:fs";
+import path30 from "node:path";
 async function parseCodexTranscript(filePath, options = {}) {
-  const absolute2 = path29.resolve(filePath);
+  const absolute2 = path30.resolve(filePath);
   const fromOffset = options.fromOffset ?? 0;
-  const snapshot2 = fs34.readFileSync(absolute2);
+  const snapshot2 = fs39.readFileSync(absolute2);
   const seqByOffset = /* @__PURE__ */ new Map();
   const humanPrompts = await collectHumanPrompts(absolute2, fromOffset, snapshot2);
   const unknownTypes = {};
@@ -21648,7 +24380,7 @@ async function parseCodexTranscript(filePath, options = {}) {
   }
   finalize();
   const id = resolvedId();
-  const projectSlug = options.projectSlug ?? (cwd ? path29.basename(cwd) : "unknown");
+  const projectSlug = options.projectSlug ?? (cwd ? path30.basename(cwd) : "unknown");
   const bytes3 = options.bytes ?? statBytes2(absolute2);
   const session = {
     id,
@@ -21703,14 +24435,14 @@ function normalise(text2) {
   return text2.trim();
 }
 function sessionIdFromPath2(filePath) {
-  const base3 = path29.basename(filePath, ".jsonl");
+  const base3 = path30.basename(filePath, ".jsonl");
   const matches = base3.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
   const last2 = matches?.[matches.length - 1];
   return last2 ?? base3;
 }
 function statBytes2(absolute2) {
   try {
-    return fs34.statSync(absolute2).size;
+    return fs39.statSync(absolute2).size;
   } catch {
     return 0;
   }
@@ -21785,23 +24517,23 @@ __export(codex_exports, {
   codexDoctor: () => codexDoctor,
   codexEntrypoint: () => codexEntrypoint,
   codexPaths: () => codexPaths,
-  discover: () => discover5,
-  doctorLine: () => doctorLine4,
+  discover: () => discover7,
+  doctorLine: () => doctorLine6,
   filesFromCodexToolInput: () => filesFromCodexToolInput,
-  parse: () => parse4,
+  parse: () => parse6,
   readCodexHeader: () => readCodexHeader,
   readSessionIndex: () => readSessionIndex,
   renderCodexDoctorLine: () => renderCodexDoctorLine,
   sessionIdFromRolloutPath: () => sessionIdFromRolloutPath
 });
-import fs35 from "node:fs";
-import path30 from "node:path";
+import fs40 from "node:fs";
+import path31 from "node:path";
 function sessionIdFromRolloutPath(filePath) {
-  const base3 = path30.basename(filePath, ".jsonl");
-  const matches = base3.match(UUID);
+  const base3 = path31.basename(filePath, ".jsonl");
+  const matches = base3.match(UUID2);
   return matches?.[matches.length - 1] ?? base3;
 }
-function discover5(options = {}) {
+function discover7(options = {}) {
   const paths = codexPaths(codexDir(options.codexHome));
   const out = [];
   walk(paths.sessions, "live", 0, out);
@@ -21814,12 +24546,12 @@ function walk(dir, status3, depth, out) {
     return;
   let entries;
   try {
-    entries = fs35.readdirSync(dir, { withFileTypes: true });
+    entries = fs40.readdirSync(dir, { withFileTypes: true });
   } catch {
     return;
   }
   for (const entry of entries) {
-    const full = path30.join(dir, entry.name);
+    const full = path31.join(dir, entry.name);
     if (entry.isDirectory()) {
       walk(full, status3, depth + 1, out);
       continue;
@@ -21830,7 +24562,7 @@ function walk(dir, status3, depth, out) {
       continue;
     let stat;
     try {
-      stat = fs35.statSync(full);
+      stat = fs40.statSync(full);
     } catch {
       continue;
     }
@@ -21853,7 +24585,7 @@ function readSessionIndex(options = {}) {
   const out = /* @__PURE__ */ new Map();
   let text2;
   try {
-    text2 = fs35.readFileSync(file, "utf8");
+    text2 = fs40.readFileSync(file, "utf8");
   } catch {
     return out;
   }
@@ -21878,7 +24610,7 @@ function sessionIndexCached(codexHome) {
   const file = codexPaths(codexDir(codexHome)).sessionIndex;
   let mtimeMs = -1;
   try {
-    mtimeMs = fs35.statSync(file).mtimeMs;
+    mtimeMs = fs40.statSync(file).mtimeMs;
   } catch {
   }
   const hit2 = indexCache.get(file);
@@ -21903,7 +24635,7 @@ async function readCodexHeader(filePath) {
       return void 0;
     const str6 = (key2) => typeof payload[key2] === "string" ? payload[key2] : void 0;
     const timestamp = typeof parsed["timestamp"] === "string" ? parsed["timestamp"] : void 0;
-    const header = {
+    const header2 = {
       ...str6("id") ?? str6("session_id") ? { sessionId: str6("id") ?? str6("session_id") } : {},
       ...str6("cwd") ? { cwd: str6("cwd") } : {},
       ...str6("originator") ? { originator: str6("originator") } : {},
@@ -21912,12 +24644,12 @@ async function readCodexHeader(filePath) {
       ...str6("model_provider") ? { modelProvider: str6("model_provider") } : {},
       ...str6("timestamp") ?? timestamp ? { startedAt: str6("timestamp") ?? timestamp } : {}
     };
-    return header;
+    return header2;
   }
   return void 0;
 }
-function codexEntrypoint(header) {
-  for (const raw of [header.originator, header.source]) {
+function codexEntrypoint(header2) {
+  for (const raw of [header2.originator, header2.source]) {
     if (!raw || !raw.trim())
       continue;
     const v = raw.trim().toLowerCase();
@@ -21966,9 +24698,9 @@ function filesFromCodexToolInput(input) {
   }
   return out;
 }
-async function parse4(source, options = {}) {
-  const header = await readCodexHeader(source.path);
-  const id = options.sessionId ?? header?.sessionId ?? source.sessionId;
+async function parse6(source, options = {}) {
+  const header2 = await readCodexHeader(source.path);
+  const id = options.sessionId ?? header2?.sessionId ?? source.sessionId;
   const entries = sessionIndexCached(options.codexHome);
   const indexed = entries.get(id);
   const title = options.title ?? indexed?.threadName;
@@ -22006,17 +24738,17 @@ async function parse4(source, options = {}) {
       filesTouched: uniq([...exchange.filesTouched, ...extraFiles])
     };
   });
-  const entrypoint = header ? codexEntrypoint(header) : void 0;
+  const entrypoint = header2 ? codexEntrypoint(header2) : void 0;
   const session = {
     ...result.session,
     id,
-    ...header?.cwd ? { project: header.cwd, projectSlug: pickSlug(result.session, header.cwd) } : {},
+    ...header2?.cwd ? { project: header2.cwd, projectSlug: pickSlug(result.session, header2.cwd) } : {},
     ...entrypoint ? { entrypoint } : {},
     status: source.status ?? result.session.status
   };
   if (title)
     session.title = title;
-  const cliVersion = header?.cliVersion;
+  const cliVersion = header2?.cliVersion;
   const semver = cliVersion ? parseCodexCliVersion(cliVersion) : void 0;
   return {
     ...result,
@@ -22027,7 +24759,7 @@ async function parse4(source, options = {}) {
       // Unknown version == not yet proven unsupported; only a version we can
       // read AND that is below the floor counts as unsupported.
       versionSupported: semver ? versionMeetsMinimum(semver) : true,
-      headerUnreadable: header === void 0,
+      headerUnreadable: header2 === void 0,
       titled: Boolean(indexed?.threadName),
       elisions: tally2
     }
@@ -22036,11 +24768,11 @@ async function parse4(source, options = {}) {
 function pickSlug(session, cwd) {
   if (session.projectSlug && session.projectSlug !== "unknown")
     return session.projectSlug;
-  return path30.basename(cwd) || "unknown";
+  return path31.basename(cwd) || "unknown";
 }
 async function codexDoctor(options = {}) {
   const paths = codexPaths(codexDir(options.codexHome));
-  const sources = discover5(options);
+  const sources = discover7(options);
   const entries = readSessionIndex(options);
   const versions = {};
   const unsupported = /* @__PURE__ */ new Set();
@@ -22052,15 +24784,15 @@ async function codexDoctor(options = {}) {
     bytes3 += source.bytes;
     if (source.status === "archived")
       archived += 1;
-    const header = await readCodexHeader(source.path);
-    if (!header) {
+    const header2 = await readCodexHeader(source.path);
+    if (!header2) {
       unreadable.push(source.path);
       continue;
     }
-    const id = header.sessionId ?? source.sessionId;
+    const id = header2.sessionId ?? source.sessionId;
     if (entries.get(id)?.threadName)
       titled2 += 1;
-    const raw = header.cliVersion;
+    const raw = header2.cliVersion;
     if (raw) {
       versions[raw] = (versions[raw] ?? 0) + 1;
       const semver = parseCodexCliVersion(raw);
@@ -22072,7 +24804,7 @@ async function codexDoctor(options = {}) {
     harness: "codex",
     displayName: "Codex CLI",
     sourceDir: paths.sessions,
-    present: fs35.existsSync(paths.root),
+    present: fs40.existsSync(paths.root),
     sessions: sources.length,
     archived,
     bytes: bytes3,
@@ -22107,7 +24839,7 @@ function renderCodexDoctorLine(report) {
   }
   return `codex     ${parts.join(" \xB7 ")}   ${tildify(report.sourceDir)}`;
 }
-function doctorLine4(report) {
+function doctorLine6(report) {
   if (!report.present) {
     return formatDoctorLine({
       harness: "codex",
@@ -22145,7 +24877,7 @@ function formatBytes(n2) {
     return `${(n2 / 1024).toFixed(1)} KB`;
   return `${(n2 / (1024 * 1024)).toFixed(1)} MB`;
 }
-var ROLLOUT_FILE, UUID, MAX_WALK_DEPTH, indexCache, DATA_URI2, DEFAULT_MAX_VALUE_BYTES, DEFAULT_MAX_MESSAGE_BYTES, PATCH_FILE, PATCH_MOVE, codexAdapter;
+var ROLLOUT_FILE, UUID2, MAX_WALK_DEPTH, indexCache, DATA_URI2, DEFAULT_MAX_VALUE_BYTES, DEFAULT_MAX_MESSAGE_BYTES, PATCH_FILE, PATCH_MOVE, codexAdapter;
 var init_codex2 = __esm({
   "packages/core/dist/adapters/codex.js"() {
     "use strict";
@@ -22157,7 +24889,7 @@ var init_codex2 = __esm({
     init_version();
     init_paths();
     ROLLOUT_FILE = /^rollout-.*\.jsonl$/i;
-    UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+    UUID2 = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
     MAX_WALK_DEPTH = 8;
     indexCache = /* @__PURE__ */ new Map();
     DATA_URI2 = /data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)?(?:;[a-zA-Z0-9.+=-]+)*;base64,[A-Za-z0-9+/=\s]{64,}/g;
@@ -22169,485 +24901,8 @@ var init_codex2 = __esm({
       harness: "codex",
       displayName: "Codex CLI",
       sourceDir: () => codexPaths().sessions,
-      discover: () => discover5(),
-      parse: (source, options) => parse4(source, options ?? {})
-    };
-  }
-});
-
-// packages/core/dist/adapters/cursor.js
-var cursor_exports = {};
-__export(cursor_exports, {
-  CURSOR_DOCTOR_NOTE: () => CURSOR_DOCTOR_NOTE,
-  SIDECHAIN_DIR: () => SIDECHAIN_DIR3,
-  TRANSCRIPTS_DIR: () => TRANSCRIPTS_DIR,
-  classifyProjectSlug: () => classifyProjectSlug,
-  cursorAdapter: () => cursorAdapter,
-  cursorDir: () => cursorDir,
-  cursorProjectsDir: () => cursorProjectsDir,
-  cursorSlug: () => cursorSlug,
-  discover: () => discover6,
-  doctorLine: () => doctorLine5,
-  filesFromCursorInput: () => filesFromCursorInput,
-  parse: () => parse5,
-  parseCursorTimestamp: () => parseCursorTimestamp,
-  readPrompt: () => readPrompt,
-  recoverCwd: () => recoverCwd,
-  toolName: () => toolName
-});
-import fs36 from "node:fs";
-import path31 from "node:path";
-function cursorSlug(cwd) {
-  return cwd.replace(/^[/\\]+/, "").replace(/[/\\_]/g, "-");
-}
-function classifyProjectSlug(slug) {
-  if (slug === "empty-window")
-    return "empty-window";
-  if (/^\d{10,}$/.test(slug))
-    return "window-id";
-  return "path";
-}
-function discover6(dirOverride) {
-  const root = cursorProjectsDir(dirOverride);
-  const out = [];
-  for (const slug of readdirSafe4(root, "dir")) {
-    const transcripts = path31.join(root, slug, TRANSCRIPTS_DIR);
-    for (const sessionId of readdirSafe4(transcripts, "dir")) {
-      const sessionDir = path31.join(transcripts, sessionId);
-      for (const file of readdirSafe4(sessionDir, "file")) {
-        if (!file.endsWith(".jsonl"))
-          continue;
-        const source = statSource(path31.join(sessionDir, file), slug, {
-          sessionId: basenameId(file),
-          isSidechain: false
-        });
-        if (source)
-          out.push(source);
-      }
-      const sidechains = path31.join(sessionDir, SIDECHAIN_DIR3);
-      for (const file of readdirSafe4(sidechains, "file")) {
-        if (!file.endsWith(".jsonl"))
-          continue;
-        const source = statSource(path31.join(sidechains, file), slug, {
-          sessionId: basenameId(file),
-          isSidechain: true,
-          parentSessionId: sessionId
-        });
-        if (source)
-          out.push(source);
-      }
-    }
-  }
-  return out.sort((a, b2) => a.path < b2.path ? -1 : a.path > b2.path ? 1 : 0);
-}
-function basenameId(file) {
-  return file.slice(0, -".jsonl".length);
-}
-function readdirSafe4(dir, want) {
-  let entries;
-  try {
-    entries = fs36.readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-  const names = [];
-  for (const e of entries) {
-    if (e.name.startsWith("."))
-      continue;
-    if (want === "dir" ? e.isDirectory() : e.isFile())
-      names.push(e.name);
-  }
-  return names.sort();
-}
-function statSource(file, projectSlug, rest) {
-  let st;
-  try {
-    st = fs36.statSync(file);
-  } catch {
-    return null;
-  }
-  return {
-    sessionId: rest.sessionId,
-    harness: "cursor",
-    path: file,
-    projectSlug,
-    bytes: st.size,
-    mtimeMs: st.mtimeMs,
-    isSidechain: rest.isSidechain,
-    ...rest.parentSessionId ? { parentSessionId: rest.parentSessionId } : {},
-    status: "live"
-  };
-}
-async function parse5(source, options = {}) {
-  const sessionId = options.sessionId ?? source.sessionId;
-  const projectSlug = options.projectSlug ?? source.projectSlug;
-  const isSidechain = source.isSidechain;
-  const unknownTypes = {};
-  const bump = (key2) => {
-    unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
-  };
-  const exchanges = [];
-  const cwdCandidates = [];
-  let malformedLines = 0;
-  let endOffset = options.fromOffset ?? 0;
-  let seq = options.fromSeq ?? 0;
-  let userPrompts = 0;
-  let assistantTurns = 0;
-  let toolCallCount = 0;
-  let firstTs;
-  let lastTs;
-  let open2;
-  const flush = () => {
-    if (!open2)
-      return;
-    exchanges.push({
-      id: exchangeId(sessionId, open2.seq),
-      sessionId,
-      seq: open2.seq,
-      // Every exchange needs a ts. A prompt with no `<timestamp>` (all of the
-      // subagent ones) inherits the last one seen, and if there was none, the
-      // session's mtime-derived start. Never invented, always explained.
-      ts: open2.ts ?? lastTs ?? firstTs ?? isoFromMs(source.mtimeMs),
-      userText: open2.userText,
-      assistantText: open2.assistantTexts.join("\n\n"),
-      toolCalls: open2.toolCalls,
-      filesTouched: uniq(open2.files),
-      isSidechain,
-      // No `parentUuid`: cursor records carry no ids of any kind, so an
-      // exchange cannot name its parent. Left off rather than faked.
-      redacted: false
-      // L2 redacts between here and the index.
-    });
-    open2 = void 0;
-  };
-  const openFor = (ts, userText) => {
-    flush();
-    seq += 1;
-    open2 = { seq, ts, userText, assistantTexts: [], toolCalls: [], files: [] };
-  };
-  for await (const line of readJsonlLines(source.path, { start: options.fromOffset ?? 0 })) {
-    const record2 = parseJsonLine(line.text);
-    if (!line.terminated) {
-      if (record2 === void 0) {
-        if (line.text.trim())
-          malformedLines += 1;
-        break;
-      }
-    }
-    endOffset = line.end;
-    if (record2 === void 0) {
-      if (line.text.trim())
-        malformedLines += 1;
-      continue;
-    }
-    if (!isRecord(record2)) {
-      bump("(not an object)");
-      continue;
-    }
-    const role = record2.role;
-    const message2 = record2.message;
-    const content = isRecord(message2) ? message2.content : void 0;
-    if (typeof role !== "string") {
-      bump("(no role)");
-      continue;
-    }
-    if (!Array.isArray(content)) {
-      bump(`role:${role} (no message.content)`);
-      continue;
-    }
-    if (role === "user") {
-      const text2 = joinText(content, bump, role);
-      const prompt = readPrompt(text2);
-      if (prompt.injected && open2) {
-        bump("user:injected-continuation");
-        continue;
-      }
-      if (prompt.ts) {
-        if (!firstTs)
-          firstTs = prompt.ts;
-        lastTs = prompt.ts;
-      }
-      openFor(prompt.ts, prompt.text);
-      userPrompts += 1;
-      continue;
-    }
-    if (role !== "assistant") {
-      bump(`role:${role}`);
-      continue;
-    }
-    assistantTurns += 1;
-    if (!open2)
-      openFor(lastTs, "");
-    for (const raw of content) {
-      if (!isRecord(raw)) {
-        bump("block:(not an object)");
-        continue;
-      }
-      const block2 = raw;
-      if (block2.type === "text") {
-        if (typeof block2.text === "string" && block2.text)
-          open2.assistantTexts.push(block2.text);
-        continue;
-      }
-      if (block2.type === "tool_use") {
-        toolCallCount += 1;
-        open2.toolCalls.push({
-          name: toolName(block2.name),
-          input: stringifyToolInput(block2.input)
-          // `result` is deliberately absent: cursor persists no tool output.
-          // See CURSOR_DOCTOR_NOTE. `isError` is unknowable for the same reason.
-        });
-        for (const f of filesFromCursorInput(block2.input))
-          open2.files.push(f);
-        for (const p of absolutePaths(block2.input))
-          cwdCandidates.push(p);
-        continue;
-      }
-      bump(`block:${typeof block2.type === "string" ? block2.type : String(block2.type)}`);
-    }
-  }
-  flush();
-  const mtimeIso = isoFromMs(source.mtimeMs);
-  const startedAt = firstTs ?? mtimeIso;
-  const endedAt = mtimeIso >= (lastTs ?? "") ? mtimeIso : lastTs;
-  const session = {
-    id: sessionId,
-    harness: "cursor",
-    sourcePath: source.path,
-    // `project` is a *recovered* cwd: an absolute directory seen in this
-    // session's own tool inputs whose cursorSlug() equals the project
-    // directory name. Empty when nothing corroborates — window-id and
-    // empty-window projects never have a cwd, and neither is invented.
-    project: recoverCwd(projectSlug, cwdCandidates) ?? "",
-    projectSlug,
-    startedAt,
-    endedAt,
-    // title / gitBranch / entrypoint / model / agentName: **not knowable from
-    // ~/.cursor**. Cursor keeps all four in VS Code's workspaceStorage and
-    // globalStorage sqlite, which potsherd does not read. Left undefined.
-    isSidechain,
-    ...source.parentSessionId ? { parentSessionId: source.parentSessionId } : {},
-    counts: {
-      userPrompts,
-      assistantTurns,
-      toolCalls: toolCallCount,
-      bytes: source.bytes
-    },
-    status: source.status ?? "live"
-  };
-  return { session, exchanges, unknownTypes, endOffset, malformedLines };
-}
-function readPrompt(text2) {
-  const open2 = text2.indexOf(OPEN_QUERY);
-  const preamble = open2 >= 0 ? text2.slice(0, open2) : text2;
-  const stamp = preamble.match(TIMESTAMP_RE);
-  const ts = stamp ? parseCursorTimestamp(stamp[1]) : void 0;
-  if (open2 < 0) {
-    return { text: text2.replace(TIMESTAMP_RE, "").trim(), injected: false, ...ts ? { ts } : {} };
-  }
-  const bodyStart = open2 + OPEN_QUERY.length;
-  const injected = text2[bodyStart] !== "\n";
-  const close = text2.lastIndexOf(CLOSE_QUERY);
-  const body = close > bodyStart ? text2.slice(bodyStart, close) : text2.slice(bodyStart);
-  return { text: body.trim(), injected, ...ts ? { ts } : {} };
-}
-function parseCursorTimestamp(raw) {
-  const m = raw.trim().match(CURSOR_TS_RE);
-  if (!m)
-    return void 0;
-  const month = MONTHS3.indexOf(m[1].toLowerCase());
-  if (month < 0)
-    return void 0;
-  const day = Number(m[2]);
-  const year = Number(m[3]);
-  let hour = Number(m[4]);
-  const minute = Number(m[5]);
-  const second = m[6] ? Number(m[6]) : 0;
-  const meridiem = m[7].toLowerCase();
-  if (hour === 12)
-    hour = 0;
-  if (meridiem === "p")
-    hour += 12;
-  if (day < 1 || day > 31 || minute > 59 || second > 59 || hour > 23)
-    return void 0;
-  const offsetHours = m[8] ? Number(m[8]) : 0;
-  const offsetMinutes = m[9] ? Number(m[9]) : 0;
-  const sign = m[8]?.startsWith("-") ? -1 : 1;
-  const offset = offsetHours * 60 + sign * offsetMinutes;
-  const ms = Date.UTC(year, month, day, hour, minute, second) - offset * 6e4;
-  if (!Number.isFinite(ms))
-    return void 0;
-  return new Date(ms).toISOString();
-}
-function toolName(name) {
-  if (typeof name !== "string")
-    return "unknown";
-  const first = name.split("\n")[0].trim();
-  return first || "unknown";
-}
-function filesFromCursorInput(input) {
-  if (typeof input === "string") {
-    const out2 = [];
-    for (const m of input.matchAll(PATCH_FILE_RE)) {
-      const file = m[1].trim();
-      if (file)
-        out2.push(file);
-    }
-    return uniq(out2);
-  }
-  if (!isRecord(input))
-    return [];
-  const out = filesFromToolInput(input);
-  for (const key2 of CURSOR_FILE_KEYS) {
-    const value = input[key2];
-    if (typeof value === "string" && value.trim())
-      out.push(value);
-    else if (Array.isArray(value)) {
-      for (const item of value)
-        if (typeof item === "string" && item.trim())
-          out.push(item);
-    }
-  }
-  return uniq(out);
-}
-function absolutePaths(input) {
-  const out = [];
-  const visit = (value, depth) => {
-    if (depth > 4)
-      return;
-    if (typeof value === "string") {
-      if (value.startsWith("/") && !value.includes("\n"))
-        out.push(value);
-      return;
-    }
-    if (Array.isArray(value)) {
-      for (const item of value)
-        visit(item, depth + 1);
-      return;
-    }
-    if (isRecord(value)) {
-      for (const item of Object.values(value))
-        visit(item, depth + 1);
-    }
-  };
-  if (typeof input === "string") {
-    for (const m of input.matchAll(PATCH_FILE_RE)) {
-      const file = m[1].trim();
-      if (file.startsWith("/"))
-        out.push(file);
-    }
-    return out;
-  }
-  visit(input, 0);
-  return out;
-}
-function recoverCwd(projectSlug, candidates2) {
-  if (classifyProjectSlug(projectSlug) !== "path")
-    return void 0;
-  const hits = /* @__PURE__ */ new Map();
-  for (const candidate of candidates2) {
-    let dir = candidate;
-    for (let depth = 0; depth < 32 && dir !== "/" && dir !== "."; depth += 1) {
-      if (cursorSlug(dir) === projectSlug) {
-        hits.set(dir, (hits.get(dir) ?? 0) + 1);
-        break;
-      }
-      const parent = path31.dirname(dir);
-      if (parent === dir)
-        break;
-      dir = parent;
-    }
-  }
-  let best;
-  let bestCount = 0;
-  for (const [dir, count5] of [...hits].sort((a, b2) => a[0] < b2[0] ? -1 : 1)) {
-    if (count5 > bestCount) {
-      best = dir;
-      bestCount = count5;
-    }
-  }
-  return best;
-}
-function joinText(content, bump, role) {
-  const parts = [];
-  for (const raw of content) {
-    if (!isRecord(raw)) {
-      bump("block:(not an object)");
-      continue;
-    }
-    if (raw.type === "text") {
-      if (typeof raw.text === "string")
-        parts.push(raw.text);
-      continue;
-    }
-    bump(`${role}/block:${typeof raw.type === "string" ? raw.type : String(raw.type)}`);
-  }
-  return parts.join("\n");
-}
-function isoFromMs(ms) {
-  return new Date(ms).toISOString();
-}
-function doctorLine5(dirOverride) {
-  const dir = cursorProjectsDir(dirOverride);
-  let found = [];
-  try {
-    found = discover6(dirOverride);
-  } catch {
-    found = [];
-  }
-  const exists2 = fs36.existsSync(dir);
-  const sidechains = found.filter((f) => f.isSidechain).length;
-  const sessions = found.length - sidechains;
-  const parts = [`${sessions} session${sessions === 1 ? "" : "s"}`];
-  if (sidechains > 0)
-    parts.push(`${sidechains} sidechains`);
-  parts.push("no titles, no tool results");
-  return formatDoctorLine({
-    harness: "cursor",
-    status: exists2 || found.length > 0 ? "ready" : "absent",
-    dir,
-    note: exists2 || found.length > 0 ? parts.join(" \xB7 ") : "Cursor not installed"
-  });
-}
-var TRANSCRIPTS_DIR, SIDECHAIN_DIR3, CURSOR_DOCTOR_NOTE, TIMESTAMP_RE, OPEN_QUERY, CLOSE_QUERY, MONTHS3, CURSOR_TS_RE, CURSOR_FILE_KEYS, PATCH_FILE_RE, cursorAdapter;
-var init_cursor = __esm({
-  "packages/core/dist/adapters/cursor.js"() {
-    "use strict";
-    init_paths();
-    init_doctor_line();
-    init_jsonl();
-    init_claude();
-    init_content();
-    init_paths();
-    TRANSCRIPTS_DIR = "agent-transcripts";
-    SIDECHAIN_DIR3 = "subagents";
-    CURSOR_DOCTOR_NOTE = "cursor: no timestamps on assistant turns (session times come from file mtime), no tool results recorded at all, and title/model/git-branch are unavailable \u2014 they live in VS Code's workspaceStorage, which potsherd does not read.";
-    TIMESTAMP_RE = /<timestamp>([^<]*)<\/timestamp>/;
-    OPEN_QUERY = "<user_query>";
-    CLOSE_QUERY = "</user_query>";
-    MONTHS3 = [
-      "january",
-      "february",
-      "march",
-      "april",
-      "may",
-      "june",
-      "july",
-      "august",
-      "september",
-      "october",
-      "november",
-      "december"
-    ];
-    CURSOR_TS_RE = new RegExp("^(?:[A-Za-z]+,\\s*)?([A-Za-z]+)\\s+(\\d{1,2}),\\s*(\\d{4}),\\s*(\\d{1,2}):(\\d{2})(?::(\\d{2}))?\\s*([AaPp])\\.?[Mm]\\.?(?:\\s*\\(\\s*UTC(?:\\s*([+-]\\d{1,2})(?::?(\\d{2}))?)?\\s*\\))?\\s*$");
-    CURSOR_FILE_KEYS = ["target_notebook", "paths"];
-    PATCH_FILE_RE = /^\*\*\* (?:Add|Update|Delete) File:\s*(.+)$/gm;
-    cursorAdapter = {
-      harness: "cursor",
-      displayName: "Cursor",
-      sourceDir: () => cursorDir(),
-      discover: () => discover6(),
-      parse: parse5
+      discover: () => discover7(),
+      parse: (source, options) => parse6(source, options ?? {})
     };
   }
 });
@@ -22655,43 +24910,43 @@ var init_cursor = __esm({
 // packages/core/dist/adapters/pi.js
 var pi_exports = {};
 __export(pi_exports, {
-  DISPLAY_NAME: () => DISPLAY_NAME3,
+  DISPLAY_NAME: () => DISPLAY_NAME4,
   default: () => pi_default,
-  discover: () => discover7,
-  doctorLine: () => doctorLine6,
+  discover: () => discover8,
+  doctorLine: () => doctorLine7,
   exchangeId: () => exchangeId2,
-  parse: () => parse6,
+  parse: () => parse7,
   piAdapter: () => piAdapter,
   piDir: () => piDir,
-  sessionIdFromFilename: () => sessionIdFromFilename,
-  sourceDir: () => sourceDir4,
+  sessionIdFromFilename: () => sessionIdFromFilename2,
+  sourceDir: () => sourceDir5,
   unslugifyPi: () => unslugifyPi
 });
-import fs37 from "node:fs";
+import fs41 from "node:fs";
 import path32 from "node:path";
-import crypto5 from "node:crypto";
-function sourceDir4(override) {
+import crypto6 from "node:crypto";
+function sourceDir5(override) {
   return piSessionsDir(override);
 }
-function doctorLine6(override) {
-  const dir = sourceDir4(override);
+function doctorLine7(override) {
+  const dir = sourceDir5(override);
   let sessions = 0;
   try {
-    sessions = discover7(override).length;
+    sessions = discover8(override).length;
   } catch {
     sessions = 0;
   }
-  const exists2 = fs37.existsSync(dir);
+  const exists2 = fs41.existsSync(dir);
   const status3 = exists2 ? "ready" : "absent";
   const note = exists2 ? `${sessions} session${sessions === 1 ? "" : "s"}` : "pi not installed";
   return formatDoctorLine({ harness: "pi", status: status3, dir, note });
 }
-function discover7(override) {
-  const root = sourceDir4(override);
+function discover8(override) {
+  const root = sourceDir5(override);
   const out = [];
   let slugs;
   try {
-    slugs = fs37.readdirSync(root, { withFileTypes: true });
+    slugs = fs41.readdirSync(root, { withFileTypes: true });
   } catch {
     return out;
   }
@@ -22701,7 +24956,7 @@ function discover7(override) {
     const dir = path32.join(root, slug.name);
     let files;
     try {
-      files = fs37.readdirSync(dir);
+      files = fs41.readdirSync(dir);
     } catch {
       continue;
     }
@@ -22711,14 +24966,14 @@ function discover7(override) {
       const full = path32.join(dir, file);
       let stat;
       try {
-        stat = fs37.statSync(full);
+        stat = fs41.statSync(full);
       } catch {
         continue;
       }
       if (!stat.isFile())
         continue;
       out.push({
-        sessionId: sessionIdFromFilename(file),
+        sessionId: sessionIdFromFilename2(file),
         harness: "pi",
         path: full,
         projectSlug: slug.name,
@@ -22732,12 +24987,12 @@ function discover7(override) {
   out.sort((a, b2) => a.path < b2.path ? -1 : a.path > b2.path ? 1 : 0);
   return out;
 }
-function sessionIdFromFilename(file) {
+function sessionIdFromFilename2(file) {
   const base3 = path32.basename(file, ".jsonl");
   const at = base3.lastIndexOf("_");
   return at === -1 ? base3 : base3.slice(at + 1);
 }
-async function parse6(source, options = {}) {
+async function parse7(source, options = {}) {
   const src = typeof source === "string" ? void 0 : source;
   const absolute2 = path32.resolve(typeof source === "string" ? source : source.path);
   const unknownTypes = {};
@@ -22745,7 +25000,7 @@ async function parse6(source, options = {}) {
   let endOffset = 0;
   const nodes = [];
   const byId = /* @__PURE__ */ new Map();
-  let header;
+  let header2;
   let order = 0;
   for await (const line of readJsonlLines(absolute2)) {
     if (!line.terminated)
@@ -22764,13 +25019,13 @@ async function parse6(source, options = {}) {
     } else if (type === "message") {
       const message2 = parsed.message;
       const role = isRecord(message2) && typeof message2.role === "string" ? message2.role : "";
-      if (!HANDLED_ROLES.has(role)) {
+      if (!HANDLED_ROLES2.has(role)) {
         const key2 = `message:${role || "(no role)"}`;
         unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
       }
     }
     if (type === "session") {
-      header ??= parsed;
+      header2 ??= parsed;
       continue;
     }
     const id = typeof parsed.id === "string" ? parsed.id : "";
@@ -22789,16 +25044,16 @@ async function parse6(source, options = {}) {
     nodes.push(node);
     byId.set(id, node);
   }
-  const sessionId = options.sessionId ?? (header && typeof header.id === "string" && header.id ? header.id : sessionIdFromFilename(absolute2));
+  const sessionId = options.sessionId ?? (header2 && typeof header2.id === "string" && header2.id ? header2.id : sessionIdFromFilename2(absolute2));
   const mainline = linearise(nodes, byId);
   const onMainline = new Set(mainline.map((n2) => n2.id));
   const branches = branchChains(nodes, onMainline);
   const counts2 = { userPrompts: 0, assistantTurns: 0, toolCalls: 0 };
   const exchanges = [];
   let seq = 0;
-  seq = buildExchanges3(mainline, sessionId, false, seq, exchanges, counts2);
+  seq = buildExchanges4(mainline, sessionId, false, seq, exchanges, counts2);
   for (const chain of branches) {
-    seq = buildExchanges3(chain, sessionId, true, seq, exchanges, counts2);
+    seq = buildExchanges4(chain, sessionId, true, seq, exchanges, counts2);
   }
   let model;
   let title;
@@ -22817,13 +25072,13 @@ async function parse6(source, options = {}) {
     }
   }
   const projectSlug = options.projectSlug ?? src?.projectSlug ?? path32.basename(path32.dirname(absolute2));
-  const headerCwd = header && typeof header.cwd === "string" ? header.cwd : void 0;
-  const startedAt = header && typeof header.timestamp === "string" ? header.timestamp : nodes[0]?.ts ?? "";
+  const headerCwd = header2 && typeof header2.cwd === "string" ? header2.cwd : void 0;
+  const startedAt = header2 && typeof header2.timestamp === "string" ? header2.timestamp : nodes[0]?.ts ?? "";
   let endedAt = startedAt;
   for (const node of nodes)
     if (node.ts > endedAt)
       endedAt = node.ts;
-  const parentSession = header && typeof header.parentSession === "string" ? header.parentSession : void 0;
+  const parentSession = header2 && typeof header2.parentSession === "string" ? header2.parentSession : void 0;
   const session = {
     id: sessionId,
     harness: "pi",
@@ -22838,7 +25093,7 @@ async function parse6(source, options = {}) {
     entrypoint: "cli",
     ...model ? { model } : {},
     isSidechain: false,
-    ...parentSession ? { parentSessionId: sessionIdFromFilename(parentSession) } : {},
+    ...parentSession ? { parentSessionId: sessionIdFromFilename2(parentSession) } : {},
     counts: {
       userPrompts: counts2.userPrompts,
       assistantTurns: counts2.assistantTurns,
@@ -22880,7 +25135,7 @@ function branchChains(nodes, onMainline) {
   }
   return chains;
 }
-function buildExchanges3(chain, sessionId, isSidechain, startSeq, out, counts2) {
+function buildExchanges4(chain, sessionId, isSidechain, startSeq, out, counts2) {
   let seq = startSeq;
   let current = null;
   const finalize = () => {
@@ -22926,7 +25181,7 @@ function buildExchanges3(chain, sessionId, isSidechain, startSeq, out, counts2) 
     if (!isRecord(message2))
       continue;
     const role = typeof message2.role === "string" ? message2.role : "";
-    if (!HANDLED_ROLES.has(role))
+    if (!HANDLED_ROLES2.has(role))
       continue;
     if (role === "user") {
       finalize();
@@ -22988,15 +25243,15 @@ function unslugifyPi(slug) {
 }
 function statBytes3(absolute2) {
   try {
-    return fs37.statSync(absolute2).size;
+    return fs41.statSync(absolute2).size;
   } catch {
     return 0;
   }
 }
 function exchangeId2(sessionId, seq) {
-  return crypto5.createHash("sha256").update(`${sessionId}:${seq}`).digest("hex").slice(0, 32);
+  return crypto6.createHash("sha256").update(`${sessionId}:${seq}`).digest("hex").slice(0, 32);
 }
-var HANDLED_TYPES2, HANDLED_ROLES, DISPLAY_NAME3, piAdapter, pi_default;
+var HANDLED_TYPES2, HANDLED_ROLES2, DISPLAY_NAME4, piAdapter, pi_default;
 var init_pi = __esm({
   "packages/core/dist/adapters/pi.js"() {
     "use strict";
@@ -23017,411 +25272,27 @@ var init_pi = __esm({
       "custom",
       "custom_message"
     ]);
-    HANDLED_ROLES = /* @__PURE__ */ new Set(["user", "assistant", "toolResult"]);
-    DISPLAY_NAME3 = "pi";
+    HANDLED_ROLES2 = /* @__PURE__ */ new Set(["user", "assistant", "toolResult"]);
+    DISPLAY_NAME4 = "pi";
     piAdapter = {
       harness: "pi",
-      displayName: DISPLAY_NAME3,
-      sourceDir: () => sourceDir4(),
-      discover: () => discover7(),
-      parse: (src, opts) => parse6(src, opts ?? {})
-    };
-    pi_default = piAdapter;
-  }
-});
-
-// packages/core/dist/adapters/gemini.js
-var gemini_exports = {};
-__export(gemini_exports, {
-  CHATS_DIR: () => CHATS_DIR,
-  DISPLAY_NAME: () => DISPLAY_NAME4,
-  GEMINI_DOCTOR_NOTE: () => GEMINI_DOCTOR_NOTE,
-  GEMINI_FORMAT_UNVERIFIED: () => GEMINI_FORMAT_UNVERIFIED,
-  default: () => gemini_default,
-  discover: () => discover8,
-  doctorLine: () => doctorLine7,
-  geminiAdapter: () => geminiAdapter,
-  geminiDir: () => geminiDir,
-  geminiTmpDir: () => geminiTmpDir,
-  isHumanTurn: () => isHumanTurn,
-  parse: () => parse7,
-  projectHashes: () => projectHashes,
-  recoverCwd: () => recoverCwd2,
-  sessionIdFromFilename: () => sessionIdFromFilename2,
-  sourceDir: () => sourceDir5
-});
-import fs38 from "node:fs";
-import path33 from "node:path";
-import crypto6 from "node:crypto";
-function sourceDir5(override) {
-  return geminiTmpDir(override);
-}
-function discover8(override) {
-  const root = sourceDir5(override);
-  const out = [];
-  let hashes;
-  try {
-    hashes = fs38.readdirSync(root, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-  for (const hash3 of hashes) {
-    if (!hash3.isDirectory())
-      continue;
-    const dir = path33.join(root, hash3.name, CHATS_DIR);
-    let files;
-    try {
-      files = fs38.readdirSync(dir);
-    } catch {
-      continue;
-    }
-    for (const file of files) {
-      if (!file.endsWith(".json"))
-        continue;
-      const full = path33.join(dir, file);
-      let stat;
-      try {
-        stat = fs38.statSync(full);
-      } catch {
-        continue;
-      }
-      if (!stat.isFile())
-        continue;
-      out.push({
-        sessionId: sessionIdFromFilename2(file, hash3.name),
-        harness: "gemini",
-        path: full,
-        projectSlug: hash3.name,
-        bytes: stat.size,
-        mtimeMs: stat.mtimeMs,
-        isSidechain: false,
-        status: "live"
-      });
-    }
-  }
-  out.sort((a, b2) => a.path < b2.path ? -1 : a.path > b2.path ? 1 : 0);
-  return out;
-}
-function sessionIdFromFilename2(file, projectHash) {
-  const base3 = path33.basename(file, ".json").replace(/^checkpoint-/, "") || "checkpoint";
-  return `${projectHash.slice(0, 12)}-${base3}`;
-}
-async function parse7(source, options = {}) {
-  const src = typeof source === "string" ? void 0 : source;
-  const absolute2 = path33.resolve(typeof source === "string" ? source : source.path);
-  const unknownTypes = {};
-  let malformedLines = 0;
-  let raw = "";
-  try {
-    raw = fs38.readFileSync(absolute2, "utf8");
-  } catch {
-    raw = "";
-  }
-  const endOffset = Buffer.byteLength(raw, "utf8");
-  let doc;
-  try {
-    doc = raw.trim() ? JSON.parse(raw) : void 0;
-  } catch {
-    doc = void 0;
-    if (raw.trim())
-      malformedLines += 1;
-  }
-  const { turns, meta } = unwrap(doc);
-  if (doc !== void 0 && turns.length === 0 && !meta)
-    malformedLines += 1;
-  const projectSlug = options.projectSlug ?? src?.projectSlug ?? path33.basename(path33.dirname(path33.dirname(absolute2)));
-  const sessionId = options.sessionId ?? (meta && typeof meta.sessionId === "string" && meta.sessionId.trim() ? meta.sessionId : sessionIdFromFilename2(absolute2, projectSlug));
-  const mtimeMs = options.mtimeMs ?? src?.mtimeMs ?? statMtime2(absolute2);
-  const fileTime = new Date(mtimeMs).toISOString();
-  const counts2 = { userPrompts: 0, assistantTurns: 0, toolCalls: 0 };
-  const cwdCandidates = [];
-  const exchanges = buildExchanges4(turns, sessionId, fileTime, counts2, unknownTypes, cwdCandidates);
-  const metaString = (key2) => {
-    if (!meta)
-      return void 0;
-    const v = meta[key2];
-    return typeof v === "string" && v.trim() ? v : void 0;
-  };
-  const startedAt = metaString("startTime") ?? metaString("startedAt") ?? fileTime;
-  const endedAt = metaString("lastUpdated") ?? metaString("updatedAt") ?? fileTime;
-  const cwd = metaString("cwd") ?? metaString("projectRoot");
-  const title = metaString("title") ?? metaString("name") ?? metaString("tag");
-  const model = metaString("model");
-  const gitBranch = metaString("gitBranch") ?? metaString("branch");
-  const session = {
-    id: sessionId,
-    harness: "gemini",
-    sourcePath: absolute2,
-    project: cwd ?? recoverCwd2(projectSlug, cwdCandidates) ?? "",
-    projectSlug,
-    startedAt,
-    endedAt: endedAt < startedAt ? startedAt : endedAt,
-    ...title ? { title } : {},
-    ...gitBranch ? { gitBranch } : {},
-    entrypoint: "cli",
-    ...model ? { model } : {},
-    isSidechain: false,
-    counts: {
-      userPrompts: counts2.userPrompts,
-      assistantTurns: counts2.assistantTurns,
-      toolCalls: counts2.toolCalls,
-      bytes: options.bytes ?? src?.bytes ?? endOffset
-    },
-    status: options.status ?? src?.status ?? "live"
-  };
-  return { session, exchanges, unknownTypes, endOffset, malformedLines };
-}
-function unwrap(doc) {
-  if (Array.isArray(doc))
-    return { turns: doc };
-  if (!isRecord(doc))
-    return { turns: [] };
-  for (const key2 of HISTORY_KEYS2) {
-    const v = doc[key2];
-    if (Array.isArray(v))
-      return { turns: v, meta: doc };
-  }
-  return { turns: [], meta: doc };
-}
-function buildExchanges4(turns, sessionId, fileTime, counts2, unknownTypes, cwdCandidates) {
-  const out = [];
-  let seq = 0;
-  let current = null;
-  const finalize = () => {
-    if (!current)
-      return;
-    const b2 = current;
-    current = null;
-    if (!b2.userTexts.length && !b2.assistantTexts.length && !b2.toolCalls.length)
-      return;
-    out.push({
-      id: exchangeId(sessionId, b2.seq),
-      sessionId,
-      seq: b2.seq,
-      ts: fileTime,
-      userText: b2.userTexts.join("\n\n"),
-      assistantText: b2.assistantTexts.join("\n\n"),
-      toolCalls: b2.toolCalls,
-      filesTouched: uniq(b2.files),
-      isSidechain: false,
-      redacted: false
-    });
-  };
-  const open2 = () => {
-    seq += 1;
-    current = {
-      seq,
-      userTexts: [],
-      assistantTexts: [],
-      toolCalls: [],
-      byName: /* @__PURE__ */ new Map(),
-      files: []
-    };
-    return current;
-  };
-  for (const turn of turns) {
-    if (!isRecord(turn)) {
-      unknownTypes["(not an object)"] = (unknownTypes["(not an object)"] ?? 0) + 1;
-      continue;
-    }
-    const role = typeof turn.role === "string" ? turn.role : "";
-    if (!HANDLED_ROLES2.has(role)) {
-      const key2 = `role:${role || "(no role)"}`;
-      unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
-      continue;
-    }
-    const parts = partsOf(turn, unknownTypes);
-    if (isHumanTurn(role, parts)) {
-      finalize();
-      counts2.userPrompts += 1;
-      const b3 = open2();
-      for (const p of parts) {
-        if (typeof p.text === "string" && p.text)
-          b3.userTexts.push(p.text);
-      }
-      continue;
-    }
-    const b2 = current ?? open2();
-    const isModel = role === "model" || role === "assistant";
-    if (isModel)
-      counts2.assistantTurns += 1;
-    for (const p of parts) {
-      if (typeof p.text === "string" && p.text.trim())
-        b2.assistantTexts.push(p.text);
-      const call = p.functionCall;
-      if (isRecord(call)) {
-        const name2 = typeof call.name === "string" ? call.name : "unknown";
-        const args = call.args ?? call.arguments;
-        b2.toolCalls.push({ name: name2, input: stringifyToolInput(args) });
-        counts2.toolCalls += 1;
-        b2.byName.set(name2, b2.toolCalls.length - 1);
-        for (const f of filesFromToolInput(args)) {
-          b2.files.push(f);
-          cwdCandidates.push(f);
-        }
-      }
-      const res = p.functionResponse;
-      if (!isRecord(res))
-        continue;
-      const name = typeof res.name === "string" ? res.name : "unknown";
-      const result = stringifyToolOutput(res.response ?? res.output ?? res.content);
-      const isError = isRecord(res.response) && typeof res.response["error"] !== "undefined" ? true : void 0;
-      const at = b2.byName.get(name);
-      if (at !== void 0) {
-        const answered3 = b2.toolCalls[at];
-        if (answered3) {
-          if (result !== void 0)
-            answered3.result = result;
-          if (isError)
-            answered3.isError = true;
-        }
-        b2.byName.delete(name);
-        continue;
-      }
-      b2.toolCalls.push({
-        name,
-        input: "",
-        ...result !== void 0 ? { result } : {},
-        ...isError ? { isError: true } : {}
-      });
-      counts2.toolCalls += 1;
-    }
-  }
-  finalize();
-  return out;
-}
-function partsOf(turn, unknownTypes) {
-  const parts = turn.parts ?? turn.content;
-  if (typeof parts === "string")
-    return [{ text: parts }];
-  if (!Array.isArray(parts))
-    return [];
-  const out = [];
-  for (const p of parts) {
-    if (typeof p === "string") {
-      out.push({ text: p });
-      continue;
-    }
-    if (!isRecord(p))
-      continue;
-    for (const key2 of Object.keys(p)) {
-      if (HANDLED_PART_KEYS.has(key2))
-        continue;
-      const k = `part:${key2}`;
-      const counts2 = unknownTypes;
-      counts2[k] = (counts2[k] ?? 0) + 1;
-    }
-    out.push(p);
-  }
-  return out;
-}
-function isHumanTurn(role, parts) {
-  if (role !== "user")
-    return false;
-  if (parts.length === 0)
-    return true;
-  return parts.some((p) => !isRecord(p.functionResponse));
-}
-function projectHashes(cwd) {
-  const sha = (s) => crypto6.createHash("sha256").update(s).digest("hex");
-  const trimmed = cwd.length > 1 ? cwd.replace(/[/\\]+$/, "") : cwd;
-  return uniq([sha(cwd), sha(trimmed), sha(trimmed + path33.sep)]);
-}
-function recoverCwd2(projectHash, candidates2) {
-  if (!/^[0-9a-f]{16,}$/i.test(projectHash))
-    return void 0;
-  const seen = /* @__PURE__ */ new Set();
-  const dirs = [];
-  for (const c of candidates2) {
-    if (!path33.isAbsolute(c))
-      continue;
-    let dir = path33.dirname(path33.resolve(c));
-    for (let i = 0; i < 40; i += 1) {
-      if (seen.has(dir))
-        break;
-      seen.add(dir);
-      dirs.push(dir);
-      const up = path33.dirname(dir);
-      if (up === dir)
-        break;
-      dir = up;
-    }
-  }
-  dirs.sort((a, b2) => b2.length - a.length);
-  const want = projectHash.toLowerCase();
-  for (const dir of dirs) {
-    if (projectHashes(dir).some((h) => h === want))
-      return dir;
-  }
-  return void 0;
-}
-function statMtime2(absolute2) {
-  try {
-    return fs38.statSync(absolute2).mtimeMs;
-  } catch {
-    return 0;
-  }
-}
-function doctorLine7(override) {
-  const tmp = sourceDir5(override);
-  const root = geminiDir(override);
-  let found = [];
-  try {
-    found = discover8(override);
-  } catch {
-    found = [];
-  }
-  const installed = fs38.existsSync(root);
-  const tmpExists = fs38.existsSync(tmp);
-  let status3;
-  let note;
-  if (found.length > 0) {
-    status3 = "ready";
-    note = `${found.length} checkpoint${found.length === 1 ? "" : "s"} \xB7 unverified format`;
-  } else if (installed || tmpExists) {
-    status3 = "empty";
-    note = tmpExists ? "Gemini CLI installed, no saved chats (use /chat save) \xB7 unverified format" : "Gemini CLI installed, no tmp/ yet \u2014 no chats saved \xB7 unverified format";
-  } else {
-    status3 = "absent";
-    note = "Gemini CLI not installed";
-  }
-  return formatDoctorLine({ harness: "gemini", status: status3, dir: tmp, note });
-}
-var DISPLAY_NAME4, CHATS_DIR, GEMINI_FORMAT_UNVERIFIED, GEMINI_DOCTOR_NOTE, HANDLED_PART_KEYS, HANDLED_ROLES2, HISTORY_KEYS2, geminiAdapter, gemini_default;
-var init_gemini = __esm({
-  "packages/core/dist/adapters/gemini.js"() {
-    "use strict";
-    init_paths();
-    init_doctor_line();
-    init_content();
-    init_claude();
-    init_paths();
-    DISPLAY_NAME4 = "Gemini CLI";
-    CHATS_DIR = "chats";
-    GEMINI_FORMAT_UNVERIFIED = true;
-    GEMINI_DOCTOR_NOTE = "gemini: format unverified \u2014 this adapter was written from documentation, not from a real checkpoint, so record coverage is a best guess until someone runs it on one. Checkpoints carry no per-turn timestamps (session times come from file mtime) and the project directory is a hash, so the working directory is only recovered when a path in the transcript hashes to it.";
-    HANDLED_PART_KEYS = /* @__PURE__ */ new Set(["text", "functionCall", "functionResponse"]);
-    HANDLED_ROLES2 = /* @__PURE__ */ new Set(["user", "model", "assistant", "system", "tool"]);
-    HISTORY_KEYS2 = ["history", "messages", "contents", "turns"];
-    geminiAdapter = {
-      harness: "gemini",
       displayName: DISPLAY_NAME4,
       sourceDir: () => sourceDir5(),
       discover: () => discover8(),
       parse: (src, opts) => parse7(src, opts ?? {})
     };
-    gemini_default = geminiAdapter;
+    pi_default = piAdapter;
   }
 });
 
 // packages/core/dist/memory/history.js
-import fs39 from "node:fs";
-import path34 from "node:path";
+import fs42 from "node:fs";
+import path33 from "node:path";
 import crypto7 from "node:crypto";
 function captureHistoryEvidence(db, options) {
-  if (!fs39.existsSync(options.historyPath))
+  if (!fs42.existsSync(options.historyPath))
     return { captured: 0, malformed: 0, pendingBytes: 0 };
-  const snapshot2 = fs39.readFileSync(options.historyPath), groups = /* @__PURE__ */ new Map();
+  const snapshot2 = fs42.readFileSync(options.historyPath), groups = /* @__PURE__ */ new Map();
   let start = 0, malformed = 0;
   for (let end = 0; end < snapshot2.length; end++) {
     if (snapshot2[end] !== 10)
@@ -23467,31 +25338,31 @@ function captureHistoryEvidence(db, options) {
     const current = db.prepare("SELECT s.active_revision_id,r.adapter_version FROM memory_sources s LEFT JOIN source_revisions r ON r.revision_id=s.active_revision_id WHERE s.source_id=?").get(sid3);
     if (current?.active_revision_id && !isHistoryVersion(current.adapter_version ?? "") && current.adapter_version !== "ghost-retained-prompts-v1")
       continue;
-    const bytes3 = Buffer.concat(g2.raw), digest3 = hash(bytes3), relative = path34.join("archive", "evidence", `${digest3}.jsonl`), file = path34.join(options.root, relative);
-    fs39.mkdirSync(path34.dirname(file), { recursive: true, mode: 448 });
-    if (fs39.existsSync(file)) {
-      if (hash(fs39.readFileSync(file)) !== digest3)
+    const bytes3 = Buffer.concat(g2.raw), digest3 = hash(bytes3), relative = path33.join("archive", "evidence", `${digest3}.jsonl`), file = path33.join(options.root, relative);
+    fs42.mkdirSync(path33.dirname(file), { recursive: true, mode: 448 });
+    if (fs42.existsSync(file)) {
+      if (hash(fs42.readFileSync(file)) !== digest3)
         throw new Error("history artifact corruption");
     } else {
       const tmp = `${file}.${crypto7.randomUUID()}.tmp`;
       try {
-        const fd = fs39.openSync(tmp, "wx", 384);
+        const fd = fs42.openSync(tmp, "wx", 384);
         try {
-          fs39.writeFileSync(fd, bytes3);
-          fs39.fsyncSync(fd);
+          fs42.writeFileSync(fd, bytes3);
+          fs42.fsyncSync(fd);
         } finally {
-          fs39.closeSync(fd);
+          fs42.closeSync(fd);
         }
-        fs39.renameSync(tmp, file);
-        const dir = fs39.openSync(path34.dirname(file), "r");
+        fs42.renameSync(tmp, file);
+        const dir = fs42.openSync(path33.dirname(file), "r");
         try {
-          fs39.fsyncSync(dir);
+          fs42.fsyncSync(dir);
         } finally {
-          fs39.closeSync(dir);
+          fs42.closeSync(dir);
         }
       } finally {
         try {
-          fs39.unlinkSync(tmp);
+          fs42.unlinkSync(tmp);
         } catch {
         }
       }
@@ -23504,11 +25375,11 @@ function captureHistoryEvidence(db, options) {
     const compatible = [];
     let older = false;
     for (const row2 of db.prepare("SELECT revision_id,artifact_hash,archive_relative_path FROM source_revisions WHERE source_id=? AND adapter_version LIKE '%-history-records-v1' AND archive_relative_path IS NOT NULL").all(sid3)) {
-      const original = path34.resolve(options.root, row2.archive_relative_path);
-      if (!original.startsWith(path34.resolve(options.root) + path34.sep))
+      const original = path33.resolve(options.root, row2.archive_relative_path);
+      if (!original.startsWith(path33.resolve(options.root) + path33.sep))
         continue;
       try {
-        const priorBytes = fs39.readFileSync(original);
+        const priorBytes = fs42.readFileSync(original);
         if (hash(priorBytes) !== row2.artifact_hash)
           continue;
         const n2 = Math.min(bytes3.length, priorBytes.length);
@@ -23618,24 +25489,24 @@ var init_backfill = __esm({
 });
 
 // packages/core/dist/memory/tokenization.js
-import fs40 from "node:fs";
-import path35 from "node:path";
-import { createHash as createHash14 } from "node:crypto";
+import fs43 from "node:fs";
+import path34 from "node:path";
+import { createHash as createHash16 } from "node:crypto";
 import { pathToFileURL as pathToFileURL2 } from "node:url";
 function inspectSpanTokenizerHash(cacheDir) {
   const blobs = [];
   for (const name of [`${MODEL_ID}/tokenizer.json`, `${MODEL_ID}/tokenizer_config.json`, `${RUNTIME_SUBDIR}/tokenizers.mjs`]) {
     const file = requiredFiles().find((asset) => asset.name === name);
     try {
-      const bytes3 = fs40.readFileSync(path35.join(cacheDir, name));
-      if (bytes3.length !== file.bytes || createHash14("sha256").update(bytes3).digest("hex") !== file.sha256)
+      const bytes3 = fs43.readFileSync(path34.join(cacheDir, name));
+      if (bytes3.length !== file.bytes || createHash16("sha256").update(bytes3).digest("hex") !== file.sha256)
         return null;
       blobs.push(bytes3);
     } catch {
       return null;
     }
   }
-  return createHash14("sha256").update(blobs[0]).update(blobs[1]).update(blobs[2]).digest("hex");
+  return createHash16("sha256").update(blobs[0]).update(blobs[1]).update(blobs[2]).digest("hex");
 }
 async function loadSpanTokenizer(cacheDir) {
   const names = [`${MODEL_ID}/tokenizer.json`, `${MODEL_ID}/tokenizer_config.json`, `${RUNTIME_SUBDIR}/tokenizers.mjs`];
@@ -23644,17 +25515,17 @@ async function loadSpanTokenizer(cacheDir) {
     const file = requiredFiles().find((asset) => asset.name === name);
     let bytes3;
     try {
-      bytes3 = fs40.readFileSync(path35.join(cacheDir, name));
+      bytes3 = fs43.readFileSync(path34.join(cacheDir, name));
     } catch {
       return null;
     }
-    if (bytes3.length !== file.bytes || createHash14("sha256").update(bytes3).digest("hex") !== file.sha256)
+    if (bytes3.length !== file.bytes || createHash16("sha256").update(bytes3).digest("hex") !== file.sha256)
       return null;
     blobs.push(bytes3);
   }
-  const runtime = await import(pathToFileURL2(path35.join(cacheDir, names[2])).href);
+  const runtime = await import(pathToFileURL2(path34.join(cacheDir, names[2])).href);
   const tokenizer2 = new runtime.Tokenizer(JSON.parse(blobs[0].toString()), JSON.parse(blobs[1].toString()));
-  const assetHash = createHash14("sha256").update(blobs[0]).update(blobs[1]).update(blobs[2]).digest("hex");
+  const assetHash = createHash16("sha256").update(blobs[0]).update(blobs[1]).update(blobs[2]).digest("hex");
   return {
     id: "bge-small-en-v1.5/wordpiece@0.1.3",
     assetHash,
@@ -23925,7 +25796,7 @@ __export(sentinel_exports, {
   isErroredSentinel: () => isErroredSentinel,
   shouldQueueForCard: () => shouldQueueForCard
 });
-import fs41 from "node:fs";
+import fs44 from "node:fs";
 function formatErrorSentinel(error) {
   const message2 = error instanceof Error ? error.message : String(error);
   return `${ERROR_MARKER}
@@ -23946,7 +25817,7 @@ function getErrorRetryMs() {
 function hasRealCard(cardPath2) {
   let content;
   try {
-    content = fs41.readFileSync(cardPath2, "utf-8");
+    content = fs44.readFileSync(cardPath2, "utf-8");
   } catch {
     return false;
   }
@@ -23957,14 +25828,14 @@ function hasRealCard(cardPath2) {
 function shouldQueueForCard(cardPath2) {
   let content;
   try {
-    content = fs41.readFileSync(cardPath2, "utf-8");
+    content = fs44.readFileSync(cardPath2, "utf-8");
   } catch (error) {
     return error.code === "ENOENT";
   }
   if (!isErroredSentinel(content))
     return false;
   try {
-    return Date.now() - fs41.statSync(cardPath2).mtimeMs >= getErrorRetryMs();
+    return Date.now() - fs44.statSync(cardPath2).mtimeMs >= getErrorRetryMs();
   } catch {
     return false;
   }
@@ -23981,14 +25852,14 @@ var init_sentinel = __esm({
 });
 
 // packages/core/dist/cards/write.js
-import fs42 from "node:fs";
-import path36 from "node:path";
+import fs45 from "node:fs";
+import path35 from "node:path";
 function cardEmbeddingText(card) {
   return [card.title, card.summary, card.topics.join(", ")].filter((s) => s.trim()).join("\n");
 }
 function cardPath(root, harness, slug, id) {
   const filename = id.replace(/[%/\\\0]/g, (c) => encodeURIComponent(c));
-  return path36.join(cardsDir(root), harness, safeSlug(slug), `${filename}.md`);
+  return path35.join(cardsDir(root), harness, safeSlug(slug), `${filename}.md`);
 }
 function safeSlug(slug) {
   const segments = (slug ?? "").split(/[/\\]+/).map((part) => part.trim()).filter((part) => part.length > 0 && part !== "." && part !== "..");
@@ -24112,8 +25983,8 @@ function writeCard(db, root, record2, embedding) {
   });
   write();
   const file = cardPath(root, record2.harness, record2.projectSlug, record2.sessionId);
-  fs42.mkdirSync(path36.dirname(file), { recursive: true });
-  fs42.writeFileSync(file, md, { mode: 384 });
+  fs45.mkdirSync(path35.dirname(file), { recursive: true });
+  fs45.writeFileSync(file, md, { mode: 384 });
   return file;
 }
 function vecCardsExist(db) {
@@ -24127,12 +25998,12 @@ function vecCardsExist(db) {
 function exportCards(root, dest) {
   const from = cardsDir(root);
   const result = { files: 0, bytes: 0, dest, skipped: 0 };
-  if (!fs42.existsSync(from))
+  if (!fs45.existsSync(from))
     return result;
   const walk2 = (dir, rel) => {
-    for (const entry of fs42.readdirSync(dir, { withFileTypes: true })) {
-      const source = path36.join(dir, entry.name);
-      const relative = path36.join(rel, entry.name);
+    for (const entry of fs45.readdirSync(dir, { withFileTypes: true })) {
+      const source = path35.join(dir, entry.name);
+      const relative = path35.join(rel, entry.name);
       if (entry.isDirectory()) {
         walk2(source, relative);
         continue;
@@ -24141,7 +26012,7 @@ function exportCards(root, dest) {
         continue;
       let content;
       try {
-        content = fs42.readFileSync(source, "utf-8");
+        content = fs45.readFileSync(source, "utf-8");
       } catch {
         result.skipped += 1;
         continue;
@@ -24150,9 +26021,9 @@ function exportCards(root, dest) {
         result.skipped += 1;
         continue;
       }
-      const target = path36.join(dest, relative);
-      fs42.mkdirSync(path36.dirname(target), { recursive: true });
-      fs42.writeFileSync(target, content, { mode: 384 });
+      const target = path35.join(dest, relative);
+      fs45.mkdirSync(path35.dirname(target), { recursive: true });
+      fs45.writeFileSync(target, content, { mode: 384 });
       result.files += 1;
       result.bytes += Buffer.byteLength(content);
     }
@@ -24423,8 +26294,8 @@ function resolveSession(db, ref3) {
       return { id: parent.id, kind: parent.kind, ...others.length ? { collapsed: others } : {} };
     }
   }
-  const pick3 = topLevel.length > 1 ? topLevel : candidates2;
-  return { id: pick3[0].id, kind: pick3[0].kind, ambiguous: pick3 };
+  const pick4 = topLevel.length > 1 ? topLevel : candidates2;
+  return { id: pick4[0].id, kind: pick4[0].kind, ambiguous: pick4 };
 }
 function matching(db, pattern) {
   const rows = db.prepare(`SELECT s.id AS id, 'session' AS kind, s.title AS title, s.project AS project,
@@ -24800,20 +26671,20 @@ var init_threads = __esm({
 
 // packages/core/dist/ingest.js
 import crypto8 from "node:crypto";
-import fs43 from "node:fs";
-import path37 from "node:path";
+import fs46 from "node:fs";
+import path36 from "node:path";
 function adapterSpecs(o = {}) {
   return [
     {
       harness: "claude",
       evidenceVersion: CLAUDE_EVIDENCE_VERSION,
       displayName: "Claude Code",
-      sourceDir: sourceDir3(o.claudeDir),
-      discover: () => discover4({
+      sourceDir: sourceDir4(o.claudeDir),
+      discover: () => discover6({
         ...o.claudeDir ? { claudeDir: o.claudeDir } : {},
         ...o.potsherdDir ? { potsherdDir: o.potsherdDir } : {}
       }),
-      parse: (source) => parse3(source),
+      parse: (source) => parse5(source),
       version: (r3) => r3.version ?? "unknown",
       novel: isNovelRecordType
     },
@@ -24822,8 +26693,8 @@ function adapterSpecs(o = {}) {
       evidenceVersion: CODEX_EVIDENCE_VERSION,
       displayName: "Codex CLI",
       sourceDir: codexPaths(codexDir(o.codexHome)).sessions,
-      discover: () => discover5(o.codexHome ? { codexHome: o.codexHome } : {}),
-      parse: (source) => parse4(source, o.codexHome ? { codexHome: o.codexHome } : {}),
+      discover: () => discover7(o.codexHome ? { codexHome: o.codexHome } : {}),
+      parse: (source) => parse6(source, o.codexHome ? { codexHome: o.codexHome } : {}),
       version: (r3) => r3.codex?.cliVersion ?? "unknown",
       novel: () => true
     },
@@ -24831,17 +26702,17 @@ function adapterSpecs(o = {}) {
       harness: "cursor",
       displayName: "Cursor",
       sourceDir: cursorProjectsDir(o.cursorDir),
-      discover: () => discover6(o.cursorDir),
-      parse: (source) => parse5(source),
+      discover: () => discover3(o.cursorDir),
+      parse: (source) => parse3(source),
       version: () => "unknown",
       novel: () => true
     },
     {
       harness: "pi",
       displayName: "pi",
-      sourceDir: sourceDir4(o.piDir),
-      discover: () => discover7(o.piDir),
-      parse: (source) => parse6(source),
+      sourceDir: sourceDir5(o.piDir),
+      discover: () => discover8(o.piDir),
+      parse: (source) => parse7(source),
       version: () => "unknown",
       novel: () => true
     },
@@ -24850,10 +26721,10 @@ function adapterSpecs(o = {}) {
       // `plans/research/formats.md`, which marks its gemini section
       // **unmeasured**, and against synthetic fixtures. See the adapter header.
       harness: "gemini",
-      displayName: DISPLAY_NAME4,
-      sourceDir: sourceDir5(o.geminiDir),
-      discover: () => discover8(o.geminiDir),
-      parse: (source) => parse7(source),
+      displayName: DISPLAY_NAME3,
+      sourceDir: sourceDir3(o.geminiDir),
+      discover: () => discover4(o.geminiDir),
+      parse: (source) => parse4(source),
       version: () => "unknown",
       novel: () => true
     },
@@ -25267,7 +27138,7 @@ async function indexHarness(db, spec, options, recordTypes) {
       harness: spec.harness,
       done,
       total: sources.length,
-      note: path37.basename(source.path)
+      note: path36.basename(source.path)
     });
     if (db.prepare("SELECT 1 FROM forget_tombstones WHERE source_id=? AND state<>'reversed'").get(sourceId(source.harness, source.sessionId))) {
       report.skipped += 1;
@@ -25282,7 +27153,7 @@ async function indexHarness(db, spec, options, recordTypes) {
           throw new Error("native snapshot unavailable");
         raw = databaseParsed.artifactSnapshot;
       } else
-        raw = fs43.readFileSync(source.path);
+        raw = fs46.readFileSync(source.path);
     } catch (err) {
       report.failed += 1;
       report.errors.push(`${source.path}: ${err.message}`);
@@ -25304,11 +27175,11 @@ async function indexHarness(db, spec, options, recordTypes) {
     let scratch;
     try {
       if (source.harness === "claude" || source.harness === "codex") {
-        const scratchRoot = path37.join(options.root ?? potsherdDir(options.potsherdDir), "capture-scratch");
-        fs43.mkdirSync(scratchRoot, { recursive: true, mode: 448 });
-        scratch = fs43.mkdtempSync(path37.join(scratchRoot, "capture-"));
-        const file = path37.join(scratch, path37.basename(source.path));
-        fs43.writeFileSync(file, raw, { mode: 384 });
+        const scratchRoot = path36.join(options.root ?? potsherdDir(options.potsherdDir), "capture-scratch");
+        fs46.mkdirSync(scratchRoot, { recursive: true, mode: 448 });
+        scratch = fs46.mkdtempSync(path36.join(scratchRoot, "capture-"));
+        const file = path36.join(scratch, path36.basename(source.path));
+        fs46.writeFileSync(file, raw, { mode: 384 });
         capturedSource = { ...source, path: file, bytes: raw.length };
       }
       parsed = databaseParsed ?? await spec.parse(capturedSource);
@@ -25321,12 +27192,12 @@ async function indexHarness(db, spec, options, recordTypes) {
       } catch {
       }
       if (scratch)
-        fs43.rmSync(scratch, { recursive: true, force: true });
+        fs46.rmSync(scratch, { recursive: true, force: true });
       continue;
     }
     if (db.prepare("SELECT 1 FROM forget_tombstones WHERE source_id=? AND state<>'reversed'").get(sourceId(source.harness, parsed.session.id))) {
       if (scratch)
-        fs43.rmSync(scratch, { recursive: true, force: true });
+        fs46.rmSync(scratch, { recursive: true, force: true });
       report.skipped += 1;
       continue;
     }
@@ -25337,7 +27208,7 @@ async function indexHarness(db, spec, options, recordTypes) {
       const consumed = parsed.artifactSnapshot ?? raw.subarray(0, parsed.endOffset);
       if (parsed.artifactHash && parsed.artifactHash !== hash(consumed))
         throw new Error("source changed during parse");
-      if (!scratch && !parsed.artifactSnapshot && !consumed.equals(fs43.readFileSync(source.path).subarray(0, parsed.endOffset)))
+      if (!scratch && !parsed.artifactSnapshot && !consumed.equals(fs46.readFileSync(source.path).subarray(0, parsed.endOffset)))
         throw new Error("source changed before publication");
       const artifactHash = hash(consumed);
       const proof = sourcePrefixProof(db, options.root ?? potsherdDir(options.potsherdDir), sourceId(source.harness, parsed.session.id), consumed);
@@ -25385,7 +27256,7 @@ async function indexHarness(db, spec, options, recordTypes) {
       continue;
     } finally {
       if (scratch)
-        fs43.rmSync(scratch, { recursive: true, force: true });
+        fs46.rmSync(scratch, { recursive: true, force: true });
     }
     report.parsed += 1;
     report.malformedLines += parsed.malformedLines;
@@ -25647,32 +27518,32 @@ function recordCaptureFailure(db, source, errorCode3, fence) {
   })();
 }
 function preserveEvidenceArtifact(root, artifactHash, bytes3) {
-  const relative = path37.join("archive", "evidence", `${artifactHash}.jsonl`), file = path37.join(root, relative);
-  fs43.mkdirSync(path37.dirname(file), { recursive: true, mode: 448 });
-  if (fs43.existsSync(file)) {
-    if (hash(fs43.readFileSync(file)) !== artifactHash)
+  const relative = path36.join("archive", "evidence", `${artifactHash}.jsonl`), file = path36.join(root, relative);
+  fs46.mkdirSync(path36.dirname(file), { recursive: true, mode: 448 });
+  if (fs46.existsSync(file)) {
+    if (hash(fs46.readFileSync(file)) !== artifactHash)
       throw new Error("immutable archive hash mismatch");
     return relative;
   }
   const temp = `${file}.${process.pid}.${crypto8.randomUUID()}.tmp`;
   try {
-    const fd = fs43.openSync(temp, "wx", 384);
+    const fd = fs46.openSync(temp, "wx", 384);
     try {
-      fs43.writeFileSync(fd, bytes3);
-      fs43.fsyncSync(fd);
+      fs46.writeFileSync(fd, bytes3);
+      fs46.fsyncSync(fd);
     } finally {
-      fs43.closeSync(fd);
+      fs46.closeSync(fd);
     }
-    fs43.renameSync(temp, file);
-    const dir = fs43.openSync(path37.dirname(file), "r");
+    fs46.renameSync(temp, file);
+    const dir = fs46.openSync(path36.dirname(file), "r");
     try {
-      fs43.fsyncSync(dir);
+      fs46.fsyncSync(dir);
     } finally {
-      fs43.closeSync(dir);
+      fs46.closeSync(dir);
     }
   } finally {
     try {
-      fs43.unlinkSync(temp);
+      fs46.unlinkSync(temp);
     } catch {
     }
   }
@@ -25696,13 +27567,13 @@ function resolveEnrolledSources(db, input) {
   const options = { ...prior?.options ?? {} };
   for (const h of harnesses) {
     const key2 = names[h];
-    options[key2] = path37.resolve(input[key2] ?? options[key2] ?? defaults[h]());
+    options[key2] = path36.resolve(input[key2] ?? options[key2] ?? defaults[h]());
   }
   const removed = new Set(input.removeHarnesses ?? []);
   const savedHarnesses = [.../* @__PURE__ */ new Set([...prior?.harnesses ?? harnesses, ...explicit, ...input.enrollHarnesses ?? []])].filter((h) => !removed.has(h));
   for (const h of savedHarnesses) {
     const key2 = names[h];
-    options[key2] = path37.resolve(input[key2] ?? options[key2] ?? defaults[h]());
+    options[key2] = path36.resolve(input[key2] ?? options[key2] ?? defaults[h]());
   }
   const enrollment = { version: 1, harnesses: savedHarnesses, options };
   if (!prior || explicit.length || input.enrollHarnesses || input.removeHarnesses) {
@@ -25743,18 +27614,18 @@ function sourcePrefixProof(db, root, sid3, incoming) {
   let olderThanActive = false;
   let retainedArchivePath;
   for (const r3 of rows) {
-    const file = path37.resolve(root, r3.archive_relative_path);
-    if (!file.startsWith(path37.resolve(root) + path37.sep) || !r3.archive_relative_path.startsWith("archive/"))
+    const file = path36.resolve(root, r3.archive_relative_path);
+    if (!file.startsWith(path36.resolve(root) + path36.sep) || !r3.archive_relative_path.startsWith("archive/"))
       continue;
     let fd;
     try {
-      fd = fs43.openSync(file, "r");
+      fd = fs46.openSync(file, "r");
       const digest3 = crypto8.createHash("sha256");
       const chunk = Buffer.alloc(65536);
       let offset = 0;
       let equal = true;
       while (true) {
-        const count5 = fs43.readSync(fd, chunk, 0, chunk.length, null);
+        const count5 = fs46.readSync(fd, chunk, 0, chunk.length, null);
         if (count5 === 0)
           break;
         digest3.update(chunk.subarray(0, count5));
@@ -25769,13 +27640,13 @@ function sourcePrefixProof(db, root, sid3, incoming) {
       if (r3.active && incoming.length < offset) {
         olderThanActive = true;
         const liveAliases = db.prepare("SELECT path FROM source_aliases WHERE source_id=? AND kind='live' AND missing_at IS NULL").all(sid3);
-        if (!liveAliases.some((a) => fs43.existsSync(a.path)))
+        if (!liveAliases.some((a) => fs46.existsSync(a.path)))
           retainedArchivePath = file;
       }
     } catch {
     } finally {
       if (fd !== void 0)
-        fs43.closeSync(fd);
+        fs46.closeSync(fd);
     }
   }
   return { compatibleHashes: [...new Set(compatibleHashes)], olderThanActive, retainedArchivePath };
@@ -25791,9 +27662,9 @@ function discoverEnrolledHistoryInputs(db, root) {
     const dir = harness === "claude" ? enrolled.options.claudeDir : enrolled.options.codexHome;
     if (!dir)
       continue;
-    const live = path37.join(dir, "history.jsonl"), fallback = path37.join(root, "archive", "history.jsonl");
-    const historyPath = fs43.existsSync(live) ? live : harness === "claude" ? fallback : live;
-    if (fs43.existsSync(historyPath))
+    const live = path36.join(dir, "history.jsonl"), fallback = path36.join(root, "archive", "history.jsonl");
+    const historyPath = fs46.existsSync(live) ? live : harness === "claude" ? fallback : live;
+    if (fs46.existsSync(historyPath))
       inputs.push({ harness, historyPath });
   }
   return inputs;
@@ -25835,7 +27706,7 @@ var init_ingest = __esm({
 });
 
 // packages/core/dist/stats.js
-import fs44 from "node:fs";
+import fs47 from "node:fs";
 function stats(db, options = {}) {
   const root = potsherdDir(options.root);
   const entries = options.all ? [] : [...options.ignore ?? readIgnoreList(root)];
@@ -25974,7 +27845,7 @@ function freshness(db, root, stat) {
     if (r3.status === "archived" || r3.archived_path)
       archived++;
     try {
-      const st = fs44.statSync(r3.source_path);
+      const st = fs47.statSync(r3.source_path);
       if (r3.source_mtime !== null && Math.floor(st.mtimeMs) !== r3.source_mtime)
         stale++;
     } catch {
@@ -25997,7 +27868,7 @@ function freshness(db, root, stat) {
   }
   if (dbBytes === 0) {
     try {
-      dbBytes = fs44.statSync(file).size;
+      dbBytes = fs47.statSync(file).size;
     } catch {
       dbBytes = 0;
     }
@@ -26133,9 +28004,9 @@ function solveWeights(hits, k = RRF_K) {
   const add = (list3, value) => {
     if (!Number.isFinite(value) || value <= 0)
       return;
-    const arr = samples.get(list3) ?? [];
-    arr.push(value);
-    samples.set(list3, arr);
+    const arr2 = samples.get(list3) ?? [];
+    arr2.push(value);
+    samples.set(list3, arr2);
   };
   for (const hit2 of hits) {
     if (hit2.from.length === 1) {
@@ -26586,10 +28457,10 @@ function hitLedger(hit2, t, width) {
   return lines;
 }
 function detailRow(l, t, width) {
-  const times = t.g("\xD7", "x");
+  const times3 = t.g("\xD7", "x");
   const name = l.list.padEnd(LIST_COL);
   const rank = `r${l.rank}`.padEnd(4);
-  const weight = `${times}${l.weight.toFixed(2)}${l.relaxed ? "~" : ""}`.padEnd(7);
+  const weight = `${times3}${l.weight.toFixed(2)}${l.relaxed ? "~" : ""}`.padEnd(7);
   const contribution = l.contribution.toFixed(4);
   const share = `${Math.round(l.share * 100)}%`.padStart(4);
   const raw = rawColumn(l).padEnd(12);
@@ -26647,8 +28518,8 @@ function renderLs(result, t = new Theme(), now = /* @__PURE__ */ new Date(), ech
     lines.push(fitLine(t, `${t.dim("run")}  potsherd ls  ${t.dim("for everything potsherd has indexed.")}`, `${t.dim("run")}  potsherd ls`));
     return lines.join("\n");
   }
-  const header = ["last active", "harness", "project", "title", "status"].map((h) => t.dim(h));
-  const rows = [header, ...result.sessions.map((s) => row(s, t, now))];
+  const header2 = ["last active", "harness", "project", "title", "status"].map((h) => t.dim(h));
+  const rows = [header2, ...result.sessions.map((s) => row(s, t, now))];
   lines.push(...table(t, rows, {
     gap: 2,
     // The title is the column worth every spare character; `status` is five
@@ -27235,9 +29106,9 @@ function renderStats(r3, t = new Theme()) {
     card.text("nothing indexed yet.").blank().fix("potsherd index", "to read every transcript on this machine.");
     return card.toString();
   }
-  const header = ["harness", "sessions", "subagents", "ghosts", "exchanges", "bytes", "span"];
+  const header2 = ["harness", "sessions", "subagents", "ghosts", "exchanges", "bytes", "span"];
   const rows = [
-    header.map((h) => t.dim(h)),
+    header2.map((h) => t.dim(h)),
     ...r3.harnesses.map((h) => harnessRow(h, t))
   ];
   for (const line of table(t, rows, {
@@ -27468,10 +29339,10 @@ function named(v, now) {
     case "yesterday":
       return localRange(new Date(y, mo, d - 1), new Date(y, mo, d), "yesterday");
     case "this week":
-      return localRange(mondayOf(now), new Date(+mondayOf(now) + WEEK), "this week");
+      return localRange(mondayOf(now), new Date(+mondayOf(now) + WEEK2), "this week");
     case "last week": {
       const monday = mondayOf(now);
-      return localRange(new Date(+monday - WEEK), monday, "last week");
+      return localRange(new Date(+monday - WEEK2), monday, "last week");
     }
     case "this month":
       return localRange(new Date(y, mo, 1), new Date(y, mo + 1, 1), "this month");
@@ -27538,7 +29409,7 @@ function utcRange(startMs, endExclusiveMs, label4) {
     label: label4
   };
 }
-var WHEN_FORMS, MONTHS4, WEEKDAYS, UNIT_ALIASES, WEEK;
+var WHEN_FORMS, MONTHS4, WEEKDAYS, UNIT_ALIASES, WEEK2;
 var init_when = __esm({
   "packages/core/dist/search/when.js"() {
     "use strict";
@@ -27602,7 +29473,7 @@ var init_when = __esm({
       year: "y",
       years: "y"
     };
-    WEEK = 7 * 24 * 60 * 60 * 1e3;
+    WEEK2 = 7 * 24 * 60 * 60 * 1e3;
   }
 });
 
@@ -28058,12 +29929,12 @@ function approxDuration(seconds) {
 function perCallOutput(e) {
   return e.calls > 0 ? Math.round(e.outputTokens / e.calls) : 0;
 }
-function approxMoney(usd) {
-  if (usd >= 10)
-    return `$${Math.round(usd)}`;
-  if (usd >= 1)
-    return `$${(Math.round(usd * 10) / 10).toFixed(1)}`;
-  return money(usd);
+function approxMoney(usd3) {
+  if (usd3 >= 10)
+    return `$${Math.round(usd3)}`;
+  if (usd3 >= 1)
+    return `$${(Math.round(usd3 * 10) / 10).toFixed(1)}`;
+  return money(usd3);
 }
 function basisLines(e, t) {
   const first = e.measured ? `time and cost are estimates, fitted to ${e.basis}.` : `time and cost are estimates: ${e.basis}.`;
@@ -29019,8 +30890,8 @@ var init_pipeline = __esm({
 });
 
 // packages/core/dist/cards/run.js
-import fs45 from "node:fs";
-import path38 from "node:path";
+import fs48 from "node:fs";
+import path37 from "node:path";
 async function runCards(db, llm, options) {
   const started = Date.now();
   const kinds2 = new Set(options.kinds ?? ["session", "ghost"]);
@@ -29209,8 +31080,8 @@ function absorb2(report, result, target, file) {
 function writeSentinel(root, target, error) {
   try {
     const file = cardPath(root, target.harness, projectSlugOf(target), target.id);
-    fs45.mkdirSync(path38.dirname(file), { recursive: true });
-    fs45.writeFileSync(file, formatErrorSentinel(error), { mode: 384 });
+    fs48.mkdirSync(path37.dirname(file), { recursive: true });
+    fs48.writeFileSync(file, formatErrorSentinel(error), { mode: 384 });
   } catch {
   }
 }
@@ -31262,8 +33133,8 @@ var init_ask2 = __esm({
 });
 
 // packages/core/dist/graft.js
-import fs46 from "node:fs";
-import path39 from "node:path";
+import fs49 from "node:fs";
+import path38 from "node:path";
 import process10 from "node:process";
 import { spawnSync } from "node:child_process";
 function expandCitationGroups(line) {
@@ -31708,18 +33579,18 @@ function cardOnlyBody(src) {
   return out;
 }
 function graftDir(cwd = process10.cwd()) {
-  return path39.join(cwd, ".potsherd");
+  return path38.join(cwd, ".potsherd");
 }
 function graftPath(id8, cwd = process10.cwd()) {
-  return path39.join(graftDir(cwd), `graft-${id8}.md`);
+  return path38.join(graftDir(cwd), `graft-${id8}.md`);
 }
 function ensureGraftDir(cwd = process10.cwd()) {
   const dir = graftDir(cwd);
-  fs46.mkdirSync(dir, { recursive: true });
-  const ignore = path39.join(dir, ".gitignore");
-  if (fs46.existsSync(ignore))
+  fs49.mkdirSync(dir, { recursive: true });
+  const ignore = path38.join(dir, ".gitignore");
+  if (fs49.existsSync(ignore))
     return { dir, wroteGitignore: false };
-  fs46.writeFileSync(ignore, GITIGNORE_BODY, { mode: 384 });
+  fs49.writeFileSync(ignore, GITIGNORE_BODY, { mode: 384 });
   return { dir, wroteGitignore: true };
 }
 function copyToClipboard(text2) {
@@ -31806,7 +33677,7 @@ async function graft(db, target, o = {}) {
   if (write) {
     const dir = ensureGraftDir(cwd);
     wroteGitignore = dir.wroteGitignore;
-    fs46.writeFileSync(outPath, budgeted.brief, { mode: 384 });
+    fs49.writeFileSync(outPath, budgeted.brief, { mode: 384 });
   } else {
     outPath = "";
   }
@@ -32161,8 +34032,8 @@ __export(setup_exports, {
   tomlValue: () => tomlValue,
   tomlWithout: () => tomlWithout
 });
-import fs47 from "node:fs";
-import path40 from "node:path";
+import fs50 from "node:fs";
+import path39 from "node:path";
 import process11 from "node:process";
 function resolveMcpServer(entry = process11.argv[1], env = process11.env) {
   const found = onPath(MCP_BIN, env);
@@ -32181,43 +34052,43 @@ function resolveMcpServer(entry = process11.argv[1], env = process11.env) {
   return { command: MCP_BIN, args: [], via: "assumed", exists: false };
 }
 function findMcpEntry(entry) {
-  const start = entry && fs47.existsSync(entry) ? path40.dirname(path40.resolve(entry)) : process11.cwd();
+  const start = entry && fs50.existsSync(entry) ? path39.dirname(path39.resolve(entry)) : process11.cwd();
   let dir = start;
   let workspace = null;
-  const bundled = path40.join(start, "mcp.js");
-  if (path40.basename(start) === "dist" && fs47.existsSync(bundled)) {
+  const bundled = path39.join(start, "mcp.js");
+  if (path39.basename(start) === "dist" && fs50.existsSync(bundled)) {
     return { file: bundled, exists: true };
   }
   for (let i = 0; i < 8; i++) {
     for (const rel of [MCP_ENTRY_RELATIVE, MCP_PACKAGE_RELATIVE]) {
-      const candidate = path40.join(dir, rel);
-      if (fs47.existsSync(candidate))
+      const candidate = path39.join(dir, rel);
+      if (fs50.existsSync(candidate))
         return { file: candidate, exists: true };
     }
-    if (!dir.split(path40.sep).includes("node_modules") && fs47.existsSync(path40.join(dir, "package.json")) && fs47.existsSync(path40.join(dir, "packages"))) {
+    if (!dir.split(path39.sep).includes("node_modules") && fs50.existsSync(path39.join(dir, "package.json")) && fs50.existsSync(path39.join(dir, "packages"))) {
       workspace = dir;
       break;
     }
-    const up = path40.dirname(dir);
+    const up = path39.dirname(dir);
     if (up === dir)
       break;
     dir = up;
   }
-  return { file: workspace ? path40.join(workspace, MCP_ENTRY_RELATIVE) : null, exists: false };
+  return { file: workspace ? path39.join(workspace, MCP_ENTRY_RELATIVE) : null, exists: false };
 }
 function stdio(res) {
   return { command: res.command, args: [...res.args] };
 }
 function opencodeConfigDir(env = process11.env) {
   const xdg = env["XDG_CONFIG_HOME"];
-  const base3 = xdg && xdg.trim() ? path40.resolve(expandTilde(xdg.trim())) : path40.join(home(), ".config");
-  return path40.join(base3, "opencode");
+  const base3 = xdg && xdg.trim() ? path39.resolve(expandTilde(xdg.trim())) : path39.join(home(), ".config");
+  return path39.join(base3, "opencode");
 }
 function claudeJsonPath(dir, env = process11.env) {
   const override = dir ?? (env["CLAUDE_CONFIG_DIR"]?.trim() || void 0);
   if (override)
-    return path40.join(claudeDir(override), ".claude.json");
-  return path40.join(home(), ".claude.json");
+    return path39.join(claudeDir(override), ".claude.json");
+  return path39.join(home(), ".claude.json");
 }
 function clientSpec(id) {
   const spec = CLIENTS.find((c) => c.id === id);
@@ -32230,8 +34101,8 @@ function detectClient(spec, opts = {}) {
   const p = spec.id === "claude" ? claudeJsonPath(opts.claudeDir, env) : spec.configPath(env);
   const dir = spec.homeDir(env);
   const bin = spec.bins.map((b2) => onPath(b2, env)).find((x) => Boolean(x)) ?? null;
-  const configExists = fs47.existsSync(p);
-  const dirExists = Boolean(dir && fs47.existsSync(dir));
+  const configExists = fs50.existsSync(p);
+  const dirExists = Boolean(dir && fs50.existsSync(dir));
   const read = readServers(spec, p);
   const registered = Object.prototype.hasOwnProperty.call(read.servers, SERVER_NAME);
   const evidence2 = bin ? "binary" : configExists ? "config" : dirExists ? "directory" : "none";
@@ -32274,22 +34145,22 @@ function commandRunnable(command) {
   if (!bin)
     return false;
   if (bin.includes("/") || bin.includes("\\")) {
-    if (!fs47.existsSync(bin))
+    if (!fs50.existsSync(bin))
       return false;
   } else if (onPath(bin) === null) {
     return false;
   }
-  const script = command.trim().split(/\s+/).slice(1).find((a) => a.includes(path40.sep));
+  const script = command.trim().split(/\s+/).slice(1).find((a) => a.includes(path39.sep));
   if (script)
-    return fs47.existsSync(script);
+    return fs50.existsSync(script);
   return true;
 }
 function readServers(spec, p) {
-  if (!fs47.existsSync(p))
+  if (!fs50.existsSync(p))
     return { servers: {}, text: null };
   let text2;
   try {
-    text2 = fs47.readFileSync(p, "utf8");
+    text2 = fs50.readFileSync(p, "utf8");
   } catch (err) {
     return { servers: {}, text: null, blocked: `${p} is unreadable (${err.message})` };
   }
@@ -32508,13 +34379,13 @@ function applySetupPlan(plan, now = /* @__PURE__ */ new Date()) {
   if (plan.format === "json")
     return applyProposal(plan, now);
   let backup = null;
-  if (fs47.existsSync(plan.path)) {
+  if (fs50.existsSync(plan.path)) {
     backup = backupPath(plan.path, now);
-    fs47.copyFileSync(plan.path, backup);
+    fs50.copyFileSync(plan.path, backup);
   } else {
-    fs47.mkdirSync(path40.dirname(plan.path), { recursive: true });
+    fs50.mkdirSync(path39.dirname(plan.path), { recursive: true });
   }
-  fs47.writeFileSync(plan.path, plan.after, { mode: 384 });
+  fs50.writeFileSync(plan.path, plan.after, { mode: 384 });
   return { written: true, backup };
 }
 function manualSteps(plan) {
@@ -32540,8 +34411,8 @@ var init_setup = __esm({
     init_resolve_bin();
     SERVER_NAME = "potsherd";
     MCP_BIN = "potsherd-mcp";
-    MCP_ENTRY_RELATIVE = path40.join("packages", "mcp", "dist", "index.js");
-    MCP_PACKAGE_RELATIVE = path40.join("node_modules", "@potsherd", "mcp", "dist", "index.js");
+    MCP_ENTRY_RELATIVE = path39.join("packages", "mcp", "dist", "index.js");
+    MCP_PACKAGE_RELATIVE = path39.join("node_modules", "@potsherd", "mcp", "dist", "index.js");
     CLIENTS = [
       {
         id: "claude",
@@ -32563,7 +34434,7 @@ var init_setup = __esm({
         bins: ["codex"],
         verified: "config",
         evidenceNote: "read from a real ~/.codex/config.toml on this machine, which already carries two [mcp_servers.*] tables",
-        configPath: () => path40.join(codexDir(), "config.toml"),
+        configPath: () => path39.join(codexDir(), "config.toml"),
         homeDir: () => codexDir(),
         entry: (res) => stdio(res)
       },
@@ -32574,7 +34445,7 @@ var init_setup = __esm({
         bins: ["cursor", "cursor-agent"],
         verified: "config",
         evidenceNote: "read from a real ~/.cursor/mcp.json on this machine",
-        configPath: () => path40.join(cursorDir(), "mcp.json"),
+        configPath: () => path39.join(cursorDir(), "mcp.json"),
         homeDir: () => cursorDir(),
         jsonPath: ["mcpServers"],
         entry: (res) => stdio(res),
@@ -32587,7 +34458,7 @@ var init_setup = __esm({
         bins: ["gemini"],
         verified: "docs",
         evidenceNote: "documentation only: no gemini on this machine, and no settings.json to read",
-        configPath: () => path40.join(geminiDir(), "settings.json"),
+        configPath: () => path39.join(geminiDir(), "settings.json"),
         homeDir: () => geminiDir(),
         jsonPath: ["mcpServers"],
         entry: (res) => stdio(res)
@@ -32599,7 +34470,7 @@ var init_setup = __esm({
         bins: ["opencode"],
         verified: "docs",
         evidenceNote: "documentation only: no opencode on this machine, and no opencode.json to read",
-        configPath: (env) => path40.join(opencodeConfigDir(env), "opencode.json"),
+        configPath: (env) => path39.join(opencodeConfigDir(env), "opencode.json"),
         homeDir: (env) => opencodeConfigDir(env),
         jsonPath: ["mcp"],
         // opencode is the one schema here that is not `mcpServers`: the map is
@@ -32614,7 +34485,7 @@ var init_setup = __esm({
         bins: ["copilot"],
         verified: "docs",
         evidenceNote: "documentation only: ~/.copilot exists here but holds no mcp-config.json, and copilot is not on PATH",
-        configPath: () => path40.join(copilotDir(), "mcp-config.json"),
+        configPath: () => path39.join(copilotDir(), "mcp-config.json"),
         homeDir: () => copilotDir(),
         jsonPath: ["mcpServers"],
         entry: (res) => ({ type: "local", ...stdio(res), tools: ["*"] })
@@ -32626,7 +34497,7 @@ var init_setup = __esm({
         bins: ["pi"],
         verified: "tool",
         evidenceNote: "native pi 0.74.0 loader/tool/lifecycle probe verified with synthetic MCP; model journey not qualified",
-        configPath: () => path40.join(piDir(), "agent", "extensions", "potsherd.ts"),
+        configPath: () => path39.join(piDir(), "agent", "extensions", "potsherd.ts"),
         homeDir: () => piDir(),
         entry: (res) => stdio(res)
       }
@@ -32655,15 +34526,15 @@ __export(stack_exports, {
   toolSpec: () => toolSpec
 });
 import { existsSync } from "node:fs";
-import path41 from "node:path";
+import path40 from "node:path";
 import process12 from "node:process";
 function claimLegend(verifiedOn = VERIFIED_ON) {
   return `claim: potsherd's row was measured by running potsherd on this machine. every other row was read from that project's own documentation on ${verifiedOn} and was never run here. sources and fetch dates: ${CLAIM_SOURCE}`;
 }
 function episodicIndexPath(env = process12.env) {
   const xdg = env["XDG_CONFIG_HOME"];
-  const base3 = xdg && xdg.trim() ? path41.resolve(expandTilde(xdg.trim())) : path41.join(home(), ".config");
-  return path41.join(base3, "superpowers", "conversation-index", "db.sqlite");
+  const base3 = xdg && xdg.trim() ? path40.resolve(expandTilde(xdg.trim())) : path40.join(home(), ".config");
+  return path40.join(base3, "superpowers", "conversation-index", "db.sqlite");
 }
 function toolSpec(id) {
   const spec = TOOLS.find((t) => t.id === id);
@@ -32822,7 +34693,7 @@ var init_stack = __esm({
         verified: "docs",
         evidenceNote: "README and the GitHub licence API, read " + VERIFIED_ON + "; not installed here, so nothing was exercised",
         source: "https://github.com/thedotmack/claude-mem (README + api.github.com/repos)",
-        markers: () => [path41.join(home(), ".claude-mem")],
+        markers: () => [path40.join(home(), ".claude-mem")],
         coverage: ["no", "yes", "no", "no"],
         note: "five hooks, injects at SessionStart. its README documents no import of transcripts from before install.",
         capturesLive: true,
@@ -32842,8 +34713,8 @@ var init_stack = __esm({
         // detector that only knows the wrong path reports "absent" on a machine
         // where the tool is running.
         markers: (env = process12.env) => [
-          path41.join(home(), ".agentmemory"),
-          process12.platform === "darwin" ? path41.join(home(), "Library", "Application Support", "agentmemory") : path41.join(env["XDG_DATA_HOME"]?.trim() ? expandTilde(env["XDG_DATA_HOME"].trim()) : path41.join(home(), ".local", "share"), "agentmemory")
+          path40.join(home(), ".agentmemory"),
+          process12.platform === "darwin" ? path40.join(home(), "Library", "Application Support", "agentmemory") : path40.join(env["XDG_DATA_HOME"]?.trim() ? expandTilde(env["XDG_DATA_HOME"].trim()) : path40.join(home(), ".local", "share"), "agentmemory")
         ],
         coverage: ["no", "yes", "partial", "partial"],
         note: "the only one here that backfills: `import-jsonl` reads ~/.claude/projects. only what the sweep left.",
@@ -32859,8 +34730,8 @@ var init_stack = __esm({
         evidenceNote: "README and the GitHub licence API, read " + VERIFIED_ON + "; not installed here. needs postgres or its embedded pg0, so detection is weak",
         source: "https://github.com/vectorize-io/hindsight (README + api.github.com/repos)",
         markers: () => [
-          path41.join(home(), ".hindsight"),
-          path41.join(home(), ".pg0")
+          path40.join(home(), ".hindsight"),
+          path40.join(home(), ".pg0")
         ],
         coverage: ["no", "yes", "no", "partial"],
         note: "retain/recall per bank, one bank per project. no documented import of old transcripts.",
@@ -32893,7 +34764,7 @@ var init_stack = __esm({
         verified: "docs",
         evidenceNote: "README and the GitHub licence API, read " + VERIFIED_ON + "; not installed here. it is per-repo, so a home-directory marker is the weakest signal on this list",
         source: "https://github.com/Autoloops/greplica (README + api.github.com/repos)",
-        markers: () => [path41.join(home(), ".greplica")],
+        markers: () => [path40.join(home(), ".greplica")],
         coverage: ["no", "partial", "no", "partial"],
         note: 'one knowledge graph per repo. cannot answer "which project was that in".',
         capturesLive: true,
@@ -32907,7 +34778,7 @@ var init_stack = __esm({
         verified: "docs",
         evidenceNote: "README and the GitHub licence API, read " + VERIFIED_ON + "; not installed here. its vault path is fixed, which makes the marker a strong one",
         source: "https://github.com/m3talux/superbrain (README + api.github.com/repos)",
-        markers: () => [path41.join(home(), ".superbrain")],
+        markers: () => [path40.join(home(), ".superbrain")],
         coverage: ["no", "yes", "no", "no"],
         note: "obsidian vault at ~/.superbrain/vault, injects a brief at start. capture-only from install.",
         capturesLive: true,
@@ -32922,8 +34793,8 @@ var init_stack = __esm({
         evidenceNote: "the files themselves were found on this machine, and the behaviour read from code.claude.com/docs/en/memory on " + VERIFIED_ON,
         source: "https://code.claude.com/docs/en/memory",
         markers: () => [
-          path41.join(claudeDir(), "CLAUDE.md"),
-          path41.join(claudeDir(), "projects")
+          path40.join(claudeDir(), "CLAUDE.md"),
+          path40.join(claudeDir(), "projects")
         ],
         // The one row on this table with a documented immunity to the 30-day
         // sweep: *"Claude Code deletes old session transcripts after the
@@ -33095,7 +34966,7 @@ var VERSION;
 var init_version2 = __esm({
   "packages/core/dist/version.js"() {
     "use strict";
-    VERSION = "1.8.0";
+    VERSION = "1.8.5";
   }
 });
 
@@ -33142,29 +35013,29 @@ var require_base64_js = __commonJS({
       var lens = getLens(b64);
       var validLen = lens[0];
       var placeHoldersLen = lens[1];
-      var arr = new Arr(_byteLength(b64, validLen, placeHoldersLen));
+      var arr2 = new Arr(_byteLength(b64, validLen, placeHoldersLen));
       var curByte = 0;
       var len2 = placeHoldersLen > 0 ? validLen - 4 : validLen;
       var i2;
       for (i2 = 0; i2 < len2; i2 += 4) {
         tmp = revLookup[b64.charCodeAt(i2)] << 18 | revLookup[b64.charCodeAt(i2 + 1)] << 12 | revLookup[b64.charCodeAt(i2 + 2)] << 6 | revLookup[b64.charCodeAt(i2 + 3)];
-        arr[curByte++] = tmp >> 16 & 255;
-        arr[curByte++] = tmp >> 8 & 255;
-        arr[curByte++] = tmp & 255;
+        arr2[curByte++] = tmp >> 16 & 255;
+        arr2[curByte++] = tmp >> 8 & 255;
+        arr2[curByte++] = tmp & 255;
       }
       if (placeHoldersLen === 2) {
         tmp = revLookup[b64.charCodeAt(i2)] << 2 | revLookup[b64.charCodeAt(i2 + 1)] >> 4;
-        arr[curByte++] = tmp & 255;
+        arr2[curByte++] = tmp & 255;
       }
       if (placeHoldersLen === 1) {
         tmp = revLookup[b64.charCodeAt(i2)] << 10 | revLookup[b64.charCodeAt(i2 + 1)] << 4 | revLookup[b64.charCodeAt(i2 + 2)] >> 2;
-        arr[curByte++] = tmp >> 8 & 255;
-        arr[curByte++] = tmp & 255;
+        arr2[curByte++] = tmp >> 8 & 255;
+        arr2[curByte++] = tmp & 255;
       }
-      return arr;
+      return arr2;
     }
-    function tripletToBase64(num5) {
-      return lookup[num5 >> 18 & 63] + lookup[num5 >> 12 & 63] + lookup[num5 >> 6 & 63] + lookup[num5 & 63];
+    function tripletToBase64(num7) {
+      return lookup[num7 >> 18 & 63] + lookup[num7 >> 12 & 63] + lookup[num7 >> 6 & 63] + lookup[num7 & 63];
     }
     function encodeChunk(uint8, start, end) {
       var tmp;
@@ -33565,19 +35436,19 @@ function response(v) {
   for (const item of array(r3.evidence))
     evidence(item);
   for (const item of array(r3.candidates, r3.navigation === "inspect-v1" ? 8 : 256)) {
-    const c2 = object3(item);
-    ref(c2.ref);
-    if (typeof c2.score !== "number")
+    const c3 = object3(item);
+    ref(c3.ref);
+    if (typeof c3.score !== "number")
       fail2("score");
-    for (const lane of array(c2.lanes))
+    for (const lane of array(c3.lanes))
       if (!["lexical", "dense", "literal"].includes(String(lane)))
         fail2("lane");
-    if (has2(c2, "evidence")) {
-      evidence(c2.evidence);
-      if (r3.navigation === "inspect-v1" && canonical2(object3(c2.evidence).ref) !== canonical2(c2.ref))
+    if (has2(c3, "evidence")) {
+      evidence(c3.evidence);
+      if (r3.navigation === "inspect-v1" && canonical2(object3(c3.evidence).ref) !== canonical2(c3.ref))
         fail2("candidate_preview_ref");
     }
-    if (r3.navigation === "inspect-v1" && has2(c2, "previewIndex"))
+    if (r3.navigation === "inspect-v1" && has2(c3, "previewIndex"))
       fail2("preview_index_semantic");
   }
   for (const item of array(r3.assertions)) {
@@ -33796,9 +35667,9 @@ var init_support = __esm({
 });
 
 // packages/core/dist/memory/budget.js
-import { createHash as createHash15 } from "node:crypto";
+import { createHash as createHash17 } from "node:crypto";
 function countTokens2(text2) {
-  return tokenizer.encode(text2, [], []).length;
+  return (tokenizer ??= new Tiktoken(cl100k_base_default)).encode(text2, [], []).length;
 }
 function assertResponseFormat(transport, format) {
   if (format !== "expanded-v2" && format !== "compact-v1")
@@ -34184,11 +36055,10 @@ var init_budget = __esm({
     init_support();
     init_format();
     init_theme();
-    TOKENIZER_ASSET_HASH = createHash15("sha256").update(JSON.stringify(cl100k_base_default)).digest("hex");
+    TOKENIZER_ASSET_HASH = createHash17("sha256").update(JSON.stringify(cl100k_base_default)).digest("hex");
     TOKENIZER_ID = `cl100k-base/js-tiktoken@1.0.21/${TOKENIZER_ASSET_HASH}`;
     DEFAULT_RESPONSE_TOKENS = 4096;
     DEFAULT_RESPONSE_BYTES = 65536;
-    tokenizer = new Tiktoken(cl100k_base_default);
     RECEIPT_PREFIXES = ["", "\n", "\n\n", " \n", "\n ", "	", "	\n", "\n	", "\r\n", "\n \n", " \n ", "\n	\n", "\n\n\n", " \n \n", "	 \n", "\r\n\r\n"];
     INSPECT_ROUTE_LIMIT = 8;
     INSPECT_SEEDS = 3;
@@ -34229,7 +36099,7 @@ function fullUnitLiteralCandidates(db, query, filter) {
     const start = safeBoundary(row2.text, match);
     const rawEnd = match + query.length, safeEnd = safeBoundary(row2.text, rawEnd);
     const end = safeEnd === rawEnd ? rawEnd : safeEnd + 2;
-    const cover = [];
+    const cover2 = [];
     let position = start, anchor;
     for (let expansion = 0; position < end && expansion < LITERAL_EXPANSION_LIMIT; expansion++) {
       const span3 = db.prepare("SELECT p.span_id,p.end_utf16 FROM revision_spans rs JOIN evidence_spans p ON p.span_id=rs.span_id WHERE rs.revision_id=? AND p.unit_revision_id=? AND p.start_utf16<=? AND p.end_utf16>? ORDER BY p.end_utf16 DESC,p.span_id LIMIT 1").get(row2.revision_id, row2.unit_revision_id, position, position);
@@ -34241,23 +36111,23 @@ function fullUnitLiteralCandidates(db, query, filter) {
       const next = Math.min(end, span3.end_utf16);
       if (item) {
         const text2 = item.text.slice(position - item.startUtf16, next - item.startUtf16);
-        cover.push({ ...item, text: text2, startUtf16: position, endUtf16: next, citation: `span:${ref3.sourceId}:${ref3.revisionId}:${ref3.spanId}@${position}-${next}` });
+        cover2.push({ ...item, text: text2, startUtf16: position, endUtf16: next, citation: `span:${ref3.sourceId}:${ref3.revisionId}:${ref3.spanId}@${position}-${next}` });
       }
       position = next;
     }
-    if (cover.length === 1 && position >= end) {
-      const whole = readSpan(db, cover[0].ref);
+    if (cover2.length === 1 && position >= end) {
+      const whole = readSpan(db, cover2[0].ref);
       if (whole && whole.text.includes(query))
-        cover[0] = whole;
+        cover2[0] = whole;
     }
-    return anchor ? [{ ref: anchor, score: 0, lanes: ["literal"], evidence: cover[0], [literalCovers]: [{ literal: query, evidence: cover, limited: position < end }] }] : [];
+    return anchor ? [{ ref: anchor, score: 0, lanes: ["literal"], evidence: cover2[0], [literalCovers]: [{ literal: query, evidence: cover2, limited: position < end }] }] : [];
   });
 }
 function literalSearchLimited(candidates2) {
-  return candidates2.some((candidate) => candidate[literalCovers]?.some((cover) => cover.limited));
+  return candidates2.some((candidate) => candidate[literalCovers]?.some((cover2) => cover2.limited));
 }
 function knownLiteralMatches(candidates2) {
-  return candidates2.flatMap((candidate) => (candidate[literalCovers] ?? []).flatMap((cover) => (cover.evidence.length ? cover.evidence.map((item) => item.ref) : [candidate.ref]).map((ref3) => ({ literal: cover.literal, ref: ref3 }))));
+  return candidates2.flatMap((candidate) => (candidate[literalCovers] ?? []).flatMap((cover2) => (cover2.evidence.length ? cover2.evidence.map((item) => item.ref) : [candidate.ref]).map((ref3) => ({ literal: cover2.literal, ref: ref3 }))));
 }
 function queryTerms(query) {
   const terms = query.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}_]+/gu) ?? [];
@@ -34282,7 +36152,7 @@ function fuseCandidates(lanes) {
       if (seen.has(key2)) {
         const current2 = union.get(key2);
         const merged = current2[literalCovers] ?? [];
-        current2[literalCovers] = [...merged, ...(candidate[literalCovers] ?? []).filter((cover) => !merged.some((existing) => existing.literal === cover.literal))];
+        current2[literalCovers] = [...merged, ...(candidate[literalCovers] ?? []).filter((cover2) => !merged.some((existing) => existing.literal === cover2.literal))];
         continue;
       }
       seen.add(key2);
@@ -34295,7 +36165,7 @@ function fuseCandidates(lanes) {
       const covers = candidate[literalCovers];
       if (covers) {
         const merged = current[literalCovers] ?? [];
-        current[literalCovers] = [...merged, ...covers.filter((cover) => !merged.some((existing) => existing.literal === cover.literal))];
+        current[literalCovers] = [...merged, ...covers.filter((cover2) => !merged.some((existing) => existing.literal === cover2.literal))];
       }
       union.set(key2, current);
     }
@@ -34329,9 +36199,9 @@ function selectEvidence(candidates2, query, requirements2 = [], limit = EVIDENCE
     if (deliveredLiteralRefs(selected, literal).length)
       continue;
     const covers = candidates2.flatMap((c) => c[literalCovers] ?? []).filter((c) => c.literal === literal);
-    const cover = covers.find((c) => deliveredLiteralRefs(c.evidence, literal).length) ?? covers[0];
-    if (cover)
-      for (const item of cover.evidence) {
+    const cover2 = covers.find((c) => deliveredLiteralRefs(c.evidence, literal).length) ?? covers[0];
+    if (cover2)
+      for (const item of cover2.evidence) {
         const index = selected.findIndex((existing2) => refKey(existing2.ref) === refKey(item.ref) && existing2.startUtf16 <= item.endUtf16 && item.startUtf16 <= existing2.endUtf16);
         const existing = selected[index];
         if (existing) {
@@ -34441,7 +36311,7 @@ function adjacentDialogueContext(db, anchors, query, filter, options = {}) {
         continue;
       if (!comparesPrior && queryTerms(unit.text).filter((word) => words8.has(word)).length < 2)
         continue;
-      const context = [];
+      const context2 = [];
       let position = 0;
       while (position < unit.text.length) {
         const span3 = db.prepare("SELECT p.span_id,p.end_utf16 FROM revision_spans rs JOIN evidence_spans p ON p.span_id=rs.span_id WHERE rs.revision_id=? AND p.unit_revision_id=? AND p.start_utf16<=? AND p.end_utf16>? ORDER BY p.end_utf16 DESC,p.span_id LIMIT 1").get(anchor.ref.revisionId, unit.unit_revision_id, position, position);
@@ -34453,12 +36323,12 @@ function adjacentDialogueContext(db, anchors, query, filter, options = {}) {
         const end = Math.min(unit.text.length, span3.end_utf16), text2 = item.text.slice(position - item.startUtf16, end - item.startUtf16);
         if (text2 !== unit.text.slice(position, end))
           break;
-        context.push({ ...item, text: text2, startUtf16: position, endUtf16: end, citation: `span:${ref3.sourceId}:${ref3.revisionId}:${ref3.spanId}@${position}-${end}` });
+        context2.push({ ...item, text: text2, startUtf16: position, endUtf16: end, citation: `span:${ref3.sourceId}:${ref3.revisionId}:${ref3.spanId}@${position}-${end}` });
         position = end;
       }
       if (position !== unit.text.length)
         continue;
-      group.context.push(...context);
+      group.context.push(...context2);
       remaining -= unit.text.length;
     }
   }
@@ -35180,8 +37050,8 @@ var init_service = __esm({
 });
 
 // packages/core/dist/memory/delete.js
-import fs48 from "node:fs";
-import path42 from "node:path";
+import fs51 from "node:fs";
+import path41 from "node:path";
 function finishArchive(db, id, journal, root) {
   const remaining = [];
   const absoluteRemaining = [];
@@ -35190,8 +37060,8 @@ function finishArchive(db, id, journal, root) {
       absoluteRemaining.push(owned);
       continue;
     }
-    const relative = path42.relative(root, owned);
-    if (relative.startsWith("..") || path42.isAbsolute(relative)) {
+    const relative = path41.relative(root, owned);
+    if (relative.startsWith("..") || path41.isAbsolute(relative)) {
       absoluteRemaining.push(owned);
       continue;
     }
@@ -35203,18 +37073,18 @@ function finishArchive(db, id, journal, root) {
       remaining.push(relative);
       continue;
     }
-    const file = path42.resolve(root, relative);
-    if (!file.startsWith(path42.resolve(root) + path42.sep) || !(relative.startsWith("archive/") || relative.startsWith("cards/"))) {
+    const file = path41.resolve(root, relative);
+    if (!file.startsWith(path41.resolve(root) + path41.sep) || !(relative.startsWith("archive/") || relative.startsWith("cards/"))) {
       remaining.push(relative);
       continue;
     }
     try {
-      const actualRoot = fs48.realpathSync(root), actualParent = fs48.realpathSync(path42.dirname(file));
-      if (actualParent !== actualRoot && !actualParent.startsWith(actualRoot + path42.sep)) {
+      const actualRoot = fs51.realpathSync(root), actualParent = fs51.realpathSync(path41.dirname(file));
+      if (actualParent !== actualRoot && !actualParent.startsWith(actualRoot + path41.sep)) {
         remaining.push(relative);
         continue;
       }
-      fs48.unlinkSync(file);
+      fs51.unlinkSync(file);
     } catch (err) {
       if (err.code !== "ENOENT")
         remaining.push(relative);
@@ -35553,8 +37423,8 @@ var init_readiness = __esm({
 });
 
 // packages/core/dist/memory/maintenance.js
-import fs49 from "node:fs";
-import path43 from "node:path";
+import fs52 from "node:fs";
+import path42 from "node:path";
 function openMaintenanceDb(root) {
   const file = dbPath(root), reader = openSqliteReadOnly(file);
   try {
@@ -35650,7 +37520,7 @@ function commitSpanVector(db, f, j, spanId, inputHash, vector) {
 }
 function prepareMigration(root) {
   const file = dbPath(root);
-  if (!fs49.existsSync(file))
+  if (!fs52.existsSync(file))
     return null;
   const db = openSqliteReadOnly(file);
   try {
@@ -35659,22 +37529,22 @@ function prepareMigration(root) {
     const check = db.prepare("PRAGMA integrity_check").all();
     if (check.length !== 1 || Object.values(check[0])[0] !== "ok")
       throw new Error("integrity_check_failed");
-    const dir = path43.join(root, "backups");
-    fs49.mkdirSync(dir, { recursive: true, mode: 448 });
-    const backup = path43.join(dir, `pre-memory-${Date.now()}-${process.pid}.db`);
+    const dir = path42.join(root, "backups");
+    fs52.mkdirSync(dir, { recursive: true, mode: 448 });
+    const backup = path42.join(dir, `pre-memory-${Date.now()}-${process.pid}.db`);
     db.prepare("VACUUM INTO ?").run(backup);
-    fs49.chmodSync(backup, 384);
-    const fd = fs49.openSync(backup, "r");
+    fs52.chmodSync(backup, 384);
+    const fd = fs52.openSync(backup, "r");
     try {
-      fs49.fsyncSync(fd);
+      fs52.fsyncSync(fd);
     } finally {
-      fs49.closeSync(fd);
+      fs52.closeSync(fd);
     }
-    const parent = fs49.openSync(dir, "r");
+    const parent = fs52.openSync(dir, "r");
     try {
-      fs49.fsyncSync(parent);
+      fs52.fsyncSync(parent);
     } finally {
-      fs49.closeSync(parent);
+      fs52.closeSync(parent);
     }
     return backup;
   } finally {
@@ -35808,7 +37678,7 @@ var init_maintenance = __esm({
             const paths = source.harness === "opencode" ? [source.path, source.path + "-wal"] : [source.path];
             fingerprint2 = hash(JSON.stringify(paths.map((p) => {
               try {
-                const s = fs49.statSync(p);
+                const s = fs52.statSync(p);
                 return [s.dev, s.ino, s.size, s.mtimeMs, s.ctimeMs];
               } catch {
                 return null;
@@ -35826,7 +37696,7 @@ var init_maintenance = __esm({
         for (const { harness, historyPath } of discoverEnrolledHistoryInputs(db, this.root)) {
           let fingerprint2;
           try {
-            const stat = fs49.statSync(historyPath);
+            const stat = fs52.statSync(historyPath);
             fingerprint2 = hash(JSON.stringify([stat.dev, stat.ino, stat.size, stat.mtimeMs, stat.ctimeMs, NORMALIZATION_VERSION, `${harness}-history-records-v1`, pipelinePolicy]));
           } catch {
             continue;
@@ -36134,7 +38004,7 @@ var init_delivery = __esm({
 });
 
 // packages/core/dist/memory/reader.js
-import { createHash as createHash16 } from "node:crypto";
+import { createHash as createHash18 } from "node:crypto";
 function stable(value) {
   if (Array.isArray(value))
     return "[" + value.map(stable).join(",") + "]";
@@ -36155,7 +38025,7 @@ function buildReaderTask(taskId, query, scope2, packets) {
       availability2 = "unavailable";
     const rows = [...packet.evidence.map((item) => ({ kind: "source", text: item.text, role: item.role, authority: item.authority, ref: { ...item.ref }, startUtf16: item.startUtf16, endUtf16: item.endUtf16, sourceEventAt: item.sourceEventAt, ...item.toolOutcome ? { toolOutcome: item.toolOutcome } : {}, historical: item.historical })), ...packet.assertions.map((note) => ({ kind: "note", text: note.text, role: "authored_assertion", authority: note.authority, noteId: note.noteId, sourceEventAt: note.eventAt, supportStatus: note.supportStatus }))];
     for (const row2 of rows) {
-      const id = createHash16("sha256").update(stable({ taskId, query, scope: scope2, ...row2 })).digest("hex").slice(0, 24);
+      const id = createHash18("sha256").update(stable({ taskId, query, scope: scope2, ...row2 })).digest("hex").slice(0, 24);
       if (!seen.has(id)) {
         seen.add(id);
         citations.push({ id, ...row2 });
@@ -37276,7 +39146,7 @@ var require_command = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
     var path55 = __require("node:path");
-    var fs69 = __require("node:fs");
+    var fs73 = __require("node:fs");
     var process26 = __require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -38209,10 +40079,10 @@ Expecting one of '${allowedValues.join("', '")}'`);
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
           const localBin = path55.resolve(baseDir, baseName);
-          if (fs69.existsSync(localBin)) return localBin;
+          if (fs73.existsSync(localBin)) return localBin;
           if (sourceExt.includes(path55.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs69.existsSync(`${localBin}${ext}`)
+            (ext) => fs73.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -38224,7 +40094,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs69.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs73.realpathSync(this._scriptPath);
           } catch (err) {
             resolvedScriptPath = this._scriptPath;
           }
@@ -39126,16 +40996,16 @@ Expecting one of '${allowedValues.join("', '")}'`);
        */
       _getHelpContext(contextOptions) {
         contextOptions = contextOptions || {};
-        const context = { error: !!contextOptions.error };
+        const context2 = { error: !!contextOptions.error };
         let write;
-        if (context.error) {
+        if (context2.error) {
           write = (arg) => this._outputConfiguration.writeErr(arg);
         } else {
           write = (arg) => this._outputConfiguration.writeOut(arg);
         }
-        context.write = contextOptions.write || write;
-        context.command = this;
-        return context;
+        context2.write = contextOptions.write || write;
+        context2.command = this;
+        return context2;
       }
       /**
        * Output help information for this command.
@@ -39150,23 +41020,23 @@ Expecting one of '${allowedValues.join("', '")}'`);
           deprecatedCallback = contextOptions;
           contextOptions = void 0;
         }
-        const context = this._getHelpContext(contextOptions);
-        this._getCommandAndAncestors().reverse().forEach((command) => command.emit("beforeAllHelp", context));
-        this.emit("beforeHelp", context);
-        let helpInformation = this.helpInformation(context);
+        const context2 = this._getHelpContext(contextOptions);
+        this._getCommandAndAncestors().reverse().forEach((command) => command.emit("beforeAllHelp", context2));
+        this.emit("beforeHelp", context2);
+        let helpInformation = this.helpInformation(context2);
         if (deprecatedCallback) {
           helpInformation = deprecatedCallback(helpInformation);
           if (typeof helpInformation !== "string" && !Buffer.isBuffer(helpInformation)) {
             throw new Error("outputHelp callback must return a string or a Buffer");
           }
         }
-        context.write(helpInformation);
+        context2.write(helpInformation);
         if (this._getHelpOption()?.long) {
           this.emit(this._getHelpOption().long);
         }
-        this.emit("afterHelp", context);
+        this.emit("afterHelp", context2);
         this._getCommandAndAncestors().forEach(
-          (command) => command.emit("afterAllHelp", context)
+          (command) => command.emit("afterAllHelp", context2)
         );
       }
       /**
@@ -39251,15 +41121,15 @@ Expecting one of '${allowedValues.join("', '")}'`);
 Expecting one of '${allowedValues.join("', '")}'`);
         }
         const helpEvent = `${position}Help`;
-        this.on(helpEvent, (context) => {
+        this.on(helpEvent, (context2) => {
           let helpStr;
           if (typeof text2 === "function") {
-            helpStr = text2({ error: context.error, command: context.command });
+            helpStr = text2({ error: context2.error, command: context2.command });
           } else {
             helpStr = text2;
           }
           if (helpStr) {
-            context.write(`${helpStr}
+            context2.write(`${helpStr}
 `);
           }
         });
@@ -40003,9 +41873,9 @@ var init_redact_elide2 = __esm({
 });
 
 // packages/core/src/redact.ts
-import { createHash as createHash17 } from "node:crypto";
+import { createHash as createHash19 } from "node:crypto";
 function secretDigest2(secret) {
-  return createHash17("sha256").update(secret, "utf8").digest("hex").slice(0, 8);
+  return createHash19("sha256").update(secret, "utf8").digest("hex").slice(0, 8);
 }
 function redact2(text2) {
   if (typeof text2 !== "string" || text2.length === 0) return { text: text2 ?? "", hits: [] };
@@ -40116,11 +41986,11 @@ var init_source3 = __esm({
 
 // packages/core/src/analytics/profanity.ts
 function labels2(text2) {
-  let hit2 = labelMemo2.get(text2);
+  let hit2 = labelMemo3.get(text2);
   if (hit2) return hit2;
-  if (labelMemo2.size > 2e4) labelMemo2.clear();
+  if (labelMemo3.size > 2e4) labelMemo3.clear();
   hit2 = computeLabels2(text2);
-  labelMemo2.set(text2, hit2);
+  labelMemo3.set(text2, hit2);
   return hit2;
 }
 function computeLabels2(text2) {
@@ -40233,7 +42103,7 @@ function auditProfanity2(prompts, partial = false) {
   const measurementBasis = "literal_english_lexicon_observed_native_input_utf16_v2", definition = "Literal occurrences of the documented eight-word English lexicon in eligible observed native user-role inputs after existing redaction/elision; this does not attest universal human authorship. Unicode whole-word tokens; containing inputs counted once. No emotion, intent or universal-language inference. Ranges are relative to the immutable redacted containing input; routes identify that input.";
   return { lexiconVersion: PROFANITY_LEXICON_VERSION2, language: "en-explicit-lexicon", measurementBasis, eligiblePrompts: eligible2.length, occurrences: { value: occurrences, numerator: occurrences, denominator: eligible2.length, unit: "english_lexicon_occurrence", measurementBasis, state: partial ? "partial" : "observed", definition }, containingPrompts: { value: containing.size, numerator: containing.size, denominator: eligible2.length, unit: "eligible_input_containing_english_lexicon_match", measurementBasis, state: partial ? "partial" : "observed", definition }, buckets: [...bucketCounts].map(([kind3, value]) => ({ kind: kind3, occurrences: value.occurrences, containingPrompts: value.prompts.size })), coverageGaps: ["outside_english_lexicon_unassessed", "hindi_hinglish_and_other_languages_unassessed", ...ambiguous2 ? ["ambiguous_quote_or_code_span"] : []], terms: [...terms.values()].map((t) => ({ term: t.term, kind: t.kind, occurrences: t.occurrences, containingPrompts: t.ids.size, samples: t.samples })).sort((a, b2) => b2.occurrences - a.occurrences || a.term.localeCompare(b2.term) || a.kind.localeCompare(b2.kind)), matches };
 }
-var ENGLISH_EXPLICIT_LEXICON2, PROFANITY_LEXICON_VERSION2, words5, LEXICON_HINT2, CODE2, QUOTE2, UNKNOWN2, kind2, escaped2, wordChar2, labelMemo2, TOKEN2, knownExcluded2, languageEligibleInput2;
+var ENGLISH_EXPLICIT_LEXICON2, PROFANITY_LEXICON_VERSION2, words5, LEXICON_HINT2, CODE2, QUOTE2, UNKNOWN2, kind2, escaped2, wordChar2, labelMemo3, TOKEN2, knownExcluded2, languageEligibleInput2;
 var init_profanity2 = __esm({
   "packages/core/src/analytics/profanity.ts"() {
     "use strict";
@@ -40251,7 +42121,7 @@ var init_profanity2 = __esm({
       return count5 % 2 === 1;
     };
     wordChar2 = (char) => char !== void 0 && /[\p{L}\p{N}\p{M}_\u200c\u200d]/u.test(char);
-    labelMemo2 = /* @__PURE__ */ new Map();
+    labelMemo3 = /* @__PURE__ */ new Map();
     TOKEN2 = /[\p{L}\p{N}\p{M}_\u200c\u200d]+(?:['’][\p{L}\p{N}\p{M}_\u200c\u200d]+)*/gu;
     knownExcluded2 = /* @__PURE__ */ new Set(["child_initialization", "maintenance_exclusion_marker", "tool_result", "inherited_native_event", "declared_meta_or_synthetic_input", "declared_synthetic_input"]);
     languageEligibleInput2 = (p) => p.languageEligible !== false && (p.eligibleNativeInput === true && !knownExcluded2.has(p.excludedReason ?? "") || p.eligibleNativeInput === void 0 && p.eligibleHuman && p.excludedReason === null && ["claude_prompt_id", "codex_human_marker"].includes(p.originBasis));
@@ -40654,39 +42524,6 @@ var init_story_lexicon2 = __esm({
   }
 });
 
-// packages/core/src/analytics/story-time.ts
-function localClock2(timezone) {
-  const format = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    weekday: "short",
-    hourCycle: "h23"
-  });
-  const memo2 = /* @__PURE__ */ new Map();
-  return (at) => {
-    const slot = Math.floor(at / 9e5);
-    let hit2 = memo2.get(slot);
-    if (hit2) return { ...hit2, minute: hit2.minute + Math.floor((at - slot * 9e5) / 6e4) };
-    const parts = {};
-    for (const p of format.formatToParts(new Date(slot * 9e5))) parts[p.type] = p.value;
-    const hour = Number(parts.hour) % 24;
-    hit2 = { day: `${parts.year}-${parts.month}-${parts.day}`, month: `${parts.year}-${parts.month}`, hour, dow: WEEKDAY2[parts.weekday] ?? 0, minute: Number(parts.minute) };
-    memo2.set(slot, hit2);
-    return { ...hit2, minute: hit2.minute + Math.floor((at - slot * 9e5) / 6e4) };
-  };
-}
-var WEEKDAY2;
-var init_story_time2 = __esm({
-  "packages/core/src/analytics/story-time.ts"() {
-    "use strict";
-    WEEKDAY2 = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
-  }
-});
-
 // packages/core/src/analytics/story-extract.ts
 function promptLex2(text2, models2) {
   const lex = {};
@@ -40711,35 +42548,15 @@ function deriveStory2(prompts, events, interrupts, options) {
     if (p.before) models2.add(p.before);
     if (p.after) models2.add(p.after);
   }
-  const vocab = options.counters ? options.previous?.vocab ?? /* @__PURE__ */ new Map() : null;
-  const topics = options.counters ? new Map((options.previous?.topics ?? []).map((t) => [t.month, t])) : null;
-  const clock3 = localClock2(options.timezone);
   for (const p of human) {
     if (!fresh.has(p)) continue;
     p.f = featurize2({ text: p.text, typed: options.typed });
     const lex = promptLex2(p.text, models2);
     if (lex) p.lex = lex;
-    if (vocab) for (const w of vocabularyWords2(p.text)) vocab.set(w, (vocab.get(w) ?? 0) + 1);
-    if (topics) {
-      const { hour, month } = clock3(p.at);
-      const slot = hour < 5 ? 0 : hour >= 9 && hour < 19 ? 1 : -1;
-      if (slot >= 0) {
-        let bag = topics.get(month);
-        if (!bag) {
-          bag = { month, night: 0, day: 0, words: /* @__PURE__ */ new Map() };
-          topics.set(month, bag);
-        }
-        if (slot === 0) bag.night++;
-        else bag.day++;
-        for (const w of topicWords2(p.text)) {
-          let c = bag.words.get(w);
-          if (!c) {
-            c = [0, 0];
-            bag.words.set(w, c);
-          }
-          c[slot]++;
-        }
-      }
+    if (options.counters) {
+      const w = vocabularyWords2(p.text), tw = [...topicWords2(p.text)];
+      if (w.length) p.w = w;
+      if (tw.length) p.tw = tw;
     }
   }
   turnStats2(human, events, interrupts);
@@ -40762,7 +42579,7 @@ function deriveStory2(prompts, events, interrupts, options) {
     const q2 = safeQuote2(p.text, 90);
     if (q2) p.q = q2;
   }
-  return { vocab, topics: topics ? [...topics.values()] : null };
+  return { vocab: null, topics: null };
 }
 function turnStats2(human, events, interrupts) {
   const ev = events.filter((e) => Number.isFinite(e.at)).sort((a, b2) => a.at - b2.at);
@@ -40807,7 +42624,6 @@ var init_story_extract2 = __esm({
     init_project_focus2();
     init_findings2();
     init_story_lexicon2();
-    init_story_time2();
     AGENT_TOOLS2 = /* @__PURE__ */ new Set(["Task", "Agent", "spawn_agent", "spawn_agents", "TaskCreate"]);
     isAgentTool2 = (name) => AGENT_TOOLS2.has(name) || name.startsWith("spawn");
     QUOTE_TOP2 = 8;
@@ -40818,17 +42634,73 @@ var init_story_extract2 = __esm({
   }
 });
 
-// packages/core/src/analytics/extract.ts
-import fs56 from "node:fs";
-import { createHash as createHash18 } from "node:crypto";
-import path49 from "node:path";
-function time3(v) {
-  if (typeof v === "string") {
-    const t = Date.parse(v);
-    return Number.isFinite(t) ? t : null;
+// packages/core/src/analytics/story-time.ts
+var init_story_time2 = __esm({
+  "packages/core/src/analytics/story-time.ts"() {
+    "use strict";
   }
-  if (typeof v === "number" && Number.isFinite(v)) return v < 1e11 ? v * 1e3 : v;
-  return null;
+});
+
+// packages/core/src/analytics/copy-prune.ts
+import { createHash as createHash20 } from "node:crypto";
+var HEAD2, TAIL3, SNIFF2, CLASSIFY_MAX_BYTES2, sha12, StreamHashes2;
+var init_copy_prune2 = __esm({
+  "packages/core/src/analytics/copy-prune.ts"() {
+    "use strict";
+    HEAD2 = 4096;
+    TAIL3 = 4096;
+    SNIFF2 = 64 * 1024;
+    CLASSIFY_MAX_BYTES2 = 512 * 1024 * 1024;
+    sha12 = (b2) => createHash20("sha1").update(b2).digest("base64");
+    StreamHashes2 = class {
+      headParts = [];
+      headLength = 0;
+      /** The last TAIL bytes seen. */
+      window = Buffer.alloc(0);
+      produced = 0;
+      offsets;
+      at = [];
+      constructor(offsets) {
+        this.offsets = [...offsets].sort((a, b2) => a - b2);
+      }
+      push(chunk) {
+        if (!chunk.length) return;
+        if (this.headLength < HEAD2) {
+          const part = chunk.subarray(0, HEAD2 - this.headLength);
+          this.headParts.push(Buffer.from(part));
+          this.headLength += part.length;
+        }
+        const from = this.produced, to = from + chunk.length;
+        let joined = null;
+        while (this.offsets.length && this.offsets[0] <= to) {
+          const end = this.offsets.shift();
+          if (end <= from) continue;
+          joined ??= Buffer.concat([this.window, chunk]);
+          const stop = end - (from - this.window.length);
+          this.at.push([end, sha12(joined.subarray(Math.max(0, stop - TAIL3), stop))]);
+        }
+        this.window = chunk.length >= TAIL3 ? Buffer.from(chunk.subarray(chunk.length - TAIL3)) : Buffer.concat([this.window, chunk]).subarray(-TAIL3);
+        this.produced = to;
+      }
+      result() {
+        return { head: sha12(Buffer.concat(this.headParts)), at: this.at };
+      }
+    };
+  }
+});
+
+// packages/core/src/analytics/extract.ts
+import fs59 from "node:fs";
+import zlib2 from "node:zlib";
+import { execFileSync as execFileSync4 } from "node:child_process";
+import { createHash as createHash21 } from "node:crypto";
+import path48 from "node:path";
+function time3(v) {
+  let t;
+  if (typeof v === "string") t = Date.parse(v);
+  else if (typeof v === "number" && Number.isFinite(v)) t = v < 1e11 ? v * 1e3 : v;
+  else return null;
+  return Number.isFinite(t) && Math.abs(t) <= MAX_DATE_MS2 && t > 0 ? t : null;
 }
 function textOf2(content) {
   if (typeof content === "string") return content;
@@ -40863,7 +42735,7 @@ function makeBuilder2(file, harness, size, mtimeMs) {
       file,
       size,
       mtimeMs,
-      sessionId: path49.basename(file, ".jsonl"),
+      sessionId: path48.basename(file.replace(/\.zst$/, ""), ".jsonl"),
       parentId: null,
       child: false,
       project: null,
@@ -40926,7 +42798,8 @@ function addPrompt2(b2, key2, at, project, kind3, reason, text2) {
   if (kind3 === "human") b2.pending.push(prompt);
   touch2(b2, at);
 }
-function claudeLine2(b2, line, subagent, sessions) {
+function claudeLine2(b2, line, subagentPath, sessions, archive = false) {
+  let subagent = subagentPath || !!b2.sidechainFile;
   const assistant = line.includes('"type":"assistant"');
   if (assistant ? !line.includes('"usage"') : subagent || !line.includes('"type":"user"')) {
     if (line.length > 4096 || !line.includes('-title"') && !line.includes('"type":"summary"')) return;
@@ -40938,7 +42811,10 @@ function claudeLine2(b2, line, subagent, sessions) {
     b2.facts.malformed++;
     return;
   }
-  if (!isRec3(r3)) return;
+  if (!isRec3(r3)) {
+    b2.facts.malformed++;
+    return;
+  }
   const f = b2.facts;
   if (r3.type === "summary" || r3.type === "custom-title" || r3.type === "ai-title") {
     const title = str4(r3.customTitle) ?? str4(r3.aiTitle) ?? str4(r3.title) ?? str4(r3.summary);
@@ -40947,11 +42823,19 @@ function claudeLine2(b2, line, subagent, sessions) {
   }
   if (typeof r3.cwd === "string" && !f.project) f.project = r3.cwd;
   const sid3 = str4(r3.sessionId);
+  if (archive && !subagent && sid3 && r3.isSidechain === true && typeof r3.agentId === "string" && !sessions.size && !f.prompts.length) {
+    b2.sidechainFile = subagent = true;
+    f.parentId = sid3;
+    f.child = true;
+    f.sessionId = `${sid3}:agent-${r3.agentId}`;
+  }
   if (sid3) {
     if (subagent) {
-      f.parentId = sid3;
-      f.child = true;
-      f.sessionId = `${sid3}:${path49.basename(f.file, ".jsonl")}`;
+      if (!b2.sidechainFile) {
+        f.parentId = sid3;
+        f.child = true;
+        f.sessionId = `${sid3}:${path48.basename(f.file, ".jsonl")}`;
+      }
     } else if (!sessions.size) f.sessionId = sid3;
   }
   const m = isRec3(r3.message) ? r3.message : {};
@@ -41010,19 +42894,11 @@ function claudeLine2(b2, line, subagent, sessions) {
   }
   addPrompt2(b2, str4(r3.uuid) ?? `${f.sessionId}:${String(r3.timestamp)}`, at, str4(r3.cwd) ?? f.project, kind3, reason, text2);
 }
-function codexModel2(model, timestamp) {
-  if (model === "codex-auto-review") {
-    const day = timestamp.slice(0, 10);
-    return { model: AUTO_REVIEW_MODELS2.find(([since]) => day >= since)?.[1] ?? "gpt-5", inferred: true };
-  }
-  return model ? { model, inferred: false } : { model: "gpt-5", inferred: true };
-}
-function codexFact2(b2, s, at, timestamp, d, key2) {
+function codexFact2(model, tier, at, d, key2) {
   const input = d[0], output = d[2], reasoning = d[3], cached4 = Math.min(d[1], input);
-  const { model, inferred } = codexModel2(b2.currentModel, timestamp);
-  const fact = { key: key2, at, model, provider: "openai", input: input - cached4, output, cacheRead: cached4, cacheWrite: 0, cacheWrite1h: 0, reasoning };
-  if (inferred) fact.inferredModel = true;
-  if (s.tier) fact.tier = s.tier;
+  const fact = { key: key2, at, model: codexModel2(model), provider: "openai", input: input - cached4, output, cacheRead: cached4, cacheWrite: 0, cacheWrite1h: 0, reasoning };
+  if (model && !fact.model) fact.identity = model;
+  if (tier) fact.tier = tier;
   return fact;
 }
 function codexWanted2(head, lineNo) {
@@ -41034,11 +42910,12 @@ function codexLine2(b2, line, s) {
   const f = b2.facts;
   const parse8 = () => {
     try {
-      return JSON.parse(line.toString("utf8"));
+      const v = JSON.parse(line.toString("utf8"));
+      if (isRec3(v)) return v;
     } catch {
-      f.malformed++;
-      return null;
     }
+    f.malformed++;
+    return null;
   };
   if (n2 === 0 && head.includes("session_meta")) {
     const r3 = parse8();
@@ -41054,6 +42931,7 @@ function codexLine2(b2, line, s) {
       const spawn4 = isRec3(sub.thread_spawn) ? sub.thread_spawn : {};
       f.parentId = str4(spawn4.parent_thread_id) ?? str4(p.parent_thread_id) ?? str4(p.forked_from_id);
     }
+    if (str4(p.forked_from_id)) f.forkedFrom = str4(p.forked_from_id);
     if (source === "exec" || p.originator === "codex_exec" || p.originator === "codex_sdk_ts") f.automated = true;
     touch2(b2, time3(r3.timestamp));
     return;
@@ -41075,8 +42953,8 @@ function codexLine2(b2, line, s) {
     if (totalSig) s.previousTotal = totalSig;
     if (!d || !(d[0] || d[1] || d[2] || d[3])) return;
     s.deltas.add(d.join(","));
-    const key2 = totalSig ? `x:${totalSig}|${last2 ? last2.join(",") : ""}` : null;
-    const fact = codexFact2(b2, s, time3(r3.timestamp), String(r3.timestamp ?? ""), d, key2);
+    const key2 = totalSig ? `x:${totalSig}|${last2 ? last2.join(",") : ""}` : `y:${String(r3.timestamp ?? "")}|${d.join(",")}`;
+    const fact = codexFact2(b2.currentModel, s.tier, time3(r3.timestamp), d, key2);
     addUsage2(b2, fact);
     if (fact.at !== null) b2.events.push({ at: fact.at, tools: 0, subs: 0, weight: usageWeight2(fact.input, fact.output, fact.cacheRead, fact.cacheWrite) });
     return;
@@ -41101,6 +42979,10 @@ function codexLine2(b2, line, s) {
   if (head.includes('"task_started"')) {
     const p = parse8()?.payload;
     s.imported = isRec3(p) && String(p.turn_id ?? "").startsWith("external-import");
+    if (!s.imported) {
+      s.inTurn = true;
+      s.anyTurn = true;
+    }
     return;
   }
   if (head.includes('"UserMessage"') && head.includes("item_completed")) {
@@ -41113,7 +42995,8 @@ function codexLine2(b2, line, s) {
       at: time3(r3.timestamp),
       text: textOf2(item.content),
       imported: s.imported || String(p.turn_id ?? "").startsWith("external-import"),
-      project: f.project
+      project: f.project,
+      inTurn: s.inTurn
     });
     return;
   }
@@ -41121,14 +43004,14 @@ function codexLine2(b2, line, s) {
     const r3 = parse8();
     if (!r3) return;
     const p = isRec3(r3.payload) ? r3.payload : {};
-    s.responsePrompts.push({ key: null, at: time3(r3.timestamp), text: textOf2(p.content), imported: s.imported, project: f.project });
+    s.responsePrompts.push({ key: null, at: time3(r3.timestamp), text: textOf2(p.content), imported: s.imported, project: f.project, inTurn: s.inTurn });
     return;
   }
   if (head.includes('"event_msg"') && line.subarray(0, 400).includes('"type":"user_message"')) {
     const r3 = parse8();
     if (!r3) return;
     const p = isRec3(r3.payload) ? r3.payload : {};
-    s.itemPrompts.push({ key: null, at: time3(r3.timestamp), text: typeof p.message === "string" ? p.message : "", imported: s.imported, project: f.project });
+    s.itemPrompts.push({ key: null, at: time3(r3.timestamp), text: typeof p.message === "string" ? p.message : "", imported: s.imported, project: f.project, inTurn: s.inTurn });
     return;
   }
   if (codexToolOrAbort2(b2, head)) return;
@@ -41136,7 +43019,7 @@ function codexLine2(b2, line, s) {
     const r3 = parse8();
     const p = r3 && isRec3(r3.payload) ? r3.payload : null;
     const id = p ? str4(p.response_id) : null;
-    if (r3 && p && id && isRec3(p.usage)) s.records.set(id, { at: time3(r3.timestamp), usage: p.usage });
+    if (r3 && p && id && isRec3(p.usage) && !s.records.has(id)) s.records.set(id, { at: time3(r3.timestamp), usage: p.usage, model: b2.currentModel, tier: s.tier });
     return;
   }
   if (head.includes('"type":"compacted"')) {
@@ -41169,7 +43052,7 @@ function finishCodex2(b2, s) {
     const d = record2 ? tuple2(record2.usage) : null;
     if (!record2 || !d || !(d[0] || d[1] || d[2] || d[3]) || s.deltas.has(d.join(","))) continue;
     s.compactionDone.add(id);
-    const fact = codexFact2(b2, s, record2.at, record2.at ? new Date(record2.at).toISOString() : "", d, `codex-compaction:${id}`);
+    const fact = codexFact2(record2.model, record2.tier, record2.at, d, `codex-compaction:${id}`);
     fact.compaction = true;
     f.usage.push(fact);
     touch2(b2, record2.at);
@@ -41187,12 +43070,19 @@ function finishCodex2(b2, s) {
       if (seen.has(p.key)) return;
       seen.add(p.key);
     }
-    const key2 = `codex:${f.sessionId}:${p.key ?? i}`;
+    const key2 = `codex:${p.key ?? `${i}@${p.at ?? ""}`}`;
     if (reason) return addPrompt2(b2, key2, p.at, p.project, "excluded", reason, "");
     if (p.imported) return addPrompt2(b2, key2, p.at, p.project, "excluded", "imported_from_claude_transcript", "");
     const c = classifyText2(cleanCodexText2(p.text));
     addPrompt2(b2, key2, p.at, p.project, c.kind, c.reason, c.text);
+    if (!p.inTurn) f.prompts[f.prompts.length - 1].imp = 1;
   });
+  if (!s.anyTurn) {
+    const firstUsage = f.usage.reduce((m, u) => u.at !== null && u.at < m ? u.at : m, Infinity);
+    const before = f.prompts.filter((p) => (p.at ?? Infinity) < firstUsage).sort((x, y) => x.at - y.at);
+    for (const p of f.prompts) delete p.imp;
+    for (const p of before.slice(0, -1)) p.imp = 1;
+  }
   const answers = f.usage.filter((u) => u.at !== null).sort((x, y) => x.at - y.at);
   let j = 0, previous = null;
   for (const p of [...f.prompts].sort((x, y) => (x.at ?? 0) - (y.at ?? 0))) {
@@ -41211,10 +43101,19 @@ function piLine2(b2, line) {
     b2.facts.malformed++;
     return;
   }
+  if (!isRec3(r3)) {
+    b2.facts.malformed++;
+    return;
+  }
   const f = b2.facts, at = time3(r3.timestamp);
   if (r3.type === "session") {
     f.sessionId = str4(r3.id) ?? f.sessionId;
     f.project = str4(r3.cwd);
+    const parent = str4(r3.parentSession);
+    if (parent) {
+      const base3 = path48.basename(parent.replace(/\\/g, "/")).replace(/\.jsonl$/, "");
+      f.forkedFrom = base3.includes("_") ? base3.slice(base3.lastIndexOf("_") + 1) : base3;
+    }
     touch2(b2, at);
     return;
   }
@@ -41228,7 +43127,7 @@ function piLine2(b2, line) {
   if (m.role === "assistant" && isRec3(m.usage)) {
     const u = m.usage;
     const fact = {
-      key: `pi:${f.sessionId}:${String(r3.id)}`,
+      key: `pi:${String(r3.id)}@${String(r3.timestamp ?? "")}`,
       at,
       model: str4(m.model) ?? b2.currentModel,
       provider: str4(m.provider) ?? b2.currentProvider,
@@ -41249,14 +43148,20 @@ function piLine2(b2, line) {
   }
   if (m.role === "user") {
     const c = classifyText2(textOf2(m.content));
-    addPrompt2(b2, `pi:${f.sessionId}:${String(r3.id)}`, at, f.project, c.kind, c.reason, c.text);
+    addPrompt2(b2, `pi:${String(r3.id)}@${String(r3.timestamp ?? "")}`, at, f.project, c.kind, c.reason, c.text);
   }
 }
-function extractFile2(file, harness, options = {}, previous) {
-  const fd = fs56.openSync(file, "r");
+function extractFile2(file, requested, options = {}, previous) {
+  const fd = fs59.openSync(file, "r");
   try {
-    const stat = fs56.fstatSync(fd);
+    const stat = fs59.fstatSync(fd);
+    const hashes = options.checks?.length ? new StreamHashes2(options.checks) : null;
+    const zst = isZstd2(fd) ? zstdStream2(fd, file, hashes) : null;
+    const harness = requested === "auto" ? sniffHarness2(zst ? zst.peek(64 * 1024) : headBytes2(fd, 64 * 1024)) : requested;
+    if (!harness) throw new Error("unrecognised_archive_source");
+    if (zst && previous) throw new ResumeMismatch2();
     let b2 = makeBuilder2(file, harness, stat.size, stat.mtimeMs);
+    if (options.archive) b2.facts.archived = true;
     let codex = newCodexState2();
     let position = 0, firstNew = 0;
     const subagent = file.includes(SUBAGENT_DIR2), sessions = /* @__PURE__ */ new Set();
@@ -41264,7 +43169,7 @@ function extractFile2(file, harness, options = {}, previous) {
       const r3 = previous.resume;
       if (!r3 || previous.excluded || r3.dev !== stat.dev || r3.ino !== stat.ino || r3.offset > stat.size || r3.offset < 1 || tailHash2(fd, r3.offset) !== r3.tail) throw new ResumeMismatch2();
       const nl = Buffer.alloc(1);
-      fs56.readSync(fd, nl, 0, 1, r3.offset - 1);
+      fs59.readSync(fd, nl, 0, 1, r3.offset - 1);
       if (nl[0] !== 10) throw new ResumeMismatch2();
       b2 = resumeBuilder2(previous, r3, stat);
       if (r3.codex) codex = { ...structuredClone(r3.codex), itemPrompts: [], responsePrompts: [] };
@@ -41272,7 +43177,8 @@ function extractFile2(file, harness, options = {}, previous) {
       position = r3.offset;
       firstNew = b2.facts.prompts.length;
     }
-    const onLine = harness === "claude" ? (line) => claudeLine2(b2, line, subagent, sessions) : harness === "codex" ? (line) => codexLine2(b2, line, codex) : (line) => piLine2(b2, line);
+    const archive = !!options.archive;
+    const onLine = harness === "claude" ? (line) => claudeLine2(b2, line, subagent, sessions, archive) : harness === "codex" ? (line) => codexLine2(b2, line, codex) : (line) => piLine2(b2, line);
     let buffer = sharedBuffer2 ??= Buffer.allocUnsafe(CHUNK2);
     let filled = 0, skipping = false, base3 = position, endsWithNewline = true;
     for (; ; ) {
@@ -41295,7 +43201,7 @@ function extractFile2(file, harness, options = {}, previous) {
           if (bigger.length <= 4 * CHUNK2) sharedBuffer2 = bigger;
         }
       }
-      const n2 = fs56.readSync(fd, buffer, filled, buffer.length - filled, position);
+      const n2 = zst ? zst.read(buffer, filled, buffer.length - filled) : fs59.readSync(fd, buffer, filled, buffer.length - filled, position);
       position += n2;
       const end = filled + n2;
       let start = 0;
@@ -41319,12 +43225,13 @@ function extractFile2(file, harness, options = {}, previous) {
       filled = end - start;
     }
     if (harness === "codex") finishCodex2(b2, codex);
+    if (hashes) b2.facts.copyHashes = hashes.result();
     if (harness === "claude" && !subagent && sessions.size) b2.facts.sessionIds = [...sessions];
     b2.facts.size = stat.size;
     b2.facts.mtimeMs = stat.mtimeMs;
     finishStory2(b2, harness, options, firstNew);
     delete b2.facts.resume;
-    if (endsWithNewline && !b2.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS2) {
+    if (!zst && !options.archive && endsWithNewline && !b2.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS2) {
       const events = new Float64Array(b2.events.length * 4);
       b2.events.forEach((e, i) => {
         events[i * 4] = e.at;
@@ -41348,8 +43255,142 @@ function extractFile2(file, harness, options = {}, previous) {
     }
     return b2.facts;
   } finally {
-    fs56.closeSync(fd);
+    fs59.closeSync(fd);
   }
+}
+function headBytes2(fd, max2) {
+  const buffer = Buffer.alloc(max2);
+  const n2 = fs59.readSync(fd, buffer, 0, max2, 0);
+  return buffer.subarray(0, n2);
+}
+function isZstd2(fd) {
+  const head = headBytes2(fd, 4);
+  return head.length === 4 && head.readUInt32LE(0) === ZSTD_MAGIC3;
+}
+function chunkedZstd2() {
+  const Engine = zlib2.ZstdDecompress;
+  if (zstdMode2 !== "node" || !Engine) return null;
+  let engine;
+  try {
+    engine = new Engine();
+  } catch {
+    return null;
+  }
+  const handle = engine._handle, state = engine._writeState;
+  if (!handle || typeof handle.writeSync !== "function" || !(state instanceof Uint32Array)) {
+    engine.close();
+    return null;
+  }
+  engine.on("error", () => {
+  });
+  const flush = zlib2.constants.ZSTD_e_continue;
+  return {
+    step(input) {
+      const outs = [];
+      let inOff = 0, availIn = input.length;
+      for (; ; ) {
+        const out = Buffer.allocUnsafe(ZSTD_OUTPUT2);
+        handle.writeSync(flush, input, inOff, availIn, out, 0, out.length);
+        if (engine.destroyed) throw new Error("zstd_corrupt");
+        const availOut = state[0], availInAfter = state[1];
+        if (out.length - availOut > 0) outs.push(out.subarray(0, out.length - availOut));
+        inOff += availIn - availInAfter;
+        availIn = availInAfter;
+        if (availOut !== 0) break;
+      }
+      return outs;
+    },
+    close: () => engine.close()
+  };
+}
+function zstdStream2(fd, file, hashes) {
+  zstdMode2 ??= zstdSupport2();
+  const engine = chunkedZstd2();
+  let pending = [], inPos = 0, done = false;
+  const input = engine ? Buffer.allocUnsafe(ZSTD_INPUT2) : null;
+  const emit = (out) => {
+    if (out.length) {
+      pending.push(out);
+      hashes?.push(out);
+    }
+  };
+  const fill = () => {
+    if (!engine) {
+      emit(decompressZstd2(file));
+      done = true;
+      return;
+    }
+    const n2 = fs59.readSync(fd, input, 0, ZSTD_INPUT2, inPos);
+    inPos += n2;
+    if (!n2) {
+      done = true;
+      engine.close();
+      return;
+    }
+    try {
+      for (const out of engine.step(input.subarray(0, n2))) emit(out);
+    } catch (error) {
+      done = true;
+      engine.close();
+      throw error;
+    }
+  };
+  return {
+    read(target, offset, length) {
+      while (!pending.length && !done) fill();
+      let written = 0;
+      while (written < length && pending.length) {
+        const head = pending[0], n2 = Math.min(head.length, length - written);
+        head.copy(target, offset + written, 0, n2);
+        written += n2;
+        if (n2 === head.length) pending.shift();
+        else pending[0] = head.subarray(n2);
+      }
+      return written;
+    },
+    peek(max2) {
+      while (pending.reduce((x, p) => x + p.length, 0) < max2 && !done) fill();
+      const all = Buffer.concat(pending);
+      pending = all.length ? [all] : [];
+      return all.subarray(0, max2);
+    }
+  };
+}
+function zstdSupport2() {
+  if (typeof zlib2.zstdDecompressSync === "function") return "node";
+  try {
+    execFileSync4("zstd", ["--version"], { stdio: "ignore", timeout: 5e3 });
+    return "cli";
+  } catch {
+    return null;
+  }
+}
+function decompressZstd2(file) {
+  zstdMode2 ??= zstdSupport2();
+  if (zstdMode2 === "node") {
+    try {
+      return zlib2.zstdDecompressSync(fs59.readFileSync(file));
+    } catch {
+      throw new Error("zstd_corrupt");
+    }
+  }
+  if (zstdMode2 === "cli") {
+    try {
+      return execFileSync4("zstd", ["-dcq", "--", file], { maxBuffer: 2 ** 32, stdio: ["ignore", "pipe", "ignore"] });
+    } catch {
+      throw new Error("zstd_corrupt");
+    }
+  }
+  throw new Error("zstd_unsupported");
+}
+function sniffHarness2(head) {
+  const firstEnd = head.indexOf(10);
+  const first = head.toString("utf8", 0, Math.min(firstEnd < 0 ? head.length : firstEnd, 4096));
+  if (first.includes('"session_meta"')) return "codex";
+  if (/"type"\s*:\s*"session"/.test(first) && !first.includes('"sessionId"')) return "pi";
+  const text2 = head.toString("latin1");
+  if (text2.includes('"sessionId"') && /"type"\s*:\s*"(?:user|assistant|summary|system)"/.test(text2)) return "claude";
+  return null;
 }
 function resumeBuilder2(previous, r3, stat) {
   const facts = {
@@ -41359,7 +43400,7 @@ function resumeBuilder2(previous, r3, stat) {
     usage: [...previous.usage],
     prompts: previous.prompts.map((p) => ({ ...p })),
     ...previous.sessionIds ? { sessionIds: [...previous.sessionIds] } : {},
-    ...previous.story ? { story: { vocab: previous.story.vocab ? new Map(previous.story.vocab) : null, topics: previous.story.topics ? previous.story.topics.map((t) => ({ ...t, words: new Map([...t.words].map(([w, c]) => [w, [c[0], c[1]]])) })) : null } } : {}
+    ...previous.story ? { story: { vocab: null, topics: null } } : {}
   };
   delete facts.resume;
   const b2 = makeBuilder2(previous.file, previous.harness, stat.size, stat.mtimeMs);
@@ -41397,16 +43438,16 @@ function stripText2(facts) {
   return facts;
 }
 function tailHash2(fd, offset) {
-  const start = Math.max(0, offset - TAIL2), buffer = Buffer.alloc(offset - start);
+  const start = Math.max(0, offset - TAIL4), buffer = Buffer.alloc(offset - start);
   let read = 0;
   while (read < buffer.length) {
-    const n2 = fs56.readSync(fd, buffer, read, buffer.length - read, start + read);
+    const n2 = fs59.readSync(fd, buffer, read, buffer.length - read, start + read);
     if (!n2) break;
     read += n2;
   }
-  return createHash18("sha256").update(buffer.subarray(0, read)).digest("hex");
+  return createHash21("sha256").update(buffer.subarray(0, read)).digest("hex");
 }
-var FACTS_VERSION2, MAX_PROMPT_CHARS2, isRec3, str4, int3, INJECTED_PREFIXES2, SYSTEM_REMINDER2, CODEX_STRIP2, SUBAGENT_DIR2, newCodexState2, ResumeMismatch2, U_KEYS2, tuple2, AUTO_REVIEW_MODELS2, TOOL_CALL2, NAME2, STAMP2, CHUNK2, MAX_LINE2, sharedBuffer2, RESUME_RECENT_MS2, TAIL2;
+var FACTS_VERSION2, MAX_PROMPT_CHARS2, isRec3, str4, int3, MAX_DATE_MS2, INJECTED_PREFIXES2, SYSTEM_REMINDER2, CODEX_STRIP2, SUBAGENT_DIR2, newCodexState2, ResumeMismatch2, U_KEYS2, tuple2, CODEX_NON_MODELS2, codexModel2, TOOL_CALL2, NAME2, STAMP2, CHUNK2, MAX_LINE2, sharedBuffer2, RESUME_RECENT_MS2, ZSTD_MAGIC3, ZSTD_INPUT2, ZSTD_OUTPUT2, zstdMode2, TAIL4;
 var init_extract3 = __esm({
   "packages/core/src/analytics/extract.ts"() {
     "use strict";
@@ -41415,11 +43456,13 @@ var init_extract3 = __esm({
     init_story_extract2();
     init_story_lexicon2();
     init_story_time2();
-    FACTS_VERSION2 = 5;
+    init_copy_prune2();
+    FACTS_VERSION2 = 8;
     MAX_PROMPT_CHARS2 = 4e3;
     isRec3 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
     str4 = (v) => typeof v === "string" && v.length > 0 ? v : null;
     int3 = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+    MAX_DATE_MS2 = 864e13;
     INJECTED_PREFIXES2 = [
       ["<task-notification>", "task_notification"],
       ["<local-command-stdout>", "local_command_output"],
@@ -41442,12 +43485,14 @@ var init_extract3 = __esm({
     ];
     SYSTEM_REMINDER2 = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
     CODEX_STRIP2 = [/<in-app-browser-context[\s\S]*?<\/in-app-browser-context>/g, /<image name=[^>]*>\s*<\/image>/g, /<\/?image[^>]*>/g];
-    SUBAGENT_DIR2 = `${path49.sep}subagents${path49.sep}`;
+    SUBAGENT_DIR2 = `${path48.sep}subagents${path48.sep}`;
     newCodexState2 = () => ({
       lineNo: 0,
       previousTotal: null,
       tier: void 0,
       imported: false,
+      inTurn: false,
+      anyTurn: false,
       records: /* @__PURE__ */ new Map(),
       compacted: /* @__PURE__ */ new Set(),
       deltas: /* @__PURE__ */ new Set(),
@@ -41465,14 +43510,8 @@ var init_extract3 = __esm({
     };
     U_KEYS2 = ["input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens", "total_tokens"];
     tuple2 = (u) => isRec3(u) ? U_KEYS2.map((k) => int3(u[k])) : null;
-    AUTO_REVIEW_MODELS2 = [
-      ["2026-07-30", "gpt-5.6-luna"],
-      ["2026-03-05", "gpt-5.4"],
-      ["2026-02-05", "gpt-5.3-codex"],
-      ["2025-12-11", "gpt-5.2-codex"],
-      ["2025-11-13", "gpt-5.1-codex"],
-      ["2025-09-15", "gpt-5-codex"]
-    ];
+    CODEX_NON_MODELS2 = /* @__PURE__ */ new Set(["codex-auto-review"]);
+    codexModel2 = (model) => model && !CODEX_NON_MODELS2.has(model) ? model : null;
     TOOL_CALL2 = /"type":"(?:function_call|custom_tool_call)"/;
     NAME2 = /"name":"([^"]{1,80})"/;
     STAMP2 = /"timestamp":"([^"]{10,40})"/;
@@ -41480,7 +43519,10 @@ var init_extract3 = __esm({
     MAX_LINE2 = 256 * 1024 * 1024;
     sharedBuffer2 = null;
     RESUME_RECENT_MS2 = 48 * 36e5;
-    TAIL2 = 4096;
+    ZSTD_MAGIC3 = 4247762216;
+    ZSTD_INPUT2 = 1024 * 1024;
+    ZSTD_OUTPUT2 = 1024 * 1024;
+    TAIL4 = 4096;
   }
 });
 
@@ -41508,7 +43550,8 @@ function createScanPool(entry, threads = defaultThreads()) {
   return {
     async scan(jobs, onResult, signal) {
       if (closed) throw new Error("scan_pool_closed");
-      const queue = [...jobs].sort((a, b2) => b2.size - a.size);
+      const cost = (j) => j.file.endsWith(".zst") ? 2 * j.size : j.size;
+      const queue = [...jobs].sort((a, b2) => cost(b2) - cost(a));
       if (!queue.length) return;
       start(Math.min(threads, queue.length));
       await new Promise((resolve) => {
@@ -41569,7 +43612,7 @@ var init_scan_pool2 = __esm({
   "packages/core/src/analytics/scan-pool.ts"() {
     "use strict";
     init_extract3();
-    readFacts2 = (job) => stripText2(extractFile2(job.file, job.harness, { timezone: job.timezone }));
+    readFacts2 = (job) => stripText2(extractFile2(job.file, job.harness, { timezone: job.timezone, ...job.archive ? { archive: true } : {}, ...job.checks?.length ? { checks: job.checks } : {} }));
     errorCode2 = (error) => error instanceof Error && /^[a-z][a-z0-9_]{0,63}$/.test(error.message) ? error.message : "source_unreadable";
   }
 });
@@ -41582,11 +43625,11 @@ __export(audit_background_exports, {
   runAuditWorkerHost: () => runAuditWorkerHost
 });
 import { fork } from "node:child_process";
-import fs57 from "node:fs";
-import path50 from "node:path";
+import fs60 from "node:fs";
+import path49 from "node:path";
 function localScanPool() {
   const entry = new URL("./audit-native-worker.js", import.meta.url);
-  return fs57.existsSync(entry) ? createScanPool(entry) : void 0;
+  return fs60.existsSync(entry) ? createScanPool(entry) : void 0;
 }
 function createBackgroundAuditSession(options, entry = process.argv[1]) {
   const seed = createAuditSession({ ...options, nativeScanExecutor: void 0, onTransfer: void 0, signal: void 0 });
@@ -41626,7 +43669,7 @@ function createBackgroundAuditSession(options, entry = process.argv[1]) {
     });
     ready.catch(() => {
     });
-    child = fork(path50.resolve(entry), ["__audit_worker"], { stdio: ["ignore", "ignore", "ignore", "ipc"], serialization: "advanced" });
+    child = fork(path49.resolve(entry), ["__audit_worker"], { stdio: ["ignore", "ignore", "ignore", "ipc"], serialization: "advanced" });
     child.on("message", (raw) => {
       if (disposed || cancelled) return;
       if (raw?.kind === "ready") {
@@ -41942,7 +43985,7 @@ var init_format3 = __esm({
     MONTHS5 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     PROVIDER_PREFIX = /^(?:anthropic|openai|google|google-vertex|anthropic-vertex|deepseek|qwen|mistral|x-ai|xai|groq|opencode|openrouter|amazon-bedrock)\//i;
     FAMILY = /^(opus|sonnet|haiku|fable|instant)$/i;
-    HARNESS_NAMES = { claude: "Claude Code", codex: "Codex", pi: "pi", opencode: "OpenCode" };
+    HARNESS_NAMES = { claude: "Claude Code", claude_hist: "Claude Code", codex: "Codex", pi: "pi", opencode: "OpenCode", cursor: "Cursor", gemini: "Gemini CLI", copilot: "Copilot" };
   }
 });
 
@@ -42439,8 +44482,8 @@ function footerLine(data, width, page, pages, options, mode) {
   }
   return spread(left, keys5, width);
 }
-function groupHeight(group, pick3) {
-  return Math.max(...group.map(pick3));
+function groupHeight(group, pick4) {
+  return Math.max(...group.map(pick4));
 }
 function renderGroup(group, height, width, gutter) {
   if (group.length === 1) {
@@ -42775,13 +44818,13 @@ function repeatsOf(snapshot2, loading) {
 function reactionsOf(snapshot2, loading) {
   const feedback = snapshot2.launch?.modelFeedback;
   if (!feedback) return { state: loading ? "pending" : "empty", roasted: null, praised: null };
-  const pick3 = (key2) => {
+  const pick4 = (key2) => {
     const ranked = feedback.filter((row2) => row2.model !== null && row2.associatedInputs >= MIN_REACTION_SAMPLE && row2[key2] > 0 && row2[key2] <= row2.associatedInputs).sort((a, b2) => b2[key2] / b2.associatedInputs - a[key2] / a.associatedInputs || b2[key2] - a[key2] || (a.model ?? "").localeCompare(b2.model ?? ""));
     const top = ranked[0];
     return top ? { model: modelName(top.model), hits: top[key2], of: top.associatedInputs } : null;
   };
-  const roasted = pick3("directedNegativeInputs");
-  const praised = pick3("praiseInputs");
+  const roasted = pick4("directedNegativeInputs");
+  const praised = pick4("praiseInputs");
   return { state: roasted || praised ? "ready" : "empty", roasted, praised };
 }
 function swearsOf(snapshot2, loading) {
@@ -42972,7 +45015,7 @@ function progressDetailOf(snapshot2) {
 function cardOf(story, id) {
   return story?.cards.find((card) => card.id === id) ?? null;
 }
-function num4(card, key2) {
+function num6(card, key2) {
   const value = card?.numbers[key2];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -42980,9 +45023,687 @@ function str5(card, key2) {
   const value = card?.numbers[key2];
   return typeof value === "string" && value ? value : null;
 }
+function wentOnline(snapshot2, transfers = 0) {
+  if (transfers > 0) return true;
+  const story = storyOf(snapshot2);
+  const e = story?.enrichment;
+  if (e && (e.quotesSent > 0 || e.state === "pending" || e.state === "complete" || e.state === "failed" && e.model !== null)) return true;
+  const sem = snapshot2.launch?.semantics;
+  if (sem && typeof sem.requestCount === "number" && sem.requestCount > 0) return true;
+  return (snapshot2.semantics?.requestCount ?? 0) > 0;
+}
 var init_source4 = __esm({
   "packages/cli/src/audit-ui/story/source.ts"() {
     "use strict";
+  }
+});
+
+// packages/cli/src/audit-ui/story/v19.ts
+function spendOf(story) {
+  const raw = story?.spend;
+  if (!raw || typeof raw !== "object" || !finite(raw.measuredUsd)) return null;
+  const est = raw.estimated && finite(raw.estimated.lowUsd) && finite(raw.estimated.highUsd) && raw.estimated.highUsd > 0 ? raw.estimated : null;
+  const spend = {
+    measuredUsd: raw.measuredUsd,
+    recoveredUsd: finite(raw.recoveredUsd) ? raw.recoveredUsd : 0,
+    estimated: est,
+    unpricedTokens: finite(raw.unpricedTokens) ? raw.unpricedTokens : 0,
+    byHarness: arr(raw.byHarness).filter((row2) => row2 && finite(row2.usd) && finite(row2.prompts)),
+    monthly: arr(raw.monthly).filter((row2) => row2 && /^\d{4}-\d{2}$/.test(row2.month) && finite(row2.measuredUsd)),
+    daily: arr(raw.daily).filter((row2) => row2 && /^\d{4}-\d{2}-\d{2}$/.test(row2.day) && finite(row2.usd)),
+    thisMonthUsd: finite(raw.thisMonthUsd) ? raw.thisMonthUsd : 0,
+    perActiveDayUsd: finite(raw.perActiveDayUsd) ? raw.perActiveDayUsd : 0,
+    priciestDay: raw.priciestDay && finite(raw.priciestDay.usd) && raw.priciestDay.usd > 0 ? raw.priciestDay : null,
+    priceVersion: typeof raw.priceVersion === "string" ? raw.priceVersion : ""
+  };
+  if (spend.measuredUsd <= 0 && spend.recoveredUsd <= 0 && !spend.estimated) return null;
+  return spend;
+}
+function modelShareOf(story) {
+  const raw = story?.modelShare;
+  if (!raw || typeof raw !== "object") return null;
+  const seen = /* @__PURE__ */ new Map();
+  for (const row2 of arr(raw.rows)) {
+    if (!row2 || typeof row2.label !== "string" || !finite(row2.outputTokens) || !finite(row2.tokenSharePct)) continue;
+    const key2 = row2.label.trim().toLowerCase();
+    const prior = seen.get(key2);
+    if (prior) seen.set(key2, {
+      ...prior,
+      outputTokens: prior.outputTokens + row2.outputTokens,
+      tokenSharePct: prior.tokenSharePct + row2.tokenSharePct,
+      prompts: prior.prompts + (row2.prompts || 0),
+      promptSharePct: prior.promptSharePct + (row2.promptSharePct || 0),
+      usd: prior.usd + (row2.usd || 0),
+      spendSharePct: prior.spendSharePct + (row2.spendSharePct || 0)
+    });
+    else seen.set(key2, { ...row2, prompts: row2.prompts || 0, promptSharePct: row2.promptSharePct || 0, usd: row2.usd || 0, spendSharePct: row2.spendSharePct || 0 });
+  }
+  const rows = [...seen.values()].filter((row2) => row2.outputTokens > 0).sort((a, b2) => b2.tokenSharePct - a.tokenSharePct || b2.outputTokens - a.outputTokens);
+  const timeline = arr(raw.timeline).filter((row2) => row2 && /^\d{4}-\d{2}$/.test(row2.month) && typeof row2.label === "string");
+  const last30d = arr(raw.last30d).filter((row2) => row2 && typeof row2.label === "string" && finite(row2.promptSharePct));
+  const unknown = finite(raw.unknownModelPrompts) ? raw.unknownModelPrompts : 0;
+  if (!rows.length && !timeline.length) return null;
+  return { basis: "output_tokens", rows, unknownModelPrompts: unknown, last30d, timeline };
+}
+function automatedRunsOf(story) {
+  const v = story?.totals?.automatedRuns;
+  return finite(v) && v > 0 ? v : null;
+}
+var finite, arr;
+var init_v19 = __esm({
+  "packages/cli/src/audit-ui/story/v19.ts"() {
+    "use strict";
+    finite = (v) => typeof v === "number" && Number.isFinite(v);
+    arr = (v) => Array.isArray(v) ? v : [];
+  }
+});
+
+// packages/cli/src/audit-ui/story/fun-facts.ts
+function catchphraseSlot(story, mask4 = sanitize) {
+  const c = story?.highlights.catchphrase;
+  const phrase = safeWord(c?.phrase, mask4);
+  if (!story || !c || !phrase || c.count < 10 || !(story.totals.prompts > 0)) return null;
+  return { phrase, count: c.count };
+}
+function posterOrder(facts, exclude = []) {
+  const core = CORE_FACTS.map((id) => facts.find((f) => f.id === id)).filter((f) => !!f);
+  const rest = facts.filter((f) => !CORE_FACTS.includes(f.id));
+  return [...core, ...rest].filter((f) => !exclude.includes(f.id));
+}
+function rankFunFacts(story, mask4 = sanitize) {
+  if (!story) return [];
+  const out = [];
+  CATALOGUE.forEach((entry, order) => {
+    let fact = null;
+    try {
+      fact = entry.make(story, mask4);
+    } catch {
+      fact = null;
+    }
+    if (fact && Number.isFinite(fact.score) && fact.score > 0) out.push({ ...fact, id: entry.id, score: Math.round(fact.score * 10) / 10, order });
+  });
+  out.sort((a, b2) => b2.score - a.score || a.order - b2.order || a.id.localeCompare(b2.id));
+  return out.map(({ order: _order, ...fact }) => fact);
+}
+var factText, clamp3, log2, N, M2, Q, T, times, shortModel, safeWord, SWEAR_TROPHIES, CATALOGUE, CORE_FACTS;
+var init_fun_facts = __esm({
+  "packages/cli/src/audit-ui/story/fun-facts.ts"() {
+    "use strict";
+    init_format3();
+    init_text();
+    init_source4();
+    init_v19();
+    factText = (parts) => parts.map((p) => p.text).join("");
+    clamp3 = (v, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v));
+    log2 = Math.log2;
+    N = (text2) => ({ text: text2, tone: "num" });
+    M2 = (text2) => ({ text: text2, tone: "name" });
+    Q = (text2) => ({ text: `\u201C${text2}\u201D`, tone: "quote" });
+    T = (text2) => ({ text: text2 });
+    times = (ratio2) => `${ratio2 >= 9.95 ? Math.round(ratio2) : ratio2.toFixed(1).replace(/\.0$/, "")}\xD7`;
+    shortModel = (label4) => sanitize(label4).replace(/^(Claude|Gemini)\s+/, "");
+    safeWord = (text2, mask4) => {
+      if (!text2) return null;
+      const clean3 = mask4(text2).replace(/\s+/g, " ").trim();
+      if (!clean3 || clean3.length > 24 || /[/\\@:]|https?/i.test(clean3)) return null;
+      return clean3;
+    };
+    SWEAR_TROPHIES = ["rage_day", "swear_month", "redemption", "shortest_fuse", "ragequit", "honeymoon", "worst_model", "fuse_length"];
+    CATALOGUE = [
+      {
+        id: "manners",
+        guard: "f-bombs (or swears) > 0, thanks > 0, ratio \u2265 1.5 either way",
+        score: "50 + 20\xB7|log2 ratio|",
+        make: (story) => {
+          const card = cardOf(story, "thanks_vs_swears");
+          const thanks = num6(card, "thanks") ?? 0, fb = num6(card, "fbombs"), sw = num6(card, "swears");
+          const rude = fb ?? sw ?? 0;
+          if (!(thanks > 0) || !(rude > 0)) return null;
+          const ratio2 = rude / thanks;
+          if (ratio2 < 1.5 && ratio2 > 1 / 1.5) return null;
+          const word = fb !== null ? "f-bomb" : "swear";
+          const score = clamp3(50 + 20 * Math.abs(log2(ratio2)));
+          if (ratio2 >= 1) {
+            const n3 = ratio2 >= 10 ? String(Math.round(ratio2)) : ratio2.toFixed(1).replace(/\.0$/, "");
+            return { family: "voice", label: "MANNERS", parts: [N(n3), T(` ${word}s per thank-you`)], short: [N(n3), T(` ${word}s per thanks`)], score, awards: SWEAR_TROPHIES };
+          }
+          const inv = 1 / ratio2;
+          const n2 = inv >= 10 ? String(Math.round(inv)) : inv.toFixed(1).replace(/\.0$/, "");
+          return { family: "voice", label: "MANNERS", parts: [N(n2), T(` thank-yous per ${word}`)], short: [N(n2), T(` thanks per ${word}`)], score, awards: SWEAR_TROPHIES };
+        }
+      },
+      {
+        id: "nemesis",
+        guard: "models.worst with swearRatio \u2265 1.3 over \u2265 2 matched months",
+        score: "45 + 35\xB7log2(swearRatio)",
+        make: (story) => {
+          const w = story.models.worst;
+          if (!w || !(w.swearRatio !== null && w.swearRatio >= 1.3) || w.matchedMonths < 2 || !w.label) return null;
+          return {
+            family: "model",
+            label: "NEMESIS",
+            score: clamp3(45 + 35 * log2(w.swearRatio)),
+            awards: SWEAR_TROPHIES,
+            parts: [M2(sanitize(w.label)), T(" gets "), N(times(w.swearRatio)), T(" your swearing")],
+            short: [M2(shortModel(w.label)), T(": "), N(times(w.swearRatio)), T(" swears")]
+          };
+        }
+      },
+      {
+        id: "soft_spot",
+        guard: "models.best with praiseRatio \u2265 1.3 over \u2265 2 matched months, not the nemesis",
+        score: "40 + 30\xB7log2(praiseRatio)",
+        make: (story) => {
+          const b2 = story.models.best;
+          if (!b2 || !(b2.praiseRatio !== null && b2.praiseRatio >= 1.3) || b2.matchedMonths < 2 || !b2.label) return null;
+          if (story.models.worst && story.models.worst.label === b2.label) return null;
+          return {
+            family: "model",
+            label: "SOFT SPOT",
+            score: clamp3(40 + 30 * log2(b2.praiseRatio)),
+            awards: [],
+            parts: [M2(sanitize(b2.label)), T(" gets "), N(times(b2.praiseRatio)), T(" your thank-yous")],
+            short: [M2(shortModel(b2.label)), T(": "), N(times(b2.praiseRatio)), T(" thanks")]
+          };
+        }
+      },
+      {
+        id: "pet_name",
+        guard: "pet name said \u2265 5 times, short and safe",
+        score: "50 + 10\xB7log2(count / 5), max 90",
+        make: (story, mask4) => {
+          const p = story.highlights.petName;
+          const term = safeWord(p?.term, mask4);
+          if (!p || !term || p.count < 5) return null;
+          return {
+            family: "voice",
+            label: "PET NAME",
+            score: clamp3(50 + 10 * log2(p.count / 5), 0, 90),
+            awards: ["pet_names"],
+            parts: [T("you call it "), Q(term), T(" "), N(`\xD7${count4(p.count)}`)]
+          };
+        }
+      },
+      {
+        id: "catchphrase",
+        guard: "catchphrase said \u2265 10 times, short and safe",
+        score: "30 + 15\xB7log2(1 + uses per 100 prompts)",
+        make: (story, mask4) => {
+          const c = story.highlights.catchphrase;
+          const phrase = safeWord(c?.phrase, mask4);
+          if (!c || !phrase || c.count < 10 || !(story.totals.prompts > 0)) return null;
+          const rate = c.count / story.totals.prompts * 100;
+          return {
+            family: "voice",
+            label: "CATCHPHRASE",
+            score: clamp3(30 + 15 * log2(1 + rate)),
+            awards: ["verbal_tics", "catchphrase"],
+            parts: [Q(phrase), T(" "), N(`\xD7${count4(c.count)}`)]
+          };
+        }
+      },
+      {
+        id: "mood_drift",
+        guard: "mood_drift fired, late% > early% > 0, factor \u2265 3",
+        score: "40 + 15\xB7log2(factor)",
+        make: (story) => {
+          const card = cardOf(story, "mood_drift");
+          const early = num6(card, "earlyPct"), late = num6(card, "latePct");
+          if (early === null || late === null || !(early > 0) || !(late > early)) return null;
+          const factor = late / early;
+          if (factor < 3) return null;
+          const pct3 = (v) => `${v < 10 ? v.toFixed(1).replace(/\.0$/, "") : Math.round(v)}%`;
+          return {
+            family: "mood",
+            label: "CHARACTER ARC",
+            score: clamp3(40 + 15 * log2(factor)),
+            awards: ["mood_drift", ...SWEAR_TROPHIES],
+            parts: [T("swearing went "), N(pct3(early)), T(" \u2192 "), N(pct3(late))]
+          };
+        }
+      },
+      {
+        id: "mood_hours",
+        guard: "night_owl angriest and calmest hours known and different, angriest \u2265 5% swearing",
+        score: "40 + 2\xB7angriest%, max 85",
+        make: (story) => {
+          const owl = cardOf(story, "night_owl");
+          const angry = num6(owl, "angriestHour"), calm = num6(owl, "calmestHour"), pct3 = num6(owl, "angriestPct");
+          if (angry === null || calm === null || angry === calm || pct3 === null || pct3 < 5) return null;
+          return {
+            family: "time",
+            label: "MOOD CLOCK",
+            score: clamp3(40 + 2 * pct3, 0, 85),
+            awards: [],
+            parts: [T("angriest at "), N(hourLabel(angry)), T(", a saint at "), N(hourLabel(calm))],
+            short: [T("angry "), N(hourLabel(angry)), T(" \xB7 saint "), N(hourLabel(calm))]
+          };
+        }
+      },
+      {
+        id: "late_nights",
+        guard: "\u2265 15% of active days end past 1am",
+        score: "20 + 1.5\xB7pct",
+        make: (story) => {
+          const pct3 = story.rhythm.lateNightDaysPct;
+          if (pct3 === null || pct3 < 15) return null;
+          return {
+            family: "time",
+            label: "NIGHT OWL",
+            score: clamp3(20 + 1.5 * pct3),
+            awards: [],
+            parts: [N(`${Math.round(pct3)}%`), T(" of your days end past 1am")],
+            short: [N(`${Math.round(pct3)}%`), T(" of days end past 1am")]
+          };
+        }
+      },
+      {
+        id: "priciest_sentence",
+        guard: "most expensive prompt \u2265 $5 and \u2265 10\xD7 the median prompt",
+        score: "30 + 20\xB7log10(timesMedian)",
+        make: (story) => {
+          const p = story.highlights.mostExpensivePrompt;
+          if (!p || !(p.costUsd >= 5) || !(p.timesMedian >= 10)) return null;
+          return {
+            family: "money",
+            label: "PRICIEST SENTENCE",
+            score: clamp3(30 + 20 * Math.log10(p.timesMedian)),
+            awards: ["most_expensive_sentence", "priciest_sentence"],
+            parts: [N(money2(p.costUsd)), T(", "), N(`${count4(Math.round(p.timesMedian))}\xD7`), T(" your median prompt")],
+            short: [N(money2(p.costUsd)), T(", "), N(`${count4(Math.round(p.timesMedian))}\xD7`), T(" the median")]
+          };
+        }
+      },
+      {
+        id: "longest_sit",
+        guard: "longest unbroken stretch \u2265 4h",
+        score: "20 + 8\xB7hours, max 90",
+        make: (story) => {
+          const h = story.totals.longestStretchHours;
+          if (!(h >= 4)) return null;
+          return {
+            family: "time",
+            label: "LONGEST SIT",
+            score: clamp3(20 + 8 * h, 0, 90),
+            awards: ["marathon"],
+            parts: [N(`${h.toFixed(1).replace(/\.0$/, "")}h`), T(" without a real break")],
+            short: [N(`${h.toFixed(1).replace(/\.0$/, "")}h`), T(" straight")]
+          };
+        }
+      },
+      {
+        id: "fuse",
+        guard: "snaps in \u2265 10 sessions, median first swear at prompt \u2264 15",
+        score: "62 \u2212 3\xB7medianTurn",
+        make: (story) => {
+          const f = story.highlights.fuse;
+          if (!f || f.sessions < 10 || !(f.medianTurn >= 1) || f.medianTurn > 15) return null;
+          return {
+            family: "mood",
+            label: "FUSE",
+            score: clamp3(62 - 3 * f.medianTurn),
+            awards: SWEAR_TROPHIES,
+            parts: [T("you snap at prompt "), N(`#${f.medianTurn}`)]
+          };
+        }
+      },
+      {
+        id: "agent_split",
+        guard: "a lasting agent switch, or a second agent with \u2265 15% of prompts",
+        score: "switch: 55 \xB7 split: 30 + 40\xB7(minor share / 50%)",
+        make: (story) => {
+          const d = story.models.defection;
+          if (d && d.from && d.to && d.from !== d.to && d.weekStart) {
+            return {
+              family: "work",
+              label: "THE SWITCH",
+              score: 55,
+              awards: [],
+              parts: [T("left "), M2(sanitize(d.from)), T(" for "), M2(sanitize(d.to)), T(" in "), N(monthYear2(d.weekStart))]
+            };
+          }
+          const spend = spendOf(story);
+          const merged = /* @__PURE__ */ new Map();
+          for (const r3 of spend?.byHarness ?? []) if (r3.prompts > 0) {
+            const k = r3.harness === "claude_hist" ? "claude" : r3.harness;
+            merged.set(k, (merged.get(k) ?? 0) + r3.prompts);
+          }
+          const rows = [...merged].map(([harness, prompts]) => ({ harness, prompts })).sort((a2, b3) => b3.prompts - a2.prompts);
+          const total2 = rows.reduce((s, r3) => s + r3.prompts, 0);
+          if (rows.length < 2 || !(total2 > 0)) return null;
+          const a = rows[0], b2 = rows[1];
+          const minor = b2.prompts / total2 * 100;
+          if (minor < 15) return null;
+          const name = harnessName;
+          return {
+            family: "work",
+            label: "AGENTS",
+            score: clamp3(30 + 40 * Math.min(1, minor / 50)),
+            awards: [],
+            parts: [M2(name(a.harness)), T(" "), N(`${Math.round(a.prompts / total2 * 100)}%`), T(" \xB7 "), M2(name(b2.harness)), T(" "), N(`${Math.round(minor)}%`)]
+          };
+        }
+      },
+      {
+        id: "subagents",
+        guard: "\u2265 50 subagents launched",
+        score: "30 + 10\xB7log2(n / 50)",
+        make: (story) => {
+          const n2 = story.totals.subagents;
+          if (!(n2 >= 50)) return null;
+          return { family: "work", label: "MIDDLE MANAGER", score: clamp3(30 + 10 * log2(n2 / 50)), awards: ["orchestrator"], parts: [N(count4(n2)), T(" subagents launched")] };
+        }
+      },
+      {
+        id: "streak",
+        guard: "longest streak \u2265 14 days",
+        score: "25 + days, max 70",
+        make: (story) => {
+          const d = story.totals.longestStreakDays;
+          if (!(d >= 14)) return null;
+          return { family: "time", label: "STREAK", score: clamp3(25 + d, 0, 70), awards: ["streak"], parts: [N(count4(d)), T(" days in a row")] };
+        }
+      }
+    ];
+    CORE_FACTS = ["manners", "mood_drift", "priciest_sentence", "longest_sit", "pet_name", "nemesis"];
+  }
+});
+
+// packages/cli/src/audit-ui/story/board-data.ts
+function tenths(values) {
+  const total2 = values.reduce((a, b2) => a + Math.max(0, b2), 0);
+  if (total2 <= 0) return values.map(() => 0);
+  const exact = values.map((v) => Math.max(0, v) / total2 * 1e3);
+  const floors = exact.map(Math.floor);
+  let left = 1e3 - floors.reduce((a, b2) => a + b2, 0);
+  const order = exact.map((v, i) => [v - Math.floor(v), i]).sort((a, b2) => b2[0] - a[0] || a[1] - b2[1]);
+  for (const [, i] of order) {
+    if (left <= 0) break;
+    floors[i]++;
+    left--;
+  }
+  return floors.map((v) => v / 10);
+}
+function spendPanel(story, spend, legacyTotal) {
+  const pricey = story?.highlights.mostExpensivePrompt ?? null;
+  const priciestLine = pricey && pricey.costUsd > 0 ? { usd: pricey.costUsd, times: Math.round(pricey.timesMedian) } : null;
+  if (spend) {
+    const months = spend.monthly.map((m) => ({ month: m.month, measured: m.measuredUsd, extra: Math.max(0, m.recoveredUsd) + Math.max(0, m.estimatedUsd) }));
+    return {
+      lifetime: spend.measuredUsd,
+      measured: true,
+      recovered: spend.recoveredUsd > 0.5 ? spend.recoveredUsd : null,
+      estimated: spend.estimated ? { low: spend.estimated.lowUsd, high: spend.estimated.highUsd, prompts: spend.estimated.prompts } : null,
+      thisMonth: spend.monthly.length ? spend.thisMonthUsd : null,
+      perDay: spend.perActiveDayUsd > 0 ? spend.perActiveDayUsd : null,
+      priciestDay: spend.priciestDay,
+      priciestLine,
+      months: months.slice(-12),
+      hundredDays: spend.daily.length ? spend.daily.filter((d) => d.usd >= 100).length : null,
+      unpriced: spend.unpricedTokens > 0 ? spend.unpricedTokens : null
+    };
+  }
+  const total2 = legacyTotal ?? (story?.totals.costUsd || null);
+  if (!total2 || total2 <= 0) return null;
+  return { lifetime: total2, measured: false, recovered: null, estimated: null, thisMonth: null, perDay: null, priciestDay: null, priciestLine, months: [], hundredDays: null, unpriced: null };
+}
+function modelsPanel(story, board) {
+  const share = modelShareOf(story);
+  const best = story?.models.best ?? null;
+  const worst = story?.models.worst && story.models.worst.matchedMonths >= 2 ? story.models.worst : null;
+  const same3 = (a, b2) => !!b2 && a.trim().toLowerCase() === b2.trim().toLowerCase();
+  const tag = (label4, priciest, topLabel) => {
+    const tags = [];
+    if (best ? same3(label4, best.label) : same3(label4, topLabel)) tags.push("fav");
+    if (worst && same3(label4, worst.label)) tags.push("nemesis");
+    if (priciest && same3(label4, priciest)) tags.push("priciest");
+    return tags;
+  };
+  if (share && share.rows.length) {
+    const pcts2 = tenths(share.rows.map((r3) => r3.outputTokens));
+    const priciest = priciestPerPrompt(share.rows);
+    const priciestLabel = priciest ? priciest.label : null;
+    const rows2 = share.rows.map((r3, i) => ({ label: sanitize(r3.label), pct: pcts2[i], value: shareText(pcts2[i]), tags: tag(r3.label, priciestLabel, share.rows[0].label), note: r3.usd > 0 ? money2(r3.usd) : void 0 }));
+    const facts = [];
+    if (priciest) facts.push(`$ priciest: ${sanitize(priciest.label)}, ${money2(priciest.usd / priciest.prompts)}/prompt`);
+    if (worst) facts.push(`\u2620 nemesis: ${sanitize(worst.label)}, ${(worst.swearRatio ?? 1).toFixed(1)}\xD7 swears`);
+    const era = eras(share.timeline);
+    if (era) facts.push(`eras ${era}`);
+    const now = share.last30d[0];
+    if (now) facts.push(`last 30 days: ${sanitize(now.label)} ${Math.round(now.promptSharePct)}%`);
+    return { basis: "share of output tokens", rows: rows2, more: 0, unknown: share.unknownModelPrompts > 0 ? share.unknownModelPrompts : null, facts };
+  }
+  const top = story?.models.top ?? [];
+  if (top.length) {
+    const pcts2 = tenths(top.map((t) => t.prompts));
+    return { basis: "by prompts", rows: top.map((t, i) => ({ label: sanitize(t.label), pct: pcts2[i], value: shareText(pcts2[i]), tags: tag(t.label, null, top[0].label) })), more: 0, unknown: null, facts: worst ? [`\u2620 nemesis: ${sanitize(worst.label)}`] : [] };
+  }
+  const rows = board.models.rows.filter((r3) => r3.value !== null && r3.value > 0);
+  if (!rows.length) return null;
+  const pcts = tenths(rows.map((r3) => r3.value));
+  return { basis: "share of spend", rows: rows.map((r3, i) => ({ label: r3.name, pct: pcts[i], value: shareText(pcts[i]), tags: r3.favourite ? ["fav"] : [] })), more: 0, unknown: null, facts: [] };
+}
+function priciestPerPrompt(rows) {
+  const priced = rows.filter((r3) => r3.usd > 0 && r3.prompts > 0);
+  const total2 = priced.reduce((s, r3) => s + r3.prompts, 0);
+  if (priced.length < 2 || !(total2 > 0)) return null;
+  const eligible2 = priced.filter((r3) => r3.prompts / total2 >= 0.05);
+  const best = [...eligible2].sort((a, b2) => b2.usd / b2.prompts - a.usd / a.prompts || a.label.localeCompare(b2.label))[0];
+  return best ?? null;
+}
+function taglineIsPublic(tagline, story) {
+  if (!tagline) return false;
+  const allowed = [story?.highlights.catchphrase?.phrase, story?.highlights.petName?.term].filter((v) => !!v).map((v) => v.toLowerCase());
+  const quoted = [...tagline.matchAll(/(?:^|[\s(])['‘“"]([^'’”"]+)['’”"]/g)].map((m) => m[1].toLowerCase());
+  if (quoted.some((q2) => !allowed.includes(q2))) return false;
+  const projects3 = (story?.projects ?? []).map((p) => p.name).filter((n2) => !!n2 && n2.length >= 3).map((n2) => n2.toLowerCase());
+  return !projects3.some((n2) => tagline.toLowerCase().includes(n2));
+}
+function posterHeroes(story, board, spend) {
+  const out = [];
+  const usd3 = spend ? spend.measuredUsd : board.hero.value ?? story?.totals.costUsd ?? null;
+  if (usd3 !== null && usd3 >= 1) out.push({ value: money2(usd3).replace(/\.\d\d$/, ""), label: "at API prices" });
+  const prompts = story?.totals.prompts ?? board.stats.prompts;
+  if (prompts && prompts > 0) out.push({ value: count4(prompts), label: "prompts" });
+  const active2 = story?.totals.activeDays ?? board.stats.activeDays;
+  if (active2 && active2 > 0) out.push({ value: count4(active2), label: active2 === 1 ? "day" : "days" });
+  return out.slice(0, 3);
+}
+function eras(timeline) {
+  const seq = [];
+  for (const row2 of timeline) if (seq.at(-1) !== row2.label) seq.push(row2.label);
+  if (seq.length < 2) return null;
+  const short3 = (label4) => sanitize(label4).replace(/^Claude\s+/, "");
+  return seq.slice(-4).map(short3).join(" \u25B8 ");
+}
+function agentsPanel(story, board, spend) {
+  const automated = automatedRunsOf(story);
+  const merged = /* @__PURE__ */ new Map();
+  const add = (harness, prompts, usd3) => {
+    const key2 = harness === "claude_hist" ? "claude" : harness;
+    const prior = merged.get(key2) ?? { prompts: 0, usd: 0 };
+    merged.set(key2, { prompts: prior.prompts + prompts, usd: prior.usd + usd3 });
+  };
+  if (spend && spend.byHarness.length) for (const h of spend.byHarness) add(h.harness, h.prompts, h.usd);
+  else if (story) {
+    for (const [h, n2] of Object.entries(story.totals.byHarness)) if (typeof n2 === "number") add(h, n2, 0);
+  }
+  const entries = [...merged.entries()].filter(([, v]) => v.prompts > 0).sort((a, b2) => b2[1].prompts - a[1].prompts);
+  if (entries.length) {
+    const pcts = tenths(entries.map(([, v]) => v.prompts));
+    const priced = entries.filter(([, v]) => v.usd > 0);
+    return {
+      basis: "by prompts",
+      rows: entries.map(([h, v], i) => ({ label: harnessName(h), pct: pcts[i], value: shareText(pcts[i]), note: count4(v.prompts) })),
+      money: priced.length ? priced.slice(0, 2).map(([h, v]) => `${money2(v.usd)} ${harnessName(h)}`).join(" \xB7 ") : null,
+      automated
+    };
+  }
+  if (board.agentSplit.length) {
+    const pcts = tenths(board.agentSplit.map((a) => a.share));
+    return { basis: "share of spend", rows: board.agentSplit.map((a, i) => ({ label: a.name, pct: pcts[i], value: shareText(pcts[i]) })), money: null, automated };
+  }
+  return null;
+}
+function timePanel(story) {
+  const r3 = story?.rhythm;
+  if (!r3 || r3.weekdayHour.length !== 7) return null;
+  const total2 = r3.weekdayHour.reduce((s, row2) => s + row2.reduce((a, b2) => a + b2, 0), 0);
+  if (total2 < 50) return null;
+  const owl = cardOf(story, "night_owl");
+  const lines = [];
+  const saint = num6(owl, "calmestHour"), angry = num6(owl, "angriestHour");
+  if (saint !== null && angry !== null) lines.push(`saint ${hourLabel(saint)} \xB7 angriest ${hourLabel(angry)}`);
+  if (r3.lateNightDaysPct !== null && r3.lateNightDaysPct >= 5) lines.push(`${Math.round(r3.lateNightDaysPct)}% of days end past 1am`);
+  if (r3.weekendPct !== null) lines.push(`weekends ${Math.round(r3.weekendPct)}% of prompts`);
+  return {
+    grid: r3.weekdayHour.map((row2) => [...row2]),
+    peak: r3.peakHour !== null && r3.peakWeekday !== null ? `${SHORT_DAYS[r3.peakWeekday]} ${hourLabel(r3.peakHour)}` : null,
+    lines
+  };
+}
+function voiceLines(story, board, mask4) {
+  const out = [];
+  const h = story?.highlights;
+  if (h?.catchphrase) out.push({ label: "catchphrase", short: "phrase", value: mask4(h.catchphrase.phrase), quoted: true, count: h.catchphrase.count, private: true });
+  else if (!story && board.repeats.rows[0]) out.push({ label: "on repeat", short: "repeat", value: mask4(board.repeats.rows[0].text), quoted: true, count: board.repeats.rows[0].count, private: true });
+  if (h?.petName) out.push({ label: "you call it", short: "calls it", value: mask4(h.petName.term), quoted: true, count: h.petName.count, private: true });
+  const cont = cardOf(story, "continue_count");
+  if (cont && str5(cont, "word")) out.push({ label: "your nudge", short: "nudge", value: mask4(str5(cont, "word")), quoted: true, count: num6(cont, "count"), private: true });
+  const manners2 = cardOf(story, "thanks_vs_swears");
+  if (manners2) {
+    const thanks = num6(manners2, "thanks") ?? 0, fb = num6(manners2, "fbombs"), sw = num6(manners2, "swears");
+    const rude = fb ?? sw ?? 0;
+    if (thanks > 0 && rude > 0) {
+      const ratio2 = rude / thanks;
+      const n2 = ratio2 >= 1 ? ratio2 >= 10 ? String(Math.round(ratio2)) : ratio2.toFixed(1).replace(/\.0$/, "") : null;
+      out.push({ label: "manners", short: "manners", valueShort: n2 ? `${n2}:1 ${fb !== null ? "f-bombs" : "swears"}:thanks` : void 0, value: ratio2 >= 1 ? `${ratio2 >= 10 ? Math.round(ratio2) : ratio2.toFixed(1).replace(/\.0$/, "")} ${fb !== null ? "f-bombs" : "swears"} : 1 thanks` : `${(1 / ratio2).toFixed(1).replace(/\.0$/, "")} thanks : 1 ${fb !== null ? "f-bomb" : "swear"}`, quoted: false, count: null, private: false });
+    }
+    const please = num6(manners2, "pleases");
+    if (please !== null || thanks) out.push({ label: "polite", short: "polite", valueShort: `${count4(please ?? 0)} pls \xB7 ${count4(thanks)} thx`, value: `${count4(please ?? 0)} please \xB7 ${count4(thanks)} thanks`, quoted: false, count: null, private: false });
+  }
+  const f = h?.fuse;
+  if (f) out.push({ label: "fuse", short: "fuse", value: `snaps at prompt #${f.medianTurn}`, quoted: false, count: null, private: false });
+  const peak = (story?.swearTimeline ?? []).filter((m) => m.prompts >= 40).reduce((a, m) => !a || m.swearPct > a.swearPct ? m : a, null);
+  if (peak && peak.swearPct >= 1) out.push({ label: "saltiest", short: "saltiest", value: `${shortDate2(peak.month + "-01").split(" ")[0]}, ${peak.swearPct.toFixed(0)}% swore`, quoted: false, count: null, private: false });
+  return out;
+}
+function workPanel(story, board) {
+  const list3 = story ? [...story.projects].filter((p) => p.prompts > 0).sort((a, b2) => b2.prompts - a.prompts) : [];
+  const total2 = story?.totals.prompts ?? 0;
+  const lines = [];
+  if (list3.length && total2 > 0) {
+    const rows2 = list3.slice(0, 4).map((p) => ({ label: sanitize(p.name ?? p.alias), publicLabel: p.alias, pct: p.prompts / total2 * 100, value: `${Math.round(p.prompts / total2 * 100)}%`, note: p.costUsd >= 1 ? money2(p.costUsd) : void 0 }));
+    const folders = story.totals.projects;
+    const quiet = list3.filter((p) => p.idleDays >= 30).length;
+    lines.push(`${count4(folders)} folders \xB7 ${count4(list3.length - quiet)} alive${story.highlights.gotAway ? " \xB7 1 got away" : ""}`);
+    if (story.totals.subagents > 0) lines.push(`${count4(story.totals.subagents)} subagents launched`);
+    const ghost = cardOf(story, "sprint_and_vanish");
+    if (ghost && num6(ghost, "prompts") !== null && num6(ghost, "days") !== null) lines.push(`hackathon ghost: ${count4(num6(ghost, "prompts"))} prompts in ${num6(ghost, "days")} days`);
+    return { rows: rows2, lines };
+  }
+  const rows = board.projects.rows;
+  if (rows.length < 2) return null;
+  const sum2 = rows.reduce((a, r3) => a + r3.prompts, 0);
+  return { rows: rows.slice(0, 4).map((p, i) => ({ label: p.name, publicLabel: `Project ${String.fromCharCode(65 + i)}`, pct: p.prompts / sum2 * 100, value: `${Math.round(p.prompts / sum2 * 100)}%` })), lines: [`${count4(board.stats.projects)} projects`] };
+}
+function posterViz(story) {
+  const none = { arc: null, clock: null, faceoff: { nemesis: null, fav: null }, manners: null, subagents: null, streak: null, sit: null, priciest: null };
+  if (!story) return none;
+  const out = none;
+  const months = (story.swearTimeline ?? []).filter((m) => m.prompts >= 40 && Number.isFinite(m.swearPct) && m.swearPct >= 0);
+  const drift = cardOf(story, "mood_drift");
+  const early = num6(drift, "earlyPct"), late = num6(drift, "latePct");
+  if (months.length >= 3 && early !== null && late !== null && early > 0 && late > early && months.some((m) => m.swearPct > 0)) {
+    const from = monthName2(months[0].month), to = monthName2(months.at(-1).month);
+    if (from && to) out.arc = { pcts: months.map((m) => m.swearPct), from, to };
+  }
+  const owl = cardOf(story, "night_owl");
+  const angry = num6(owl, "angriestHour"), saint = num6(owl, "calmestHour"), angryPct = num6(owl, "angriestPct");
+  const hours = story.rhythm?.hours ?? [];
+  if (angry !== null && saint !== null && angry !== saint && angryPct !== null && angryPct >= 5 && hours.length === 24 && hours.some((h) => h > 0) && angry >= 0 && angry < 24 && saint >= 0 && saint < 24) out.clock = { hours: [...hours], angry, saint };
+  const w = story.models.worst, b2 = story.models.best;
+  if (w && w.label && w.swearRatio !== null && w.swearRatio >= 1.3 && w.matchedMonths >= 2) out.faceoff.nemesis = { label: sanitize(w.label), ratio: w.swearRatio };
+  if (b2 && b2.label && b2.praiseRatio !== null && b2.praiseRatio >= 1.3 && b2.matchedMonths >= 2 && b2.label !== w?.label) out.faceoff.fav = { label: sanitize(b2.label), ratio: b2.praiseRatio };
+  const manners2 = cardOf(story, "thanks_vs_swears");
+  const thanks = num6(manners2, "thanks") ?? 0, fb = num6(manners2, "fbombs"), sw = num6(manners2, "swears");
+  const rude = fb ?? sw ?? 0;
+  if (thanks > 0 && rude > 0) out.manners = { thanks, rude, word: fb !== null ? "f-bombs" : "swears" };
+  const subs = story.totals.subagents;
+  if (subs >= 50) {
+    const series = cardOf(story, "orchestrator")?.chart.series?.[0]?.points ?? [];
+    const per = series.map((p2) => typeof p2.y === "number" && p2.y > 0 ? p2.y : 0);
+    out.subagents = { total: subs, months: per };
+  }
+  if (story.totals.longestStreakDays >= 14) out.streak = story.totals.longestStreakDays;
+  if (story.totals.longestStretchHours >= 4) out.sit = story.totals.longestStretchHours;
+  const p = story.highlights.mostExpensivePrompt;
+  if (p && p.costUsd >= 5 && p.timesMedian >= 10) out.priciest = { usd: p.costUsd, times: p.timesMedian };
+  return out;
+}
+function heroStats(story, board) {
+  const t = story?.totals;
+  const out = [];
+  const push2 = (value, label4, fmt = count4) => {
+    if (value === null || value === void 0 || !(value > 0)) return;
+    const v = fmt(value);
+    if (v.endsWith("-")) out.push({ value: v.slice(0, -1), label: "-" + label4 });
+    else out.push({ value: v, label: label4 });
+  };
+  push2(t?.prompts ?? board.stats.prompts, "prompts");
+  push2(t?.sessions ?? board.stats.chats, "chats");
+  push2(t?.activeDays ?? board.stats.activeDays, "active days");
+  push2(t?.longestStreakDays ?? board.stats.streak, "day streak", (n2) => `${count4(n2)}-`);
+  if (t?.longestStretchHours) out.push({ value: `${t.longestStretchHours.toFixed(1)}h`, label: "longest sit" });
+  if (t?.words) out.push({ value: compact2(t.words), label: `words \u2248 ${(t.words / HOBBIT_WORDS).toFixed(1).replace(/\.0$/, "")} Hobbits` });
+  else push2(board.stats.tokens, "tokens", compact2);
+  return out;
+}
+function boardSummaryData(story, board, extras) {
+  const spend = spendOf(story);
+  const range = story?.totals.firstAt && story.totals.lastAt ? `${shortDate2(story.totals.firstAt, true)} \u2192 ${shortDate2(story.totals.lastAt, true)}` : board.range.from && board.range.to ? `${shortDate2(board.range.from, true)} \u2192 ${shortDate2(board.range.to, true)}` : null;
+  const span3 = story?.totals.spanDays, active2 = story?.totals.activeDays ?? board.stats.activeDays;
+  return {
+    archetype: extras.archetype?.title ?? null,
+    tier: extras.archetype?.tier ?? null,
+    subRole: extras.archetype?.subRole ?? null,
+    code: extras.archetype?.code ?? null,
+    tagline: extras.archetype?.tagline || null,
+    taglinePublic: taglineIsPublic(extras.archetype?.tagline ?? null, story),
+    range,
+    days: span3 ? `${count4(span3)} days${active2 ? ` \xB7 ${count4(active2)} active` : ""}` : null,
+    hero: heroStats(story, board),
+    spend: spendPanel(story, spend, board.hero.value),
+    bill: board.hero.value,
+    models: modelsPanel(story, board),
+    agents: agentsPanel(story, board, spend),
+    time: timePanel(story),
+    voice: voiceLines(story, board, extras.mask),
+    work: workPanel(story, board),
+    heroes: posterHeroes(story, board, spend),
+    facts: rankFunFacts(story, extras.mask),
+    catchphrase: catchphraseSlot(story, extras.mask),
+    viz: posterViz(story),
+    // Rank decides the metal unless the engine says otherwise: 1 gold, 2–3 silver, the rest bronze.
+    awards: extras.awards.map((a, i) => ({ ...a, tier: a.tier ?? (i === 0 ? "gold" : i < 3 ? "silver" : "bronze") })),
+    sinceLast: null,
+    firstRun: false
+  };
+}
+var SHORT_DAYS, HOBBIT_WORDS, shareText, MONTHS6, monthName2;
+var init_board_data = __esm({
+  "packages/cli/src/audit-ui/story/board-data.ts"() {
+    "use strict";
+    init_format3();
+    init_text();
+    init_source4();
+    init_v19();
+    init_fun_facts();
+    SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    HOBBIT_WORDS = 95e3;
+    shareText = (pct3) => pct3 > 0 && pct3 < 0.1 ? "<0.1%" : `${pct3.toFixed(1)}%`;
+    MONTHS6 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    monthName2 = (ym) => MONTHS6[Number(ym.slice(5, 7)) - 1] ?? null;
   }
 });
 
@@ -43000,6 +45721,27 @@ function safeQuote3(text2) {
 function displayModel(id, label4) {
   const formatted = id ? modelName(id) : "";
   return mask3(formatted && formatted !== "Unknown model" && formatted !== id ? formatted : label4);
+}
+function cover(story, board) {
+  const a = story?.archetype;
+  if (!story || !a || story.state === "empty") return null;
+  const spend = spendOf(story);
+  const numbers = [];
+  if (story.totals.prompts) numbers.push({ value: count4(story.totals.prompts), label: "prompts" });
+  if (story.totals.spanDays) numbers.push({ value: count4(story.totals.spanDays), label: "days" });
+  const money$ = spend?.measuredUsd ?? board.hero.value;
+  if (money$ && money$ > 0) numbers.push({ value: money2(money$).replace(/\.\d+$/, ""), label: "at API prices" });
+  const tier = ["common", "rare", "epic", "legendary"].includes(a.rarity) ? a.rarity : null;
+  return {
+    kind: "cover",
+    id: "cover",
+    kicker: "YOUR YEAR WITH AGENTS",
+    expression: "waving",
+    headline: "You were someone this year.",
+    support: "The verdict is at the end. First, the evidence.",
+    notes: ["Everything in this story is computed on this machine from your agents' history files. The locked title is your archetype: it unlocks at the end."],
+    data: { words: a.title.split(/\s+/).map((w) => w.length), tier, numbers }
+  };
 }
 function coldOpen2(story) {
   const cold = story?.coldOpen;
@@ -43085,8 +45827,9 @@ function bill(story, board) {
   const more = rows.slice(6).reduce((sum2, row2) => sum2 + (row2.value ?? 0), 0);
   const pricey = story?.highlights.mostExpensivePrompt ?? null;
   const card = cardOf(story, "most_expensive_sentence");
-  const headline4 = pricey ? `Your most expensive sentence cost ${money2(pricey.costUsd)}.` : `Your agents would have cost ${money2(total2)} at API prices.`;
-  const support = pricey ? `${shortDate2(pricey.day)}${pricey.model ? `, ${modelName(pricey.model)}` : ""}. That's ${Math.round(pricey.timesMedian)}\xD7 your median prompt and ${Math.round(pricey.sharePct)}% of everything.` : card ? mask3(card.support) : "What your recorded tokens would cost at public list prices. Not a bill.";
+  const sv = spendOf(story);
+  const headline4 = sv ? `${money2(sv.measuredUsd)} of agent work, at API list prices.` : pricey ? `Your most expensive sentence cost ${money2(pricey.costUsd)}.` : `Your agents would have cost ${money2(total2)} at API prices.`;
+  const support = sv ? [sv.perActiveDayUsd > 0 ? `${money2(sv.perActiveDayUsd)} per active day` : null, sv.priciestDay ? `worst day ${shortDate2(sv.priciestDay.day)}: ${money2(sv.priciestDay.usd)}` : null, pricey ? `and that sentence? ${money2(pricey.costUsd)}` : null].filter(Boolean).join(" \xB7 ") + "." : pricey ? `${shortDate2(pricey.day)}${pricey.model ? `, ${modelName(pricey.model)}` : ""}. That's ${Math.round(pricey.timesMedian)}\xD7 your median prompt and ${Math.round(pricey.sharePct)}% of everything.` : card ? mask3(card.support) : "What your recorded tokens would cost at public list prices. Not a bill.";
   return {
     kind: "bill",
     id: "bill",
@@ -43094,8 +45837,27 @@ function bill(story, board) {
     expression: "shocked",
     headline: headline4,
     support,
-    notes: ["The total is what your recorded tokens would cost at public API list prices. It is not what you paid: subscriptions and discounts are unknown.", "A prompt\u2019s cost includes the subagents it started, counted by time window.", "Models priced from the closest model in the list are marked ~ on the board."],
-    data: { total: total2, lines: shown, more, byAgent: board.agentSplit, priciest: pricey ? { cost: pricey.costUsd, day: pricey.day, model: pricey.model ? modelName(pricey.model) : null } : null }
+    notes: [
+      "The total is what your recorded tokens would cost at public API list prices. It is not what you paid: subscriptions and discounts are unknown.",
+      '"Measured" is priced request by request from usage logs. "Recovered" comes from usage counters that the logs no longer cover. "Est." is a low\u2013high range for older prompts whose token logs are gone; it is never added to the measured total.',
+      "A prompt\u2019s cost includes the subagents it started, counted by time window.",
+      "Models priced from the closest model in the list are marked ~ on the board."
+    ],
+    data: { total: total2, lines: shown, more, byAgent: board.agentSplit, priciest: pricey ? { cost: pricey.costUsd, day: pricey.day, model: pricey.model ? modelName(pricey.model) : null } : null, spend: spendView(story) }
+  };
+}
+function spendView(story) {
+  const sp = spendOf(story);
+  if (!sp || sp.measuredUsd <= 0) return null;
+  return {
+    measured: sp.measuredUsd,
+    recovered: sp.recoveredUsd > 0.5 ? sp.recoveredUsd : null,
+    estimated: sp.estimated ? { low: sp.estimated.lowUsd, high: sp.estimated.highUsd, prompts: sp.estimated.prompts } : null,
+    months: sp.monthly.map((m) => ({ month: m.month, measured: m.measuredUsd, extra: Math.max(0, m.recoveredUsd) + Math.max(0, m.estimatedUsd) })),
+    days: [...sp.daily],
+    thisMonth: sp.monthly.length ? sp.thisMonthUsd : null,
+    perDay: sp.perActiveDayUsd > 0 ? sp.perActiveDayUsd : null,
+    priciestDay: sp.priciestDay
   };
 }
 function clock2(story) {
@@ -43106,8 +45868,10 @@ function clock2(story) {
   const owl = cardOf(story, "night_owl");
   const copy = engineCopy(owl);
   const peak = rhythm2.peakHour !== null && rhythm2.peakWeekday !== null ? `${WEEKDAYS3[rhythm2.peakWeekday]} around ${hourLabel(rhythm2.peakHour).toLowerCase().replace(" ", "")}` : null;
-  const headline4 = copy?.headline ?? (story?.peakTime ? `You're a ${mask3(story.peakTime.label)} person.` : peak ? `Peak you: ${peak}.` : "Your week, hour by hour.");
-  const support = copy?.support ?? story?.peakTime?.narrative ?? (rhythm2.lateNightDaysPct !== null ? `${Math.round(rhythm2.lateNightDaysPct)}% of your days end after 1am.` : "");
+  const peakLine = rhythm2.peakHour !== null && rhythm2.peakWeekday !== null ? `${WEEKDAYS3[rhythm2.peakWeekday]}, ${hourLabel(rhythm2.peakHour)}. That's you.` : null;
+  const headline4 = peakLine ?? copy?.headline ?? (story?.peakTime ? `You're a ${mask3(story.peakTime.label)} person.` : peak ? `Peak you: ${peak}.` : "Your week, hour by hour.");
+  const support = (peakLine && copy ? copy.headline + " " + copy.support : null) ?? copy?.support ?? story?.peakTime?.narrative ?? (rhythm2.lateNightDaysPct !== null ? `${Math.round(rhythm2.lateNightDaysPct)}% of your days end after 1am.` : "");
+  const busiest = [...spendOf(story)?.daily ?? []].sort((a, b2) => b2.prompts - a.prompts)[0];
   return {
     kind: "clock",
     id: owl ? "night_owl" : "clock",
@@ -43116,22 +45880,47 @@ function clock2(story) {
     headline: headline4,
     support: mask3(support),
     notes: [`Every prompt placed on a weekday \xD7 hour grid in your timezone (${sanitize(story.timezone)}). Brighter = more prompts.`, 'A "day" runs 6am to 6am, so a 2am prompt belongs to the night before.', "Angriest and calmest hours only count hours with at least 50 prompts."],
-    data: { grid: rhythm2.weekdayHour.map((row2) => [...row2]), peakHour: rhythm2.peakHour, peakWeekday: rhythm2.peakWeekday, lateNightPct: rhythm2.lateNightDaysPct, callouts: clockCallouts(story, owl) }
+    data: { grid: rhythm2.weekdayHour.map((row2) => [...row2]), peakHour: rhythm2.peakHour, peakWeekday: rhythm2.peakWeekday, lateNightPct: rhythm2.lateNightDaysPct, callouts: clockCallouts(story, owl) },
+    callouts: busiest && busiest.prompts > 0 ? [`busiest day ever: ${shortDate2(busiest.day, true)}, ${count4(busiest.prompts)} prompts`] : void 0
   };
 }
 function clockCallouts(story, owl) {
   const r3 = story.rhythm;
   const out = [];
-  if (r3.peakHour !== null && r3.peakWeekday !== null) out.push({ label: "PEAK", value: `${SHORT_DAYS[r3.peakWeekday]} ${hourLabel(r3.peakHour)}`, sub: "your busiest hour of the week" });
+  if (r3.peakHour !== null && r3.peakWeekday !== null) out.push({ label: "PEAK", value: `${SHORT_DAYS2[r3.peakWeekday]} ${hourLabel(r3.peakHour)}`, sub: "your busiest hour of the week" });
   if (r3.lateNightDaysPct !== null && r3.lateNightDaysPct >= 5) out.push({ label: "LATE NIGHTS", value: `${Math.round(r3.lateNightDaysPct)}%`, sub: "of days end after 1am" });
-  const angry = num4(owl, "angriestHour");
-  if (angry !== null) out.push({ label: "ANGRIEST HOUR", value: hourLabel(angry), sub: `${Math.round(num4(owl, "angriestPct") ?? 0)}% of prompts swear` });
-  const calm = num4(owl, "calmestHour");
-  if (calm !== null) out.push({ label: "SAINT HOUR", value: hourLabel(calm), sub: `${count4(num4(owl, "calmestSwears"))} swears in ${count4(num4(owl, "calmestPrompts"))} prompts` });
+  const angry = num6(owl, "angriestHour");
+  if (angry !== null) out.push({ label: "ANGRIEST HOUR", value: hourLabel(angry), sub: `${Math.round(num6(owl, "angriestPct") ?? 0)}% of prompts swear` });
+  const calm = num6(owl, "calmestHour");
+  if (calm !== null) out.push({ label: "SAINT HOUR", value: hourLabel(calm), sub: `${count4(num6(owl, "calmestSwears"))} swears in ${count4(num6(owl, "calmestPrompts"))} prompts` });
   if (out.length < 4 && r3.weekendPct !== null) out.push({ label: "WEEKENDS", value: `${Math.round(r3.weekendPct)}%`, sub: "of your prompts" });
   return out.slice(0, 4);
 }
 function guess(story, board, snapshot2) {
+  const share = modelShareOf(story);
+  if (share && share.rows.length >= 2) {
+    const rows = share.rows.slice(0, 4);
+    const options2 = rows.map((m) => ({ name: mask3(m.label), share: m.tokenSharePct / 100 }));
+    const seed2 = rows.reduce((sum3, m) => sum3 + m.prompts, 0) % 997;
+    const order2 = options2.map((_, i) => i).sort((a, b2) => (a * 7 + seed2) % 11 - (b2 * 7 + seed2) % 11);
+    const leader2 = rows[0];
+    const priciest = [...share.rows].sort((a, b2) => b2.usd - a.usd)[0];
+    const unknown = share.unknownModelPrompts;
+    const twist = priciest.label !== leader2.label && priciest.usd > 0 ? `\u2026but ${mask3(priciest.label)} cost you the most: ${money2(priciest.usd)}.` : `${mask3(leader2.label)} wrote ${Math.round(leader2.tokenSharePct)}% of everything your agents said back.`;
+    return {
+      kind: "guess",
+      id: "guess",
+      kicker: "QUICK QUIZ",
+      expression: "smirk",
+      headline: "Which model did the most work?",
+      support: `Press 1\u2013${options2.length} to guess.`,
+      notes: [
+        "Ranked by share of output tokens: what each model actually wrote back to you, across every agent on this machine. Only answers with a recorded model count.",
+        unknown > 0 ? `${count4(unknown)} older prompts have no recorded model (their history survived but the answer did not). They are left out, never guessed.` : ""
+      ].filter(Boolean),
+      data: { options: order2.map((i) => options2[i]), answer: order2.indexOf(0), basis: "share of output tokens", after: twist + (unknown > 0 ? ` (${count4(unknown)} older prompts have no recorded model.)` : "") }
+    };
+  }
   const top = story?.models.top ?? [];
   if (top.length >= 2) {
     const options2 = top.slice(0, 4).map((m) => ({ name: displayModel(m.model, m.label), share: m.sharePct / 100 }));
@@ -43179,10 +45968,21 @@ function guess(story, board, snapshot2) {
     }
   };
 }
+function timelineBeat(story) {
+  const share = modelShareOf(story);
+  const tl = share?.timeline ?? [];
+  if (tl.length < 2) return null;
+  const first = tl[0], last2 = tl.at(-1);
+  const now = share.last30d[0];
+  const short3 = (l) => mask3(l);
+  const line = first.label !== last2.label ? `You started on ${short3(first.label)}. You're ending on ${short3(last2.label)}.` : `${short3(first.label)} from ${monthLabel(first.month)} to ${monthLabel(last2.month)}. No notes.`;
+  return { line, eras: tl.map((t) => ({ month: t.month, label: mask3(t.label) })), now: now ? `last 30 days: ${mask3(now.label)}, ${Math.round(now.promptSharePct)}% of prompts` : null };
+}
 function faceoff(story) {
   const best = story?.models.best ?? null;
-  const worst = story?.models.worst ?? null;
-  if (!best && !worst) return null;
+  const worst = story?.models.worst && story.models.worst.matchedMonths >= 2 ? story.models.worst : null;
+  const beat = timelineBeat(story);
+  if (!best && !worst && !beat) return null;
   const gauge = (m, key2) => ({
     label: displayModel(m.model, m.label),
     prompts: m.prompts,
@@ -43190,20 +45990,33 @@ function faceoff(story) {
     expected: key2 === "praise" ? m.expectedPraisePer100 : m.expectedSwearPer100,
     ratio: key2 === "praise" ? m.praiseRatio : m.swearRatio
   });
-  const worstCard = cardOf(story, "worst_model");
+  const worstCard = worst ? cardOf(story, "worst_model") : null;
   const bestCard = cardOf(story, "best_model");
-  const headline4 = worstCard ? mask3(worstCard.headline) : bestCard ? mask3(bestCard.headline) : worst ? `${mask3(worst.label)} brings out the worst in you.` : `${mask3(best.label)} is your favourite.`;
-  const support = worstCard ? mask3(worstCard.support) : bestCard ? mask3(bestCard.support) : "";
+  const verdict = worstCard ? mask3(worstCard.headline) : bestCard ? mask3(bestCard.headline) : worst ? `${mask3(worst.label)} brings out the worst in you.` : best ? `${mask3(best.label)} is your favourite.` : "";
+  const headline4 = beat?.line ?? verdict;
+  const support = beat ? verdict : worstCard ? mask3(worstCard.support) : bestCard ? mask3(bestCard.support) : "";
+  const honey = cardOf(story, "honeymoon");
+  const callouts = [
+    beat && beat.eras.length ? `eras: ${erasLine(beat.eras)}` : null,
+    beat?.now ?? null,
+    honey ? mask3(honey.headline) : null
+  ].filter((x) => !!x);
   return {
     kind: "faceoff",
     id: "faceoff",
-    kicker: "FAVOURITE VS NEMESIS",
+    kicker: "THE MODEL LINEUP",
     expression: "side-eye",
     headline: headline4,
     support,
+    callouts,
     notes: ["Rates per 100 prompts sent to each model, compared with what the other models got from you in the same months (month-matched), so a model is not blamed for the month you had.", "Only models with at least 40 prompts seen in transcripts are ranked."],
-    data: { best: best ? gauge(best, "praise") : null, worst: worst ? gauge(worst, "swear") : null, ...compareOf(worstCard ?? bestCard) }
+    data: { best: best ? gauge(best, "praise") : null, worst: worst ? gauge(worst, "swear") : null, ...compareOf(worstCard ?? bestCard), eras: beat?.eras ?? [] }
   };
+}
+function erasLine(eras2) {
+  const seq = [];
+  for (const e of eras2) if (seq.at(-1) !== e.label) seq.push(e.label);
+  return seq.join(" \u25B8 ");
 }
 function compareOf(card) {
   const observed = card?.chart.series.find((sr) => /observed/i.test(sr.name)) ?? card?.chart.series[0];
@@ -43226,14 +46039,25 @@ function mood(story) {
   if (months.length < 3) return null;
   const tipMonth = str5(card, "tipMonth") ?? (typeof card.chart.highlight === "string" ? card.chart.highlight : null);
   const tip = Math.max(0, months.findIndex((m) => m.month === tipMonth));
-  const mellow = (num4(card, "latePct") ?? 1) < (num4(card, "earlyPct") ?? 0);
+  const mellow = (num6(card, "latePct") ?? 1) < (num6(card, "earlyPct") ?? 0);
+  const peak = months.reduce((a, m) => m.pct > a.pct ? m : a, months[0]);
+  const last2 = months.at(-1);
+  const amends = !mellow && peak !== last2 && last2.pct <= peak.pct / 2;
+  const manners2 = cardOf(story, "thanks_vs_swears");
+  const rants = cardOf(story, "rant_length");
+  const callouts = [
+    amends ? `and then: ${monthLabel(peak.month)} peaked at ${peak.pct.toFixed(0)}%. ${monthLabel(last2.month)}: back to ${last2.pct.toFixed(1).replace(/\.0$/, "")}%. character development.` : null,
+    manners2 ? mask3(manners2.headline) + (num6(manners2, "pleases") !== null ? ` (${count4(num6(manners2, "pleases"))} pleases, ${count4(num6(manners2, "thanks"))} thank-yous)` : "") : null,
+    rants ? mask3(rants.headline) + (rants.support ? " " + mask3(rants.support) : "") : null
+  ].filter((x) => !!x);
   return {
     kind: "mood",
     id: card.id,
-    kicker: mellow ? "YOU MELLOWED OUT" : "THE TURN",
-    expression: mellow ? "proud" : "smirk",
+    kicker: mellow ? "YOU MELLOWED OUT" : amends ? "MAKING AMENDS" : "THE TURN",
+    expression: mellow || amends ? "proud" : "smirk",
     headline: mask3(card.headline),
     support: mask3(card.support),
+    callouts,
     notes: ["Share of each month\u2019s prompts that contain a swear word or an insult (months with 40+ prompts).", "The marked month is the first one that reached half of your recent rate.", "Pasted text is ignored: only what you typed counts."],
     data: { months, tip }
   };
@@ -43245,10 +46069,11 @@ function fuse2(story) {
   return {
     kind: "fuse",
     id: card.id,
-    kicker: "YOUR FUSE",
+    kicker: "HOW YOU SNAP",
     expression: "smirk",
     headline: mask3(card.headline),
     support: mask3(card.support),
+    callouts: [cardOf(story, "esc_key"), cardOf(story, "rage_day"), cardOf(story, "walk_away")].filter((x) => !!x).map((x) => mask3(x.headline) + (x.support && x.id !== "walk_away" ? " " + mask3(x.support) : "")),
     notes: ["Sessions with at least 5 prompts and at least one swear. The fuse is the median prompt number of the first swear."],
     data: {
       median: f.medianTurn,
@@ -43268,17 +46093,17 @@ function talk(story, board) {
   }
   const cont = cardOf(story, "continue_count");
   if (cont && str5(cont, "word")) {
-    const total2 = num4(cont, "total"), gap2 = str5(cont, "gapLabel");
-    tiles.push({ label: "YOUR NUDGE", text: mask3(str5(cont, "word")), count: num4(cont, "count"), quoted: true, sub: total2 ? `${count4(total2)} nudges${gap2 ? `, ~${gap2} after it stops` : ""}` : void 0 });
+    const total2 = num6(cont, "total"), gap2 = str5(cont, "gapLabel");
+    tiles.push({ label: "YOUR NUDGE", text: mask3(str5(cont, "word")), count: num6(cont, "count"), quoted: true, sub: total2 ? `${count4(total2)} nudges${gap2 ? `, ~${gap2} after it stops` : ""}` : void 0 });
   } else if (h?.mostTypedLine) tiles.push({ label: "MOST TYPED LINE", text: mask3(h.mostTypedLine.text), count: h.mostTypedLine.count, quoted: true });
   if (h?.petName) {
     const other = h.petName.others[0];
     tiles.push({ label: "WHAT YOU CALL IT", text: mask3(h.petName.term), count: h.petName.count, quoted: true, sub: other ? `also \u201C${mask3(other.term)}\u201D \xD7${count4(other.count)}` : void 0 });
   }
   const typo = cardOf(story, "typo_fingerprint");
-  if (typo && str5(typo, "typo")) tiles.push({ label: `IT'S \u201C${mask3(str5(typo, "word") ?? "?")}\u201D`, text: mask3(str5(typo, "typo")), count: num4(typo, "count"), quoted: true, sub: mask3(typo.support).slice(0, 60) || void 0 });
+  if (typo && str5(typo, "typo")) tiles.push({ label: `IT'S \u201C${mask3(str5(typo, "word") ?? "?")}\u201D`, text: mask3(str5(typo, "typo")), count: num6(typo, "count"), quoted: true, sub: mask3(typo.support).slice(0, 60) || void 0 });
   const we = cardOf(story, "i_to_we");
-  if (we && num4(we, "lateRatio") !== null) tiles.push({ label: "\u201CWE\u201D PER \u201CI\u201D", text: `${num4(we, "earlyRatio")?.toFixed(2) ?? "?"} \u2192 ${num4(we, "lateRatio").toFixed(2)}`, count: null, quoted: false, sub: num4(we, "letsNowPct") !== null ? `\u201Clet's\u201D in ${Math.round(num4(we, "letsNowPct"))}% of prompts now` : void 0 });
+  if (we && num6(we, "lateRatio") !== null) tiles.push({ label: "\u201CWE\u201D PER \u201CI\u201D", text: `${num6(we, "earlyRatio")?.toFixed(2) ?? "?"} \u2192 ${num6(we, "lateRatio").toFixed(2)}`, count: null, quoted: false, sub: num6(we, "letsNowPct") !== null ? `\u201Clet's\u201D in ${Math.round(num6(we, "letsNowPct"))}% of prompts now` : void 0 });
   const next = cardOf(story, "predicted_next_word");
   if (next && str5(next, "word") && tiles.length < 4) tiles.push({ label: "NEXT PROMPT STARTS WITH", text: mask3(str5(next, "word")), count: null, quoted: true });
   if (!story) for (const row2 of board.repeats.rows.slice(0, 4)) tiles.push({ label: tiles.length ? "ON REPEAT" : "MOST TYPED LINE", text: mask3(row2.text), count: row2.count, quoted: true });
@@ -43299,10 +46124,10 @@ function talk(story, board) {
 function manners(story) {
   const card = cardOf(story, "thanks_vs_swears");
   if (!card) return null;
-  const thanks = num4(card, "thanks") ?? 0;
-  const pleases = num4(card, "pleases") ?? 0;
-  const fbombs = num4(card, "fbombs");
-  const rude = fbombs ?? num4(card, "swears") ?? 0;
+  const thanks = num6(card, "thanks") ?? 0;
+  const pleases = num6(card, "pleases") ?? 0;
+  const fbombs = num6(card, "fbombs");
+  const rude = fbombs ?? num6(card, "swears") ?? 0;
   if (!rude && !thanks) return null;
   return {
     kind: "manners",
@@ -43312,7 +46137,7 @@ function manners(story) {
     headline: mask3(card.headline),
     support: mask3(card.support),
     notes: ["Thank-yous and pleases vs swear words, counted in text you typed. If there are fewer than 15 f-words, every swear counts."],
-    data: { kind: thanks + pleases, rude, kindLabel: "thank-yous & pleases", rudeLabel: fbombs !== null ? "f-bombs" : "swears", prompts: num4(card, "prompts") }
+    data: { kind: thanks + pleases, rude, kindLabel: "thank-yous & pleases", rudeLabel: fbombs !== null ? "f-bombs" : "swears", prompts: num6(card, "prompts") }
   };
 }
 function projects2(story, board) {
@@ -43326,8 +46151,9 @@ function projects2(story, board) {
   return {
     kind: "projects",
     id: "projects",
-    kicker: "WHERE IT WENT",
+    kicker: "YOUR PROJECT UNIVERSE",
     expression: "idle",
+    callouts: [cardOf(story, "sprint_and_vanish"), cardOf(story, "project_graveyard")].filter((x) => !!x).map((x) => mask3(x.headline)),
     headline: awayCard ? mask3(awayCard.headline) : `${top.name} got ${Math.round(top.prompts / rows.reduce((s, r3) => s + r3.prompts, 0) * 100)}% of your top-project attention.`,
     // The support line must back the headline: got-away facts under a got-away headline, cost otherwise.
     support: awayCard ? mask3(awayCard.support) : pricey ? mask3(pricey.headline) : `${count4(story?.totals.projects ?? board.stats.projects)} projects in all.`,
@@ -43341,7 +46167,7 @@ function projects2(story, board) {
 function delegation(story) {
   const card = cardOf(story, "orchestrator");
   if (!card) return null;
-  const total2 = num4(card, "total") ?? story.totals.subagents;
+  const total2 = num6(card, "total") ?? story.totals.subagents;
   const series = card.chart.series[0]?.points ?? [];
   const months = series.map((p) => ({ month: String(p.x), n: p.y }));
   return {
@@ -43389,7 +46215,8 @@ function archetype(story) {
     support: mask3(a.tagline || a.profile),
     notes: [
       "The archetype is chosen locally from your numbers: each archetype has a rule, the highest score wins, ties go to a fixed order. The bars are the three metrics that decided it.",
-      a.code ? `Your code ${sanitize(a.code)}: Night/Day \xB7 Spec/Vibe \xB7 Loyal/Roaming \xB7 Kind/Hot.` : "",
+      a.code ? `Your code ${sanitize(a.code)}: Night/Day \xB7 Spec/Vibe \xB7 Loyal/Roaming \xB7 Kind/Hot-headed (thank-yous and pleases vs swears).` : "",
+      "Rarity = how extreme your deciding numbers are on fixed scales. It is not how many other people got it: slopie never sees anyone else's data.",
       a.source === "jev" ? "The wording was picked by Jev from local variants; any number not in your facts is rejected." : "The wording is a local template."
     ].filter(Boolean),
     data: {
@@ -43398,24 +46225,34 @@ function archetype(story) {
       profile: mask3(a.profile),
       subRole: a.subRole ? mask3(a.subRole.label) : null,
       code: a.code || null,
+      codeWords: codeWords(a.code),
+      // The archetypes you nearly got, best first (real scores; the slot roll uses them).
+      runners: (a.scores ?? []).filter((x) => x.id !== a.id && x.score > 0).slice(0, 3).map((x) => ({ title: mask3(x.title), score: Math.round(x.score * 100) / 100 })),
       deciding: (a.deciding ?? []).slice(0, 3).map((m) => ({ label: mask3(m.label), display: mask3(m.display), band: Math.max(0, Math.min(1, m.band)) })),
       tier
     }
   };
+}
+function codeWords(code) {
+  if (!code || code.length !== 4) return [];
+  return [...code].map((ch, i) => CODE_WORDS[i][ch] ?? ch);
 }
 function awards2(story) {
   const list3 = story?.awards ?? [];
   if (list3.length < 3) return null;
   const trophies = list3.slice(0, 6).map((award) => {
     const split = (text2) => {
+      const dot = text2.indexOf(" \xB7 ");
+      if (dot > 0) return [text2.slice(0, dot).trim(), text2.slice(dot + 3).trim()];
       const colon = text2.indexOf(": ");
       if (colon > 0) return [text2.slice(colon + 2).trim(), text2.slice(0, colon).trim()];
       const comma = text2.indexOf(", ");
       return comma > 0 ? [text2.slice(0, comma).trim(), text2.slice(comma + 2).trim()] : [text2.trim(), ""];
     };
     const [value, sub] = split(mask3(award.receipt));
-    const [publicValue] = split(mask3(award.publicReceipt));
-    return { title: mask3(award.title), value, sub, publicValue };
+    const [publicValue, publicSub] = split(mask3(award.publicReceipt));
+    const tier = award.tier;
+    return { id: award.id, title: mask3(award.title), value, sub, publicValue, publicSub, tier: tier === "gold" || tier === "silver" ? tier : void 0 };
   });
   return {
     kind: "awards",
@@ -43423,7 +46260,7 @@ function awards2(story) {
     kicker: "THE AWARDS",
     expression: "proud",
     headline: `${trophies.length} awards nobody asked for.`,
-    support: "Every one is real. Receipts on the shelf.",
+    support: "Every one is real, ranked by how unusual it is for you. Receipts on the shelf.",
     notes: ["Every award comes from a detector that fired on your history and carries its receipt; none are participation trophies."],
     data: { trophies }
   };
@@ -43443,43 +46280,75 @@ function insight(card) {
 }
 function boardSummary(story, board, deck) {
   const arche = deck.find((c) => c.kind === "archetype");
-  const face = deck.find((c) => c.kind === "faceoff");
-  const stats2 = [
-    { label: "prompts", value: count4(story?.totals.prompts ?? board.stats.prompts) },
-    { label: "chats", value: count4(board.stats.chats ?? story?.totals.sessions) },
-    { label: "tokens", value: compact2(board.stats.tokens) },
-    { label: "active days", value: count4(story?.totals.activeDays ?? board.stats.activeDays) }
-  ].filter((s) => s.value !== "\u2014");
-  const range = board.range.from && board.range.to ? `${shortDate2(board.range.from, true)} \u2192 ${shortDate2(board.range.to, true)}` : null;
-  const rhythm2 = story?.rhythm;
-  const fav = board.models.rows.find((r3) => r3.favourite) ?? board.models.rows[0];
+  const a = arche?.kind === "archetype" ? arche.data : null;
+  const awardsCard = deck.find((c) => c.kind === "awards");
+  const awards3 = awardsCard?.kind === "awards" ? awardsCard.data.trophies.slice(0, 6).map((tr) => ({ id: tr.id, title: tr.title, value: tr.value, publicValue: tr.publicValue ?? tr.value, sub: tr.sub || void 0, publicSub: tr.publicSub || void 0, tier: tr.tier })) : [];
+  const data = boardSummaryData(story, board, {
+    archetype: a ? { title: a.title, tier: a.tier, subRole: a.subRole, code: a.code, tagline: a.tagline } : null,
+    awards: awards3,
+    mask: mask3
+  });
   return {
     kind: "board",
     id: "board",
     kicker: "YOUR YEAR WITH AGENTS",
     expression: "waving",
-    headline: arche ? `This year you've been ${arche.data.title}.` : "Your year with coding agents.",
-    support: range ?? "",
-    notes: ["The share card. Press s to save it as an SVG: project names are replaced and none of your words are included."],
-    data: {
-      archetype: arche?.kind === "archetype" ? arche.data.title : null,
-      tier: arche?.kind === "archetype" ? arche.data.tier : null,
-      bill: board.hero.value,
-      range,
-      stats: stats2,
-      grid: rhythm2 && rhythm2.weekdayHour.length === 7 ? rhythm2.weekdayHour.map((r3) => [...r3]) : null,
-      peak: rhythm2 && rhythm2.peakHour !== null && rhythm2.peakWeekday !== null ? `${WEEKDAYS3[rhythm2.peakWeekday]} \xB7 ${hourLabel(rhythm2.peakHour)}` : null,
-      best: face?.kind === "faceoff" && face.data.best ? face.data.best.label : null,
-      worst: face?.kind === "faceoff" && face.data.worst ? face.data.worst.label : null,
-      catchphrase: story?.highlights.catchphrase ? { text: mask3(story.highlights.catchphrase.phrase), count: story.highlights.catchphrase.count } : board.repeats.rows[0] ? { text: mask3(board.repeats.rows[0].text), count: board.repeats.rows[0].count } : null,
-      agents: board.agentSplit,
-      topModel: story?.models.top[0] ? mask3(story.models.top[0].label) : fav ? fav.name : null,
-      awards: (() => {
-        const a = deck.find((c) => c.kind === "awards");
-        return a?.kind === "awards" ? a.data.trophies.slice(0, 4).map((tr) => ({ title: tr.title, value: tr.value, publicValue: tr.publicValue ?? tr.value })) : [];
-      })()
+    headline: a ? `This year you've been ${a.title}.` : "Your year with coding agents.",
+    support: data.range ?? "",
+    notes: [
+      "The share card. Press s to save it as an SVG: project names are replaced and none of your words are included.",
+      'Money is what your recorded tokens would cost at public API list prices, not what you paid. "Measured" is priced from per-request logs; "recovered" from usage counters the logs no longer cover; "est." is a range for older prompts whose token logs are gone.',
+      "Model shares are by output tokens (who did the most work). Agent shares are by prompts you typed. Shares sum to 100%."
+    ],
+    data
+  };
+}
+function stitch(cards, story, board) {
+  const prompts = story?.totals.prompts ?? board.stats.prompts;
+  const folders = story?.totals.projects ?? board.stats.projects;
+  const peak = story?.rhythm.peakHour ?? null;
+  const lead = (next) => {
+    switch (next.kind) {
+      case "cold_open":
+        return "let's start with something you said.";
+      case "scale":
+        return prompts ? `that was one of ${count4(prompts)}.` : "now the whole year.";
+      case "bill":
+        return "it wasn't free.";
+      case "clock":
+        return peak !== null ? `most of it around ${hourLabel(peak).toLowerCase()}. here's your clock.` : "let's look at your clock.";
+      case "guess":
+        return "and who was on the other end?";
+      case "faceoff":
+        return "\u2026but that's not the whole story.";
+      case "mood":
+        return "you weren't always like this with them.";
+      case "manners":
+        return "let\u2019s talk about your manners.";
+      case "fuse":
+        return "here's exactly when you snap.";
+      case "talk":
+        return "when you're calm, this is how you talk.";
+      case "projects":
+        return folders ? `you said it across ${count4(folders)} folders.` : "where did it all go?";
+      case "delegation":
+        return "eventually you stopped doing it yourself.";
+      case "then_now":
+        return "which brings us to who you became.";
+      case "archetype":
+        return prompts ? `so. after ${count4(prompts)} prompts\u2026` : "so\u2026";
+      case "awards":
+        return "you also won some things.";
+      case "board":
+        return "your year, on one poster. press s.";
+      default:
+        return `next: ${next.kicker.toLowerCase()}`;
     }
   };
+  for (let i = 0; i < cards.length - 1; i++) {
+    const text2 = lead(cards[i + 1]);
+    cards[i].bridge = text2.length <= 48 ? text2 : text2.slice(0, 47) + "\u2026";
+  }
 }
 function buildDeck(snapshot2) {
   const hit2 = cache2.get(snapshot2);
@@ -43503,36 +46372,47 @@ function buildDeck(snapshot2) {
     extrasLeft--;
     return safe(() => insight(pool.splice(i, 1)[0]));
   };
+  const wild = pool[0] ?? null;
+  const wildIn = (sections2) => wild && sections2.includes(wild.section ?? "more") ? extra(wild.section ?? "more") : null;
+  const turn = safe(() => mood(story));
   const deck = [
+    // Cover
+    safe(() => cover(story, board)),
+    // I. The scale
     safe(() => coldOpen2(story)),
     safe(() => scale(story, board)),
     safe(() => bill(story, board)),
+    // II. The rhythm
     safe(() => clock2(story)),
-    extra("clock"),
+    wildIn(["clock"]),
+    // III. The models
     safe(() => guess(story, board, snapshot2)),
     safe(() => faceoff(story)),
-    extra("best_worst"),
-    safe(() => mood(story)),
-    extra("mood"),
+    wildIn(["models", "best_worst"]),
+    // IV. The mood
+    turn,
+    turn ? null : safe(() => manners(story)),
     safe(() => fuse2(story)),
+    wildIn(["mood", "manners", "fuse"]),
+    // V. The voice
     safe(() => talk(story, board)),
-    safe(() => manners(story)),
-    extra("manners"),
+    wildIn(["talk"]),
+    // VI. The work
     safe(() => projects2(story, board)),
-    extra("projects"),
     safe(() => delegation(story)),
-    extra("delegation"),
-    extra("more"),
+    wildIn(["projects", "delegation", "more", "scale", "bill", "first_latest", "cold_open", "archetype", "awards"]),
+    // VII. Who you became
     safe(() => thenNow(story)),
     safe(() => archetype(story)),
     safe(() => awards2(story))
   ];
   const cards = deck.filter((card) => card !== null);
   cards.push(boardSummary(story, board, cards));
+  stitch(cards, story, board);
   cache2.set(snapshot2, cards);
   return cards;
 }
-var WEEKDAYS3, MONTHS6, monthLabel, SWEARS, engineCopy, COLD_CAPTIONS, SHORT_DAYS, KICKERS, CONSUMED, cache2, MAX_EXTRAS;
+var WEEKDAYS3, MONTHS7, monthLabel, SWEARS, engineCopy, COLD_CAPTIONS, SHORT_DAYS2, CODE_WORDS, KICKERS, CONSUMED, cache2, MAX_EXTRAS;
 var init_deck = __esm({
   "packages/cli/src/audit-ui/story/deck.ts"() {
     "use strict";
@@ -43540,12 +46420,14 @@ var init_deck = __esm({
     init_text();
     init_view_model();
     init_source4();
+    init_board_data();
+    init_v19();
     WEEKDAYS3 = ["Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays"];
-    MONTHS6 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    MONTHS7 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     monthLabel = (month, year = false) => {
       const m = /^(\d{4})-(\d{2})/.exec(month);
       if (!m) return month;
-      return `${MONTHS6[Number(m[2]) - 1] ?? "?"}${year ? ` ${m[1]}` : ""}`;
+      return `${MONTHS7[Number(m[2]) - 1] ?? "?"}${year ? ` ${m[1]}` : ""}`;
     };
     SWEARS = /\b(fuck\w*|shit\w*|bitch\w*|asshole\w*|bastard\w*|dick\w*|cunt\w*|damn\w*|crap\w*|piss\w*|wtf|stfu)\b/gi;
     engineCopy = (card) => card ? { headline: mask3(card.headline), support: mask3(card.support) } : null;
@@ -43555,7 +46437,8 @@ var init_deck = __esm({
       last_words: "The last thing you said to a project before you left it.",
       late_night: "You typed this in the middle of the night."
     };
-    SHORT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    SHORT_DAYS2 = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    CODE_WORDS = [{ N: "night", D: "day" }, { S: "spec", V: "vibe" }, { L: "loyal", R: "roaming" }, { K: "kind", H: "hot-headed" }];
     KICKERS = {
       honeymoon: "THE HONEYMOON",
       rage_day: "A BAD DAY",
@@ -43573,6 +46456,13 @@ var init_deck = __esm({
       defection: "THE SWITCH"
     };
     CONSUMED = /* @__PURE__ */ new Set([
+      "rant_length",
+      "esc_key",
+      "rage_day",
+      "walk_away",
+      "honeymoon",
+      "sprint_and_vanish",
+      "project_graveyard",
       "most_expensive_sentence",
       "mood_drift",
       "worst_model",
@@ -43593,7 +46483,7 @@ var init_deck = __esm({
       "predicted_next_word"
     ]);
     cache2 = /* @__PURE__ */ new WeakMap();
-    MAX_EXTRAS = 4;
+    MAX_EXTRAS = 1;
   }
 });
 
@@ -43605,6 +46495,9 @@ function plainCard(card, width = 80) {
   const rows = [];
   const d = card.data;
   switch (card.kind) {
+    case "cover":
+      rows.push(card.data.numbers.map((n2) => `${n2.value} ${n2.label}`).join(" \xB7 "));
+      break;
     case "cold_open":
       rows.push(`\u2014 ${card.data.stamp}`, card.data.caption);
       break;
@@ -43612,6 +46505,10 @@ function plainCard(card, width = 80) {
       rows.push(card.data.counters.map((k) => `${k.style === "compact" ? compact2(k.value) : count4(k.value)} ${k.label.toLowerCase()}`).join(" \xB7 "));
       break;
     case "bill":
+      if (card.data.spend) {
+        const sp = card.data.spend;
+        rows.push(`measured ${money2(sp.measured)}${sp.recovered ? ` \xB7 recovered ${money2(sp.recovered)}` : ""}${sp.estimated ? ` \xB7 est. ${money2(sp.estimated.low)}\u2013${money2(sp.estimated.high)} for ${count4(sp.estimated.prompts)} older prompts` : ""}`, "by month: " + sp.months.map((m) => `${monthLabel(m.month)} ${money2(m.measured)}`).join(" \xB7 "));
+      }
       for (const line of card.data.lines) rows.push(`${line.name.padEnd(24, ".")} ${money2(line.value)}`);
       if (card.data.more) rows.push(`${"everything else".padEnd(24, ".")} ${money2(card.data.more)}`);
       rows.push(`${"TOTAL".padEnd(24)} ${money2(card.data.total)}`);
@@ -43637,7 +46534,7 @@ function plainCard(card, width = 80) {
       rows.push(`first swear at prompt #${card.data.median} (median) \xB7 ${card.data.sessions} of ${card.data.of} sessions`);
       break;
     case "talk":
-      for (const tile of card.data.tiles) rows.push(`${tile.label.toLowerCase()}: ${tile.quoted ? `\u201C${tile.text}\u201D` : tile.text}${tile.count !== null ? ` \xD7${count4(tile.count)}` : ""}`);
+      for (const tile2 of card.data.tiles) rows.push(`${tile2.label.toLowerCase()}: ${tile2.quoted ? `\u201C${tile2.text}\u201D` : tile2.text}${tile2.count !== null ? ` \xD7${count4(tile2.count)}` : ""}`);
       break;
     case "manners":
       rows.push(`${count4(card.data.kind)} ${card.data.kindLabel} vs ${count4(card.data.rude)} ${card.data.rudeLabel}`);
@@ -43664,20 +46561,41 @@ function plainCard(card, width = 80) {
     case "insight":
       for (const series of card.data.chart.series.slice(0, 2)) rows.push(`${series.name}: ` + series.points.slice(0, 12).map((p) => `${p.x} ${p.y}`).join(" \xB7 "));
       break;
-    case "board": {
-      const b2 = card.data;
-      if (b2.bill !== null) rows.push(`at API prices: ${money2(b2.bill)}`);
-      if (b2.peak) rows.push(`peak: ${b2.peak}`);
-      if (b2.topModel) rows.push(`most used: ${b2.topModel}`);
-      if (b2.best) rows.push(`favourite: ${b2.best}`);
-      if (b2.worst) rows.push(`nemesis: ${b2.worst}`);
-      rows.push(b2.stats.map((s2) => `${s2.value} ${s2.label}`).join(" \xB7 "));
-      if (b2.catchphrase) rows.push(`catchphrase: \u201C${b2.catchphrase.text}\u201D \xD7${count4(b2.catchphrase.count)}`);
+    case "board":
+      rows.push(...boardPlain(card.data));
       break;
-    }
   }
+  for (const callout of card.callouts ?? []) rows.push(`> ${callout}`);
   for (const row2 of rows) for (const line of wrap3(row2, width - 4)) out.push("  " + line);
+  if (card.bridge) out.push(`  next: ${card.bridge}`);
   return out;
+}
+function boardPlain(b2) {
+  const rows = [];
+  if (b2.archetype) rows.push(`archetype: ${b2.archetype}${b2.tier ? ` (${b2.tier})` : ""}${b2.subRole ? ` \xB7 ${b2.subRole}` : ""}${b2.code ? ` \xB7 code ${b2.code}` : ""}`);
+  if (b2.hero.length) rows.push(b2.hero.map((h) => `${h.value} ${h.label}`).join(" \xB7 "));
+  const sp = b2.spend;
+  if (sp) {
+    rows.push(`spend at API list prices: ${money2(sp.lifetime)} lifetime${sp.measured ? " (measured)" : ""}${sp.recovered ? ` + ${money2(sp.recovered)} recovered` : ""}${sp.estimated ? ` \xB7 \u2248 ${money2(sp.estimated.low)}\u2013${money2(sp.estimated.high)} est. for ${count4(sp.estimated.prompts)} older prompts` : ""}`);
+    const more = [sp.thisMonth !== null ? `this month ${money2(sp.thisMonth)}` : null, sp.perDay !== null ? `per active day ${money2(sp.perDay)}` : null, sp.priciestDay ? `priciest day ${money2(sp.priciestDay.usd)} (${shortDate2(sp.priciestDay.day)})` : null].filter(Boolean);
+    if (more.length) rows.push(more.join(" \xB7 "));
+  }
+  const bars = (title, list3) => {
+    if (list3.length) rows.push(`${title}: ` + list3.map((r3) => `${r3.label} ${r3.value}${r3.tags?.includes("fav") ? " \u2665" : ""}${r3.tags?.includes("nemesis") ? " \u2620" : ""}`).join(" \xB7 "));
+  };
+  if (b2.models) {
+    bars(`models (${b2.models.basis})`, b2.models.rows);
+    if (b2.models.unknown) rows.push(`${count4(b2.models.unknown)} older prompts have no recorded model`);
+  }
+  if (b2.agents) {
+    bars(`agents (${b2.agents.basis})`, b2.agents.rows);
+    if (b2.agents.automated) rows.push(`+ ${count4(b2.agents.automated)} automated runs (not counted as chats)`);
+  }
+  if (b2.time?.peak) rows.push(`peak: ${b2.time.peak}${b2.time.lines.length ? " \xB7 " + b2.time.lines.join(" \xB7 ") : ""}`);
+  for (const v of b2.voice) rows.push(`${v.label}: ${v.quoted ? `\u201C${v.value}\u201D` : v.value}${v.count !== null ? ` \xD7${count4(v.count)}` : ""}`);
+  if (b2.awards.length) rows.push("awards: " + b2.awards.map((a) => `${a.title} (${a.value})`).join(" \xB7 "));
+  if (b2.sinceLast) rows.push(`since last run: ${b2.sinceLast}`);
+  return rows;
 }
 function renderPlain(snapshot2, options = {}, transfers = []) {
   const width = Math.max(40, Math.min(160, options.width ?? 80));
@@ -43737,7 +46655,7 @@ function renderShareSvg(snapshot2, options = {}) {
     ""
   ].join("\n");
 }
-var lineText, WEEK2;
+var lineText, WEEK3;
 var init_plain = __esm({
   "packages/cli/src/audit-ui/plain.ts"() {
     "use strict";
@@ -43749,7 +46667,7 @@ var init_plain = __esm({
     init_source4();
     init_format3();
     lineText = (line) => line.map((part) => part.text).join("").trimEnd();
-    WEEK2 = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    WEEK3 = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   }
 });
 
@@ -44167,6 +47085,17 @@ function textRight(canvas, right, y, text2, style) {
 function textCenter(canvas, cx, y, text2, style) {
   canvas.text(Math.round(cx - textWidth(text2) / 2), y, text2, style);
 }
+function bar8(canvas, x, y, width, frac, color, ascii = false, track) {
+  if (width <= 0) return;
+  const f = Math.max(0, Math.min(1, frac));
+  let eighths = Math.round(f * width * 8);
+  if (f > 0 && eighths === 0) eighths = 1;
+  const full = Math.floor(eighths / 8);
+  const rest = eighths % 8;
+  if (track !== void 0) for (let i = 0; i < width; i++) canvas.put(x + i, y, ascii ? " " : "\xB7", track);
+  for (let i = 0; i < full; i++) canvas.put(x + i, y, ascii ? "#" : "\u2588", color);
+  if (rest > 0 && full < width) canvas.put(x + full, y, ascii ? "." : EIGHTHS_H[rest], color);
+}
 var NUMBERISH, EIGHTHS_H, EIGHTHS_V;
 var init_draw = __esm({
   "packages/cli/src/audit-ui/gfx/draw.ts"() {
@@ -44565,7 +47494,7 @@ function drawFooter(s, extra) {
     x += 3;
   }
   if (tier.id !== "S") {
-    const local = "all local";
+    const local = s.online ? "online \xB7 Jev" : "all local";
     c.text(w - tier.mx - textWidth(local) - 2, y, s.caps.unicode ? "\u25CF" : "*", { fg: fade(C.orange, 0.7) });
     c.text(w - tier.mx - textWidth(local), y, local, { fg: C.slate });
   }
@@ -44632,7 +47561,15 @@ function drawChrome(s, card, options = {}) {
   }
   const minTop = options.mascot === false ? y + 1 : Math.max(y + 1, (L ? 2 : 1) + mascotBox.h + (L ? 0 : 0));
   const top = options.bodyUnderKicker ? kickY + 2 : Math.max(y + 2, minTop);
-  const bottom = L ? h - 3 : h - 2;
+  let bottom = L ? h - 3 : h - 2;
+  if (card.bridge && !s.share && (card.kind !== "guess" || s.state.guess !== void 0)) {
+    const ba = s.caps.motion ? seg2(t - (card.kind === "guess" ? s.state.guessAt ?? 0 : 0), 900, 400) : 1;
+    busy ||= ba < 1;
+    const text2 = `next ${s.caps.unicode ? "\u2192" : "->"} ${card.bridge}`;
+    const by = bottom;
+    if (ba > 0) c.text(Math.max(tier.mx, w - tier.mx - textWidth(text2)), by, text2, { fg: C.gray, italic: true, alpha: ba });
+    bottom -= 1;
+  }
   drawFooter(s, options.hint);
   const mascotRect = { x: mascotBox.x, y: tier.mascot === "line" ? kickY : L ? 2 : 1, w: mascotBox.w, h: mascotBox.h };
   return { body: { x: tier.mx, y: top, w: w - tier.mx * 2, h: Math.max(0, bottom - top) }, busy, mascot: mascotRect };
@@ -44823,8 +47760,12 @@ function guessBody(s, data, r3) {
   const barW = Math.max(6, r3.w - nameW - 20);
   const rowGap = r3.h >= 12 ? 2 : 1;
   let busy = tg < 1600;
+  const order = data.options.map((o, i) => [o.share, i]).sort((a, b2) => b2[0] - a[0] || a[1] - b2[1]).map(([, i]) => i);
+  const rank = data.options.map((_, i) => order.indexOf(i));
+  const sortK = s.caps.motion ? seg2(tg, 950, 450, easeOutCubic) : 1;
+  busy ||= sortK < 1;
   data.options.forEach((option, i) => {
-    const y = r3.y + i * rowGap;
+    const y = r3.y + Math.round((i + (rank[i] - i) * sortK) * rowGap);
     const correct = i === data.answer;
     const mine = i === state.guess;
     const k = s.caps.motion ? Math.min(1.08, spring((tg - i * 60) / 1e3, 2.2, 0.5)) : 1;
@@ -44958,460 +47899,13 @@ var init_models = __esm({
   }
 });
 
-// packages/cli/src/audit-ui/cards/time.ts
-function drawHeatmap(s, grid, x, y, cellW, options) {
-  const { c } = s;
-  const max2 = Math.max(1, ...grid.flat());
-  const labelW = options.labels === false ? 0 : 4;
-  const t = options.t;
-  let busy = false;
-  const rowStep = options.tall ? 2 : 1;
-  for (let d = 0; d < 7; d++) {
-    const ry = y + d * rowStep;
-    if (options.labels !== false) c.text(x, ry, DAYS[d], { fg: d >= 5 ? C.slate : C.gray });
-    for (let h = 0; h < 24; h++) {
-      const a = seg2(t, 120 + h * 38, 260);
-      busy ||= a < 1;
-      const v = Math.sqrt((grid[d]?.[h] ?? 0) / max2);
-      let color = heat(0.12 + v * 0.88);
-      const isPeak = options.peak && options.peak[0] === d && options.peak[1] === h;
-      if (isPeak) {
-        const p = seg2(t, 120 + 24 * 38 + 150, 650, (k) => k);
-        busy ||= p < 1;
-        color = mix(color, C.white, Math.sin(Math.PI * p) * 0.8);
-      }
-      const cx = x + labelW + h * cellW;
-      const glyph2 = s.caps.unicode ? options.tall ? "\u2588" : "\u2580" : "#";
-      const fg = s.caps.color === "none" ? C.cream : fade(color, a);
-      for (let k = 0; k < cellW - 1; k++) {
-        if (s.caps.color === "none") c.put(cx + k, ry, v > 0.75 ? "\u2588" : v > 0.5 ? "\u2593" : v > 0.25 ? "\u2592" : v > 0 ? "\u2591" : "\xB7", C.cream);
-        else c.put(cx + k, ry, glyph2, fg);
-      }
-      if (cellW === 1) c.put(cx, ry, s.caps.color === "none" ? v > 0.5 ? "\u2588" : v > 0 ? "\u2591" : "\xB7" : glyph2, fg);
-    }
-  }
-  if (options.axis !== false) {
-    const ticks = cellW >= 3 ? [0, 3, 6, 9, 12, 15, 18, 21] : [0, 6, 12, 18];
-    for (const h of ticks) c.text(x + labelW + h * cellW, y + 7 * rowStep, h === 0 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`, { fg: C.slate });
-  }
-  return { w: labelW + 24 * cellW, busy };
-}
-function clockBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const cellW = r3.w >= 4 + 72 + 30 ? 3 : r3.w >= 4 + 48 + 24 || tier.id === "S" ? 2 : 2;
-  const gridW = 4 + 24 * cellW;
-  const side = r3.w - gridW - 4 >= 22;
-  const tall = tier.id === "L" && r3.h >= 18 && cellW === 3;
-  const gridH = tall ? 15 : 8;
-  const calloutRows = side ? 0 : 2;
-  const y0 = r3.y + Math.max(0, Math.min(Math.floor((r3.h - gridH - calloutRows - (side ? 0 : 1)) * 0.3), r3.h - gridH - 2));
-  const peak = data.peakWeekday !== null && data.peakHour !== null ? [data.peakWeekday, data.peakHour] : null;
-  const { busy } = drawHeatmap(s, data.grid, r3.x, y0, cellW, { t, peak, tall });
-  const callA = seg2(t, 1200, 400);
-  if (side) {
-    const sx = r3.x + gridW + 4;
-    data.callouts.forEach((call, i) => {
-      const a = seg2(t, 1e3 + i * 140, 350);
-      const cy = y0 + i * (tall ? 4 : 2);
-      if (cy + 1 >= r3.y + r3.h) return;
-      c.text(sx, cy, call.label, { fg: C.gray, alpha: a });
-      c.text(sx + Math.max(15, textWidth(call.label) + 2), cy, call.value, { fg: i === 0 ? C.orange : C.cream, bold: true, alpha: a });
-      c.text(sx, cy + 1, call.sub, { fg: C.slate, alpha: a }, r3.x + r3.w - sx);
-    });
-  } else if (y0 + gridH + 1 < r3.y + r3.h) {
-    let x = r3.x;
-    const cy = y0 + gridH + 1;
-    for (const call of data.callouts.slice(0, tier.id === "S" ? 2 : 3)) {
-      const text2 = `${call.label.toLowerCase()} `;
-      if (x + textWidth(text2) + textWidth(call.value) > r3.x + r3.w) break;
-      x += c.text(x, cy, text2, { fg: C.gray, alpha: callA });
-      x += c.text(x, cy, call.value, { fg: C.orange, bold: true, alpha: callA }) + 3;
-    }
-  }
-  return busy || callA < 1;
-}
-function moodBody(s, data, r3) {
-  const { c, t } = s;
-  const months = data.months;
-  const max2 = Math.max(1, ...months.map((m) => m.pct));
-  const axisW = 5;
-  const plotW = Math.min(r3.w - axisW - 2, months.length * (s.tier.id === "L" ? 9 : 7));
-  const plotH = Math.max(3, Math.min(r3.h - 4, s.tier.id === "L" ? 14 : 10));
-  const x0 = r3.x + axisW;
-  const yTop = r3.y + 2;
-  const yBottom = yTop + plotH - 1;
-  const pxH = plotH * 2;
-  const step = plotW / Math.max(1, months.length - 1);
-  const draw = s.caps.motion ? seg2(t, 100, 1100, easeOutCubic) : 1;
-  const valueAt = (x) => {
-    const f = x / step;
-    const i = Math.min(months.length - 2, Math.max(0, Math.floor(f)));
-    const k = clamp012(f - i);
-    const a = months[i].pct, b2 = months[Math.min(months.length - 1, i + 1)].pct;
-    return a + (b2 - a) * (k * k * (3 - 2 * k));
-  };
-  textRight(c, x0 - 1, yTop, `${Math.round(max2)}%`, { fg: C.slate });
-  textRight(c, x0 - 1, yBottom, "0%", { fg: C.slate });
-  for (let x = 0; x <= plotW; x++) c.put(x0 + x, yBottom + 1, s.caps.unicode ? "\u2500" : "-", C.coal);
-  const tipX = Math.round(data.tip * step);
-  for (let x = 0; x <= Math.round(plotW * draw); x++) {
-    const v = valueAt(x);
-    const top = Math.round(pxH - v / max2 * (pxH - 1)) - 1;
-    const afterTip = x >= tipX;
-    for (let py = Math.max(0, top); py < pxH; py++) {
-      const depth = (py - top) / Math.max(1, pxH - top);
-      const base3 = afterTip ? C.ember : C.slate;
-      const color = py === top ? afterTip ? C.orange : C.gray : mix(mix(base3, C.ink, 0.35), C.ink, Math.min(0.92, depth * 1.1));
-      c.px(x0 + x, yTop * 2 + py, color);
-    }
-  }
-  let lastEnd = -10;
-  months.forEach((m, i) => {
-    const x = x0 + Math.round(i * step);
-    const label4 = monthLabel(m.month);
-    if (x - lastEnd < 2 || x + textWidth(label4) > r3.x + r3.w) return;
-    const a = seg2(t, 100 + i / months.length * 1100, 200);
-    c.text(x - (i === months.length - 1 ? textWidth(label4) - 1 : 0), yBottom + 2, label4, { fg: i === data.tip ? C.orange : C.slate, alpha: a });
-    lastEnd = x + textWidth(label4);
-  });
-  const drop = seg2(t, 1250, 600, (k) => spring(k * 0.6, 3, 0.45));
-  if (drop > 0) {
-    const v = months[data.tip].pct;
-    const pointRow = yTop + Math.floor((pxH - v / max2 * (pxH - 1) - 1) / 2);
-    const markX = x0 + tipX;
-    const landing = Math.max(r3.y, pointRow - 2);
-    const yNow = Math.round(r3.y + (landing - r3.y) * drop);
-    for (let y = yNow + 1; y < pointRow; y++) c.put(markX, y, s.caps.unicode ? "\u250A" : ":", C.gray);
-    c.put(markX, yNow, s.caps.unicode ? "\u25BC" : "v", C.cream, void 0, 1);
-    const label4 = `it tipped in ${monthLabel(months[data.tip].month)}`;
-    const rising = (months.at(-1).pct ?? 0) >= v;
-    const lx = rising && markX - textWidth(label4) - 2 >= r3.x ? markX - textWidth(label4) - 2 : markX + textWidth(label4) + 3 > r3.x + r3.w ? markX - textWidth(label4) - 2 : markX + 2;
-    c.text(lx, yNow, label4, { fg: C.cream, bold: true, alpha: drop });
-  }
-  const ends = seg2(t, 1200, 300);
-  const first = months[0], last2 = months.at(-1);
-  c.text(x0 + 1, yTop + Math.floor((pxH - first.pct / max2 * (pxH - 1)) / 2) - 1, `${first.pct.toFixed(1)}%`, { fg: C.gray, alpha: ends });
-  const lastLabel = `${last2.pct.toFixed(0)}%`;
-  c.text(x0 + plotW - textWidth(lastLabel), Math.max(r3.y, yTop + Math.floor((pxH - last2.pct / max2 * (pxH - 1)) / 2) - 2), lastLabel, { fg: C.orange, bold: true, alpha: ends });
-  return t < 1900;
-}
-function fuseBody(s, data, r3) {
-  const { c, t } = s;
-  const n2 = Math.max(data.median + 4, Math.min(20, Math.max(10, data.hist.length)));
-  const len = Math.min(r3.w - 6, s.tier.id === "L" ? 96 : 70);
-  const x0 = r3.x + 2;
-  const histH = data.hist.length && r3.h >= 13 ? Math.min(s.tier.id === "L" ? 7 : 4, r3.h - 10) : 0;
-  const y = r3.y + histH + 1;
-  const posOf = (turn) => x0 + Math.round((turn - 1) / (n2 - 1) * (len - 1));
-  const target = posOf(data.median);
-  const burn = s.caps.motion ? seg2(t, 200, 1300, (k) => k * (2 - k)) : 1;
-  const sparkX = Math.round(x0 + (target - x0) * burn);
-  if (histH) {
-    const max2 = Math.max(1, ...data.hist);
-    const colW = Math.max(1, Math.floor(len / n2) - 1);
-    data.hist.slice(0, n2).forEach((v, i) => {
-      const x = posOf(i + 1) - Math.floor(colW / 2);
-      const k = seg2(t, 1400 + i * 30, 400, easeOutCubic);
-      const color = i + 1 === data.median ? C.orange : i + 1 < data.median ? fade(C.peach, 0.55) : fade(C.slate, 0.9);
-      vbar(c, x, y - 1, histH, v / max2 * k, color, colW, !s.caps.unicode);
-    });
-    const la = seg2(t, 1700, 300);
-    c.text(x0 + len + 1 - 22, r3.y, "sessions by first swear", { fg: C.slate, alpha: la });
-  }
-  for (let x = x0; x < x0 + len; x++) {
-    if (x < sparkX) c.put(x, y, s.caps.unicode ? "\xB7" : ".", C.slate);
-    else if (x > sparkX) c.put(x, y, x % 2 ? "~" : "-", x > target ? fade(C.peach, 0.45) : C.peach);
-  }
-  const flick = Math.floor(t / 70) % 3;
-  if (burn < 1) {
-    c.put(sparkX, y, s.caps.unicode ? ["\u2726", "\u2727", "\u2736"][flick] : "*", [C.cream, C.peach, C.orange][flick], void 0, 1);
-  } else {
-    const b2 = seg2(t, 1500, 500);
-    const radius = 1 + Math.round(b2 * 2);
-    for (let k = -radius; k <= radius; k++) {
-      const col3 = k === 0 ? C.white : Math.abs(k) < radius ? C.peach : C.ember;
-      c.px(target + k, y * 2 + 1, col3);
-      c.px(target, y * 2 + 1 + k, col3);
-      if (Math.abs(k) < radius - 1) {
-        c.px(target + k, y * 2 + 1 + k, C.orange);
-        c.px(target + k, y * 2 + 1 - k, C.orange);
-      }
-    }
-  }
-  for (let turn = 1; turn <= n2; turn++) {
-    const x = posOf(turn);
-    const show2 = turn === 1 || turn === data.median || turn === n2 || turn % (len / n2 >= 4 ? 1 : 5) === 0;
-    if (!show2) continue;
-    c.text(x - (turn >= 10 ? 1 : 0), y + 1, `#${turn}`, { fg: turn === data.median ? C.orange : C.slate, bold: turn === data.median });
-  }
-  const by = y + 3;
-  if (by + 3 <= r3.y + r3.h) {
-    const a = seg2(t, 1400, 400);
-    const text2 = `PROMPT #${data.median}`;
-    const bw = bigWidth(text2, 1);
-    drawBig(c, x0, by, text2, { color: (_x, py) => fade(mix(C.cream, C.orange, py / 4), a) });
-    const sx = x0 + bw + 4;
-    const lines = [
-      [`${data.sessions} of ${data.of}`, " sessions had a snap"],
-      [`${data.firstPrompt}`, " times you came in swinging on prompt #1"]
-    ];
-    const inline = lines.every(([strong, rest]) => sx + textWidth(strong + rest) <= r3.x + r3.w);
-    lines.forEach(([strong, rest], i) => {
-      const la = seg2(t, 1600 + i * 150, 300);
-      const lx = inline ? sx : x0;
-      const ly = inline ? by + i * 2 : by + 4 + i;
-      if (ly >= r3.y + r3.h) return;
-      const w = c.text(lx, ly, strong, { fg: C.orange, bold: true, alpha: la });
-      c.text(lx + w, ly, rest, { fg: C.gray, alpha: la }, r3.x + r3.w - lx - w);
-    });
-  }
-  return t < 2300;
-}
-var DAYS;
-var init_time = __esm({
-  "packages/cli/src/audit-ui/cards/time.ts"() {
-    "use strict";
-    init_color();
-    init_draw();
-    init_font();
-    init_motion();
-    init_deck();
-    DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  }
-});
-
 // packages/cli/src/audit-ui/cards/finale.ts
-function titleLines(title, width, scale2 = 1) {
-  const words8 = title.toUpperCase().split(/\s+/);
-  const lines = [];
-  let line = "";
-  for (const word of words8) {
-    const next = line ? `${line} ${word}` : word;
-    if (bigWidth(next, scale2) <= width) line = next;
-    else {
-      if (line) lines.push(line);
-      line = word;
-      if (bigWidth(word, scale2) > width) return null;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
-}
-function archetypeBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const pause2 = 450;
-  const titleW = r3.w;
-  const lines = bigSupported(data.title) ? titleLines(data.title, titleW) : null;
-  let y = r3.y;
-  let letters = 0;
-  let busy = false;
-  if (lines && lines.length * (bigHeight() + 1) <= r3.h - 4) {
-    const total2 = lines.reduce((n2, l) => n2 + l.replace(/ /g, "").length, 0);
-    const perLetter = Math.min(70, 900 / Math.max(1, total2));
-    const sweep = seg2(t, pause2 + total2 * perLetter + 150, 900, (k) => k);
-    busy ||= sweep < 1;
-    lines.forEach((line) => {
-      const startIndex = letters;
-      drawBig(c, r3.x, y, line, {
-        limit: s.caps.motion ? Math.max(0, Math.floor((t - pause2) / perLetter) - startIndex + 1) : void 0,
-        dy: (i) => {
-          const k = seg2(t, pause2 + (startIndex + i) * perLetter, 260, easeOutBack);
-          return Math.round((1 - k) * -3);
-        },
-        color: (px, py, i) => {
-          const k = seg2(t, pause2 + (startIndex + i) * perLetter, 200);
-          const base3 = mix(C.cream, C.orange, py / 4);
-          const band2 = Math.abs(px - sweep * (bigWidth(line) + 20) + 10);
-          return fade(band2 < 3 && sweep > 0 && sweep < 1 ? mix(base3, C.white, 0.7 * (1 - band2 / 3)) : base3, k);
-        }
-      });
-      letters += line.replace(/ /g, "").length;
-      y += bigHeight() + 1;
-    });
-    busy ||= t < pause2 + total2 * perLetter + 300;
-  } else {
-    const text2 = data.title.toUpperCase();
-    const n2 = s.caps.motion ? Math.floor(Math.max(0, t - pause2) / 45) : text2.length;
-    for (const line of wrapText(text2, r3.w, 2)) {
-      c.text(r3.x, y, line.slice(0, Math.max(0, n2)), { fg: C.cream, bold: true });
-      y += 1;
-    }
-    y += 1;
-    busy ||= n2 < text2.length;
-  }
-  const after = pause2 + 1300;
-  if (data.tier && y < r3.y + r3.h) {
-    const k = seg2(t, after, 350, easeOutBack);
-    const label4 = `${s.caps.unicode ? "\u2605" : "*"} ${TIER_LABEL[data.tier]} ${s.caps.unicode ? "\u2605" : "*"}`;
-    c.text(r3.x, y, ` ${label4} `, { fg: C.ink, bg: fade(data.tier === "legendary" || data.tier === "epic" ? C.orange : C.slate, Math.min(1, k)), bold: true });
-    const note = data.subRole ?? (data.tier === "common" ? "plenty of company" : data.tier === "rare" ? "not many like you" : "a rare combination");
-    c.text(r3.x + textWidth(label4) + 4, y, note, { fg: data.subRole ? C.peach : C.gray, italic: Boolean(data.subRole), alpha: Math.min(1, k) }, r3.w - textWidth(label4) - 4);
-    y += 2;
-  }
-  const pa = seg2(t, after + 250, 450);
-  const profile = wrapText(data.profile, Math.min(r3.w, 84), tier.id === "S" ? 2 : 3);
-  profile.forEach((line) => {
-    if (y < r3.y + r3.h) c.text(r3.x, y++, line, { fg: C.cream, alpha: pa });
-  });
-  y += 1;
-  const labelW = Math.min(30, Math.max(0, ...data.deciding.map((m) => textWidth(m.display))) + 2);
-  const barW = Math.max(8, Math.min(30, r3.w - labelW - 4));
-  data.deciding.forEach((m, i) => {
-    if (y >= r3.y + r3.h) return;
-    const ta = seg2(t, after + 600 + i * 150, 300);
-    const k = seg2(t, after + 650 + i * 150, 600, easeOutCubic);
-    if (ta <= 0) {
-      y += tier.id === "S" ? 1 : 2;
-      return;
-    }
-    c.text(r3.x, y, m.display, { fg: C.cream, alpha: ta }, labelW - 1);
-    const fill = Math.round(barW * m.band * k);
-    for (let x = 0; x < barW; x++) c.put(r3.x + labelW + x, y, s.caps.unicode ? x < fill ? "\u2501" : "\u2500" : x < fill ? "=" : "-", x < fill ? i === 0 ? C.orange : fade(C.orange, 0.65) : fade(C.coal, ta));
-    y += tier.id === "S" ? 1 : 2;
-  });
-  if (data.code && y + 1 < r3.y + r3.h && tier.id !== "S") c.text(r3.x, y + 1, `code ${data.code}`, { fg: C.slate, alpha: seg2(t, after + 1100, 300) });
-  return busy || t < after + 1100;
-}
-function boardBody(s, data, r3, mascot) {
-  const { c, t, tier } = s;
-  let busy = false;
-  const appear = (i) => {
-    const k = seg2(t, 100 + i * 120, 350, easeOutCubic);
-    busy ||= k < 1;
-    return k;
-  };
-  const a0 = appear(0);
-  const titleW = Math.max(20, (tier.mascot === "line" ? r3.x + r3.w : mascot.x - 3) - r3.x);
-  let y = r3.y;
-  if (data.archetype) {
-    c.text(r3.x, y, tier.id === "L" ? spaced("this year you've been") : "THIS YEAR YOU'VE BEEN", { fg: C.gray, alpha: a0 });
-    y += 2;
-    const lines = tier.id !== "S" && bigSupported(data.archetype) ? titleLines(data.archetype, titleW) : null;
-    if (lines && lines.length <= 2) {
-      lines.forEach((line, i) => {
-        drawBig(c, r3.x, y, line, { color: (_x, py) => fade(mix(C.cream, C.orange, py / 4), a0) });
-        if (i === lines.length - 1 && data.tier) {
-          const lx = r3.x + bigWidth(line) + 3;
-          if (lx + 12 < r3.x + titleW) c.text(lx, y + 1, ` ${TIER_LABEL[data.tier]} `, { fg: C.ink, bg: fade(C.orange, a0), bold: true });
-        }
-        y += bigHeight() + 1;
-      });
-    } else {
-      const w = c.text(r3.x, y, data.archetype.toUpperCase(), { fg: C.orange, bold: true, alpha: a0 }, titleW - 12);
-      if (data.tier) c.text(r3.x + w + 2, y, ` ${TIER_LABEL[data.tier]} `, { fg: C.ink, bg: fade(C.orange, a0), bold: true });
-      y += 2;
-    }
-  }
-  if (data.range) {
-    c.text(r3.x, y, data.range, { fg: C.slate, alpha: a0 });
-    y += 1;
-  }
-  y = Math.max(y + 1, tier.mascot === "line" ? y : mascot.y + mascot.h);
-  const reserve = 2 + (data.catchphrase && !s.share ? 2 : 0) + (data.awards.length && r3.h >= 26 ? 2 : 0);
-  const tilesH = Math.max(5, Math.min(tier.id === "L" ? 13 : 9, r3.y + r3.h - y - reserve));
-  const wide = r3.w >= 90;
-  const gap2 = 2;
-  const pixel = s.caps.color !== "none";
-  const tiles = [];
-  if (data.bill !== null) tiles.push({ key: "bill", w: 0 });
-  if (data.grid && wide && tilesH >= 10) tiles.push({ key: "clock", w: 4 + 24 + 4 });
-  tiles.push({ key: "models", w: 0 });
-  const flex = tiles.filter((tl) => !tl.w);
-  const fixedW = tiles.reduce((sum2, tl) => sum2 + tl.w, 0) + gap2 * (tiles.length - 1);
-  flex.forEach((tl) => {
-    tl.w = Math.floor((r3.w - fixedW) / flex.length);
-  });
-  let x = r3.x;
-  tiles.forEach((tile, i) => {
-    const k = appear(i + 1);
-    const rect = { x, y: y + Math.round((1 - k) * 1), w: tile.w, h: tilesH };
-    box(c, rect, fade(i === 0 ? C.rust : C.coal, k), { ascii: !s.caps.unicode });
-    const ix = rect.x + 2, iy = rect.y + 1, iw = rect.w - 4;
-    const bottom = rect.y + rect.h - 1;
-    if (tile.key === "bill") {
-      c.text(ix, iy, "AT API PRICES", { fg: C.gray, alpha: k });
-      const text2 = money2(data.bill).replace(/\.\d+$/, "");
-      const scale2 = bigWidth(text2, 2) <= iw && tilesH >= 11 ? 2 : 1;
-      if (pixel && tilesH < 7) c.text(ix, iy + 1, text2, { fg: C.orange, bold: true, alpha: k });
-      else if (pixel) drawBig(c, ix, iy + 2, text2, { scale: scale2, color: (_x, py) => fade(mix(C.cream, C.orange, py / (5 * scale2 - 1)), k) });
-      else c.text(ix, iy + 2, text2, { fg: C.orange, bold: true });
-      let ay = tilesH < 7 ? iy + 2 : iy + 2 + bigHeight(scale2) + 1;
-      for (const agent of data.agents.slice(0, 3)) {
-        if (ay >= bottom) break;
-        const pct3 = agent.share < 0.01 ? "<1%" : `${Math.round(agent.share * 100)}%`;
-        c.text(ix, ay, agent.name, { fg: C.gray, alpha: k }, iw - 6);
-        textRight(c, ix + iw, ay, pct3, { fg: C.cream, alpha: k });
-        ay++;
-      }
-    } else if (tile.key === "clock" && data.grid) {
-      c.text(ix, iy, "WHEN YOU PROMPT", { fg: C.gray, alpha: k });
-      const tallClock = tilesH >= 13;
-      drawHeatmap(s, data.grid, ix, iy + (tallClock ? 2 : 1), 1, { t: k >= 1 ? Infinity : t - 200, axis: false });
-      if (data.peak && iy + 9 < bottom) c.text(ix, bottom - 1, `peak ${data.peak}`, { fg: C.orange, alpha: k }, iw);
-    } else if (tile.key === "models") {
-      c.text(ix, iy, "YOUR MODELS", { fg: C.gray, alpha: k });
-      const tight = tilesH < 9;
-      let my = iy + (tight ? 1 : 2);
-      const step = tilesH >= 11 ? 3 : 2;
-      const row2 = (label4, value, color) => {
-        if (!value) return;
-        if (tight) {
-          if (my >= bottom) return;
-          const lw = c.text(ix, my, label4 + " ", { fg: C.slate, alpha: k });
-          c.text(ix + lw, my, value, { fg: color, bold: true, alpha: k }, iw - lw);
-          my += 1;
-          return;
-        }
-        if (my + 1 >= bottom) return;
-        c.text(ix, my, label4, { fg: C.slate, alpha: k });
-        c.text(ix, my + 1, value, { fg: color, bold: true, alpha: k }, iw);
-        my += step;
-      };
-      row2("most used", data.topModel, C.cream);
-      row2(s.caps.unicode ? "favourite \u2665" : "favourite", data.best, C.peach);
-      row2("nemesis", data.worst, C.ember);
-    }
-    x += tile.w + gap2;
-  });
-  y += tilesH + 1;
-  const sa = appear(tiles.length + 1);
-  if (y < r3.y + r3.h) {
-    let sx = r3.x;
-    for (const stat of data.stats) {
-      const need = textWidth(stat.value) + textWidth(stat.label) + 4;
-      if (sx + need > r3.x + r3.w) break;
-      sx += c.text(sx, y, stat.value, { fg: C.cream, bold: true, alpha: sa });
-      sx += c.text(sx + 1, y, stat.label, { fg: C.gray, alpha: sa }) + 4;
-    }
-    y += 2;
-  }
-  if (data.catchphrase && !s.share && y < r3.y + r3.h) {
-    const ca = appear(tiles.length + 2);
-    const w = c.text(r3.x, y, "catchphrase ", { fg: C.gray, alpha: ca });
-    const w2 = c.text(r3.x + w, y, `\u201C${data.catchphrase.text}\u201D`, { fg: C.peach, italic: true, bold: true, alpha: ca }, r3.w - w - 8);
-    c.text(r3.x + w + w2 + 1, y, `\xD7${count4(data.catchphrase.count)}`, { fg: C.orange, bold: true, alpha: ca });
-    y += 2;
-  }
-  if (data.awards.length && y < r3.y + r3.h) {
-    const aa = appear(tiles.length + 3);
-    let ax = r3.x;
-    for (const award of data.awards) {
-      const value = s.share ? award.publicValue : award.value;
-      const need = textWidth(award.title) + textWidth(value) + 6;
-      if (ax + need > r3.x + r3.w) break;
-      ax += c.text(ax, y, s.caps.unicode ? "\u25B2 " : "* ", { fg: C.orange, alpha: aa });
-      ax += c.text(ax, y, award.title.toLowerCase() + " ", { fg: C.gray, alpha: aa });
-      ax += c.text(ax, y, value, { fg: C.cream, bold: true, alpha: aa }) + 3;
-    }
-  }
-  return busy;
-}
 function axisLabel(x) {
   if (typeof x === "number") return x >= 0 && x <= 23 && Number.isInteger(x) ? x === 0 ? "12a" : x === 12 ? "12p" : x < 12 ? `${x}a` : `${x - 12}p` : String(x);
   const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(x);
-  if (day) return `${MONTHS7[Number(day[2]) - 1]} ${Number(day[3])}`;
+  if (day) return `${MONTHS8[Number(day[2]) - 1]} ${Number(day[3])}`;
   const month = /^(\d{4})-(\d{2})$/.exec(x);
-  if (month) return MONTHS7[Number(month[2]) - 1];
+  if (month) return MONTHS8[Number(month[2]) - 1];
   const week = /^(\d{4})-W(\d{2})$/.exec(x);
   if (week) return `w${Number(week[2])}`;
   return x;
@@ -45604,7 +48098,7 @@ function insightBody(s, data, r3) {
   if (chart2.type === "line" && points.length >= 3 && typeof points[0].x === "string" && /^\d{4}-\d{2}$/.test(points[0].x)) return area(s, points, r3, chart2.highlight, chart2.unit);
   return columns(s, points, r3, chart2.highlight, chart2.unit);
 }
-var TIER_LABEL, MONTHS7;
+var MONTHS8;
 var init_finale = __esm({
   "packages/cli/src/audit-ui/cards/finale.ts"() {
     "use strict";
@@ -45613,9 +48107,1504 @@ var init_finale = __esm({
     init_font();
     init_motion();
     init_format3();
-    init_time();
+    MONTHS8 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  }
+});
+
+// packages/cli/src/audit-ui/cards/cover.ts
+function coverBody(s, data, r3) {
+  const { c, t } = s;
+  let busy = t < 1600;
+  const glowColor = data.tier === "legendary" ? GOLD : data.tier === "epic" ? C.orange : data.tier === "rare" ? C.peach : C.slate;
+  const big = s.tier.id !== "S" && s.caps.unicode;
+  const letterW = big ? 4 : 1;
+  const silW = data.words.reduce((a2, n2) => a2 + n2 * letterW, 0) + (data.words.length - 1) * (big ? 2 : 1);
+  const width = Math.min(r3.w, silW + 8);
+  const h = big ? 7 : 3;
+  const x0 = r3.x + Math.max(0, Math.floor((r3.w - width) / 2));
+  const total2 = h + 3 + (big ? 5 : 2);
+  const y0 = r3.y + Math.max(0, Math.floor((r3.h - total2) / 2) - 1);
+  const pulse = s.caps.motion ? 0.55 + 0.45 * Math.sin(Math.min(t, 1600) / 1600 * Math.PI * 2.5) : 1;
+  const a = seg2(t, 100, 400, easeOutCubic);
+  box(c, { x: x0, y: y0, w: width, h }, fade(mix(C.coal, glowColor, pulse), a), { rounded: false, ascii: !s.caps.unicode });
+  let x = x0 + 4;
+  const rows = big ? 3 : 1;
+  const sy = y0 + Math.floor((h - rows) / 2);
+  data.words.forEach((n2, wi) => {
+    for (let i = 0; i < n2; i++) {
+      const k = seg2(t, 200 + (wi * 4 + i) * 35, 200);
+      for (let yy = 0; yy < rows; yy++) for (let xx = 0; xx < letterW - (big ? 1 : 0); xx++) c.put(x + xx, sy + yy, s.caps.unicode ? "\u2593" : "#", fade(mix(C.coal, glowColor, 0.25), k));
+      x += letterW;
+    }
+    x += big ? 2 : 1;
+  });
+  const label4 = data.tier ? `${data.tier.toUpperCase()} \xB7 LOCKED` : "LOCKED";
+  const la = seg2(t, 700, 300);
+  textCenter(c, x0 + width / 2, y0 + h, ` ${s.caps.unicode ? "\u25C6" : "*"} ${label4} `, { fg: glowColor, bold: true, alpha: la });
+  const ny = y0 + h + 3;
+  if (ny + 4 <= r3.y + r3.h && data.numbers.length) {
+    const n2 = data.numbers.length;
+    const colW = Math.floor(r3.w / n2);
+    data.numbers.forEach((num7, i) => {
+      const k = seg2(t, 600 + i * 180, 450, easeOutBack);
+      busy ||= k < 1;
+      const cx = r3.x + colW * i + colW / 2;
+      const pixel = s.caps.color !== "none" && s.caps.unicode && bigSupported(num7.value) && bigWidth(num7.value) <= colW - 2 && s.tier.id !== "S";
+      if (pixel) {
+        const w = bigWidth(num7.value);
+        drawBig(c, Math.round(cx - w / 2), ny, num7.value, { color: (_x, py) => fade(mix(C.cream, C.orange, py / 4), Math.min(1, k)), dy: () => Math.round((1 - Math.min(1, k)) * 2) });
+        textCenter(c, cx, ny + 4, s.tier.id === "L" ? spaced(num7.label) : num7.label.toUpperCase(), { fg: C.gray, alpha: Math.min(1, k) });
+      } else {
+        textCenter(c, cx, ny, num7.value, { fg: C.orange, bold: true, alpha: Math.min(1, k) });
+        textCenter(c, cx, ny + 1, num7.label, { fg: C.gray, alpha: Math.min(1, k) });
+      }
+    });
+  }
+  return busy;
+}
+var GOLD;
+var init_cover = __esm({
+  "packages/cli/src/audit-ui/cards/cover.ts"() {
+    "use strict";
+    init_color();
+    init_draw();
+    init_font();
+    init_motion();
+    GOLD = hx("ffd27a");
+  }
+});
+
+// packages/cli/src/audit-ui/cards/spend.ts
+function spendBody(s, sp, r3) {
+  const { c, t, tier } = s;
+  let busy = t < 1800;
+  const pixel = s.caps.color !== "none" && s.caps.unicode;
+  const side = r3.w >= 90;
+  const leftW = side ? Math.min(44, Math.floor(r3.w * 0.4)) : r3.w;
+  let y = r3.y;
+  const value = "$" + count4(Math.round(countUp(sp.measured, t, 100, 1100)));
+  const final = "$" + count4(Math.round(sp.measured));
+  const scale2 = tier.id === "L" && bigWidth(final, 2) <= leftW && r3.h >= 18 ? 2 : 1;
+  if (pixel && bigWidth(final, scale2) <= leftW) {
+    drawBig(c, r3.x, y, value, { scale: scale2, color: (_x, py) => mix(C.cream, C.orange, py / (5 * scale2 - 1)) });
+    y += scale2 === 2 ? 6 : 4;
+  } else {
+    c.text(r3.x, y, final, { fg: C.orange, bold: true });
+    y += 2;
+  }
+  const a = seg2(t, 600, 400);
+  c.text(r3.x, y++, "lifetime, measured \xB7 API list prices", { fg: C.gray, alpha: a }, leftW);
+  y++;
+  const line = (label4, v, extra = "", color = C.cream) => {
+    if (y >= r3.y + r3.h) return;
+    c.text(r3.x, y, label4, { fg: C.gray, alpha: a });
+    const w = c.text(r3.x + 16, y, v, { fg: color, bold: true, alpha: a });
+    if (extra) c.text(r3.x + 17 + w, y, extra, { fg: C.slate, alpha: a }, leftW - 17 - w);
+    y++;
+  };
+  if (sp.recovered) line("+ recovered", money2(sp.recovered), "from usage counters", C.peach);
+  if (sp.estimated) line("\u2248 older prompts", `${money2(sp.estimated.low)}\u2013${money2(sp.estimated.high).slice(1)}`, `est., ${count4(sp.estimated.prompts)} prompts`, C.peach);
+  if (sp.recovered || sp.estimated) y++;
+  if (sp.thisMonth !== null) line("this month", money2(sp.thisMonth));
+  if (sp.perDay !== null) line("per active day", money2(sp.perDay));
+  if (sp.priciestDay) line("priciest day", money2(sp.priciestDay.usd), shortDate2(sp.priciestDay.day, true));
+  const hundred = sp.days.filter((d) => d.usd >= 100).length;
+  if (hundred) line("$100+ days", count4(hundred));
+  const cx = side ? r3.x + leftW + 4 : r3.x;
+  const cw = side ? r3.x + r3.w - cx : r3.w;
+  let cy = side ? r3.y : y + 1;
+  const room = r3.y + r3.h - cy;
+  if (sp.months.length >= 2 && room >= 6) {
+    const barH = Math.max(3, Math.min(side ? 12 : 6, room - (sp.days.length ? 8 : 3)));
+    busy = monthBars(s, sp, { x: cx, y: cy, w: cw, h: barH + 2 }) || busy;
+    cy += barH + 3;
+  }
+  if (sp.days.length && r3.y + r3.h - cy >= 6) busy = heatStrip(s, sp.days, { x: cx, y: cy, w: cw, h: r3.y + r3.h - cy }) || busy;
+  return busy;
+}
+function monthBars(s, sp, r3) {
+  const { c, t } = s;
+  const months = sp.months.slice(-12);
+  const n2 = months.length;
+  const colW = Math.max(2, Math.min(7, Math.floor(r3.w / n2)));
+  const barW = Math.max(1, colW - 1);
+  const h = r3.h - 2;
+  const bottom = r3.y + 1 + h;
+  const max2 = Math.max(...months.map((m) => m.measured + m.extra), 1e-9);
+  const pixel = s.caps.color === "truecolor" || s.caps.color === "256";
+  c.text(r3.x, r3.y, s.tier.id === "L" ? spaced("by month") : "BY MONTH", { fg: C.gray });
+  const legend = months.some((m) => m.extra > 0) ? s.caps.unicode ? "\u2588 measured  \u2591 recovered / est." : "# measured  : recovered / est." : "";
+  if (legend) textRight(c, r3.x + Math.min(r3.w, n2 * colW), r3.y, legend, { fg: C.slate });
+  const peak = months.reduce((a, m, i) => m.measured > months[a].measured ? i : a, 0);
+  let busy = false;
+  months.forEach((m, i) => {
+    const k = seg2(t, 400 + i * 60, 500, easeOutCubic);
+    busy ||= k < 1;
+    const x = r3.x + i * colW;
+    const total2 = (m.measured + m.extra) / max2 * h * 2 * k;
+    const solid = m.measured / max2 * h * 2 * k;
+    const color = i === peak ? C.cream : C.orange;
+    if (pixel) {
+      for (let py = 0; py < Math.round(total2); py++) for (let b2 = 0; b2 < barW; b2++) c.px(x + b2, (bottom + 1) * 2 - 1 - py, py < Math.max(1, Math.round(solid)) ? color : mix(C.ink, C.peach, 0.35));
+    } else {
+      const cells = Math.round(total2 / 2), solidCells = Math.max(m.measured > 0 ? 1 : 0, Math.round(solid / 2));
+      for (let cy = 0; cy < cells; cy++) for (let b2 = 0; b2 < barW; b2++) c.put(x + b2, bottom - cy, cy < solidCells ? s.caps.unicode ? "\u2588" : "#" : s.caps.unicode ? "\u2591" : ":", cy < solidCells ? color : C.peach);
+    }
+    if (colW >= 4 || i % 2 === 0 || i === n2 - 1) c.text(x, bottom + 1, monthLabel(m.month), { fg: i === peak ? C.orange : C.slate }, colW);
+  });
+  const pk = months[peak];
+  const la = seg2(t, 1200, 300);
+  const label4 = money2(pk.measured);
+  const px = Math.min(r3.x + peak * colW, r3.x + n2 * colW - textWidth(label4));
+  const ty = bottom - Math.ceil((pk.measured + pk.extra) / max2 * h) - 1;
+  if (ty > r3.y) c.text(px, ty, label4, { fg: C.cream, bold: true, alpha: la });
+  return busy || la < 1;
+}
+function heatStrip(s, days, r3) {
+  const { c, t } = s;
+  const byDay = new Map(days.map((d) => [d.day, d.usd]));
+  const last2 = /* @__PURE__ */ new Date(days.at(-1).day + "T12:00:00Z");
+  const weeks = Math.min(53, Math.max(4, r3.w - 4));
+  const start = new Date(last2);
+  start.setUTCDate(start.getUTCDate() - (last2.getUTCDay() + 6) % 7 - (weeks - 1) * 7);
+  const max2 = Math.max(...days.map((d) => d.usd), 1e-9);
+  c.text(r3.x, r3.y, s.tier.id === "L" ? spaced("every day") : "EVERY DAY", { fg: C.gray });
+  const pixel = s.caps.color === "truecolor" || s.caps.color === "256";
+  const gy = r3.y + 1;
+  const k = seg2(t, 700, 900, easeOutCubic);
+  for (let w = 0; w < weeks; w++) {
+    if (w / weeks > k) break;
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(start);
+      day.setUTCDate(start.getUTCDate() + w * 7 + d);
+      if (day > last2) continue;
+      const iso3 = day.toISOString().slice(0, 10);
+      const usd3 = byDay.get(iso3) ?? 0;
+      const v = usd3 > 0 ? Math.sqrt(usd3 / max2) : 0;
+      if (pixel) c.px(r3.x + 4 + w, gy * 2 + d, usd3 > 0 ? heat(0.2 + v * 0.8) : mix(C.ink, C.coal, 0.6));
+      else if (d % 2 === 0) {
+        const ch = usd3 <= 0 ? "\xB7" : v > 0.66 ? "\u2588" : v > 0.33 ? "\u2593" : "\u2591";
+        c.put(r3.x + 4 + w, gy + d / 2, s.caps.unicode ? ch : usd3 <= 0 ? "." : v > 0.5 ? "#" : "+", C.orange);
+      }
+    }
+  }
+  c.text(r3.x, gy, "Mon", { fg: C.slate });
+  c.text(r3.x, gy + 3, "Sun", { fg: C.slate });
+  const busiest = [...days].sort((a, b2) => b2.usd - a.usd)[0];
+  const la = seg2(t, 1500, 300);
+  if (r3.h >= 6) c.text(r3.x + 4, gy + 4, `brightest: ${shortDate2(busiest.day, true)} \xB7 ${money2(busiest.usd)}`, { fg: C.slate, alpha: la }, r3.w - 4);
+  return k < 1 || la < 1;
+}
+function erasBody(s, eras2, r3) {
+  const { c, t } = s;
+  if (!eras2.length) return false;
+  const labels3 = [...new Set(eras2.map((e) => e.label))];
+  const colW = Math.max(2, Math.min(8, Math.floor(r3.w / eras2.length)));
+  const y = r3.y + 1;
+  const k = seg2(t, 200, 900, easeOutCubic);
+  eras2.forEach((e, i) => {
+    if (i / eras2.length > k) return;
+    const color = ERA_COLORS[labels3.indexOf(e.label) % ERA_COLORS.length];
+    for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < colW - 1; xx++) c.put(r3.x + i * colW + xx, y + yy, s.caps.unicode ? "\u2588" : "#", color);
+    if (colW >= 4 || i % 2 === 0) c.text(r3.x + i * colW, y + 3, monthLabel(e.month), { fg: C.slate }, colW);
+  });
+  let lx = r3.x;
+  const la = seg2(t, 1100, 300);
+  labels3.forEach((label4, i) => {
+    lx += c.text(lx, y + 5, s.caps.unicode ? "\u25A0 " : "# ", { fg: ERA_COLORS[i % ERA_COLORS.length], alpha: la });
+    lx += c.text(lx, y + 5, label4, { fg: C.cream, alpha: la }) + 3;
+  });
+  return k < 1 || la < 1;
+}
+var ERA_COLORS;
+var init_spend = __esm({
+  "packages/cli/src/audit-ui/cards/spend.ts"() {
+    "use strict";
+    init_color();
+    init_draw();
+    init_font();
+    init_motion();
+    init_format3();
+    init_deck();
+    ERA_COLORS = [C.orange, C.peach, C.cream, C.ember, C.gray];
+  }
+});
+
+// packages/cli/src/audit-ui/cards/reveal.ts
+function revealDone(t) {
+  return t >= T2.settle;
+}
+function revealExpression(t) {
+  if (t < T2.slam) return Math.floor(t / 180) % 2 === 0 ? "blink" : "idle";
+  if (t < T2.slam + 600) return "shocked";
+  return "proud";
+}
+function bandWord(band2) {
+  return band2 >= 0.95 ? "off the chart" : band2 >= 0.8 ? "very high" : band2 >= 0.6 ? "high" : "notable";
+}
+function titleLines(title, width, scale2 = 1) {
+  const words8 = title.toUpperCase().split(/\s+/);
+  const lines = [];
+  let line = "";
+  for (const word of words8) {
+    const next = line ? `${line} ${word}` : word;
+    if (bigWidth(next, scale2) <= width) line = next;
+    else {
+      if (line) lines.push(line);
+      line = word;
+      if (bigWidth(word, scale2) > width) return null;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+function archetypeBody(s, data, r3, mascot) {
+  const { c, tier } = s;
+  const t = s.t;
+  const L = tier.id === "L";
+  const uni = s.caps.unicode;
+  const pixel = s.caps.color !== "none" && s.caps.unicode;
+  let busy = t < T2.settle;
+  const end = r3.y + r3.h;
+  let y = r3.y;
+  const ev = data.deciding;
+  if (ev.length) {
+    const head = seg2(t, 0, 250);
+    c.text(r3.x, y, "the evidence", { fg: C.gray, italic: true, alpha: head });
+    y += 1;
+    const maxCol = Math.floor(r3.w * 0.45);
+    const labelW = Math.min(maxCol, Math.max(...ev.map((m) => textWidth(m.display))) + 2);
+    const rightLimit = Math.min(r3.x + r3.w, mascot.y + mascot.h > y ? mascot.x - 2 : r3.x + r3.w);
+    const barW = Math.max(8, Math.min(32, rightLimit - r3.x - labelW - 16));
+    const step = L && r3.h >= 24 ? 2 : 1;
+    ev.forEach((m, i) => {
+      if (y >= end) return;
+      const start = T2.evidence + i * 450;
+      const k = seg2(t, start, 450, easeOutCubic);
+      const la = seg2(t, start - 100, 200);
+      const wraps = textWidth(m.display) > labelW - 2;
+      if (wraps) {
+        c.text(r3.x, y, m.display, { fg: C.cream, alpha: la }, r3.w);
+        y += 1;
+        if (y >= end) return;
+      } else c.text(r3.x, y, m.display, { fg: C.cream, alpha: la });
+      const bx = r3.x + (wraps ? 2 : labelW);
+      const color = i === 0 ? C.orange : fade(C.orange, 0.7);
+      bar8(c, bx, y, barW, m.band * k, s.caps.color === "none" ? C.cream : color, !uni, la > 0 ? fade(C.coal, la) : void 0);
+      const wa = seg2(t, start + 380, 200);
+      const pct3 = `${Math.round(countUp(m.band * 100, t, start, 450))}`;
+      if (wa > 0) c.text(bx + barW + 2, y, bandWord(m.band), { fg: m.band >= 0.8 ? C.peach : C.gray, bold: m.band >= 0.95, alpha: wa });
+      else if (k > 0 && k < 1) c.text(bx + barW + 2, y, pct3, { fg: C.slate });
+      y += step;
+    });
+    if (step === 1) y += 1;
+  }
+  const frameStyle = data.tier === "epic" || data.tier === "legendary" ? "double" : data.tier === "rare" ? "single" : "none";
+  const padX = 3;
+  const avoidMascot = (yy) => mascot.w > 0 && yy < mascot.y + mascot.h ? mascot.x - 2 : r3.x + r3.w;
+  const slotW = avoidMascot(y) - r3.x - padX * 2 - 2;
+  const titleW = Math.min(slotW, r3.w - padX * 2 - 2);
+  const big2 = L && pixel && bigSupported(data.title) ? titleLines(data.title, titleW, 2) : null;
+  const scale2 = big2 && big2.length === 1 && bigHeight(2) + 4 <= end - y - 10 ? 2 : 1;
+  const lines = pixel && bigSupported(data.title) ? titleLines(data.title, titleW, scale2) : null;
+  const useBig = !!lines && lines.length <= 2 && lines.length * (bigHeight(scale2) + 1) + 1 + 2 <= end - y - 4;
+  const titleRows = useBig ? lines.length * (bigHeight(scale2) + 1) - 1 : 1;
+  const padY = L && end - y >= 26 ? 1 : 0;
+  const innerW = useBig ? Math.max(...lines.map((l) => bigWidth(l, scale2))) : textWidth(spacedTitle(data.title, uni));
+  const frame = { x: r3.x, y: y + 1, w: Math.min(r3.w, innerW + padX * 2 + 2), h: titleRows + 2 + padY * 2 };
+  const ty = frame.y + 1 + padY;
+  const tx = frame.x + 1 + padX;
+  const rollT = t - T2.roll;
+  const runners = data.runners;
+  if (t < T2.slam && runners.length && s.caps.motion) {
+    const steps = runners.slice(0, 3).reverse();
+    const durs = steps.map((_, i) => i === steps.length - 1 ? 350 : 220);
+    let acc = 0, idx = -1, local = 0;
+    for (let i = 0; i < steps.length; i++) {
+      if (rollT >= acc && rollT < acc + durs[i]) {
+        idx = i;
+        local = (rollT - acc) / durs[i];
+      }
+      acc += durs[i];
+    }
+    if (rollT >= 0 && idx < 0) {
+      idx = steps.length - 1;
+      local = 1;
+    }
+    if (idx >= 0) {
+      const name = steps[idx].title;
+      const lift = Math.round((1 - easeOutCubic(local)) * 2);
+      const alpha = 0.35 + 0.25 * Math.sin(Math.PI * local);
+      drawTitle(s, tx, ty, name, useBig ? scale2 : 0, titleW, (_px, py) => fade(mix(C.slate, C.gray, py / 4), alpha), lift);
+      c.text(tx, frame.y + frame.h, idx === steps.length - 1 ? "so close\u2026" : "maybe\u2026", { fg: C.slate, alpha });
+    }
+  } else if (t >= T2.slam || !s.caps.motion) {
+    const slam = s.caps.motion ? seg2(t, T2.slam, 380, easeOutBack) : 1;
+    const drop = Math.round((1 - Math.min(1, slam)) * -6);
+    const impact = s.caps.motion && t >= T2.slam + 80 && t < T2.slam + 150;
+    if (impact && (s.caps.color === "truecolor" || s.caps.color === "256")) {
+      for (let yy = frame.y; yy < frame.y + frame.h; yy++) for (let xx = frame.x; xx < frame.x + frame.w; xx++) c.put(xx, yy, " ", C.cream, mix(C.ink, C.cream, 0.14));
+    }
+    const n2 = passes(data.tier);
+    const passDur = 400;
+    let sweep = -1;
+    for (let p = 0; p < n2; p++) {
+      const k = (t - T2.shimmer - p * passDur) / passDur;
+      if (k >= 0 && k < 1) sweep = k;
+    }
+    const w = innerW;
+    const goldShift = data.tier === "legendary" ? clamp012((t - T2.shimmer) / (n2 * passDur)) : 0;
+    drawTitle(s, tx, ty, data.title, useBig ? scale2 : 0, titleW, (px, py) => {
+      let base3 = mix(C.cream, C.orange, py / 4);
+      if (data.tier === "legendary") base3 = mix(base3, mix(GOLD2, C.cream, py / 8), s.caps.motion ? goldShift : 1);
+      if (sweep >= 0 && s.caps.color !== "16") {
+        const band2 = Math.abs(px + py * 2 - sweep * (w * 2 + 20) + 10);
+        if (band2 < 4) return mix(base3, C.white, 0.72 * (1 - band2 / 4));
+      }
+      return base3;
+    }, drop, sweep >= 0 && s.caps.color === "16" ? sweep * (w + 10) : null);
+    if (frameStyle !== "none") {
+      const fk = s.caps.motion ? seg2(t, T2.slam + 60, 300, (k) => k) : 1;
+      const color = data.tier === "legendary" ? GOLD2 : data.tier === "epic" ? C.orange : C.peach;
+      drawFrame(s, frame, frameStyle, color, fk);
+    }
+    sparkles(s, frame, data.tier, t, r3);
+  }
+  y = frame.y + frame.h + 1;
+  if (y < end && data.tier) {
+    const k = s.caps.motion ? spring((t - T2.stamp) / 1e3, 7, 0.5) : 1;
+    if (t >= T2.stamp || !s.caps.motion) {
+      const label4 = `${uni ? "\u2605" : "*"} ${TIER_LABEL[data.tier]} ${uni ? "\u2605" : "*"}`;
+      const pad4 = Math.max(1, Math.round(3 - 2 * Math.min(1, k)));
+      const flash = s.caps.motion && t - T2.stamp < 60;
+      const bg = flash ? C.cream : data.tier === "legendary" ? GOLD2 : data.tier === "epic" ? C.orange : data.tier === "rare" ? C.peach : C.slate;
+      const text2 = " ".repeat(pad4) + label4 + " ".repeat(pad4);
+      const bw = c.text(r3.x, y, text2, { fg: C.ink, bg, bold: true });
+      const sa = seg2(t, T2.stamp + 150, 300);
+      let x = r3.x + bw + 3;
+      if (data.subRole) x += c.text(x, y, data.subRole, { fg: C.peach, italic: true, alpha: sa }, r3.x + r3.w - x) + 3;
+      const [first, second] = data.runners;
+      const named2 = !!first && !!data.subRole?.includes(first.title);
+      const almost = named2 ? second ? `also close: ${second.title}` : "" : first ? `runner-up: ${first.title}` : "";
+      if (almost && x + 10 < r3.x + r3.w) {
+        const text22 = almost;
+        if (x + textWidth(text22) <= r3.x + r3.w) textRight(c, r3.x + r3.w, y, text22, { fg: C.slate, alpha: sa });
+      }
+    }
+    y += 2;
+  }
+  const lineAt = (i) => seg2(t, T2.profile + i * 120, 260);
+  let li = 0;
+  if (data.tagline && y < end) {
+    c.text(r3.x, y, `\u201C${data.tagline}\u201D`, { fg: C.peach, italic: true, alpha: lineAt(li++) }, r3.w);
+    y += 2;
+  }
+  if (y < end) {
+    const room = Math.max(1, Math.min(L ? 3 : 2, end - y - 2));
+    for (const line of wrapText(data.profile, Math.min(r3.w, 96), room)) {
+      if (y >= end) break;
+      c.text(r3.x, y++, line, { fg: C.cream, alpha: lineAt(li++) });
+    }
+    y += 1;
+  }
+  if (data.code && y < end) {
+    const ca = seg2(t, T2.profile + 450, 300);
+    const letters = [...data.code];
+    const shown = s.caps.motion ? Math.min(letters.length, Math.max(0, Math.floor((t - T2.profile - 450) / 110) + 1)) : letters.length;
+    let x = r3.x + c.text(r3.x, y, "your code  ", { fg: C.slate, alpha: ca });
+    const dot = uni ? " \xB7 " : " ";
+    x += c.text(x, y, letters.slice(0, shown).join(dot), { fg: C.orange, bold: true, alpha: ca }) + 3;
+    if (data.codeWords.length && shown === letters.length) x += c.text(x, y, data.codeWords.join(uni ? " \xB7 " : ", "), { fg: C.gray, alpha: ca }, r3.x + r3.w - x) + 4;
+    const note = data.tier ? `${data.tier} = ${data.tier === "common" ? "your deciding numbers sit mid-scale" : "your deciding numbers sit near the top of their fixed scales"}` : "";
+    if (note && L && x + textWidth(note) <= r3.x + r3.w) c.text(x, y, note, { fg: C.slate, alpha: ca });
+  }
+  return busy;
+}
+function spacedTitle(title, uni) {
+  return title.toUpperCase().split(" ").map((w) => [...w].join(" ")).join("   ");
+}
+function drawTitle(s, x, y, title, scale2, width, colorAt, dyPx, glint16 = null) {
+  const { c } = s;
+  if (scale2 > 0) {
+    const color = (px, py) => colorAt(Math.floor(px / scale2), Math.floor(py / scale2));
+    const lines = titleLines(title, width, scale2) ?? titleLines(title, width) ?? [title.toUpperCase()];
+    const k = titleLines(title, width, scale2) ? scale2 : 1;
+    lines.forEach((line, i) => drawBig(c, x, y + i * (bigHeight(k) + 1), line, { scale: k, color, dy: () => dyPx * k }));
+    if (glint16 !== null) {
+      const col3 = Math.round(x + glint16 - 5);
+      for (let yy = y; yy < y + lines.length * (bigHeight(k) + 1) - 1; yy++) for (let xx = col3; xx < col3 + 2 * k; xx++) {
+        if (!c.inside(xx, yy)) continue;
+        const i = yy * c.w + xx;
+        if (c.ch[i] === " ") continue;
+        c.fg[i] = C.white;
+      }
+    }
+    return;
+  }
+  const text2 = spacedTitle(title, s.caps.unicode);
+  c.text(x, y, text2, { fg: colorAt(0, 0), bold: true }, width + 8);
+}
+function drawFrame(s, r3, style, color, k) {
+  const { c } = s;
+  const uni = s.caps.unicode;
+  const [tl, tr, bl, br, hz, vt] = !uni ? ["+", "+", "+", "+", style === "double" ? "=" : "-", "|"] : style === "double" ? ["\u2554", "\u2557", "\u255A", "\u255D", "\u2550", "\u2551"] : ["\u250C", "\u2510", "\u2514", "\u2518", "\u2500", "\u2502"];
+  const cells = [[r3.x, r3.y, tl]];
+  for (let x = r3.x + 1; x < r3.x + r3.w - 1; x++) cells.push([x, r3.y, hz]);
+  cells.push([r3.x + r3.w - 1, r3.y, tr]);
+  for (let y = r3.y + 1; y < r3.y + r3.h - 1; y++) cells.push([r3.x + r3.w - 1, y, vt]);
+  cells.push([r3.x + r3.w - 1, r3.y + r3.h - 1, br]);
+  for (let x = r3.x + r3.w - 2; x > r3.x; x--) cells.push([x, r3.y + r3.h - 1, hz]);
+  cells.push([r3.x, r3.y + r3.h - 1, bl]);
+  for (let y = r3.y + r3.h - 2; y > r3.y; y--) cells.push([r3.x, y, vt]);
+  const n2 = Math.round(cells.length * clamp012(k));
+  for (let i = 0; i < n2; i++) {
+    const [x, y, ch] = cells[i];
+    const head = n2 < cells.length && i >= n2 - 3;
+    c.put(x, y, ch, head ? C.white : color);
+  }
+}
+function sparkles(s, frame, tier, t, area2) {
+  const n2 = sparkleCount(tier);
+  if (!n2) return;
+  const { c } = s;
+  const glyphs = s.caps.unicode ? TWINKLE_UNI : TWINKLE_ASCII;
+  const color = tier === "legendary" ? GOLD2 : C.peach;
+  for (let i = 0; i < n2; i++) {
+    const side = Math.floor(hash01(i * 7 + 3) * 4);
+    let x, y;
+    if (side < 2) {
+      x = frame.x - 2 + Math.floor(hash01(i * 13 + 1) * (frame.w + 4));
+      y = side === 0 ? frame.y - 1 - Math.floor(hash01(i * 5 + 2) * 2) : frame.y + frame.h + Math.floor(hash01(i * 5 + 2) * 1);
+    } else {
+      y = frame.y + Math.floor(hash01(i * 11 + 4) * frame.h);
+      x = side === 2 ? frame.x - 2 - Math.floor(hash01(i * 3 + 5) * 3) : frame.x + frame.w + 1 + Math.floor(hash01(i * 3 + 5) * 3);
+    }
+    if (x < area2.x || x >= area2.x + area2.w || y < area2.y - 1) continue;
+    if (c.ch[y * c.w + x] !== " ") continue;
+    let glyph2;
+    if (!s.caps.motion || t >= T2.settle) {
+      glyph2 = i % 3 === 0 ? glyphs[2] : null;
+    } else {
+      const born = T2.shimmer + i * 90;
+      const life = (t - born) / 400;
+      glyph2 = life >= 0 && life < 1 ? glyphs[Math.min(4, Math.floor(life * 5))] : null;
+      if (life >= 1 && i % 3 === 0 && t > T2.stamp) glyph2 = glyphs[2];
+    }
+    if (glyph2) c.put(x, y, glyph2, s.caps.color === "16" ? C.cream : color);
+  }
+}
+var GOLD2, TIER_LABEL, T2, passes, sparkleCount, TWINKLE_UNI, TWINKLE_ASCII;
+var init_reveal = __esm({
+  "packages/cli/src/audit-ui/cards/reveal.ts"() {
+    "use strict";
+    init_color();
+    init_draw();
+    init_font();
+    init_motion();
+    GOLD2 = hx("ffd27a");
     TIER_LABEL = { common: "COMMON", rare: "RARE", epic: "EPIC", legendary: "LEGENDARY" };
-    MONTHS7 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    T2 = {
+      evidence: 300,
+      roll: 1950,
+      slam: 2850,
+      shimmer: 3250,
+      stamp: 4450,
+      profile: 4800,
+      settle: 5800
+    };
+    passes = (tier) => tier === "legendary" ? 3 : tier === "epic" ? 2 : tier === "rare" ? 1 : 0;
+    sparkleCount = (tier) => tier === "legendary" ? 16 : tier === "epic" ? 10 : tier === "rare" ? 6 : 0;
+    TWINKLE_UNI = ["\xB7", "*", "\u2726", "*", "\xB7"];
+    TWINKLE_ASCII = [".", "+", "*", "+", "."];
+  }
+});
+
+// packages/cli/src/audit-ui/cards/poster.ts
+function metalGlyph(tier, uni) {
+  return uni ? tier === "gold" ? "\u2605" : tier === "silver" ? "\u2606" : "\u2727" : tier === "gold" ? "*" : tier === "silver" ? "+" : "-";
+}
+function countUp2(value, k) {
+  if (k >= 1 || !/^\$[\d,]+$/.test(value)) return value;
+  const target = Number(value.replace(/[^\d]/g, ""));
+  if (!(target > 0)) return value;
+  const n2 = Math.max(1, Math.round(target * (COUNT_FROM + (1 - COUNT_FROM) * clamp012(k))));
+  return `$${n2.toLocaleString("en-US")}`;
+}
+function context(s, d) {
+  const ctx = {
+    s,
+    c: s.c,
+    d,
+    th: THEME,
+    uni: s.caps.unicode,
+    pixel: s.caps.color === "truecolor" || s.caps.color === "256",
+    busy: false,
+    grow: (i) => {
+      const k = seg2(s.t, DIAG_AT + i * DIAG_STEP, DIAG_DUR, easeOutCubic);
+      if (k < 1) ctx.busy = true;
+      return k;
+    }
+  };
+  return ctx;
+}
+function drawParts(ctx, x, y, parts) {
+  let cx = x;
+  for (const p of parts) {
+    const style = p.tone === "num" ? { fg: ctx.th.num, bold: true } : p.tone === "name" ? { fg: ctx.th.name, bold: true } : p.tone === "quote" ? { fg: ctx.th.quote, italic: true } : { fg: ctx.th.body };
+    cx += T3(ctx, cx, y, p.text, style);
+  }
+  return cx - x;
+}
+function wrapWords(text2, width) {
+  const out = [];
+  let line = "";
+  for (const word of text2.split(/\s+/)) {
+    const next = line ? `${line} ${word}` : word;
+    if (textWidth(next) <= width) line = next;
+    else {
+      if (line) out.push(line);
+      line = word;
+      if (textWidth(word) > width) return null;
+    }
+  }
+  if (line) out.push(line);
+  return out;
+}
+function titleLines2(title, width, maxLines) {
+  const words8 = title.toUpperCase().split(/\s+/);
+  const lines = [];
+  let line = "";
+  for (const word of words8) {
+    const next = line ? `${line} ${word}` : word;
+    if (bigWidth(next) <= width) line = next;
+    else {
+      if (line) lines.push(line);
+      line = word;
+      if (bigWidth(word) > width) return null;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length <= maxLines ? lines : null;
+}
+function textTitle(title, width) {
+  const sp = (t) => spaced(t);
+  for (const fmt of [sp, (t) => t.toUpperCase()]) {
+    const words8 = title.split(/\s+/);
+    const lines = [];
+    let line = "";
+    let ok = true;
+    for (const word of words8) {
+      const next = line ? `${line} ${word}` : word;
+      if (textWidth(fmt(next)) <= width) line = next;
+      else {
+        if (line) lines.push(line);
+        line = word;
+        if (textWidth(fmt(word)) > width) {
+          ok = false;
+          break;
+        }
+      }
+    }
+    if (line) lines.push(line);
+    if (ok && lines.length <= 2) return lines.map(fmt);
+  }
+  return wrapWords(title.toUpperCase(), width) ?? [title.toUpperCase()];
+}
+function header(ctx, w) {
+  const { d } = ctx;
+  const brand = w >= 70 ? "S L O P I E   A U D I T" : "SLOPIE AUDIT";
+  const right = [d.range, d.code ? `#${d.code}` : null].filter(Boolean).join("  \xB7  ");
+  return {
+    h: 2,
+    draw: (x, y, ww) => {
+      T3(ctx, x, y, brand, { fg: ctx.th.label, bold: true });
+      const rx = x + ww;
+      if (right && textWidth(brand) + 4 + textWidth(right) <= rx - x) T3(ctx, rx - textWidth(right), y, right, { fg: ctx.th.faint });
+      for (let i = x; i < x + ww; i++) put2(ctx, i, y + 1, ctx.uni ? "\u2504" : "-", C.slate);
+    }
+  };
+}
+function taglineOf(ctx) {
+  const t = ctx.d.tagline;
+  if (!t || ctx.s.share && !ctx.d.taglinePublic) return null;
+  return t;
+}
+function identity3(ctx, w, p) {
+  const { d, th } = ctx;
+  const title = d.archetype ?? "your year with agents";
+  const canBig = p.big && ctx.pixel && bigSupported(title);
+  const big = canBig ? titleLines2(title, w, 2) : null;
+  const tLines = big ? null : textTitle(title, w);
+  const titleH = big ? big.length * bigHeight() + (big.length - 1) : tLines.length;
+  const badge = p.badge ? badgeText(ctx) : null;
+  const sub = p.subRole && d.subRole ? d.subRole : null;
+  const badgeLineW = (badge ? textWidth(badge) + 2 : 0) + (badge && sub ? 3 : 0) + (sub ? textWidth(sub) : 0);
+  const subFits = !!sub && badgeLineW <= w;
+  const tag = p.tagline ? taglineOf(ctx) : null;
+  const tagLines = tag ? wrapWords(tag, Math.min(w, 72)) : null;
+  const tagOk = !!tagLines && tagLines.length <= 2;
+  const hasBadgeLine = !!badge || subFits;
+  const h = (p.kicker ? 2 : 0) + titleH + (hasBadgeLine ? 2 : 0) + (tagOk ? tagLines.length + (hasBadgeLine ? 0 : 1) : 0);
+  return {
+    h,
+    draw: (x, y0, ww) => {
+      const cx = x + Math.floor(ww / 2);
+      let y = y0;
+      if (p.kicker) {
+        const k = ww >= 60 ? spaced("this year you've been") : "THIS YEAR YOU'VE BEEN";
+        T3(ctx, cx - Math.floor(textWidth(k) / 2), y, k, { fg: th.faint });
+        y += 2;
+      }
+      if (big) {
+        for (const line of big) {
+          const lw = bigWidth(line);
+          drawBig(ctx.c, cx - Math.floor(lw / 2), y, line, { color: (px, py) => th.title(px, py, lw, d.tier === "legendary") });
+          y += bigHeight() + 1;
+        }
+        y -= 1;
+      } else {
+        for (const line of tLines) {
+          T3(ctx, cx - Math.floor(textWidth(line) / 2), y, line, { fg: C.orange, bold: true });
+          y++;
+        }
+      }
+      if (hasBadgeLine) {
+        y += 1;
+        const lw = subFits ? badgeLineW : badge ? textWidth(badge) + 2 : 0;
+        let bx = cx - Math.floor(lw / 2);
+        if (badge) {
+          ctx.c.text(bx, y, ` ${badge} `, { fg: C.ink, bg: tierColor(d.tier), bold: true });
+          bx += textWidth(badge) + 2 + 3;
+        }
+        if (subFits) T3(ctx, bx, y, sub, { fg: th.quote, italic: true });
+        y += 1;
+      } else y += tagOk ? 1 : 0;
+      if (tagOk) for (const line of tagLines) {
+        T3(ctx, cx - Math.floor(textWidth(line) / 2), y, line, { fg: th.faint, italic: true });
+        y++;
+      }
+    }
+  };
+}
+function price(ctx, w, big) {
+  const hero = ctx.d.heroes.find((h) => h.label === "at API prices");
+  if (!hero) return null;
+  const okBig = big && ctx.pixel && bigSupported(hero.value) && bigWidth(hero.value) <= w;
+  const shown = () => countUp2(hero.value, ctx.grow(0));
+  if (okBig) {
+    return {
+      h: bigHeight() + 1,
+      draw: (x, y, ww) => {
+        const cx = x + Math.floor(ww / 2);
+        const fw = bigWidth(hero.value);
+        const v = shown();
+        const vw = bigWidth(v);
+        drawBig(ctx.c, cx - Math.floor(fw / 2) + (fw - vw), y, v, { color: (_px, py) => mix(C.cream, C.orange, py / 5) });
+        const label4 = "at API prices";
+        T3(ctx, cx - Math.floor(textWidth(label4) / 2), y + bigHeight(), label4, { fg: ctx.th.faint });
+      }
+    };
+  }
+  const line = `${hero.value} at API prices`;
+  if (textWidth(line) > w) return null;
+  return {
+    h: 1,
+    draw: (x, y, ww) => {
+      const lx = x + Math.floor((ww - textWidth(line)) / 2);
+      const v = shown();
+      T3(ctx, lx + textWidth(hero.value) - textWidth(v), y, v, { fg: ctx.th.num, bold: true });
+      T3(ctx, lx + textWidth(hero.value) + 1, y, "at API prices", { fg: ctx.th.faint });
+    }
+  };
+}
+function statCells2(ctx, opts) {
+  const { d, th } = ctx;
+  const cells = [];
+  for (const key2 of ["prompts", "days"]) {
+    const h = d.heroes.find((x) => key2 === "days" ? x.label === "days" || x.label === "day" : x.label === "prompts");
+    if (!h) continue;
+    cells.push({ w: Math.max(textWidth(h.value), textWidth(h.label)), rows: [(x, y) => T3(ctx, x, y, h.value, { fg: th.ink, bold: true }), (x, y) => T3(ctx, x, y, h.label, { fg: th.faint })] });
+  }
+  const cp = opts.catchphrase && !ctx.s.share ? d.catchphrase : null;
+  if (cp) {
+    const q2 = `\u201C${cp.phrase}\u201D`;
+    const n2 = ` \xD7${count4(cp.count)}`;
+    const label4 = "your catchphrase";
+    cells.push({
+      w: Math.max(textWidth(q2 + n2), textWidth(label4)),
+      rows: [
+        (x, y) => {
+          const qw = T3(ctx, x, y, q2, { fg: th.quote, italic: true, bold: true });
+          T3(ctx, x + qw, y, n2, { fg: th.num, bold: true });
+        },
+        (x, y) => T3(ctx, x, y, label4, { fg: th.faint })
+      ]
+    });
+  }
+  const clock3 = opts.clock ? d.viz.clock : null;
+  if (clock3 && ctx.uni) {
+    const angry = `${ctx.uni ? "\u2620" : "x"} ${hourLabel(clock3.angry)} angriest`;
+    const saint = `${ctx.uni ? "\u273F" : "o"} ${hourLabel(clock3.saint)} saint`;
+    const legend = `${angry}  ${saint}`;
+    const max2 = Math.max(...clock3.hours);
+    cells.push({
+      w: Math.max(24, textWidth(legend)),
+      rows: [
+        (x, y) => {
+          const k = ctx.grow(2);
+          for (let h = 0; h < 24; h++) {
+            const v = max2 > 0 ? clock3.hours[h] / max2 : 0;
+            const shownH = clamp012(k * 24 - h);
+            const lvl = Math.max(0, Math.min(7, Math.round(v * shownH * 7)));
+            const ch = "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588"[lvl];
+            const fg = h === clock3.angry ? th.hot : h === clock3.saint ? C.cream : th.dim;
+            put2(ctx, x + h, y, shownH > 0 ? ch : " ", fg);
+          }
+        },
+        // The hour axis, inside the box: each label starts under its own hour column.
+        (x, y) => {
+          for (const [h, l] of [[0, "12a"], [6, "6a"], [12, "12p"], [18, "6p"]]) T3(ctx, x + h, y, l, { fg: th.faint });
+        },
+        (x, y) => {
+          const aw = T3(ctx, x, y, angry, { fg: th.hot, bold: true });
+          T3(ctx, x + aw + 2, y, saint, { fg: C.cream });
+        }
+      ]
+    });
+  }
+  return cells;
+}
+function statBox(ctx, w, opts) {
+  let cells = statCells2(ctx, opts);
+  const natural = (cs) => cs.reduce((s, c) => s + c.w + CELL_PAD * 2, 0) + cs.length + 1;
+  while (cells.length && natural(cells) > w) cells = cells.slice(0, -1);
+  if (!cells.length) return null;
+  const inner = Math.max(...cells.map((c) => c.rows.length));
+  const H = inner + 2;
+  return {
+    h: H,
+    draw: (x, y, ww) => {
+      const { th, uni } = ctx;
+      const spare = Math.max(0, Math.min(ww, Math.max(natural(cells), Math.floor(ww * 0.86))) - natural(cells));
+      const widths = cells.map((c, i) => c.w + CELL_PAD * 2 + Math.floor(spare / cells.length) + (i < spare % cells.length ? 1 : 0));
+      const total2 = widths.reduce((s, v) => s + v, 0) + cells.length + 1;
+      let cx = x + Math.floor((ww - total2) / 2);
+      const hz = uni ? "\u2500" : "-";
+      const col3 = th.boxRule;
+      const side = (sx) => {
+        for (let j = 1; j <= inner; j++) put2(ctx, sx, y + j, uni ? "\u2502" : "|", col3);
+      };
+      put2(ctx, cx, y, uni ? "\u256D" : "+", col3);
+      put2(ctx, cx, y + H - 1, uni ? "\u2570" : "+", col3);
+      side(cx);
+      cells.forEach((cell, i) => {
+        const cw = widths[i];
+        for (let k = 1; k <= cw; k++) {
+          put2(ctx, cx + k, y, hz, col3);
+          put2(ctx, cx + k, y + H - 1, hz, col3);
+        }
+        const ix = cx + 1 + Math.floor((cw - cell.w) / 2);
+        const top = y + 1 + Math.floor((inner - cell.rows.length) / 2);
+        cell.rows.forEach((row2, j) => row2(ix, top + j));
+        cx += cw + 1;
+        const last2 = i === cells.length - 1;
+        put2(ctx, cx, y, uni ? last2 ? "\u256E" : "\u252C" : "+", col3);
+        put2(ctx, cx, y + H - 1, uni ? last2 ? "\u256F" : "\u2534" : "+", col3);
+        side(cx);
+      });
+    }
+  };
+}
+function hbarCells(ctx, x, y, width, frac, color) {
+  const eighths = Math.round(clamp012(frac) * width * 8);
+  const full = Math.floor(eighths / 8), rest = eighths % 8;
+  for (let i = 0; i < full; i++) put2(ctx, x + i, y, ctx.uni ? "\u2588" : "#", color);
+  if (rest && full < width) put2(ctx, x + full, y, ctx.uni ? ["", "\u258F", "\u258E", "\u258D", "\u258C", "\u258B", "\u258A", "\u2589"][rest] : "#", color);
+}
+function diagramFor(ctx, fact, w) {
+  const { d, th, uni } = ctx;
+  const v = d.viz;
+  if (!uni) return null;
+  switch (fact.id) {
+    case "manners": {
+      const m = v.manners;
+      if (!m) return null;
+      const left = `\u2665 ${count4(m.thanks)}`, right = `${count4(m.rude)} ${m.word}`;
+      const bw = w - textWidth(left) - textWidth(right) - 2;
+      if (bw < 6) return null;
+      return {
+        rows: 1,
+        draw: (x, y, _w, k) => {
+          T3(ctx, x, y, left, { fg: th.soft, bold: true });
+          const bx = x + textWidth(left) + 1;
+          const nice = Math.max(1, Math.round(bw * m.thanks / (m.thanks + m.rude)));
+          hbarCells(ctx, bx, y, nice, clamp012(k * 3), th.soft);
+          hbarCells(ctx, bx + nice, y, bw - nice, clamp012(k * 1.25 - 0.2), th.hot);
+          T3(ctx, bx + bw + 1, y, right, { fg: th.hot, bold: true });
+        }
+      };
+    }
+    case "mood_drift": {
+      const a = v.arc;
+      if (!a) return null;
+      const per = Math.max(1, Math.min(3, Math.floor((w - textWidth(a.from) - textWidth(a.to) - 2) / a.pcts.length)));
+      const sw = per * a.pcts.length;
+      if (textWidth(a.from) + textWidth(a.to) + 2 + sw > w) return null;
+      const max2 = Math.max(...a.pcts);
+      return {
+        rows: 1,
+        draw: (x, y, _w, k) => {
+          T3(ctx, x, y, a.from, { fg: th.faint });
+          const sx = x + textWidth(a.from) + 1;
+          a.pcts.forEach((p, i) => {
+            if (k * a.pcts.length < i + 0.5) return;
+            const lvl = Math.max(0, Math.min(7, Math.round(p / max2 * 7)));
+            const fg = mix(th.dim, th.hot, p / max2);
+            for (let j = 0; j < per; j++) put2(ctx, sx + i * per + j, y, "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588"[lvl], fg);
+          });
+          T3(ctx, sx + sw + 1, y, a.to, { fg: th.faint });
+        }
+      };
+    }
+    case "priciest_sentence": {
+      const p = v.priciest;
+      if (!p) return null;
+      const lead = "median \u258E  priciest ";
+      const bw = w - textWidth(lead);
+      if (bw < 6) return null;
+      return {
+        rows: 1,
+        draw: (x, y, _w, k) => {
+          T3(ctx, x, y, "median", { fg: th.faint });
+          put2(ctx, x + 7, y, "\u258E", C.cream);
+          T3(ctx, x + 10, y, "priciest", { fg: th.faint });
+          hbarCells(ctx, x + textWidth(lead), y, bw, k, th.num);
+        }
+      };
+    }
+    case "longest_sit": {
+      const h = v.sit;
+      if (!h) return null;
+      const n2 = Math.ceil(h);
+      const step = n2 * 2 + 6 <= w ? 2 : n2 + 6 <= w ? 1 : 0;
+      if (!step) return null;
+      return {
+        rows: 1,
+        draw: (x, y, _w, k) => {
+          for (let i = 0; i < n2; i++) {
+            if (k * n2 < i + 0.3) break;
+            const half = i === n2 - 1 && h - Math.floor(h) > 0 && h - Math.floor(h) < 0.75;
+            put2(ctx, x + i * step, y, half ? "\u258C" : "\u2588", mix(th.num, th.hot, i / Math.max(1, n2 - 1)));
+          }
+          T3(ctx, x + n2 * step + (step === 2 ? 0 : 1), y, "hours", { fg: th.faint });
+        }
+      };
+    }
+    case "pet_name": {
+      const name = fact.parts.find((p) => p.tone === "quote")?.text;
+      const times3 = fact.parts.find((p) => p.tone === "num")?.text;
+      if (!name || !times3) return null;
+      const said = ` ${name} `;
+      const bubbleW = textWidth(said) + 2;
+      if (bubbleW + 1 + textWidth(times3) > w) return null;
+      const cap2 = ["what you call your agent", "what you call it", "you call it"].find((t) => 2 + textWidth(t) <= w) ?? "";
+      return {
+        rows: 2,
+        replacesText: true,
+        draw: (x, y, _w, k) => {
+          if (k <= 0) return;
+          put2(ctx, x, y, "\u2590", BUBBLE);
+          ctx.c.text(x + 1, y, said, { fg: C.cream, bg: BUBBLE, bold: true, italic: true });
+          put2(ctx, x + bubbleW - 1, y, "\u258C", BUBBLE);
+          put2(ctx, x + 1, y + 1, "\u25E5", BUBBLE);
+          if (cap2) T3(ctx, x + 3, y + 1, cap2, { fg: th.faint });
+          if (k >= 0.5) T3(ctx, x + bubbleW + 1, y, times3, { fg: th.num, bold: true });
+        }
+      };
+    }
+    case "nemesis": {
+      const f = v.faceoff;
+      if (!f.nemesis) return null;
+      const rows = [
+        { icon: "\u2620", name: shortModel2(f.nemesis.label), ratio: f.nemesis.ratio, word: "swears", fg: th.hot },
+        f.fav ? { icon: "\u2665", name: shortModel2(f.fav.label), ratio: f.fav.ratio, word: "thanks", fg: th.soft } : { icon: " ", name: "the rest", ratio: 1, word: "swears", fg: th.faint }
+      ];
+      const nw = Math.max(...rows.map((r3) => textWidth(r3.name)));
+      const room = (words9) => w - 2 - nw - 1 - 1 - Math.max(...rows.map((r3) => textWidth(words9 ? `${times2(r3.ratio)} ${r3.word}` : times2(r3.ratio))));
+      const words8 = room(true) >= 4;
+      const bw = room(words8);
+      if (bw < 4) return null;
+      const max2 = Math.max(...rows.map((r3) => r3.ratio));
+      return {
+        rows: 2,
+        replacesText: true,
+        label: words8 ? void 0 : f.fav ? "NEMESIS vs SOFT SPOT" : "NEMESIS \xB7 SWEARS",
+        draw: (x, y, _w, k) => {
+          rows.forEach((r3, i) => {
+            T3(ctx, x, y + i, r3.icon, { fg: r3.fg, bold: true });
+            T3(ctx, x + 2, y + i, r3.name, { fg: th.name, bold: true });
+            hbarCells(ctx, x + 2 + nw + 1, y + i, bw, r3.ratio / max2 * k, r3.fg);
+            const tx = x + 2 + nw + 1 + bw + 1;
+            const n2 = T3(ctx, tx, y + i, times2(r3.ratio), { fg: r3.fg === th.faint ? th.faint : th.num, bold: true });
+            if (words8) T3(ctx, tx + n2 + 1, y + i, r3.word, { fg: th.body });
+          });
+        }
+      };
+    }
+    case "fuse": {
+      const turn = Number(fact.parts.find((p) => p.tone === "num")?.text.replace(/[^\d]/g, "") ?? 0);
+      if (!(turn >= 1) || turn * 2 + 2 > w) return null;
+      return {
+        rows: 1,
+        draw: (x, y, _w, k) => {
+          const lit = Math.round(turn * k);
+          for (let i = 0; i < turn; i++) T3(ctx, x + i * 2, y, i < turn - lit ? "\u2501\u2501" : "  ", { fg: th.faint });
+          put2(ctx, x + (turn - lit) * 2, y, "\u2738", th.hot);
+        }
+      };
+    }
+    default:
+      return null;
+  }
+}
+function wrapParts(parts, width, max2) {
+  const words8 = [];
+  for (const p of parts) {
+    const bits = p.text.split(/(\s+)/);
+    for (const b2 of bits) if (b2) words8.push({ text: b2, tone: p.tone });
+  }
+  const lines = [[]];
+  let w = 0;
+  for (const word of words8) {
+    const ww = textWidth(word.text);
+    const blank = /^\s+$/.test(word.text);
+    if (w + ww > width) {
+      if (blank) continue;
+      if (lines.length >= max2 || ww > width) return null;
+      lines.push([]);
+      w = 0;
+    }
+    if (blank && w === 0) continue;
+    lines.at(-1).push(word);
+    w += ww;
+  }
+  for (const l of lines) while (l.length && /^\s+$/.test(l.at(-1).text)) l.pop();
+  return lines;
+}
+function pickTiles(ctx, n2, inner, exclude, full) {
+  const out = [];
+  const fam = /* @__PURE__ */ new Map();
+  for (const fact of posterOrder(ctx.d.facts, exclude)) {
+    if (out.length >= n2) break;
+    if ((fam.get(fact.family) ?? 0) >= 2) continue;
+    if (textWidth(fact.label) + 4 > inner + 2) continue;
+    let diagram = full ? diagramFor(ctx, fact, inner) : null;
+    const parts = fitParts(fact, inner);
+    let lines;
+    if (!parts && !diagram?.replacesText) {
+      const wrapped = full ? wrapParts(fact.parts, inner, 2) : null;
+      if (!wrapped) continue;
+      lines = wrapped;
+      diagram = null;
+    }
+    fam.set(fact.family, (fam.get(fact.family) ?? 0) + 1);
+    out.push({ fact, parts: parts ?? fact.parts, diagram, lines });
+  }
+  return out;
+}
+function bestGrid(ctx, w, n2, mode, maxCols, exclude) {
+  let best = null;
+  for (let cols = maxCols; cols >= 1; cols--) {
+    const grid = tileGrid(w, mode === "full" ? 28 : 24, cols);
+    if (!grid || grid.cols !== cols) continue;
+    const picks = pickTiles(ctx, n2, grid.tileW - 4, exclude, mode === "full");
+    if (!picks.length) continue;
+    const score = picks.filter((p) => CORE.has(p.fact.id)).length * 1e3 + picks.length * 10 - Math.ceil(picks.length / cols);
+    if (!best || score > best.score) best = { grid, picks, score };
+  }
+  return best;
+}
+function tile(ctx, t, x, y, w, bodyRows, k) {
+  const { th, uni } = ctx;
+  const col3 = th.rule;
+  const hz = uni ? "\u2500" : "-";
+  const h = bodyRows + 2;
+  put2(ctx, x, y, uni ? "\u256D" : "+", col3);
+  put2(ctx, x + w - 1, y, uni ? "\u256E" : "+", col3);
+  put2(ctx, x, y + h - 1, uni ? "\u2570" : "+", col3);
+  put2(ctx, x + w - 1, y + h - 1, uni ? "\u256F" : "+", col3);
+  for (let i = x + 1; i < x + w - 1; i++) {
+    put2(ctx, i, y, hz, col3);
+    put2(ctx, i, y + h - 1, hz, col3);
+  }
+  for (let j = y + 1; j < y + h - 1; j++) {
+    put2(ctx, x, j, uni ? "\u2502" : "|", col3);
+    put2(ctx, x + w - 1, j, uni ? "\u2502" : "|", col3);
+  }
+  const label4 = t.diagram?.label && textWidth(t.diagram.label) + 4 <= w ? t.diagram.label : t.fact.label;
+  T3(ctx, x + 2, y, ` ${label4} `, { fg: th.label, bold: true });
+  const ix = x + 2, iw = w - 4;
+  if (bodyRows === 2 && t.lines) t.lines.forEach((l, i) => drawParts(ctx, ix, y + 1 + i + (t.lines.length === 1 ? 1 : 0), l));
+  else if (bodyRows === 2 && t.diagram) {
+    t.diagram.draw(ix, y + 1, iw, k);
+    if (!t.diagram.replacesText) drawParts(ctx, ix, y + 2, t.parts);
+  } else drawParts(ctx, ix, y + 1, t.parts);
+}
+function tileGrid(w, minTile, maxCols) {
+  for (let cols = maxCols; cols >= 1; cols--) {
+    const gap2 = cols > 1 ? 2 : 0;
+    const tileW = Math.floor((w - gap2 * (cols - 1)) / cols);
+    if (tileW >= minTile) return { cols, tileW: Math.min(tileW, 52), gap: gap2 };
+  }
+  return null;
+}
+function factsBlock(ctx, w, opts) {
+  const { th } = ctx;
+  if (opts.mode === "lines") {
+    const picks2 = pickTiles(ctx, opts.n, w, opts.exclude, false).filter((t) => textWidth(t.fact.label) + 3 + textWidth(factText(t.parts)) <= w);
+    if (!picks2.length) return null;
+    return {
+      h: picks2.length,
+      draw: (x, y) => picks2.forEach((t, i) => {
+        T3(ctx, x, y + i, t.fact.label, { fg: th.label, bold: true });
+        const vw = textWidth(factText(t.parts));
+        for (let px = x + textWidth(t.fact.label) + 1; px < x + w - vw - 1; px++) put2(ctx, px, y + i, ".", th.faint);
+        drawParts(ctx, x + w - vw, y + i, t.parts);
+      })
+    };
+  }
+  const best = bestGrid(ctx, w, opts.n, opts.mode, opts.maxCols, opts.exclude);
+  if (!best) return null;
+  const { grid, picks } = best;
+  const bodyRows = opts.mode === "full" ? 2 : 1;
+  const rows = Math.ceil(picks.length / grid.cols);
+  const th1 = bodyRows + 2;
+  return {
+    h: rows * th1 + (rows - 1) * opts.rowGap,
+    draw: (x, y) => {
+      const total2 = grid.cols * grid.tileW + (grid.cols - 1) * grid.gap;
+      const x0 = x + Math.floor((w - total2) / 2);
+      picks.forEach((t, i) => {
+        const r3 = Math.floor(i / grid.cols), cI = i % grid.cols;
+        const pick4 = bodyRows === 2 && !t.diagram ? { ...t, diagram: { rows: 1, draw: () => void 0 } } : t;
+        tile(ctx, pick4, x0 + cI * (grid.tileW + grid.gap), y + r3 * (th1 + opts.rowGap), grid.tileW, bodyRows, ctx.grow(3 + i));
+      });
+    }
+  };
+}
+function drawCup(ctx, x, y, metal) {
+  const bg = ctx.th.bg ?? C.ink;
+  for (let ry = 0; ry < 3; ry++) for (let rx = 0; rx < 7; rx++) ctx.c.put(x + rx, y + ry, " ", ctx.th.ink, bg);
+  CUP.forEach((row2, py) => {
+    for (let px = 0; px < row2.length; px++) {
+      if (row2[px] !== "#") continue;
+      const shade = px === 2 && py >= 1 && py <= 2 || px === 3 && py === 3 ? mix(metal, C.white, 0.45) : metal;
+      ctx.c.px(x + px, y * 2 + py, shade);
+    }
+  });
+}
+function pickTrophies(d, shown, extraCovered, n2) {
+  const covered = /* @__PURE__ */ new Set([...shown.flatMap((f) => f.awards), ...extraCovered]);
+  return d.awards.filter((a) => !a.id || !covered.has(a.id)).slice(0, n2);
+}
+function trophyDiagram(ctx, t, w) {
+  const { d, th, uni } = ctx;
+  if (!uni) return null;
+  if (t.id === "streak" && d.viz.streak && d.viz.streak <= w) {
+    const n2 = d.viz.streak;
+    return { side: false, w: n2, draw: (x, y, k) => {
+      for (let i = 0; i < n2; i++) if (k * n2 >= i + 0.5) put2(ctx, x + i, y, "\u25A0", mix(th.num, th.hot, i / n2));
+    } };
+  }
+  if (t.id === "orchestrator" && d.viz.subagents) {
+    const all = d.viz.subagents.months;
+    if (all.filter((m) => m > 0).length < 2) return null;
+    const first = all.findIndex((m) => m > 0), last2 = all.length - 1 - [...all].reverse().findIndex((m) => m > 0);
+    const months = all.slice(first, last2 + 1);
+    const third = Math.ceil(months.length / 3);
+    const groups = [0, 1, 2].map((i) => months.slice(i * third, (i + 1) * third).reduce((s, m) => s + m, 0));
+    const max2 = Math.max(...groups);
+    const leaves = groups.map((g2) => g2 > 0 ? Math.max(1, Math.round(g2 / max2 * LEAVES)) : 0);
+    const treeW = "you\u2500\u253C\u2500\u2500".length + LEAVES * 2 - 1;
+    return {
+      side: true,
+      w: treeW,
+      draw: (x, y, k) => {
+        if (k <= 0) return;
+        T3(ctx, x, y + 1, "you", { fg: C.cream, bold: true });
+        const jx = x + 4;
+        put2(ctx, x + 3, y + 1, "\u2500", th.faint);
+        put2(ctx, jx, y, "\u256D", th.faint);
+        put2(ctx, jx, y + 1, "\u253C", th.faint);
+        put2(ctx, jx, y + 2, "\u2570", th.faint);
+        leaves.forEach((n2, row2) => {
+          put2(ctx, jx + 1, y + row2, "\u2500", th.faint);
+          put2(ctx, jx + 2, y + row2, "\u2500", th.faint);
+          const shown = Math.round(n2 * clamp012(k * 1.4 - row2 * 0.15));
+          for (let i = 0; i < shown; i++) put2(ctx, jx + 3 + i * 2, y + row2, "\u25CF", mix(th.num, th.hot, i / LEAVES));
+        });
+      }
+    };
+  }
+  return null;
+}
+function trophiesBlock(ctx, w, list3, mode, leftAlign = false) {
+  if (!list3.length) return null;
+  const { th } = ctx;
+  if (mode === "line") {
+    const items = list3.map((t) => ({ t, text: `${t.title}  ${tValue(ctx, t)}` }));
+    const total2 = items.reduce((s, it) => s + 2 + textWidth(it.text), 0) + (items.length - 1) * 6;
+    if (total2 > w) return items.length > 1 ? trophiesBlock(ctx, w, list3.slice(0, 1), "line") : null;
+    return {
+      h: 1,
+      draw: (x, y, ww) => {
+        let cx = x + Math.floor((ww - total2) / 2);
+        for (const { t } of items) {
+          const metal = metalColor(t.tier);
+          put2(ctx, cx, y, ctx.uni ? "\u2605" : "*", metal);
+          cx += 2;
+          cx += T3(ctx, cx, y, t.title, { fg: th.ink, bold: true }) + 2;
+          cx += T3(ctx, cx, y, tValue(ctx, t), { fg: metal }) + 6;
+        }
+      }
+    };
+  }
+  if (!ctx.pixel) return trophiesBlock(ctx, w, list3, "line");
+  const colW = Math.floor((w - (list3.length - 1) * 4) / list3.length);
+  const textW = colW - 9;
+  const fits = (t) => textWidth(t.title) <= textW && textWidth(tValue(ctx, t)) <= textW;
+  const keep = list3.filter(fits);
+  if (!keep.length) return trophiesBlock(ctx, w, list3, "line");
+  if (keep.length < list3.length) return trophiesBlock(ctx, w, keep, "big");
+  return {
+    h: 3,
+    draw: (x, y, ww) => {
+      const n2 = list3.length;
+      const natural = list3.map((t) => {
+        const dg = trophyDiagram(ctx, t, textW);
+        const sub = tSub(ctx, t);
+        const line2 = sub && textWidth(`${tValue(ctx, t)}  \xB7  ${sub}`) <= textW ? `${tValue(ctx, t)}  \xB7  ${sub}` : tValue(ctx, t);
+        const textCol = Math.max(textWidth(t.title), textWidth(line2));
+        const fitDg = dg && (dg.side ? textCol + 3 + dg.w : dg.w) <= textW ? dg : null;
+        return { t, dg: fitDg, line2, textCol, w: 9 + (fitDg?.side ? textCol + 3 + fitDg.w : Math.max(textCol, fitDg?.w ?? 0)) };
+      });
+      const gap2 = n2 > 1 ? Math.min(12, Math.floor((ww - natural.reduce((s, v) => s + v.w, 0)) / (n2 - 1))) : 0;
+      const total2 = natural.reduce((s, v) => s + v.w, 0) + gap2 * (n2 - 1);
+      let cx = leftAlign ? x : x + Math.floor((ww - total2) / 2);
+      natural.forEach(({ t, dg, line2, textCol, w: tw }, i) => {
+        const metal = metalColor(t.tier);
+        drawCup(ctx, cx, y, metal);
+        const tx = cx + 9;
+        T3(ctx, tx, y, t.title, { fg: th.ink, bold: true });
+        T3(ctx, tx, y + 1, line2, { fg: metal });
+        if (dg?.side) dg.draw(tx + textCol + 3, y, ctx.grow(10 + i));
+        else if (dg) dg.draw(tx, y + 2, ctx.grow(10 + i));
+        cx += tw + gap2;
+      });
+    }
+  };
+}
+function memoryLine(ctx, y, cx, bg) {
+  const text2 = memoryText(ctx.uni);
+  const x = cx - Math.floor(textWidth(text2) / 2);
+  const w = ctx.c.text(x, y, MEMORY_LINE + " ", { fg: C.gray, italic: true, bg });
+  ctx.c.text(x + w, y, (ctx.uni ? "\u2192" : "->") + " slopie setup", { fg: C.peach, bg });
+}
+function footer3(ctx, y, mx) {
+  const { c, s, d, uni } = ctx;
+  const local = s.online ? "online \xB7 Jev" : "all local";
+  const dot = uni ? "\u25CF" : "*";
+  const right = `${INSTALL}  \xB7  ${dot} ${local}`;
+  const rx = s.w - mx - textWidth(right);
+  let x = mx;
+  if (!s.share) {
+    const keys5 = [[uni ? "\u2190" : "<", d.replay ? "replay your story" : "story"], ["s", "share"], ["?", "how"], ["q", "quit"]];
+    for (const [k, label4] of keys5) {
+      if (x + textWidth(k) + 1 + textWidth(label4) + 3 > rx - 2) break;
+      x += c.text(x, y, k, { fg: C.gray, bold: true });
+      x += 1 + c.text(x + 1, y, label4, { fg: C.slate }) + 3;
+    }
+  } else {
+    c.text(mx, y, "slopie audit", { fg: C.orange, bold: true });
+    x = mx + 14;
+  }
+  if (rx > x) {
+    c.text(rx, y, INSTALL, { fg: C.orange, bold: true });
+    c.text(rx + textWidth(INSTALL) + 2, y, "\xB7", { fg: C.slate });
+    c.text(s.w - mx - textWidth(local) - 2, y, dot, { fg: s.online ? C.peach : fade(C.orange, 0.7) });
+    c.text(s.w - mx - textWidth(local), y, local, { fg: C.slate });
+  } else if (textWidth(INSTALL) <= s.w - mx * 2) {
+    c.fill(mx, y, s.w - mx * 2, 1, " ", { bg: C.ink });
+    c.text(s.w - mx - textWidth(INSTALL), y, INSTALL, { fg: C.orange, bold: true });
+  }
+}
+function barcode(ctx, w) {
+  return {
+    h: 3,
+    draw: (x, y, ww) => {
+      const seed = [...ctx.d.code ?? "SLOP"].map((ch) => ch.charCodeAt(0));
+      const bw = Math.min(w - 8, 40);
+      const bx = x + Math.floor((ww - bw) / 2);
+      for (let i = 0; i < bw; i++) {
+        const v = seed[i % seed.length] * (i + 7) % 5;
+        const glyph2 = ctx.uni ? ["\u258C", "\u258D", "\u258E", "\u258A", "\u2588"][v] : "|";
+        put2(ctx, bx + i, y, glyph2, ctx.th.ink);
+      }
+      const thanks = "THANK YOU. COME AGAIN.";
+      T3(ctx, x + Math.floor((ww - textWidth(thanks)) / 2), y + 2, thanks, { fg: ctx.th.ink, bold: true });
+    }
+  };
+}
+function build2(ctx, p, iw) {
+  const pieces = [];
+  const add = (key2, piece) => {
+    if (piece && piece.h > 0) pieces.push({ key: key2, piece });
+  };
+  if (p.header) add("header", header(ctx, iw));
+  add("identity", identity3(ctx, iw, { kicker: p.kicker, big: p.bigTitle, subRole: p.subRole, tagline: p.tagline, badge: true }));
+  add("price", price(ctx, iw, p.bigPrice));
+  const box3 = statBox(ctx, iw, { clock: p.clock, catchphrase: true });
+  add("box", box3);
+  const exclude = [...ctx.d.catchphrase ? ["catchphrase"] : [], ...p.clock && ctx.d.viz.clock ? ["mood_hours"] : []];
+  const factsPiece = factsBlock(ctx, iw, { n: p.nFacts, mode: p.tiles, rowGap: p.tileGap, maxCols: 3, exclude });
+  const shown = factsPiece ? shownFacts(ctx, iw, p, exclude) : [];
+  add("facts", factsPiece);
+  if (p.trophies !== "none") {
+    const covered = ctx.d.catchphrase ? ["verbal_tics", "catchphrase"] : [];
+    add("trophies", trophiesBlock(ctx, iw, pickTrophies(ctx.d, shown, covered, 2), p.trophies));
+  }
+  if (p.tail) add("tail", barcode(ctx, iw));
+  return { pieces, facts: shown };
+}
+function shownFacts(ctx, iw, p, exclude) {
+  if (p.tiles === "lines") return pickTiles(ctx, p.nFacts, iw, exclude, false).filter((t) => textWidth(t.fact.label) + 3 + textWidth(factText(t.parts)) <= iw).map((t) => t.fact);
+  return bestGrid(ctx, iw, p.nFacts, p.tiles, 3, exclude)?.picks.map((t) => t.fact) ?? [];
+}
+function stack(b2, x, w, top, bottom, maxGap) {
+  const n2 = b2.pieces.length;
+  const extra = new Array(n2).fill(0);
+  let spare = Math.max(0, bottom - top - heightOf(b2));
+  for (let pass = 0; spare > 0 && pass < maxGap; pass++) for (let i = 1; i < n2 && spare > 0; i++) {
+    extra[i]++;
+    spare--;
+  }
+  let y = top + Math.floor(spare / 2);
+  b2.pieces.forEach(({ piece }, i) => {
+    if (i) y += 1 + extra[i];
+    piece.draw(x, y, w);
+    y += piece.h;
+  });
+}
+function printReveal(c, x0, w, top, bottom, k) {
+  const rows = bottom - top + 1;
+  const shift = rows - k;
+  if (shift <= 0) return;
+  const W = c.w;
+  for (let y = bottom; y >= top; y--) {
+    const src = y - shift;
+    for (let x = x0; x < x0 + w; x++) {
+      const di = y * W + x;
+      if (src >= top) {
+        const si = src * W + x;
+        c.ch[di] = c.ch[si];
+        c.fg[di] = c.fg[si];
+        c.bg[di] = c.bg[si];
+        c.at[di] = c.at[si];
+      } else {
+        c.ch[di] = " ";
+        c.fg[di] = C.cream;
+        c.bg[di] = C.ink;
+        c.at[di] = 0;
+      }
+    }
+  }
+}
+function tickerLine(ctx, y, W) {
+  const t = ctx.d.sinceLast;
+  if (!t || ctx.s.share) return;
+  const lead = "SINCE LAST RUN  ";
+  if (textWidth(lead + t) > W - 4) return;
+  const x = Math.floor((W - textWidth(lead + t)) / 2);
+  ctx.c.text(x, y, lead, { fg: C.orange, bold: true });
+  ctx.c.text(x + textWidth(lead), y, t, { fg: C.gray });
+}
+function drawUnder(ctx, p) {
+  const { s } = ctx;
+  let y = s.h - underRows(p);
+  if (p.ticker) tickerLine(ctx, y++, s.w);
+  if (p.memory) memoryLine(ctx, y++, Math.floor(s.w / 2));
+  footer3(ctx, s.h - 1, 2);
+}
+function basePlan(s, d) {
+  return {
+    kicker: true,
+    bigTitle: true,
+    subRole: true,
+    tagline: true,
+    bigPrice: true,
+    clock: true,
+    tiles: "full",
+    nFacts: 6,
+    tileGap: 1,
+    trophies: "big",
+    tail: true,
+    memory: true,
+    header: true,
+    ticker: !!d.sinceLast && !s.share
+  };
+}
+function posterBody(s, d) {
+  const ctx = context(s, d);
+  const W = s.w, H = s.h;
+  const pw = Math.min(W - (W >= 110 ? 8 : 4), 112);
+  const x0 = Math.floor((W - pw) / 2);
+  const pad4 = pw >= 100 ? 4 : 3;
+  const ix = x0 + pad4, iw = pw - pad4 * 2;
+  const plan = basePlan(s, d);
+  const avail = (p) => H - underRows(p) - 3;
+  let built = build2(ctx, plan, iw);
+  for (const step of STEPS) {
+    if (heightOf(built) <= avail(plan)) break;
+    step(plan);
+    built = build2(ctx, plan, iw);
+  }
+  const bottom = H - 1 - underRows(plan);
+  for (let x = x0; x < x0 + pw; x++) ctx.c.put(x, bottom, ctx.uni ? (x - x0) % 2 ? "\u2572" : "\u2571" : (x - x0) % 2 ? "\\" : "/", TORN);
+  stack(built, ix, iw, 1, bottom - 1, H >= 36 ? 2 : 1);
+  const k = Math.floor(clamp012(s.t / PRINT_MS) * (bottom + 1));
+  if (k < bottom + 1) {
+    ctx.busy = true;
+    printReveal(ctx.c, x0, pw, 0, bottom, k);
+  }
+  drawUnder(ctx, plan);
+  return ctx.busy;
+}
+var INSTALL, MEMORY_LINE, GOLD3, SILVER, BRONZE, TIER_LABEL2, PRINT_MS, DIAG_AT, DIAG_STEP, DIAG_DUR, SETTLED_MS, COUNT_FROM, tierColor, metalColor, BUBBLE, THEME, T3, put2, fitParts, times2, shortModel2, badgeText, CELL_PAD, CORE, CUP, tValue, tSub, LEAVES, memoryText, STEPS, heightOf, underRows, TORN;
+var init_poster = __esm({
+  "packages/cli/src/audit-ui/cards/poster.ts"() {
+    "use strict";
+    init_color();
+    init_draw();
+    init_font();
+    init_motion();
+    init_format3();
+    init_fun_facts();
+    INSTALL = "npx slopie audit";
+    MEMORY_LINE = "your agents forget. slopie remembers";
+    GOLD3 = hx("ffd27a");
+    SILVER = hx("c8ccd2");
+    BRONZE = hx("d08a4e");
+    TIER_LABEL2 = { common: "COMMON", rare: "RARE", epic: "EPIC", legendary: "LEGENDARY" };
+    PRINT_MS = 950;
+    DIAG_AT = 1050;
+    DIAG_STEP = 130;
+    DIAG_DUR = 650;
+    SETTLED_MS = DIAG_AT + DIAG_STEP * 16 + DIAG_DUR;
+    COUNT_FROM = 0.8;
+    tierColor = (tier) => tier === "legendary" ? GOLD3 : tier === "epic" ? C.orange : tier === "rare" ? C.peach : C.gray;
+    metalColor = (tier) => tier === "gold" ? GOLD3 : tier === "silver" ? SILVER : BRONZE;
+    BUBBLE = hx("4a3022");
+    THEME = {
+      bg: void 0,
+      ink: C.white,
+      body: hx("d6d0c8"),
+      faint: C.gray,
+      rule: hx("3a3431"),
+      boxRule: mix(C.rust, C.ink, 0.3),
+      label: C.orange,
+      num: C.orange,
+      name: C.white,
+      quote: C.orange,
+      hot: C.ember,
+      soft: C.peach,
+      dim: hx("6e6660"),
+      // 1.8's title: cream at the top of each glyph row, orange at the bottom (a gold sweep for legendary).
+      title: (px, py, w, legendary) => legendary ? mix(mix(C.cream, GOLD3, px / Math.max(1, w)), C.orange, py / 8) : mix(C.cream, C.orange, py / 4)
+    };
+    T3 = (ctx, x, y, text2, style = {}) => ctx.c.text(x, y, text2, { fg: style.fg ?? ctx.th.body, bold: style.bold, italic: style.italic, bg: style.bg ?? ctx.th.bg });
+    put2 = (ctx, x, y, ch, fg, bg) => ctx.c.put(x, y, ch, fg, bg ?? ctx.th.bg);
+    fitParts = (f, w) => textWidth(factText(f.parts)) <= w ? f.parts : f.short && textWidth(factText(f.short)) <= w ? f.short : null;
+    times2 = (ratio2) => `${ratio2 >= 9.95 ? Math.round(ratio2) : ratio2.toFixed(1).replace(/\.0$/, "")}\xD7`;
+    shortModel2 = (label4) => label4.replace(/^(Claude|Gemini)\s+/, "");
+    badgeText = (ctx) => ctx.d.tier ? `${ctx.uni ? "\u2605" : "*"} ${TIER_LABEL2[ctx.d.tier]} ${ctx.uni ? "\u2605" : "*"}` : null;
+    CELL_PAD = 2;
+    CORE = /* @__PURE__ */ new Set(["manners", "mood_drift", "priciest_sentence", "longest_sit", "pet_name", "nemesis"]);
+    CUP = ["#######", "#.###.#", ".#####.", "..###..", "...#...", "..###.."];
+    tValue = (ctx, t) => ctx.s.share ? t.publicValue : t.value;
+    tSub = (ctx, t) => (ctx.s.share ? t.publicSub : t.sub) ?? null;
+    LEAVES = 5;
+    memoryText = (uni) => `${MEMORY_LINE} ${uni ? "\u2192" : "->"} slopie setup`;
+    STEPS = [
+      (p) => {
+        p.tail = false;
+      },
+      (p) => {
+        p.ticker = false;
+      },
+      (p) => {
+        p.tileGap = 0;
+      },
+      (p) => {
+        p.kicker = false;
+      },
+      (p) => {
+        if (p.trophies === "big") p.trophies = "line";
+      },
+      (p) => {
+        p.memory = false;
+      },
+      (p) => {
+        p.bigTitle = false;
+      },
+      (p) => {
+        p.clock = false;
+      },
+      (p) => {
+        if (p.tiles === "full") p.tiles = "compact";
+      },
+      (p) => {
+        p.subRole = false;
+      },
+      (p) => {
+        p.tiles = "lines";
+      },
+      (p) => {
+        p.tagline = false;
+      },
+      (p) => {
+        p.trophies = "none";
+      },
+      (p) => {
+        p.header = false;
+      },
+      (p) => {
+        p.bigPrice = false;
+      },
+      (p) => {
+        p.nFacts = 5;
+      },
+      (p) => {
+        p.nFacts = 4;
+      },
+      (p) => {
+        p.nFacts = 3;
+      }
+    ];
+    heightOf = (b2) => b2.pieces.reduce((s, x) => s + x.piece.h, 0) + Math.max(0, b2.pieces.length - 1);
+    underRows = (p) => 1 + (p.memory ? 1 : 0) + (p.ticker ? 1 : 0);
+    TORN = hx("4a3f39");
+  }
+});
+
+// packages/cli/src/audit-ui/cards/board.ts
+function boardBody(s, data) {
+  return posterBody(s, data);
+}
+var init_board = __esm({
+  "packages/cli/src/audit-ui/cards/board.ts"() {
+    "use strict";
+    init_poster();
+    init_poster();
   }
 });
 
@@ -45912,8 +49901,8 @@ function delegationBody(s, data, r3) {
   let busy = false;
   months.forEach((m, i) => {
     const x = gx + i * colW;
-    const stack = Math.ceil(m.n / unit);
-    for (let k = 0; k < stack; k++) {
+    const stack2 = Math.ceil(m.n / unit);
+    for (let k = 0; k < stack2; k++) {
       const at = 250 + order++ * 28;
       const pop = seg2(t, at, 260);
       busy ||= pop < 1;
@@ -45929,21 +49918,25 @@ function delegationBody(s, data, r3) {
   if (gy + gh + 1 <= r3.y + r3.h) c.text(gx, gy + gh + 1, legend, { fg: C.slate, alpha: la });
   return busy || la < 1;
 }
-function trophy(s, x, y, dy, a, rank, scale2 = 1) {
+function metalOf(tier, rank) {
+  return tier ?? (rank === 0 ? "gold" : rank < 3 ? "silver" : "bronze");
+}
+function trophy(s, x, y, dy, a, metal, scale2 = 1) {
   const { c } = s;
   if (s.caps.color === "none" || s.caps.color === "16") {
-    c.text(x + 1, y + 1, "\\_/", { fg: C.orange });
-    c.text(x + 2, y + 2, "|", { fg: C.orange });
-    c.text(x + 1, y + 3, "/_\\", { fg: C.orange });
+    const fg = metal === "gold" ? C.orange : metal === "silver" ? C.gray : C.rust;
+    c.text(x + 1, y + 1, "\\_/", { fg });
+    c.text(x + 2, y + 2, metal === "gold" ? "*" : metal === "silver" ? "+" : "|", { fg });
+    c.text(x + 1, y + 3, "/_\\", { fg });
     return;
   }
-  const top = rank === 0 ? C.cream : C.peach;
-  const bottom = rank === 0 ? C.orange : C.rust;
-  CUP.forEach((row2, py) => {
+  const [top, bottom, bowlTop, bowlBottom] = METAL[metal];
+  CUP2.forEach((row2, py) => {
     for (let px = 0; px < row2.length; px++) {
       if (row2[px] === ".") continue;
-      const color = row2[px] === "#" ? mix(top, bottom, py / 7) : mix(C.peach, C.orange, py / 7);
-      const col3 = fade(px === 2 && py < 4 && row2[px] === "o" ? C.white : color, a);
+      const color = row2[px] === "#" ? mix(top, bottom, py / 7) : mix(bowlTop, bowlBottom, py / 7);
+      const shine = metal !== "bronze" && px === 2 && py < 4 && row2[px] === "o";
+      const col3 = fade(shine ? C.white : color, a);
       for (let sy = 0; sy < scale2; sy++) for (let sx = 0; sx < scale2; sx++) c.px(x + px * scale2 + sx, y * 2 + py * scale2 + sy + dy, col3);
     }
   });
@@ -45973,20 +49966,23 @@ function awardsBody(s, data, r3) {
       const cx = r3.x + i * colW + Math.floor(colW / 2);
       const dropRows = Math.min(6, Math.max(1, y - r3.y + 2));
       const dy = Math.round((1 - Math.min(1.15, fall)) * -dropRows);
-      trophy(s, cx - (big ? 7 : 3), y, dy * 2, Math.min(1, fall * 1.5), index, big ? 2 : 1);
+      const metal = metalOf(award.tier, index);
+      trophy(s, cx - (big ? 7 : 3), y, dy * 2, Math.min(1, fall * 1.5), metal, big ? 2 : 1);
+      if (metal === "gold" && s.caps.unicode && fall >= 1) c.put(cx + (big ? 7 : 4), y + (big ? 0 : 0), "\u2726", fade(GOLD3, seg2(t, delay + 500, 300)));
       const la = seg2(t, delay + 300, 300);
       const w = colW - 2;
-      const title = wrapText(award.title, w, 2);
-      title.forEach((line, li) => textCenter(c, cx, shelfY + 1 + li, line, { fg: C.gray, alpha: la }));
+      const title = wrapText(award.title, w - 2, 2);
+      title.forEach((line, li) => textCenter(c, cx, shelfY + 1 + li, li === 0 ? `${metalGlyph(metal, s.caps.unicode)} ${line}` : line, { fg: C.gray, alpha: la }));
       const valueY = shelfY + 1 + title.length;
       const value = wrapText(s.share && award.publicValue ? award.publicValue : award.value, w, 2);
-      value.forEach((line, li) => textCenter(c, cx, valueY + li, line, { fg: index === 0 ? C.orange : C.cream, bold: true, alpha: la }));
+      const ink = metal === "gold" ? GOLD3 : metal === "silver" ? SILVER : BRONZE;
+      value.forEach((line, li) => textCenter(c, cx, valueY + li, line, { fg: ink, bold: metal !== "bronze", alpha: la }));
       if (award.sub) textCenter(c, cx, valueY + value.length, wrapText(award.sub, w, 1)[0] ?? "", { fg: C.slate, alpha: la });
     });
   }
   return busy;
 }
-var MINI, CUP;
+var MINI, CUP2, METAL;
 var init_places = __esm({
   "packages/cli/src/audit-ui/cards/places.ts"() {
     "use strict";
@@ -45996,8 +49992,236 @@ var init_places = __esm({
     init_motion();
     init_format3();
     init_deck();
+    init_poster();
     MINI = [".ooo.", "oeoeo", "rrrrr"];
-    CUP = [".#####.", "##ooo##", "#.ooo.#", ".#ooo#.", "..ooo..", "...o...", "..ooo..", ".ooooo."];
+    CUP2 = [".#####.", "##ooo##", "#.ooo.#", ".#ooo#.", "..ooo..", "...o...", "..ooo..", ".ooooo."];
+    METAL = {
+      gold: [C.cream, GOLD3, GOLD3, C.orange],
+      silver: [C.white, SILVER, SILVER, C.slate],
+      bronze: [C.peach, BRONZE, BRONZE, C.deep]
+    };
+  }
+});
+
+// packages/cli/src/audit-ui/cards/time.ts
+function drawHeatmap(s, grid, x, y, cellW, options) {
+  const { c } = s;
+  const max2 = Math.max(1, ...grid.flat());
+  const labelW = options.labels === false ? 0 : options.short ? 2 : 4;
+  const t = options.t;
+  let busy = false;
+  const rowStep = options.tall ? 2 : 1;
+  for (let d = 0; d < 7; d++) {
+    const ry = y + d * rowStep;
+    if (options.labels !== false) c.text(x, ry, options.short ? DAYS[d][0] : DAYS[d], { fg: d >= 5 ? C.slate : C.gray });
+    for (let h = 0; h < 24; h++) {
+      const a = seg2(t, 120 + h * 38, 260);
+      busy ||= a < 1;
+      const v = Math.sqrt((grid[d]?.[h] ?? 0) / max2);
+      let color = heat(0.12 + v * 0.88);
+      const isPeak = options.peak && options.peak[0] === d && options.peak[1] === h;
+      if (isPeak) {
+        const p = seg2(t, 120 + 24 * 38 + 150, 650, (k) => k);
+        busy ||= p < 1;
+        color = mix(color, C.white, Math.sin(Math.PI * p) * 0.8);
+      }
+      const cx = x + labelW + h * cellW;
+      const glyph2 = s.caps.unicode ? options.tall ? "\u2588" : "\u2580" : "#";
+      const fg = s.caps.color === "none" ? C.cream : fade(color, a);
+      for (let k = 0; k < cellW - 1; k++) {
+        if (s.caps.color === "none") c.put(cx + k, ry, v > 0.75 ? "\u2588" : v > 0.5 ? "\u2593" : v > 0.25 ? "\u2592" : v > 0 ? "\u2591" : "\xB7", C.cream);
+        else c.put(cx + k, ry, glyph2, fg);
+      }
+      if (cellW === 1) c.put(cx, ry, s.caps.color === "none" ? v > 0.5 ? "\u2588" : v > 0 ? "\u2591" : "\xB7" : glyph2, fg);
+    }
+  }
+  if (options.axis !== false) {
+    const ticks = cellW >= 3 ? [0, 3, 6, 9, 12, 15, 18, 21] : [0, 6, 12, 18];
+    for (const h of ticks) c.text(x + labelW + h * cellW, y + 7 * rowStep, h === 0 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`, { fg: C.slate });
+  }
+  return { w: labelW + 24 * cellW, busy };
+}
+function clockBody(s, data, r3) {
+  const { c, t, tier } = s;
+  const cellW = r3.w >= 4 + 72 + 30 ? 3 : r3.w >= 4 + 48 + 24 || tier.id === "S" ? 2 : 2;
+  const gridW = 4 + 24 * cellW;
+  const side = r3.w - gridW - 4 >= 22;
+  const tall = tier.id === "L" && r3.h >= 18 && cellW === 3;
+  const gridH = tall ? 15 : 8;
+  const calloutRows = side ? 0 : 2;
+  const y0 = r3.y + Math.max(0, Math.min(Math.floor((r3.h - gridH - calloutRows - (side ? 0 : 1)) * 0.3), r3.h - gridH - 2));
+  const peak = data.peakWeekday !== null && data.peakHour !== null ? [data.peakWeekday, data.peakHour] : null;
+  const { busy } = drawHeatmap(s, data.grid, r3.x, y0, cellW, { t, peak, tall });
+  const callA = seg2(t, 1200, 400);
+  if (side) {
+    const sx = r3.x + gridW + 4;
+    data.callouts.forEach((call, i) => {
+      const a = seg2(t, 1e3 + i * 140, 350);
+      const cy = y0 + i * (tall ? 4 : 2);
+      if (cy + 1 >= r3.y + r3.h) return;
+      c.text(sx, cy, call.label, { fg: C.gray, alpha: a });
+      c.text(sx + Math.max(15, textWidth(call.label) + 2), cy, call.value, { fg: i === 0 ? C.orange : C.cream, bold: true, alpha: a });
+      c.text(sx, cy + 1, call.sub, { fg: C.slate, alpha: a }, r3.x + r3.w - sx);
+    });
+  } else if (y0 + gridH + 1 < r3.y + r3.h) {
+    let x = r3.x;
+    const cy = y0 + gridH + 1;
+    for (const call of data.callouts.slice(0, tier.id === "S" ? 2 : 3)) {
+      const text2 = `${call.label.toLowerCase()} `;
+      if (x + textWidth(text2) + textWidth(call.value) > r3.x + r3.w) break;
+      x += c.text(x, cy, text2, { fg: C.gray, alpha: callA });
+      x += c.text(x, cy, call.value, { fg: C.orange, bold: true, alpha: callA }) + 3;
+    }
+  }
+  return busy || callA < 1;
+}
+function moodBody(s, data, r3) {
+  const { c, t } = s;
+  const months = data.months;
+  const max2 = Math.max(1, ...months.map((m) => m.pct));
+  const axisW = 5;
+  const plotW = Math.min(r3.w - axisW - 2, months.length * (s.tier.id === "L" ? 9 : 7));
+  const plotH = Math.max(3, Math.min(r3.h - 4, s.tier.id === "L" ? 14 : 10));
+  const x0 = r3.x + axisW;
+  const yTop = r3.y + 2;
+  const yBottom = yTop + plotH - 1;
+  const pxH = plotH * 2;
+  const step = plotW / Math.max(1, months.length - 1);
+  const draw = s.caps.motion ? seg2(t, 100, 1100, easeOutCubic) : 1;
+  const valueAt = (x) => {
+    const f = x / step;
+    const i = Math.min(months.length - 2, Math.max(0, Math.floor(f)));
+    const k = clamp012(f - i);
+    const a = months[i].pct, b2 = months[Math.min(months.length - 1, i + 1)].pct;
+    return a + (b2 - a) * (k * k * (3 - 2 * k));
+  };
+  textRight(c, x0 - 1, yTop, `${Math.round(max2)}%`, { fg: C.slate });
+  textRight(c, x0 - 1, yBottom, "0%", { fg: C.slate });
+  for (let x = 0; x <= plotW; x++) c.put(x0 + x, yBottom + 1, s.caps.unicode ? "\u2500" : "-", C.coal);
+  const tipX = Math.round(data.tip * step);
+  for (let x = 0; x <= Math.round(plotW * draw); x++) {
+    const v = valueAt(x);
+    const top = Math.round(pxH - v / max2 * (pxH - 1)) - 1;
+    const afterTip = x >= tipX;
+    for (let py = Math.max(0, top); py < pxH; py++) {
+      const depth = (py - top) / Math.max(1, pxH - top);
+      const base3 = afterTip ? C.ember : C.slate;
+      const color = py === top ? afterTip ? C.orange : C.gray : mix(mix(base3, C.ink, 0.35), C.ink, Math.min(0.92, depth * 1.1));
+      c.px(x0 + x, yTop * 2 + py, color);
+    }
+  }
+  let lastEnd = -10;
+  months.forEach((m, i) => {
+    const x = x0 + Math.round(i * step);
+    const label4 = monthLabel(m.month);
+    if (x - lastEnd < 2 || x + textWidth(label4) > r3.x + r3.w) return;
+    const a = seg2(t, 100 + i / months.length * 1100, 200);
+    c.text(x - (i === months.length - 1 ? textWidth(label4) - 1 : 0), yBottom + 2, label4, { fg: i === data.tip ? C.orange : C.slate, alpha: a });
+    lastEnd = x + textWidth(label4);
+  });
+  const drop = seg2(t, 1250, 600, (k) => spring(k * 0.6, 3, 0.45));
+  if (drop > 0) {
+    const v = months[data.tip].pct;
+    const pointRow = yTop + Math.floor((pxH - v / max2 * (pxH - 1) - 1) / 2);
+    const markX = x0 + tipX;
+    const landing = Math.max(r3.y, pointRow - 2);
+    const yNow = Math.round(r3.y + (landing - r3.y) * drop);
+    for (let y = yNow + 1; y < pointRow; y++) c.put(markX, y, s.caps.unicode ? "\u250A" : ":", C.gray);
+    c.put(markX, yNow, s.caps.unicode ? "\u25BC" : "v", C.cream, void 0, 1);
+    const label4 = `it tipped in ${monthLabel(months[data.tip].month)}`;
+    const rising = (months.at(-1).pct ?? 0) >= v;
+    const lx = rising && markX - textWidth(label4) - 2 >= r3.x ? markX - textWidth(label4) - 2 : markX + textWidth(label4) + 3 > r3.x + r3.w ? markX - textWidth(label4) - 2 : markX + 2;
+    c.text(lx, yNow, label4, { fg: C.cream, bold: true, alpha: drop });
+  }
+  const ends = seg2(t, 1200, 300);
+  const first = months[0], last2 = months.at(-1);
+  c.text(x0 + 1, yTop + Math.floor((pxH - first.pct / max2 * (pxH - 1)) / 2) - 1, `${first.pct.toFixed(1)}%`, { fg: C.gray, alpha: ends });
+  const lastLabel = `${last2.pct.toFixed(0)}%`;
+  c.text(x0 + plotW - textWidth(lastLabel), Math.max(r3.y, yTop + Math.floor((pxH - last2.pct / max2 * (pxH - 1)) / 2) - 2), lastLabel, { fg: C.orange, bold: true, alpha: ends });
+  return t < 1900;
+}
+function fuseBody(s, data, r3) {
+  const { c, t } = s;
+  const n2 = Math.max(data.median + 4, Math.min(20, Math.max(10, data.hist.length)));
+  const len = Math.min(r3.w - 6, s.tier.id === "L" ? 96 : 70);
+  const x0 = r3.x + 2;
+  const histH = data.hist.length && r3.h >= 13 ? Math.min(s.tier.id === "L" ? 7 : 4, r3.h - 10) : 0;
+  const y = r3.y + histH + 1;
+  const posOf = (turn) => x0 + Math.round((turn - 1) / (n2 - 1) * (len - 1));
+  const target = posOf(data.median);
+  const burn = s.caps.motion ? seg2(t, 200, 1300, (k) => k * (2 - k)) : 1;
+  const sparkX = Math.round(x0 + (target - x0) * burn);
+  if (histH) {
+    const max2 = Math.max(1, ...data.hist);
+    const colW = Math.max(1, Math.floor(len / n2) - 1);
+    data.hist.slice(0, n2).forEach((v, i) => {
+      const x = posOf(i + 1) - Math.floor(colW / 2);
+      const k = seg2(t, 1400 + i * 30, 400, easeOutCubic);
+      const color = i + 1 === data.median ? C.orange : i + 1 < data.median ? fade(C.peach, 0.55) : fade(C.slate, 0.9);
+      vbar(c, x, y - 1, histH, v / max2 * k, color, colW, !s.caps.unicode);
+    });
+    const la = seg2(t, 1700, 300);
+    c.text(x0 + len + 1 - 22, r3.y, "sessions by first swear", { fg: C.slate, alpha: la });
+  }
+  for (let x = x0; x < x0 + len; x++) {
+    if (x < sparkX) c.put(x, y, s.caps.unicode ? "\xB7" : ".", C.slate);
+    else if (x > sparkX) c.put(x, y, x % 2 ? "~" : "-", x > target ? fade(C.peach, 0.45) : C.peach);
+  }
+  const flick = Math.floor(t / 70) % 3;
+  if (burn < 1) {
+    c.put(sparkX, y, s.caps.unicode ? ["\u2726", "\u2727", "\u2736"][flick] : "*", [C.cream, C.peach, C.orange][flick], void 0, 1);
+  } else {
+    const b2 = seg2(t, 1500, 500);
+    const radius = 1 + Math.round(b2 * 2);
+    for (let k = -radius; k <= radius; k++) {
+      const col3 = k === 0 ? C.white : Math.abs(k) < radius ? C.peach : C.ember;
+      c.px(target + k, y * 2 + 1, col3);
+      c.px(target, y * 2 + 1 + k, col3);
+      if (Math.abs(k) < radius - 1) {
+        c.px(target + k, y * 2 + 1 + k, C.orange);
+        c.px(target + k, y * 2 + 1 - k, C.orange);
+      }
+    }
+  }
+  for (let turn = 1; turn <= n2; turn++) {
+    const x = posOf(turn);
+    const show2 = turn === 1 || turn === data.median || turn === n2 || turn % (len / n2 >= 4 ? 1 : 5) === 0;
+    if (!show2) continue;
+    c.text(x - (turn >= 10 ? 1 : 0), y + 1, `#${turn}`, { fg: turn === data.median ? C.orange : C.slate, bold: turn === data.median });
+  }
+  const by = y + 3;
+  if (by + 3 <= r3.y + r3.h) {
+    const a = seg2(t, 1400, 400);
+    const text2 = `PROMPT #${data.median}`;
+    const bw = bigWidth(text2, 1);
+    drawBig(c, x0, by, text2, { color: (_x, py) => fade(mix(C.cream, C.orange, py / 4), a) });
+    const sx = x0 + bw + 4;
+    const lines = [
+      [`${data.sessions} of ${data.of}`, " sessions had a snap"],
+      [`${data.firstPrompt}`, " times you came in swinging on prompt #1"]
+    ];
+    const inline = lines.every(([strong, rest]) => sx + textWidth(strong + rest) <= r3.x + r3.w);
+    lines.forEach(([strong, rest], i) => {
+      const la = seg2(t, 1600 + i * 150, 300);
+      const lx = inline ? sx : x0;
+      const ly = inline ? by + i * 2 : by + 4 + i;
+      if (ly >= r3.y + r3.h) return;
+      const w = c.text(lx, ly, strong, { fg: C.orange, bold: true, alpha: la });
+      c.text(lx + w, ly, rest, { fg: C.gray, alpha: la }, r3.x + r3.w - lx - w);
+    });
+  }
+  return t < 2300;
+}
+var DAYS;
+var init_time = __esm({
+  "packages/cli/src/audit-ui/cards/time.ts"() {
+    "use strict";
+    init_color();
+    init_draw();
+    init_font();
+    init_motion();
+    init_deck();
+    DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   }
 });
 
@@ -46045,7 +50269,7 @@ function talkBody(s, data, r3) {
   const tileW = Math.floor((r3.w - (cols - 1) * gap2) / cols);
   const tileH = Math.max(3, Math.min(tier.id === "L" ? 8 : 5, Math.floor((r3.h - (rows - 1)) / rows)));
   let busy = false;
-  tiles.forEach((tile, i) => {
+  tiles.forEach((tile2, i) => {
     const col3 = i % cols, row2 = Math.floor(i / cols);
     const x = r3.x + col3 * (tileW + gap2);
     const yBase = r3.y + row2 * (tileH + 1);
@@ -46059,20 +50283,20 @@ function talkBody(s, data, r3) {
     const ix = tileH >= 5 ? x + 2 : x;
     const iw = tileW - (tileH >= 5 ? 4 : 0);
     const ly = tileH >= 5 ? y + 1 : y;
-    c.text(ix, ly, tier.id === "L" ? spaced(tile.label) : tile.label, { fg: C.gray, alpha: a }, iw);
-    const countText = tile.count !== null ? `\xD7${count4(tile.count)}` : "";
+    c.text(ix, ly, tier.id === "L" ? spaced(tile2.label) : tile2.label, { fg: C.gray, alpha: a }, iw);
+    const countText = tile2.count !== null ? `\xD7${count4(tile2.count)}` : "";
     const countW = big ? bigWidth(countText) : textWidth(countText);
     const phraseW = iw - countW - 3;
-    const phrase = tile.quoted ? `\u201C${tile.text}\u201D` : tile.text;
+    const phrase = tile2.quoted ? `\u201C${tile2.text}\u201D` : tile2.text;
     const py = big ? y + 3 : ly + 1;
     const lines = wrapText(phrase, phraseW, big ? 2 : 1);
     lines.forEach((line, li) => {
       let cx = ix;
       for (const ch of line) cx += c.text(cx, py + li, ch, { fg: ch === "\u201C" || ch === "\u201D" ? C.orange : C.cream, bold: true, alpha: a });
     });
-    if (tile.sub && tileH >= 6) c.text(ix, y + tileH - 2, tile.sub, { fg: C.slate, alpha: a }, iw);
+    if (tile2.sub && tileH >= 6) c.text(ix, y + tileH - 2, tile2.sub, { fg: C.slate, alpha: a }, iw);
     if (countText) {
-      const value = tile.count !== null && s.caps.motion ? `\xD7${count4(Math.round(countUp(tile.count, t, 80 + i * 140, 800)))}` : countText;
+      const value = tile2.count !== null && s.caps.motion ? `\xD7${count4(Math.round(countUp(tile2.count, t, 80 + i * 140, 800)))}` : countText;
       if (big) drawBig(c, ix + iw - bigWidth(value), y + 3, value, { color: (_x, py2) => fade(mix(C.peach, C.orange, py2 / 4), a) });
       else textRight(c, ix + iw, py, value, { fg: C.orange, bold: true, alpha: a });
     }
@@ -46199,19 +50423,39 @@ var init_words = __esm({
 
 // packages/cli/src/audit-ui/cards/index.ts
 function renderCard(s, card) {
+  if (card.kind === "board") return boardBody(s, card.data);
   const options = {};
-  if (card.kind === "cold_open" || card.kind === "archetype" || card.kind === "board") options.headline = false;
+  if (card.kind === "cold_open" || card.kind === "archetype") options.headline = false;
   if (card.kind === "faceoff") options.mascot = false;
-  if (card.kind === "board") options.bodyUnderKicker = true;
+  if (card.kind === "archetype") {
+    options.bodyUnderKicker = true;
+    options.expression = s.caps.motion ? revealExpression(s.t) : "proud";
+  }
   if (card.kind === "guess") {
     options.hint = s.state.guess === void 0 ? `1\u2013${card.data.options.length} guess` : void 0;
     if (s.state.guess !== void 0) options.expression = s.state.guess === card.data.answer ? "proud" : "shocked";
   }
   const shown = card.kind === "guess" && s.state.guess !== void 0 ? { ...card, support: `Ranked by ${card.data.basis}.` } : card;
-  const { body, busy, mascot } = drawChrome(s, shown, options);
+  const { body, busy: chromeBusy, mascot } = drawChrome(s, shown, options);
+  let busy = chromeBusy;
   if (body.h <= 0 || body.w <= 0) return busy;
+  const callouts = (card.callouts ?? []).filter(Boolean);
+  if (callouts.length && body.h >= 10) {
+    const room = Math.min(callouts.length, Math.max(1, Math.floor((body.h - 8) / 2)));
+    const lines = callouts.slice(0, room).map((text2) => wrapText(text2, body.w - 2, 1)[0] ?? "");
+    const top = body.y + body.h - lines.length;
+    const ca = seg2(s.t, 1100, 400);
+    busy ||= ca < 1;
+    lines.forEach((line, i) => {
+      c2(s, body.x, top + i, line, ca);
+    });
+    body.h -= lines.length + 1;
+  }
   let bodyBusy = false;
   switch (card.kind) {
+    case "cover":
+      bodyBusy = coverBody(s, card.data, body);
+      break;
     case "cold_open":
       bodyBusy = coldOpenBody(s, card.data, body);
       break;
@@ -46219,7 +50463,7 @@ function renderCard(s, card) {
       bodyBusy = scaleBody(s, card.data, body);
       break;
     case "bill":
-      bodyBusy = billBody(s, card.data, body);
+      bodyBusy = card.data.spend ? spendBody(s, card.data.spend, body) : billBody(s, card.data, body);
       break;
     case "clock":
       bodyBusy = clockBody(s, card.data, body);
@@ -46228,7 +50472,7 @@ function renderCard(s, card) {
       bodyBusy = guessBody(s, card.data, body);
       break;
     case "faceoff":
-      bodyBusy = faceoffBody(s, card.data, body);
+      bodyBusy = card.data.best || card.data.worst ? faceoffBody(s, card.data, body) : erasBody(s, card.data.eras, body);
       break;
     case "mood":
       bodyBusy = moodBody(s, card.data, body);
@@ -46252,7 +50496,7 @@ function renderCard(s, card) {
       bodyBusy = thenNowBody(s, card.data, body);
       break;
     case "archetype":
-      bodyBusy = archetypeBody(s, card.data, body);
+      bodyBusy = archetypeBody(s, card.data, body, mascot);
       break;
     case "awards":
       bodyBusy = awardsBody(s, card.data, body);
@@ -46260,11 +50504,12 @@ function renderCard(s, card) {
     case "insight":
       bodyBusy = insightBody(s, card.data, body);
       break;
-    case "board":
-      bodyBusy = boardBody(s, card.data, body, mascot);
-      break;
   }
   return busy || bodyBusy;
+}
+function c2(s, x, y, text2, alpha) {
+  s.c.text(x, y, s.caps.unicode ? "\u25B8 " : "> ", { fg: C.orange, alpha });
+  s.c.text(x + 2, y, text2, { fg: C.gray, alpha });
 }
 var init_cards = __esm({
   "packages/cli/src/audit-ui/cards/index.ts"() {
@@ -46272,6 +50517,13 @@ var init_cards = __esm({
     init_chrome();
     init_models();
     init_finale();
+    init_cover();
+    init_spend();
+    init_color();
+    init_draw();
+    init_motion();
+    init_reveal();
+    init_board();
     init_numbers();
     init_places();
     init_time();
@@ -46733,7 +50985,7 @@ var init_session_state = __esm({
 });
 
 // packages/cli/src/audit-ui/share.ts
-function shareCanvas(snapshot2, columns2 = 100, rows = 36) {
+function shareCanvas(snapshot2, columns2 = 120, rows = 40) {
   const deck = buildDeck(snapshot2);
   const board = deck.at(-1);
   if (!board || board.kind !== "board") return null;
@@ -46750,12 +51002,9 @@ function shareCanvas(snapshot2, columns2 = 100, rows = 36) {
     state: {},
     index: deck.length - 1,
     total: deck.length,
-    share: true
+    share: true,
+    online: wentOnline(snapshot2)
   }, board);
-  const footerY = rows - 2;
-  for (let x = 0; x < columns2; x++) c.put(x, footerY, " ", C.cream, C.ink);
-  c.text(4, footerY, "slopie audit", { fg: C.orange, bold: true });
-  c.text(17, footerY, "\xB7 computed locally \xB7 nothing left the machine", { fg: C.slate });
   return c;
 }
 function canvasToSvg(c, title = "slopie audit") {
@@ -46834,14 +51083,134 @@ var init_share = __esm({
     init_cards();
     init_scene();
     init_deck();
+    init_source4();
     CW = 9;
     CH = 18;
     esc4 = (text2) => text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 });
 
+// packages/cli/src/audit-ui/history.ts
+import crypto9 from "node:crypto";
+import fs61 from "node:fs";
+import os14 from "node:os";
+import path50 from "node:path";
+function historyDir(env = process.env) {
+  if (env["SLOPIE_AUDIT_HISTORY_DIR"]) return env["SLOPIE_AUDIT_HISTORY_DIR"];
+  const root = env["POTSHERD_DIR"] || path50.join(os14.homedir(), ".potsherd");
+  return path50.join(root, "audit-history");
+}
+function scopeKey(snapshot2) {
+  const s = snapshot2.scope;
+  const raw = JSON.stringify([[...s.harnesses ?? []].sort(), s.project ?? null, s.eventFrom ?? null]);
+  return crypto9.createHash("sha256").update(raw).digest("hex").slice(0, 16);
+}
+function digestOf(snapshot2, now = /* @__PURE__ */ new Date()) {
+  const story = storyOf(snapshot2);
+  if (!story || story.state === "empty" || !story.totals.prompts) return null;
+  const spend = spendOf(story);
+  const months = story.swearTimeline.filter((m) => m.prompts >= 20);
+  const daily = spend?.daily ?? [];
+  return {
+    v: 1,
+    at: now.toISOString(),
+    prompts: story.totals.prompts,
+    sessions: story.totals.sessions,
+    costUsd: spend ? Math.round(spend.measuredUsd * 100) / 100 : story.totals.costUsd || null,
+    swearPct: months.length ? months.at(-1).swearPct : null,
+    peakHour: story.rhythm.peakHour,
+    archetypeId: story.archetype?.id ?? null,
+    archetypeTitle: story.archetype?.title ?? null,
+    topModel: modelShareOf(story)?.rows[0]?.label ?? story.models.top[0]?.label ?? null,
+    records: {
+      streakDays: story.totals.longestStreakDays,
+      stretchH: story.totals.longestStretchHours,
+      busiestDayPrompts: daily.reduce((a, d) => Math.max(a, d.prompts), 0),
+      priciestDayUsd: spend?.priciestDay?.usd ?? 0,
+      subagents: story.totals.subagents
+    }
+  };
+}
+function isDigest(x) {
+  const d = x;
+  return !!d && d.v === 1 && typeof d.at === "string" && typeof d.prompts === "number" && !!d.records && typeof d.records === "object";
+}
+function readHistory3(snapshot2, dir = historyDir()) {
+  try {
+    const text2 = fs61.readFileSync(path50.join(dir, `${scopeKey(snapshot2)}.jsonl`), "utf8");
+    const out = [];
+    for (const line of text2.split("\n")) {
+      if (!line.trim()) continue;
+      try {
+        const d = JSON.parse(line);
+        if (isDigest(d)) out.push(d);
+      } catch {
+      }
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+function writeDigest(snapshot2, digest3, dir = historyDir()) {
+  try {
+    fs61.mkdirSync(dir, { recursive: true, mode: 448 });
+    const file = path50.join(dir, `${scopeKey(snapshot2)}.jsonl`);
+    const prior = readHistory3(snapshot2, dir);
+    const lines = [...prior, digest3].slice(-MAX_LINES).map((d) => JSON.stringify(d));
+    const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+    fs61.writeFileSync(tmp, lines.join("\n") + "\n", { mode: 384 });
+    fs61.renameSync(tmp, file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function baseline(history, now = /* @__PURE__ */ new Date()) {
+  if (!history.length) return null;
+  const old = [...history].reverse().find((d) => now.getTime() - Date.parse(d.at) >= 20 * 36e5);
+  return old ?? history.at(-1);
+}
+function sinceLast(prev, now, all = [prev]) {
+  const parts = [`(${shortDate2(prev.at.slice(0, 10))})`];
+  const dp = now.prompts - prev.prompts;
+  parts.push(`${dp >= 0 ? "+" : ""}${count4(dp)} prompts`);
+  if (now.costUsd !== null && prev.costUsd !== null) {
+    const dc = now.costUsd - prev.costUsd;
+    if (Math.abs(dc) >= 1) parts.push(`${dc >= 0 ? "+" : "\u2212"}${money2(Math.abs(dc))}`);
+  }
+  if (now.swearPct !== null && prev.swearPct !== null && Math.abs(now.swearPct - prev.swearPct) >= 0.5) {
+    parts.push(`swearing ${prev.swearPct.toFixed(1)}% \u2192 ${now.swearPct.toFixed(1)}% ${now.swearPct < prev.swearPct ? "\u2193" : "\u2191"}`);
+  }
+  const records = [];
+  const best = (key2) => Math.max(...all.map((d) => d.records[key2] ?? 0));
+  const check = (key2, label4, fmt) => {
+    const before = best(key2), after = now.records[key2];
+    if (after > before && before > 0) records.push({ metric: label4, from: fmt(before), to: fmt(after) });
+  };
+  check("busiestDayPrompts", "busiest day", (n2) => `${count4(n2)} prompts`);
+  check("priciestDayUsd", "priciest day", (n2) => money2(n2));
+  check("streakDays", "streak", (n2) => `${n2} days`);
+  check("stretchH", "longest sit", (n2) => `${n2.toFixed(1)}h`);
+  check("subagents", "subagents", (n2) => count4(n2));
+  if (records.length) parts.push(`new record: ${records[0].metric} ${records[0].from} \u2192 ${records[0].to}`);
+  const archetypeChanged = prev.archetypeTitle && now.archetypeTitle && prev.archetypeId !== now.archetypeId ? prev.archetypeTitle : null;
+  if (archetypeChanged) parts.push(`no longer ${archetypeChanged}`);
+  return { line: parts.join("  "), records, archetypeChanged };
+}
+var MAX_LINES;
+var init_history3 = __esm({
+  "packages/cli/src/audit-ui/history.ts"() {
+    "use strict";
+    init_format3();
+    init_source4();
+    init_v19();
+    MAX_LINES = 200;
+  }
+});
+
 // packages/cli/src/audit-ui/terminal.ts
-import fs58 from "node:fs";
+import fs62 from "node:fs";
 import path51 from "node:path";
 function splitKeys(chunk) {
   const out = [];
@@ -46895,6 +51264,10 @@ function decodeKey(chunk) {
     default:
       return null;
   }
+}
+function partialTail(text2, marker2) {
+  for (let n2 = Math.min(marker2.length - 1, text2.length); n2 > 0; n2--) if (marker2.startsWith(text2.slice(-n2))) return text2.slice(-n2);
+  return "";
 }
 async function runWallboard(session, options = {}) {
   const stdin = options.io?.stdin ?? process.stdin;
@@ -47056,6 +51429,7 @@ async function runWallboard(session, options = {}) {
           state: stateOf(card),
           index,
           total: deck.length,
+          online: wentOnline(view.snapshot, transfers.length),
           t: caps.motion ? (now - enteredAt) * CARD_SPEED : Infinity
         };
         busy = renderCard(scene, card);
@@ -47134,11 +51508,35 @@ async function runWallboard(session, options = {}) {
     }, ms);
     paint();
   }
+  const histDir = options.historyDir !== void 0 ? options.historyDir : options.io ? false : historyDir();
+  let history = null;
+  let digestWritten = false;
+  let openedOnBoard = false;
+  function loadHistory(snapshot2) {
+    if (history || histDir === false) return;
+    const digest3 = digestOf(snapshot2);
+    if (!digest3) return;
+    const past = readHistory3(snapshot2, histDir);
+    const prev = baseline(past);
+    history = { since: prev ? sinceLast(prev, digest3, past) : null, firstRun: !past.length };
+    if (!digestWritten && (snapshot2.status === "ready" || snapshot2.status === "partial")) digestWritten = writeDigest(snapshot2, digest3, histDir);
+  }
+  function decorate(cards) {
+    const last2 = cards.at(-1);
+    if (!last2 || last2.kind !== "board" || !history) return cards;
+    const since = history.since;
+    const records = since?.records ?? [];
+    const awards3 = records.length ? [{ title: "New Personal Best", value: `${records[0].metric}: ${records[0].to}`, publicValue: `${records[0].metric}: ${records[0].to}`, tier: "gold" }, ...last2.data.awards].slice(0, 6) : last2.data.awards;
+    const board = { ...last2, data: { ...last2.data, sinceLast: since?.line ?? null, firstRun: history.firstRun, replay: openedOnBoard, awards: awards3 } };
+    return [...cards.slice(0, -1), board];
+  }
   function startDeck(now) {
     deckSnapshot = view.snapshot;
-    deck = buildDeck(view.snapshot);
+    loadHistory(view.snapshot);
+    openedOnBoard = !!history && !history.firstRun;
+    deck = decorate(buildDeck(view.snapshot));
     mode = "deck";
-    index = 0;
+    index = openedOnBoard ? deck.length - 1 : 0;
     enteredAt = now;
     needsClear = false;
   }
@@ -47184,7 +51582,7 @@ async function runWallboard(session, options = {}) {
       lingering = null;
       session.cancel();
       if (mode === "deck") {
-        deck = buildDeck(view.snapshot);
+        deck = decorate(buildDeck(view.snapshot));
         index = Math.min(index, deck.length - 1);
       }
       flash("Cleared by your privacy settings");
@@ -47217,20 +51615,24 @@ async function runWallboard(session, options = {}) {
     if (mode === "deck" && view.snapshot !== deckSnapshot) {
       const id = deck[index]?.id;
       deckSnapshot = view.snapshot;
-      deck = buildDeck(view.snapshot);
+      deck = decorate(buildDeck(view.snapshot));
       const found = deck.findIndex((card) => card.id === id);
       index = found >= 0 ? found : Math.min(index, deck.length - 1);
     }
     schedule();
   }
-  let pasting = false;
+  const input = new InputParser((token) => onKey(token));
+  let inputTimer = null;
   const onData = (chunk) => {
-    if (chunk.includes("\x1B[200~")) pasting = true;
-    if (pasting) {
-      if (chunk.includes("\x1B[201~")) pasting = false;
-      return;
+    input.feed(chunk);
+    if (inputTimer) {
+      clearTimeout(inputTimer);
+      inputTimer = null;
     }
-    for (const token of splitKeys(chunk)) onKey(token);
+    if (input.holding) inputTimer = setTimeout(() => {
+      inputTimer = null;
+      input.flush();
+    }, 40);
   };
   const onKey = (token) => {
     if (stopping) return;
@@ -47272,10 +51674,21 @@ async function runWallboard(session, options = {}) {
         share();
         return;
       case "left":
+        if (openedOnBoard && card.kind === "board") {
+          openedOnBoard = false;
+          deck = decorate(buildDeck(view.snapshot));
+          go(0);
+          return;
+        }
         go(index - 1);
         return;
       case "right":
       case "enter": {
+        if (card.kind === "archetype" && caps.motion && !revealDone((now - enteredAt) * CARD_SPEED)) {
+          enteredAt = now - T2.settle / CARD_SPEED - 1;
+          paint();
+          return;
+        }
         if (card.kind === "guess") {
           const state = stateOf(card);
           if (state.guess === void 0) {
@@ -47314,7 +51727,7 @@ async function runWallboard(session, options = {}) {
       for (let n2 = 1; n2 < 100 && !file; n2++) {
         const candidate = path51.join(dir, n2 === 1 ? "slopie-wrapped.svg" : `slopie-wrapped-${n2}.svg`);
         try {
-          fs58.writeFileSync(candidate, svg, { flag: "wx", mode: 420 });
+          fs62.writeFileSync(candidate, svg, { flag: "wx", mode: 420 });
           file = candidate;
         } catch (error) {
           if (error.code !== "EEXIST") throw error;
@@ -47360,7 +51773,7 @@ async function runWallboard(session, options = {}) {
   try {
     await done;
   } finally {
-    for (const timer of [scheduled, toastTimer, bannerTimer, blinkTimer]) if (timer) clearTimeout(timer);
+    for (const timer of [scheduled, toastTimer, bannerTimer, blinkTimer, inputTimer]) if (timer) clearTimeout(timer);
     if (ticker) clearInterval(ticker);
     stdin.off("data", onData);
     stdout.off("resize", onResize);
@@ -47376,11 +51789,12 @@ async function runWallboard(session, options = {}) {
   await Promise.race([scan2, new Promise((resolve) => setTimeout(resolve, 2e3).unref())]);
   return { snapshot: view.revoked ?? view.snapshot, reason };
 }
-var FRAME_MS, CARD_SPEED, TRANSFER_LINGER_MS, BLINK_MS;
+var PASTE_START, PASTE_END, InputParser, FRAME_MS, CARD_SPEED, TRANSFER_LINGER_MS, BLINK_MS;
 var init_terminal = __esm({
   "packages/cli/src/audit-ui/terminal.ts"() {
     "use strict";
     init_cards();
+    init_reveal();
     init_scene();
     init_canvas();
     init_color();
@@ -47392,7 +51806,62 @@ var init_terminal = __esm({
     init_share();
     init_deck();
     init_text();
+    init_history3();
+    init_source4();
     init_view_model();
+    PASTE_START = "\x1B[200~";
+    PASTE_END = "\x1B[201~";
+    InputParser = class {
+      constructor(emit) {
+        this.emit = emit;
+      }
+      pending = "";
+      pasting = false;
+      get holding() {
+        return this.pending.length > 0;
+      }
+      feed(chunk) {
+        let buf = this.pending + chunk;
+        this.pending = "";
+        for (; ; ) {
+          if (this.pasting) {
+            const end = buf.indexOf(PASTE_END);
+            if (end < 0) {
+              this.pending = partialTail(buf, PASTE_END);
+              return;
+            }
+            buf = buf.slice(end + PASTE_END.length);
+            this.pasting = false;
+            continue;
+          }
+          const start = buf.indexOf(PASTE_START);
+          if (start >= 0) {
+            this.keys(buf.slice(0, start));
+            buf = buf.slice(start + PASTE_START.length);
+            this.pasting = true;
+            continue;
+          }
+          const tail2 = /\x1b(?:\[[0-9;]*|O)?$/.exec(buf);
+          if (tail2) {
+            this.keys(buf.slice(0, tail2.index));
+            this.pending = tail2[0];
+            return;
+          }
+          this.keys(buf);
+          return;
+        }
+      }
+      /** Timeout: a held lone Esc is a real Esc; a held partial sequence is dropped. */
+      flush() {
+        const held = this.pending;
+        this.pending = "";
+        if (!this.pasting && held === "\x1B") this.emit("\x1B");
+      }
+      keys(text2) {
+        if (!text2) return;
+        for (const token of splitKeys(text2)) this.emit(token);
+      }
+    };
     FRAME_MS = 33;
     CARD_SPEED = 1.5;
     TRANSFER_LINGER_MS = 1800;
@@ -47454,7 +51923,7 @@ __export(fixture_session_exports, {
   createFixtureSession: () => createFixtureSession,
   recordAuditSession: () => recordAuditSession
 });
-import fs59 from "node:fs";
+import fs63 from "node:fs";
 function isRecording(value) {
   return Boolean(value && typeof value === "object" && value.kind === "slopie-audit-recording");
 }
@@ -47478,13 +51947,13 @@ function recordAuditSession(session, file) {
         onEvent?.(event);
       });
       const recording = { kind: "slopie-audit-recording", version: 1, initial, events, final };
-      fs59.writeFileSync(file, JSON.stringify(recording), { mode: 384 });
+      fs63.writeFileSync(file, JSON.stringify(recording), { mode: 384 });
       return final;
     }
   };
 }
 function createFixtureSession(file, speed = Number(process.env["SLOPIE_AUDIT_FIXTURE_SPEED"] ?? 1)) {
-  const parsed = JSON.parse(fs59.readFileSync(file, "utf8"));
+  const parsed = JSON.parse(fs63.readFileSync(file, "utf8"));
   const recording = isRecording(parsed) ? parsed : { kind: "slopie-audit-recording", version: 1, initial: parsed, events: [], final: parsed };
   const factor = Number.isFinite(speed) && speed > 0 ? speed : 1;
   let current = recording.initial;
@@ -47550,11 +52019,11 @@ var audit_overview_exports = {};
 __export(audit_overview_exports, {
   runAuditOverview: () => runAuditOverview
 });
-import fs60 from "node:fs";
+import fs64 from "node:fs";
 import path52 from "node:path";
 async function runAuditOverview(o) {
   const harnesses = o.harness ? [...new Set(o.harness.split(",").map((h) => h.trim()))] : void 0;
-  if (harnesses?.some((h) => !["claude", "codex", "pi", "opencode"].includes(h))) throw new UserError("Choose overview sources from claude,codex,pi,opencode.");
+  if (harnesses?.some((h) => !["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot"].includes(h))) throw new UserError("Choose overview sources from claude,codex,pi,opencode,cursor,gemini,copilot.");
   if (o.export && path52.extname(o.export).toLowerCase() !== ".svg") throw new UserError("Use a .svg path for the safe share preview.");
   if (o.tone && !["elegant", "witty", "chaotic", "roast"].includes(o.tone)) throw new UserError("Choose a tone: elegant, witty, chaotic, roast.");
   let options = {
@@ -47596,13 +52065,13 @@ async function runAuditOverview(o) {
         print(ui2.renderLaunchPlain(snapshot2, { ascii: o.ascii, width }));
         if (o.export) {
           const file = path52.resolve(o.export);
-          fs60.writeFileSync(file, ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
+          fs64.writeFileSync(file, ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
           print(`Saved safe share preview: ${file}`);
         }
       }
       if (o.json && o.export) {
         const ui2 = await Promise.resolve().then(() => (init_audit_ui(), audit_ui_exports));
-        fs60.writeFileSync(path52.resolve(o.export), ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
+        fs64.writeFileSync(path52.resolve(o.export), ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
       }
       return snapshot2.status === "cancelled" ? 130 : snapshot2.status === "error" ? 1 : 0;
     } finally {
@@ -47667,18 +52136,18 @@ __export(spans_exports, {
   deriveCoveragePartitions: () => deriveCoveragePartitions2,
   hasCurrentSpanManifest: () => hasCurrentSpanManifest2,
   hash: () => hash2,
-  identity: () => identity3,
+  identity: () => identity4,
   reassembleUnit: () => reassembleUnit2,
   spanEmbeddingText: () => spanEmbeddingText2,
   spanManifestHash: () => spanManifestHash2,
   spanWindows: () => spanWindows2
 });
-import crypto9 from "node:crypto";
+import crypto10 from "node:crypto";
 function hash2(text2) {
-  return crypto9.createHash("sha256").update(text2).digest("hex");
+  return crypto10.createHash("sha256").update(text2).digest("hex");
 }
-function identity3(...parts) {
-  const h = crypto9.createHash("sha256");
+function identity4(...parts) {
+  const h = crypto10.createHash("sha256");
   for (const p of parts) {
     const b2 = Buffer.from(p);
     const n2 = Buffer.alloc(4);
@@ -47689,8 +52158,8 @@ function identity3(...parts) {
   return h.digest("hex");
 }
 function spanEmbeddingText2(text2, embeddingContextJson) {
-  const context = JSON.parse(embeddingContextJson).context;
-  return context ? `${context}
+  const context2 = JSON.parse(embeddingContextJson).context;
+  return context2 ? `${context2}
 
 ${text2}` : text2;
 }
@@ -47699,11 +52168,11 @@ function spanWindows2(text2, tokenizer2, recordContext = "") {
     return [];
   const out = [];
   const contextOffsets = tokenizer2 ? tokenizer2.boundaries(recordContext) : [0];
-  const context = tokenizer2 ? recordContext.slice(0, contextOffsets[Math.min(64, contextOffsets.length - 1)] ?? 0) : "";
-  const contextTokens = tokenizer2?.count ? tokenizer2.count(context) : Math.max(0, contextOffsets.length - 1 > 64 ? 64 : contextOffsets.length - 1);
+  const context2 = tokenizer2 ? recordContext.slice(0, contextOffsets[Math.min(64, contextOffsets.length - 1)] ?? 0) : "";
+  const contextTokens = tokenizer2?.count ? tokenizer2.count(context2) : Math.max(0, contextOffsets.length - 1 > 64 ? 64 : contextOffsets.length - 1);
   const payloadTokens = 382 - contextTokens;
   const count5 = tokenizer2?.count ?? ((value) => tokenizer2 ? tokenizer2.boundaries(value).length - 1 : Buffer.byteLength(value));
-  const inputText = (value) => context ? `${context}
+  const inputText = (value) => context2 ? `${context2}
 
 ${value}` : value;
   const policy = tokenizer2 ? `span-v1:${tokenizer2.assetHash}:record-context-v1` : "span-conservative-utf8-v1";
@@ -47731,14 +52200,14 @@ ${value}` : value;
     if (isSplit2(text2, start) || isSplit2(text2, end))
       throw new Error("surrogate split");
     const value = text2.slice(start, end);
-    out.push({ startUtf16: start, endUtf16: end, text: value, chunkPolicy: policy, embeddingInputHash: hash2(inputText(value)), embeddingContextJson: JSON.stringify({ partition: [start, end], tokenizerId: tokenizer2?.id ?? null, tokenizerHash: tokenizer2?.assetHash ?? null, context, contextTokens, recipe: "record-context-v1" }), isPartition: true });
+    out.push({ startUtf16: start, endUtf16: end, text: value, chunkPolicy: policy, embeddingInputHash: hash2(inputText(value)), embeddingContextJson: JSON.stringify({ partition: [start, end], tokenizerId: tokenizer2?.id ?? null, tokenizerHash: tokenizer2?.assetHash ?? null, context: context2, contextTokens, recipe: "record-context-v1" }), isPartition: true });
     if (tokenizer2 && i > 0) {
       const overlapStart = offsets[Math.max(0, i - 32)];
       let overlapIndex = Math.min(j, i + payloadTokens - 32);
       while (overlapIndex > i && count5(inputText(text2.slice(overlapStart, offsets[overlapIndex]))) > 382) overlapIndex--;
       const overlapEnd = offsets[overlapIndex];
       const overlapText = text2.slice(overlapStart, overlapEnd);
-      out.push({ startUtf16: overlapStart, endUtf16: overlapEnd, text: overlapText, chunkPolicy: policy, embeddingInputHash: hash2(inputText(overlapText)), embeddingContextJson: JSON.stringify({ partition: null, neighborOverlap: 32, tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context, contextTokens, recipe: "record-context-v1" }), isPartition: false });
+      out.push({ startUtf16: overlapStart, endUtf16: overlapEnd, text: overlapText, chunkPolicy: policy, embeddingInputHash: hash2(inputText(overlapText)), embeddingContextJson: JSON.stringify({ partition: null, neighborOverlap: 32, tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context: context2, contextTokens, recipe: "record-context-v1" }), isPartition: false });
     }
     i = j;
   }
@@ -47774,13 +52243,13 @@ function buildSpanManifest2(text2, tokenizer2, recordContext = "") {
   }
   if (!tokenizer2.count || !tokenizer2.sourceBoundaries) throw new Error("verified v2 source token coordinates required");
   const count5 = tokenizer2.count, contextBounds = tokenizer2.sourceBoundaries(recordContext);
-  let context = "";
+  let context2 = "";
   for (const b2 of contextBounds) {
     if (b2.tokenEndOrdinal > 64) break;
     const candidate = recordContext.slice(0, b2.offsetUtf16);
-    if (count5(candidate) <= 64) context = candidate;
+    if (count5(candidate) <= 64) context2 = candidate;
   }
-  const contextTokens = count5(context), input = (value) => context ? `${context}
+  const contextTokens = count5(context2), input = (value) => context2 ? `${context2}
 
 ${value}` : value;
   const offsets = tokenizer2.sourceBoundaries(text2);
@@ -47804,7 +52273,7 @@ ${value}` : value;
     if (end.offsetUtf16 <= previousEnd) throw new Error("v2 window must advance");
     const value = text2.slice(start.offsetUtf16, end.offsetUtf16);
     if (count5(input(value)) > 382) throw new Error("v2 wordpiece window exceeds384 including specials");
-    windows2.push({ startUtf16: start.offsetUtf16, endUtf16: end.offsetUtf16, text: value, chunkPolicy: policy, embeddingInputHash: hash2(input(value)), embeddingContextJson: JSON.stringify({ tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context, contextTokens, recipe: SPAN_CONTEXT_RECIPE2, targetSourceOverlap: 32, actualSourceOverlap: actualOverlap, sourceOverlapRounding: Math.max(0, actualOverlap - 32), sourceTokenStart: start.tokenEndOrdinal, sourceTokenEnd: end.tokenEndOrdinal }), isPartition: false });
+    windows2.push({ startUtf16: start.offsetUtf16, endUtf16: end.offsetUtf16, text: value, chunkPolicy: policy, embeddingInputHash: hash2(input(value)), embeddingContextJson: JSON.stringify({ tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context: context2, contextTokens, recipe: SPAN_CONTEXT_RECIPE2, targetSourceOverlap: 32, actualSourceOverlap: actualOverlap, sourceOverlapRounding: Math.max(0, actualOverlap - 32), sourceTokenStart: start.tokenEndOrdinal, sourceTokenEnd: end.tokenEndOrdinal }), isPartition: false });
     previousEnd = end.offsetUtf16;
     if (endIndex === offsets.length - 1) break;
     const target = end.tokenEndOrdinal - 32;
@@ -47858,11 +52327,11 @@ import process25 from "node:process";
 
 // packages/cli/src/reader-command.ts
 init_dist();
-import fs50 from "node:fs";
+import fs53 from "node:fs";
 function runReaderCommand(operation, inputFile) {
   try {
     if (!["prepare", "validate", "next-read"].includes(operation)) throw new Error("reader_operation_must_be_prepare_validate_or_next_read");
-    const input = JSON.parse(fs50.readFileSync(inputFile, "utf8"));
+    const input = JSON.parse(fs53.readFileSync(inputFile, "utf8"));
     if (!input || Array.isArray(input) || typeof input !== "object" || Object.keys(input).some((k) => !["taskId", "query", "scope", "packets", ...operation === "validate" ? ["raw"] : [], ...operation === "next-read" ? ["budget", "attemptedRefs"] : []].includes(k)) || typeof input.taskId !== "string" || typeof input.query !== "string" || !input.scope || typeof input.scope !== "object" || Array.isArray(input.scope) || !Array.isArray(input.packets) || operation === "validate" && typeof input.raw !== "string") throw new Error("invalid_reader_input");
     const task = buildReaderTask(input.taskId, input.query, input.scope, input.packets);
     if (operation === "next-read") {
@@ -48044,19 +52513,19 @@ function isFts5(info) {
 // packages/bridges/dist/claude-mem.js
 init_dist();
 import os10 from "node:os";
-import path44 from "node:path";
-import fs51 from "node:fs";
+import path43 from "node:path";
+import fs54 from "node:fs";
 var NO_UID = 77;
 var WORKER_TIMEOUT_MS = 1500;
 function claudeMemDir(opts = {}) {
   const env = opts.env ?? process.env;
   const override = env["CLAUDE_MEM_DATA_DIR"];
   if (override && override.trim())
-    return path44.resolve(override.trim());
-  return path44.join(opts.home ?? os10.homedir(), ".claude-mem");
+    return path43.resolve(override.trim());
+  return path43.join(opts.home ?? os10.homedir(), ".claude-mem");
 }
 function claudeMemDbPath(opts = {}) {
-  return path44.join(claudeMemDir(opts), "claude-mem.db");
+  return path43.join(claudeMemDir(opts), "claude-mem.db");
 }
 function claudeMemWorkerPort(opts = {}) {
   const env = opts.env ?? process.env;
@@ -48069,9 +52538,9 @@ function claudeMemWorkerPort(opts = {}) {
 async function detectClaudeMem(opts = {}) {
   const dir = claudeMemDir(opts);
   const file = claudeMemDbPath(opts);
-  if (!fs51.existsSync(dir))
+  if (!fs54.existsSync(dir))
     return absentStatus("claude-mem", file, `no ${tilde(dir)}`);
-  if (!fs51.existsSync(file)) {
+  if (!fs54.existsSync(file)) {
     return emptyStatus("claude-mem", file, `${tilde(dir)} exists, no claude-mem.db in it`);
   }
   const { db, error } = await openReadOnly(file);
@@ -48413,9 +52882,9 @@ function tilde(p) {
 
 // packages/bridges/dist/agentmemory.js
 import { spawn as spawn2 } from "node:child_process";
-import fs52 from "node:fs";
+import fs55 from "node:fs";
 import os11 from "node:os";
-import path45 from "node:path";
+import path44 from "node:path";
 var AGENTMEMORY_TIMEOUT_MS = 5e3;
 var SEARCH_TOOL = "memory_smart_search";
 function agentMemoryDirs(opts = {}) {
@@ -48427,26 +52896,26 @@ function agentMemoryDirs(opts = {}) {
       out.push({ path: p, kind: kind3 });
   };
   if (process.platform === "darwin") {
-    push2(path45.join(home2, "Library", "Application Support", "agentmemory"), "app-data");
+    push2(path44.join(home2, "Library", "Application Support", "agentmemory"), "app-data");
   } else if (process.platform === "win32") {
     const appData = env["APPDATA"];
     if (appData)
-      push2(path45.join(appData, "agentmemory"), "app-data");
+      push2(path44.join(appData, "agentmemory"), "app-data");
   }
   const xdgData = env["XDG_DATA_HOME"];
-  push2(path45.join(xdgData || path45.join(home2, ".local", "share"), "agentmemory"), "app-data");
+  push2(path44.join(xdgData || path44.join(home2, ".local", "share"), "agentmemory"), "app-data");
   const xdgConfig = env["XDG_CONFIG_HOME"];
-  push2(path45.join(xdgConfig || path45.join(home2, ".config"), "agentmemory"), "app-data");
-  push2(path45.join(home2, ".agentmemory"), "dotdir");
+  push2(path44.join(xdgConfig || path44.join(home2, ".config"), "agentmemory"), "app-data");
+  push2(path44.join(home2, ".agentmemory"), "dotdir");
   return out;
 }
 function agentMemoryDir(opts = {}) {
   const candidates2 = agentMemoryDirs(opts);
   for (const c of candidates2) {
-    if (fs52.existsSync(c.path))
+    if (fs55.existsSync(c.path))
       return c.path;
   }
-  return candidates2[0]?.path ?? path45.join(opts.home ?? os11.homedir(), ".agentmemory");
+  return candidates2[0]?.path ?? path44.join(opts.home ?? os11.homedir(), ".agentmemory");
 }
 function discoverLaunch(opts = {}) {
   const env = opts.env ?? process.env;
@@ -48459,14 +52928,14 @@ function discoverLaunch(opts = {}) {
       return { command, args: parts.slice(1), via: "env" };
   }
   for (const name of [".mcp.json", "mcp.json"]) {
-    const found = fromMcpJson(path45.join(dir, name));
+    const found = fromMcpJson(path44.join(dir, name));
     if (found)
       return found;
   }
   const onPath3 = which("agentmemory-mcp", env);
   if (onPath3)
     return { command: onPath3, args: [], via: "PATH" };
-  const local = path45.join(dir, "node_modules", ".bin", "agentmemory-mcp");
+  const local = path44.join(dir, "node_modules", ".bin", "agentmemory-mcp");
   if (isExecutable(local))
     return { command: local, args: [], via: "node_modules" };
   return null;
@@ -48474,7 +52943,7 @@ function discoverLaunch(opts = {}) {
 function fromMcpJson(file) {
   let parsed;
   try {
-    parsed = JSON.parse(fs52.readFileSync(file, "utf-8"));
+    parsed = JSON.parse(fs55.readFileSync(file, "utf-8"));
   } catch {
     return null;
   }
@@ -48489,16 +52958,16 @@ function fromMcpJson(file) {
     if (!command)
       continue;
     const args = Array.isArray(entry.args) ? entry.args.map(String) : [];
-    if (/^(npx|pnpx|bunx|yarn|npm)$/.test(path45.basename(command)))
+    if (/^(npx|pnpx|bunx|yarn|npm)$/.test(path44.basename(command)))
       continue;
     return { command, args, via: "mcp.json" };
   }
   return null;
 }
 function which(binary, env) {
-  const dirs = (env["PATH"] ?? "").split(path45.delimiter).filter(Boolean);
+  const dirs = (env["PATH"] ?? "").split(path44.delimiter).filter(Boolean);
   for (const dir of dirs) {
-    const candidate = path45.join(dir, binary);
+    const candidate = path44.join(dir, binary);
     if (isExecutable(candidate))
       return candidate;
   }
@@ -48506,15 +52975,15 @@ function which(binary, env) {
 }
 function isExecutable(file) {
   try {
-    fs52.accessSync(file, fs52.constants.X_OK);
-    return fs52.statSync(file).isFile();
+    fs55.accessSync(file, fs55.constants.X_OK);
+    return fs55.statSync(file).isFile();
   } catch {
     return false;
   }
 }
 function detectAgentMemory(opts = {}) {
   const dir = agentMemoryDir(opts);
-  if (!fs52.existsSync(dir)) {
+  if (!fs55.existsSync(dir)) {
     const probed = agentMemoryDirs(opts).map((c) => tilde2(c.path));
     return absentStatus("agentmemory", dir, `none of ${probed.join(", ")}`);
   }
@@ -48530,7 +52999,7 @@ function detectAgentMemory(opts = {}) {
     presence: "store",
     path: dir,
     available: true,
-    detail: `mcp server via ${launch.via} (${path45.basename(launch.command)}), one tool: ${SEARCH_TOOL}`,
+    detail: `mcp server via ${launch.via} (${path44.basename(launch.command)}), one tool: ${SEARCH_TOOL}`,
     headline: `mcp server via ${launch.via}`,
     schema: null,
     rows: null,
@@ -48539,7 +53008,7 @@ function detectAgentMemory(opts = {}) {
 }
 function isEmptyDir(dir) {
   try {
-    return fs52.readdirSync(dir).length === 0;
+    return fs55.readdirSync(dir).length === 0;
   } catch {
     return true;
   }
@@ -48575,7 +53044,7 @@ var StdioClient = class {
         env: { ...env }
       });
     } catch (err) {
-      this.failed = `could not start ${path45.basename(this.launch.command)}: ${firstLine5(err)}`;
+      this.failed = `could not start ${path44.basename(this.launch.command)}: ${firstLine5(err)}`;
       return false;
     }
     const child = this.child;
@@ -48845,10 +53314,10 @@ function parseHits(text2, limit, source) {
     if (typeof raw === "string")
       return hit(String(i + 1), "", raw, null, i + 1, source);
     const row2 = raw ?? {};
-    const body = pick2(row2, ["text", "content", "body", "observation", "memory", "summary"]);
-    const title = pick2(row2, ["title", "summary", "name", "subject"]);
-    const id = pick2(row2, ["id", "uuid", "memoryId", "observationId"]) || String(i + 1);
-    const ts = pick2(row2, ["created_at", "createdAt", "timestamp", "ts", "date"]) || null;
+    const body = pick3(row2, ["text", "content", "body", "observation", "memory", "summary"]);
+    const title = pick3(row2, ["title", "summary", "name", "subject"]);
+    const id = pick3(row2, ["id", "uuid", "memoryId", "observationId"]) || String(i + 1);
+    const ts = pick3(row2, ["created_at", "createdAt", "timestamp", "ts", "date"]) || null;
     return hit(id, title, body || JSON.stringify(row2).slice(0, 400), ts, i + 1, source);
   }).filter((h) => h.text.length > 0);
 }
@@ -48866,7 +53335,7 @@ function hit(id, title, text2, ts, rank, source) {
     raw: 0
   };
 }
-function pick2(row2, keys5) {
+function pick3(row2, keys5) {
   for (const key2 of keys5) {
     const value = row2[key2];
     if (typeof value === "string" && value.trim())
@@ -48883,26 +53352,26 @@ function tilde2(p) {
 
 // packages/bridges/dist/notes.js
 init_dist();
-import fs53 from "node:fs";
+import fs56 from "node:fs";
 import os12 from "node:os";
-import path46 from "node:path";
+import path45 from "node:path";
 var MAX_BYTES = 256 * 1024;
 function notesPaths(opts = {}) {
   const claude = paths_exports.claudePaths(opts.claudeDir ? paths_exports.expandTilde(opts.claudeDir) : void 0);
   const cwd = opts.cwd ?? process.cwd();
   const out = [];
   out.push({ path: memoryDir(claude.projects, cwd), kind: "auto-memory" });
-  const global = path46.join(claude.root, "CLAUDE.md");
-  let dir = path46.resolve(cwd);
+  const global = path45.join(claude.root, "CLAUDE.md");
+  let dir = path45.resolve(cwd);
   for (let depth = 0; depth < (opts.maxDepth ?? 6); depth += 1) {
     for (const candidate of [
-      path46.join(dir, "CLAUDE.md"),
-      path46.join(dir, ".claude", "CLAUDE.md")
+      path45.join(dir, "CLAUDE.md"),
+      path45.join(dir, ".claude", "CLAUDE.md")
     ]) {
       if (candidate !== global)
         out.push({ path: candidate, kind: "project-claude-md" });
     }
-    const parent = path46.dirname(dir);
+    const parent = path45.dirname(dir);
     if (parent === dir)
       break;
     dir = parent;
@@ -48911,7 +53380,7 @@ function notesPaths(opts = {}) {
   return out;
 }
 function memoryDir(projectsDir, cwd) {
-  return path46.join(projectsDir, paths_exports.slugify(path46.resolve(cwd)), "memory");
+  return path45.join(projectsDir, paths_exports.slugify(path45.resolve(cwd)), "memory");
 }
 function detectNotes(opts = {}) {
   const candidates2 = notesPaths(opts);
@@ -48919,7 +53388,7 @@ function detectNotes(opts = {}) {
   const files = readableFiles(candidates2);
   if (files.length > 0) {
     const bytes3 = files.reduce((n2, f) => n2 + f.bytes, 0);
-    const found = fs53.existsSync(memory) ? memory : files[0]?.path ?? memory;
+    const found = fs56.existsSync(memory) ? memory : files[0]?.path ?? memory;
     return {
       bridge: "notes",
       presence: "store",
@@ -48932,7 +53401,7 @@ function detectNotes(opts = {}) {
       worker: null
     };
   }
-  if (fs53.existsSync(memory)) {
+  if (fs56.existsSync(memory)) {
     return emptyStatus("notes", memory, "the memory directory exists and holds no markdown");
   }
   return absentStatus("notes", memory, "no auto-memory directory and no CLAUDE.md above the cwd");
@@ -48964,14 +53433,14 @@ function readableFiles(candidates2) {
 }
 function markdownIn(dir) {
   try {
-    return fs53.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".md")).map((e) => path46.join(dir, e.name)).sort();
+    return fs56.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".md")).map((e) => path45.join(dir, e.name)).sort();
   } catch {
     return [];
   }
 }
 function sizeOf(file) {
   try {
-    const stat = fs53.statSync(file);
+    const stat = fs56.statSync(file);
     return stat.isFile() ? stat.size : null;
   } catch {
     return null;
@@ -48986,7 +53455,7 @@ function describe2(files) {
 function sections(file, kind3, content) {
   const lines = content.split("\n");
   const out = [];
-  let heading3 = path46.basename(file);
+  let heading3 = path45.basename(file);
   let start = 1;
   let buffer = [];
   const flush = () => {
@@ -48999,7 +53468,7 @@ function sections(file, kind3, content) {
     const m = /^(#{1,6})\s+(.*\S)\s*$/.exec(line);
     if (m) {
       flush();
-      heading3 = m[2] ?? path46.basename(file);
+      heading3 = m[2] ?? path45.basename(file);
       start = i + 1;
       return;
     }
@@ -49032,7 +53501,7 @@ function queryNotes(query, opts = {}) {
     for (const file of readableFiles(notesPaths(opts))) {
       let content;
       try {
-        content = fs53.readFileSync(file.path, "utf-8").slice(0, maxBytes);
+        content = fs56.readFileSync(file.path, "utf-8").slice(0, maxBytes);
       } catch {
         continue;
       }
@@ -49175,13 +53644,13 @@ function federationLine(bridges) {
 
 // packages/bridges/dist/export/markdown.js
 init_dist();
-import fs54 from "node:fs";
-import path47 from "node:path";
+import fs57 from "node:fs";
+import path46 from "node:path";
 var TRANSCRIPT_LIMIT = 500;
 function exportMarkdown(options) {
   const started = Date.now();
-  const dest = path47.resolve(options.dest);
-  fs54.mkdirSync(dest, { recursive: true });
+  const dest = path46.resolve(options.dest);
+  fs57.mkdirSync(dest, { recursive: true });
   const cards = exportCards(options.root, dest);
   const transcripts = options.transcripts ? writeTranscripts(dest, options) : null;
   return { dest, cards, transcripts, ms: Date.now() - started };
@@ -49194,7 +53663,7 @@ function writeTranscripts(dest, options) {
     return out;
   }
   const limit = Math.max(1, options.limit ?? TRANSCRIPT_LIMIT);
-  const root = path47.join(dest, "transcripts");
+  const root = path46.join(dest, "transcripts");
   let listed;
   try {
     listed = listSessions(db, {}, { limit });
@@ -49216,10 +53685,10 @@ function writeTranscripts(dest, options) {
       pushReason(out, firstLine5(err));
       continue;
     }
-    const file = path47.join(root, session.harness, safeSegment(session.projectName), `${session.id}.md`);
+    const file = path46.join(root, session.harness, safeSegment(session.projectName), `${session.id}.md`);
     try {
-      fs54.mkdirSync(path47.dirname(file), { recursive: true });
-      fs54.writeFileSync(file, markdown, { mode: 384 });
+      fs57.mkdirSync(path46.dirname(file), { recursive: true });
+      fs57.writeFileSync(file, markdown, { mode: 384 });
     } catch (err) {
       out.skipped += 1;
       pushReason(out, firstLine5(err));
@@ -49241,8 +53710,8 @@ function safeSegment(name) {
 
 // packages/bridges/dist/export/agentmemory.js
 init_dist();
-import fs55 from "node:fs";
-import path48 from "node:path";
+import fs58 from "node:fs";
+import path47 from "node:path";
 var WRITE_VERBS = ["store", "add", "create", "remember", "write", "upsert", "ingest", "save"];
 async function pushToAgentMemory(cards, opts = {}) {
   const status3 = detectAgentMemory(opts);
@@ -49335,21 +53804,21 @@ async function findWriteTool(client, timeoutMs) {
 function collectCards(root, limit = 1e3) {
   const from = paths_exports.cardsDir(root);
   const out = [];
-  if (!fs55.existsSync(from))
+  if (!fs58.existsSync(from))
     return out;
   const walk2 = (dir) => {
     if (out.length >= limit)
       return;
     let entries;
     try {
-      entries = fs55.readdirSync(dir, { withFileTypes: true });
+      entries = fs58.readdirSync(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const entry of entries) {
       if (out.length >= limit)
         return;
-      const source = path48.join(dir, entry.name);
+      const source = path47.join(dir, entry.name);
       if (entry.isDirectory()) {
         walk2(source);
         continue;
@@ -49358,7 +53827,7 @@ function collectCards(root, limit = 1e3) {
         continue;
       let markdown;
       try {
-        markdown = fs55.readFileSync(source, "utf-8");
+        markdown = fs58.readFileSync(source, "utf-8");
       } catch {
         continue;
       }
@@ -49565,7 +54034,7 @@ async function askForSettings(diff, days, currentEffective, o) {
 // packages/cli/src/commands/guard.ts
 init_dist();
 init_output();
-import fs61 from "node:fs";
+import fs65 from "node:fs";
 import process14 from "node:process";
 async function runGuard(o) {
   const t = themeFrom(o);
@@ -49713,17 +54182,17 @@ function status(o, t, installed, resolution) {
 }
 function commandLooksRunnable(command) {
   const quoted = command.match(/"([^"]+)"/);
-  if (quoted?.[1]) return fs61.existsSync(quoted[1]);
+  if (quoted?.[1]) return fs65.existsSync(quoted[1]);
   const bin = command.trim().split(/\s+/)[0] ?? "";
   if (!bin) return false;
-  if (bin.includes("/") || bin.includes("\\")) return fs61.existsSync(bin);
+  if (bin.includes("/") || bin.includes("\\")) return fs65.existsSync(bin);
   return onPath(bin) !== null;
 }
 
 // packages/cli/src/commands/doctor.ts
 init_dist();
 init_output();
-import fs62 from "node:fs";
+import fs66 from "node:fs";
 import nodePath from "node:path";
 import process15 from "node:process";
 
@@ -49761,7 +54230,7 @@ async function runDoctor(o) {
   const report = await audit(o.claudeDir, /* @__PURE__ */ new Date(), o.potsherdDir ? { potsherdDir: o.potsherdDir } : {});
   const root = paths_exports.potsherdDir(o.potsherdDir);
   const dbFile = paths_exports.dbPath(root);
-  const dbExists = fs62.existsSync(dbFile);
+  const dbExists = fs66.existsSync(dbFile);
   const counts2 = {};
   let schema = 0;
   let redaction = emptyCounts();
@@ -49880,7 +54349,7 @@ async function runDoctor(o) {
     };
     card2.text("reads (never modified):");
     for (const p of reads) {
-      card2.raw(`    ${show2(p)}${fs62.existsSync(p) ? "" : t2.dim("  (absent)")}`);
+      card2.raw(`    ${show2(p)}${fs66.existsSync(p) ? "" : t2.dim("  (absent)")}`);
     }
     note("potsherd only ever reads these. one directory appears under claude's own projects/ anyway \u2014 claude code creates it for the cwd potsherd spawns it in, and it is named under writes.", 4);
     note("\u2026and these, only when you name them with  --with / --to:", 4);
@@ -50414,7 +54883,7 @@ function vectorsRow2(vec, t, noteWidth2) {
 
 // packages/cli/src/commands/maintain.ts
 init_dist();
-import fs63 from "node:fs";
+import fs67 from "node:fs";
 import { randomUUID as randomUUID10 } from "node:crypto";
 import process18 from "node:process";
 
@@ -51643,7 +56112,7 @@ async function runMaintainUnlocked(o) {
     spoolRequest(root, request);
     if (o.enqueueOnly) return 0;
   }
-  if (!fs63.existsSync(paths_exports.dbPath(root)) && !o.migrate) {
+  if (!fs67.existsSync(paths_exports.dbPath(root)) && !o.migrate) {
     if (o.json) printJson({ state: "initialization_required" });
     else if (!o.quiet) print("Memory initialization required: run potsherd maintain --migrate.");
     return 1;
@@ -51717,16 +56186,16 @@ import { randomUUID as randomUUID12 } from "node:crypto";
 
 // packages/core/src/memory/jobs.ts
 import { randomUUID as randomUUID11 } from "node:crypto";
-import fs64 from "node:fs";
+import fs68 from "node:fs";
 import path53 from "node:path";
 
 // packages/core/src/memory/leases.ts
-import os14 from "node:os";
-import { execFileSync as execFileSync3 } from "node:child_process";
-var HOST2 = os14.hostname();
+import os15 from "node:os";
+import { execFileSync as execFileSync5 } from "node:child_process";
+var HOST2 = os15.hostname();
 function processStart3(pid) {
   try {
-    return execFileSync3("ps", ["-p", String(pid), "-o", "lstart="], { encoding: "utf8", timeout: 1e3 }).trim() || null;
+    return execFileSync5("ps", ["-p", String(pid), "-o", "lstart="], { encoding: "utf8", timeout: 1e3 }).trim() || null;
   } catch {
     return null;
   }
@@ -51741,7 +56210,7 @@ init_spans2();
 var MODEL_HASH2 = requiredFiles2().find((f) => f.name.endsWith(".onnx")).sha256;
 var TOKENIZER_HASH2 = "771b89c9f8734b4609b7b3629c606cbc42d57336b4ec899218af2c0cb272300f";
 function namedSpace2(pooling) {
-  return identity3("span-space/v1", MODEL_ID2, MODEL_HASH2, TOKENIZER_HASH2, RUNTIME_VERSION2, "q8", pooling, BGE_QUERY_PREFIX2, "l2", "384", "record-context-v1");
+  return identity4("span-space/v1", MODEL_ID2, MODEL_HASH2, TOKENIZER_HASH2, RUNTIME_VERSION2, "q8", pooling, BGE_QUERY_PREFIX2, "l2", "384", "record-context-v1");
 }
 var DEFAULT_SPACE_ID2 = namedSpace2("mean");
 var CLS_SPACE_ID2 = namedSpace2("cls");
@@ -51786,21 +56255,21 @@ function captureStatus(db, jobId) {
 }
 function spoolRequest2(root, r3) {
   const dir = path53.join(root, "maintenance-spool");
-  fs64.mkdirSync(dir, { recursive: true, mode: 448 });
-  const file = path53.join(dir, identity3("spool/v1", r3.kind, r3.targetId, r3.inputHash) + ".json"), temp = file + "." + randomUUID11() + ".tmp";
-  const fd = fs64.openSync(temp, "wx", 384);
+  fs68.mkdirSync(dir, { recursive: true, mode: 448 });
+  const file = path53.join(dir, identity4("spool/v1", r3.kind, r3.targetId, r3.inputHash) + ".json"), temp = file + "." + randomUUID11() + ".tmp";
+  const fd = fs68.openSync(temp, "wx", 384);
   try {
-    fs64.writeFileSync(fd, JSON.stringify({ ...r3, requestId: r3.requestId ?? randomUUID11() }));
-    fs64.fsyncSync(fd);
+    fs68.writeFileSync(fd, JSON.stringify({ ...r3, requestId: r3.requestId ?? randomUUID11() }));
+    fs68.fsyncSync(fd);
   } finally {
-    fs64.closeSync(fd);
+    fs68.closeSync(fd);
   }
-  fs64.renameSync(temp, file);
-  const d = fs64.openSync(dir, "r");
+  fs68.renameSync(temp, file);
+  const d = fs68.openSync(dir, "r");
   try {
-    fs64.fsyncSync(d);
+    fs68.fsyncSync(d);
   } finally {
-    fs64.closeSync(d);
+    fs68.closeSync(d);
   }
   return file;
 }
@@ -51834,8 +56303,8 @@ async function runIndex(o) {
     const requestId = randomUUID12(), capture2 = { ...enrollment, ...hostRoots, ...o.claudeDir ? { claudeDir: path54.resolve(paths_exports.expandTilde(o.claudeDir)) } : {}, ...o.codexDir ? { codexHome: path54.resolve(paths_exports.expandTilde(o.codexDir)) } : {}, ...harnesses ? { harnesses } : {}, ...o.session ? { sessionId: o.session } : {}, full: Boolean(o.full) };
     const request = { kind: "capture", targetId: o.session ?? "*", inputHash: requestId, requestId, capture: capture2 };
     spoolRequest2(root, request);
-    const { identity: identity4 } = await Promise.resolve().then(() => (init_spans2(), spans_exports));
-    const jobId = identity4("job/v1", request.kind, request.targetId, request.inputHash);
+    const { identity: identity5 } = await Promise.resolve().then(() => (init_spans2(), spans_exports));
+    const jobId = identity5("job/v1", request.kind, request.targetId, request.inputHash);
     startBackgroundEmbedding(root, o);
     const deadline2 = Date.now() + Math.max(0, 4e3 - process19.uptime() * 1e3);
     let status3 = null;
@@ -52133,8 +56602,8 @@ function warmingSentences(vec, spawned) {
     ];
   }
   const long = r3.runtimeReady ? "in the background, newest sessions first" : `fetching the ${format_exports.bytes(r3.acquireBytes)} runtime in the background, once`;
-  const short2 = r3.runtimeReady ? "in the background" : `fetching ${format_exports.bytes(r3.acquireBytes)}, once`;
-  return [`${head} \u2014 ${long}`, `${head} \u2014 ${short2}`, head];
+  const short3 = r3.runtimeReady ? "in the background" : `fetching ${format_exports.bytes(r3.acquireBytes)}, once`;
+  return [`${head} \u2014 ${long}`, `${head} \u2014 ${short3}`, head];
 }
 function harnessNote(h, sep = " \xB7 ") {
   if (!h.present && h.discovered === 0) return `not installed \u2014 ${paths_exports.tildify(h.sourceDir)}`;
@@ -52221,13 +56690,13 @@ function firstLine7(s) {
 
 // packages/cli/src/memory.ts
 init_dist();
-import { randomUUID as randomUUID13, createHash as createHash19 } from "node:crypto";
-import fs66 from "node:fs";
+import { randomUUID as randomUUID13, createHash as createHash22 } from "node:crypto";
+import fs70 from "node:fs";
 import process20 from "node:process";
 
 // packages/cli/src/filters.ts
 init_dist();
-import fs65 from "node:fs";
+import fs69 from "node:fs";
 
 // packages/cli/src/session-ref.ts
 init_dist();
@@ -52430,7 +56899,7 @@ function last(p) {
 function openIndex(o) {
   const root = paths_exports.potsherdDir(o.potsherdDir);
   const file = paths_exports.dbPath(root);
-  if (!fs65.existsSync(file)) {
+  if (!fs69.existsSync(file)) {
     throw new UserError(
       `nothing indexed yet \u2014 no database at ${paths_exports.tildify(file)}`,
       "potsherd index"
@@ -52451,7 +56920,7 @@ function parseLimit(value, fallback) {
 init_output();
 function openMemory(o) {
   const root = paths_exports.potsherdDir(o.potsherdDir), file = paths_exports.dbPath(root);
-  if (!fs66.existsSync(file)) return null;
+  if (!fs70.existsSync(file)) return null;
   const db = db_exports.openSqliteReadOnly(file);
   try {
     assertMemorySchema(db);
@@ -52543,8 +57012,8 @@ function legacySourceSelection(db, o) {
   const coverageGaps = projectionGap ? ["source_filter_projection_gap"] : [];
   const sourceIds = [...new Set(rows.filter((row2) => !blocked.has(row2.source_id)).map((r3) => r3.source_id))];
   sourceIds.sort();
-  const identity4 = JSON.stringify({ filters, sourceIds, coverageGaps });
-  return { sourceIds, ...coverageGaps.length ? { coverageGaps } : {}, ...filters.harness ? { harnesses: [filters.harness] } : {}, selectionId: createHash19("sha256").update(identity4).digest("hex"), warning: "Source filters applied: " + Object.entries(filters).filter(([key2, value]) => Boolean(value) && (!["sidechains", "ghosts"].includes(key2) || value !== "include")).map(([key2, value]) => `${key2}=${String(value)}`).join("; ").slice(0, 350) };
+  const identity5 = JSON.stringify({ filters, sourceIds, coverageGaps });
+  return { sourceIds, ...coverageGaps.length ? { coverageGaps } : {}, ...filters.harness ? { harnesses: [filters.harness] } : {}, selectionId: createHash22("sha256").update(identity5).digest("hex"), warning: "Source filters applied: " + Object.entries(filters).filter(([key2, value]) => Boolean(value) && (!["sidechains", "ghosts"].includes(key2) || value !== "include")).map(([key2, value]) => `${key2}=${String(value)}`).join("; ").slice(0, 350) };
 }
 function legacyMemoryRef(db, ref3) {
   const exact = db.prepare("SELECT native_session_id FROM memory_sources WHERE native_session_id=? AND availability<>'forgotten'").get(ref3);
@@ -54239,7 +58708,7 @@ async function runPin(o) {
 // packages/cli/src/commands/ignore.ts
 init_dist();
 init_output();
-import fs67 from "node:fs";
+import fs71 from "node:fs";
 var { addIgnored: addIgnored2, countIgnoredSessions: countIgnoredSessions4, ignoredProjectsInIndex: ignoredProjectsInIndex3, readIgnoreConfig: readIgnoreConfig3, removeIgnored: removeIgnored2 } = search_exports;
 async function runIgnore(o) {
   const verb = o.remove ? "unignore" : "ignore";
@@ -54351,7 +58820,7 @@ function show(o, root, list3, verb) {
 }
 function projectsFor(root, list3) {
   const file = paths_exports.dbPath(root);
-  if (list3.length === 0 || !fs67.existsSync(file)) return { projects: [], sessions: 0 };
+  if (list3.length === 0 || !fs71.existsSync(file)) return { projects: [], sessions: 0 };
   let db;
   try {
     db = db_exports.open({ root, readonly: true });
@@ -54458,7 +58927,7 @@ function receipt3(t, verb, a, b2, what, note) {
 // packages/cli/src/commands/ask.ts
 init_dist();
 init_output();
-import fs68 from "node:fs";
+import fs72 from "node:fs";
 import nodePath2 from "node:path";
 import process22 from "node:process";
 function askProgress(t, sink, enabled) {
@@ -54666,8 +59135,8 @@ async function writeReadersFile(db, question, base3, path55) {
     index: { ...indexState(db, base3.root), matching: probe2.matching }
   };
   const abs = nodePath2.resolve(path55);
-  fs68.mkdirSync(nodePath2.dirname(abs), { recursive: true });
-  fs68.writeFileSync(abs, `${JSON.stringify(file, null, 2)}
+  fs72.mkdirSync(nodePath2.dirname(abs), { recursive: true });
+  fs72.writeFileSync(abs, `${JSON.stringify(file, null, 2)}
 `, "utf8");
   return { file, abs, probe: probe2 };
 }
@@ -54843,8 +59312,8 @@ async function writeSynthesisFile(db, question, base3, path55, readersPath, onPr
     readers: staged ? staged.outputs : [],
     instruction: REPLY_INSTRUCTION
   };
-  fs68.mkdirSync(nodePath2.dirname(abs), { recursive: true });
-  fs68.writeFileSync(abs, `${JSON.stringify(file, null, 2)}
+  fs72.mkdirSync(nodePath2.dirname(abs), { recursive: true });
+  fs72.writeFileSync(abs, `${JSON.stringify(file, null, 2)}
 `, "utf8");
   return { file, abs, probe: probe2, notes };
 }
@@ -55047,7 +59516,7 @@ function unfence(s) {
 function readSynthesisFile(abs) {
   let raw;
   try {
-    raw = fs68.readFileSync(abs, "utf8");
+    raw = fs72.readFileSync(abs, "utf8");
   } catch {
     throw new UserError(`cannot read ${abs}`, `potsherd ask "\u2026" --readers-in r.json --synthesis-out ${abs}`);
   }
@@ -55143,7 +59612,7 @@ function id8s(ids) {
 function readReadersFile(abs) {
   let raw;
   try {
-    raw = fs68.readFileSync(abs, "utf8");
+    raw = fs72.readFileSync(abs, "utf8");
   } catch {
     throw new UserError(`cannot read ${abs}`, `potsherd ask "\u2026" --readers-out ${abs}`);
   }
@@ -55460,15 +59929,15 @@ async function runSetup(o) {
       );
     }
     if (!approved) {
-      print(`  no change made to ${short(plan.path, t, 22)}`);
+      print(`  no change made to ${short2(plan.path, t, 22)}`);
       continue;
     }
     const { backup } = setup_exports.applySetupPlan(plan);
     changed++;
     print(
-      o.remove ? `  ${t.ok("removed")}  ${short(plan.path, t, 11)}` : `  ${t.ok("registered")}  ${plan.label} can now reach your sessions`
+      o.remove ? `  ${t.ok("removed")}  ${short2(plan.path, t, 11)}` : `  ${t.ok("registered")}  ${plan.label} can now reach your sessions`
     );
-    if (backup) print(`  ${t.dim("backup:")} ${short(backup, t, 11)}`);
+    if (backup) print(`  ${t.dim("backup:")} ${short2(backup, t, 11)}`);
   }
   for (const plan of done) {
     print("");
@@ -55476,7 +59945,7 @@ async function runSetup(o) {
       print(`  ${plan.label}: potsherd was not registered; nothing to remove.`);
     } else {
       print(`  ${plan.label}: already registered, unchanged.`);
-      print(`  ${t.dim(short(plan.path, t, 2))}`);
+      print(`  ${t.dim(short2(plan.path, t, 2))}`);
     }
   }
   for (const plan of blocked) {
@@ -55487,7 +59956,7 @@ async function runSetup(o) {
   for (const plan of absent) {
     print("");
     print(`  ${plan.label} is not installed here \u2014 nothing was written.`);
-    print(`  ${t.dim(`no ${short(plan.path, t, 6)}`)}`);
+    print(`  ${t.dim(`no ${short2(plan.path, t, 6)}`)}`);
     print(`  ${t.dim(`and no ${plan.detection.bins.join(" or ")} on your PATH`)}`);
     if (!o.remove) {
       print(`  ${t.dim("when you install it, this is the stanza:")}`);
@@ -55615,7 +60084,7 @@ function nextStep(o, t, s) {
   }
   print("");
 }
-function short(p, t, indent) {
+function short2(p, t, indent) {
   return format_exports.elideMiddle(paths_exports.tildify(p), Math.max(24, t.width - indent), t);
 }
 var TOOLS2 = ["recall", "read", "graft"].map((v) => `potsherd_${v}`);
@@ -56087,7 +60556,7 @@ function main(rawArgv) {
     program2.name(publicCommandName).description("rescue, index, search and re-enter every coding-agent session on your machine").version(VERSION, "-v, --version").showHelpAfterError(`(run  ${publicCommandName} --help  for the list of verbs)`)
   );
   const audit2 = addGlobals(
-    program2.command("audit").description("count what Claude Code has already deleted, and what it deletes next").option("--overview", "open the terminal audit (the default)").option("--tone <tone>", "voice override: elegant,witty,chaotic,roast").option("--legacy", "use the existing retention audit").option("--plain", "print the new overview without interactive controls").option("--no-motion", "keep the new terminal view still").option("--private", "show project names in the new private explorer").option("--harness <list>", "scope the overview to claude,codex,pi,opencode").option("--project <path>", "scope the overview to this project").option("--since <when>", "overview events on or after this date").option("--until <when>", "overview events on or before this date").option("--timezone <zone>", "calendar timezone for the overview").option("--export <path>", "save a public-safe overview SVG").option("--sweep", "also list the sessions the next sweep will take, by title").option("--verify", "print standalone python that recomputes the four numbers, then exit")
+    program2.command("audit").description("count what Claude Code has already deleted, and what it deletes next").option("--overview", "open the terminal audit (the default)").option("--tone <tone>", "voice override: elegant,witty,chaotic,roast").option("--legacy", "use the existing retention audit").option("--plain", "print the new overview without interactive controls").option("--no-motion", "keep the new terminal view still").option("--private", "show project names in the new private explorer").option("--harness <list>", "scope the overview to claude,codex,pi,opencode,cursor,gemini,copilot").option("--project <path>", "scope the overview to this project").option("--since <when>", "overview events on or after this date").option("--until <when>", "overview events on or before this date").option("--timezone <zone>", "calendar timezone for the overview").option("--export <path>", "save a public-safe overview SVG").option("--sweep", "also list the sessions the next sweep will take, by title").option("--verify", "print standalone python that recomputes the four numbers, then exit")
   ).addHelpText("after", `
 example:
   potsherd audit
@@ -56666,19 +61135,19 @@ of a real config file, or from that project's own docs on a printed date.`);
 }
 function globals(program2, cmd, local) {
   const g2 = program2.opts();
-  const pick3 = (key2) => local[key2] !== void 0 ? local[key2] : g2[key2];
-  const width = pick3("width");
-  const claudeDir2 = pick3("claudeDir");
-  const codexDir2 = pick3("codexDir");
-  const piDir2 = pick3("piDir");
-  const opencodeDir2 = pick3("opencodeDir");
-  const potsherdDir3 = pick3("potsherdDir");
+  const pick4 = (key2) => local[key2] !== void 0 ? local[key2] : g2[key2];
+  const width = pick4("width");
+  const claudeDir2 = pick4("claudeDir");
+  const codexDir2 = pick4("codexDir");
+  const piDir2 = pick4("piDir");
+  const opencodeDir2 = pick4("opencodeDir");
+  const potsherdDir3 = pick4("potsherdDir");
   return {
-    json: Boolean(pick3("json")),
+    json: Boolean(pick4("json")),
     color: local["color"] === false || g2["color"] === false ? false : true,
-    ascii: Boolean(pick3("ascii")),
+    ascii: Boolean(pick4("ascii")),
     ...width ? { width: Number(width) } : {},
-    debug: Boolean(pick3("debug")),
+    debug: Boolean(pick4("debug")),
     ...claudeDir2 ? { claudeDir: String(claudeDir2) } : {},
     ...codexDir2 ? { codexDir: String(codexDir2) } : {},
     ...piDir2 ? { piDir: String(piDir2) } : {},
@@ -56734,9 +61203,9 @@ function tour(o = {}) {
   print("");
   print(`  ${t.dim("the six, in the order you meet them:")}`);
   print("");
-  for (const [i, [verb, long, short2]] of PATH6.entries()) {
+  for (const [i, [verb, long, short3]] of PATH6.entries()) {
     print(
-      wide ? `    ${t.dim(String(i + 1))}  ${publicCommandName} ${verb.padEnd(7)} ${t.dim(long)}` : `    ${t.dim(String(i + 1))}  ${verb.padEnd(7)} ${t.dim(short2)}`
+      wide ? `    ${t.dim(String(i + 1))}  ${publicCommandName} ${verb.padEnd(7)} ${t.dim(long)}` : `    ${t.dim(String(i + 1))}  ${verb.padEnd(7)} ${t.dim(short3)}`
     );
   }
   print("");
