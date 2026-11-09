@@ -6,6 +6,7 @@ import { writeForgetList } from '../packages/core/src/sources/policy.js';
 import { sourceId } from '../packages/core/src/sources/identity.js';
 import { writeIgnoreList } from '../packages/core/src/ignore.js';
 import { parseRecordText } from '../packages/core/src/records/index-db.js';
+import { Engine } from '../packages/core/src/records/engine.js';
 import { claudeSession, IDS, makeFixture, NEEDLE, PROJECT, syncOptions, type Fixture } from './records-fixture.js';
 
 const made: Fixture[] = [];
@@ -135,6 +136,28 @@ describe('records: incremental sync', () => {
     expect(third.parsed).toBe(1);
     expect(third.written).toBe(1);
     expect(record(f, IDS.claude)).toContain('t6 USER 2026-10-01 12:00 | one more thing');
+  });
+
+  it('updates the search index in place: appended turns found, unchanged turns kept once', async () => {
+    const f = fixture();
+    await syncRecords(syncOptions(f));
+    fs.appendFileSync(f.claudeFile, JSON.stringify({sessionId: IDS.claude, cwd: PROJECT, type: 'user', uuid: 'u9', timestamp: '2026-10-01T12:00:00.000Z', message: {role: 'user', content: 'one more flamingo thing'}}) + '\n');
+    await syncRecords(syncOptions(f));
+    const e = new Engine(f.recordsDir, 'cli');
+    try {
+      expect(e.search({query: 'flamingo'})).toContain('t6 USER');
+      const pool = e.search({query: 'pgbouncer pool', session: IDS.claude});
+      expect(pool.match(/^\[\d+\]/gm)).toHaveLength(1);
+      expect((e.db.prepare('select count(*) as n from turns where skey=?').get(`claude:${IDS.claude}`) as {n: number}).n).toBe(6);
+    } finally { e.close(); }
+    // A new title changes every turn's prefix: the rows are rebuilt, still once each.
+    fs.appendFileSync(f.claudeFile, JSON.stringify({type: 'custom-title', customTitle: 'Renamed thread', sessionId: IDS.claude}) + '\n');
+    await syncRecords(syncOptions(f));
+    const e2 = new Engine(f.recordsDir, 'cli');
+    try {
+      expect(e2.search({query: 'Renamed thread'})).toContain(IDS.claude);
+      expect(e2.search({query: 'flamingo'}).match(/^\[\d+\]/gm)).toHaveLength(1);
+    } finally { e2.close(); }
   });
 
   it('rewrites the record when its path changes and removes the old file', async () => {

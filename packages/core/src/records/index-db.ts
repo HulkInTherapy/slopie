@@ -89,20 +89,42 @@ export class RecordIndex {
   }
 
   put(key: string, s: RecSession, m: IndexMeta, sig: string): void {
-    this.remove(key);
-    this.db.prepare('insert into sessions values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(
+    const old = this.db.prepare('select title, project from sessions where key=?').get(key) as {title: string | null; project: string | null} | undefined;
+    // Transcripts grow by appending: when the turns' prefix (title, project) is unchanged, only turns that
+    // differ are replaced, so a sync after one new turn in a 3,000-turn session touches one row, not 3,000.
+    const existing = new Map<number, {rid: number; role: string; ts: string | null; tool: string | null; body: string}>();
+    if (old && old.title === s.title && old.project === s.project) {
+      for (const r of this.db.prepare('select rid, n, role, ts, tool, body from turns where skey=?').all(key) as {rid: number; n: number; role: string; ts: string | null; tool: string | null; body: string}[]) existing.set(r.n, r);
+    } else {
+      this.remove(key);
+    }
+    this.db.prepare('delete from cards where skey=?').run(key);
+    this.db.prepare('insert or replace into sessions values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(
       key, s.harness, s.id, s.project, s.title, s.start, s.end, s.turns.length, s.parent, s.parentKind, JSON.stringify(m.children), m.archiveOnly ? 1 : 0,
       JSON.stringify(m.sources), m.best, m.rel, m.firstUser, m.lastAssistant, sig);
     const ins = this.db.prepare('insert into turns(skey, n, role, ts, tool, body) values(?,?,?,?,?,?)');
     const fts = this.db.prepare('insert into ctx(rowid, pre, body) values(?,?,?)');
+    const delFts = this.db.prepare(`insert into ctx(ctx, rowid, pre, body) values('delete', ?, ?, ?)`);
+    const delTurn = this.db.prepare('delete from turns where rid=?');
+    const drop = (e: {rid: number; role: string; ts: string | null; tool: string | null; body: string}) => {
+      delFts.run(e.rid, ctxPrefix(old!.title, old!.project, e.ts, e.role, e.tool), e.body ?? '');
+      delTurn.run(e.rid);
+    };
     const asks: string[] = [];
     let askLen = 0;
     s.turns.forEach((t, i) => {
       const body = turnBody(t);
+      if (t.role === 'USER' && askLen <= 30000) { asks.push(body.slice(0, 2000)); askLen += asks[asks.length - 1]!.length; }
+      const e = existing.get(i + 1);
+      if (e) {
+        existing.delete(i + 1);
+        if (e.role === t.role && e.ts === t.ts && e.tool === (t.tool ?? null) && e.body === body) return;
+        drop(e);
+      }
       const r = ins.run(key, i + 1, t.role, t.ts, t.tool ?? null, body);
       fts.run(Number(r.lastInsertRowid), ctxPrefix(s.title, s.project, t.ts, t.role, t.tool ?? null), body);
-      if (t.role === 'USER' && askLen <= 30000) { asks.push(body.slice(0, 2000)); askLen += asks[asks.length - 1]!.length; }
     });
+    for (const e of existing.values()) drop(e);
     this.db.prepare('insert into cards(skey, title, asks) values(?,?,?)').run(key, `${s.title ?? ''} ${base(s.project)}`, asks.join('\n'));
   }
 
