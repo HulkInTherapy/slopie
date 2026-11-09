@@ -122,7 +122,7 @@ function modelsCard(data: BoardData, width: number): Card {
     const lines: Line[] = [head];
     for (const row of shown) {
       lines.push([
-        seg(row.favourite ? '★ ' : '  ', 'accent'),
+        seg(row.favourite ? '› ' : '  ', 'accent'),
         seg(padEnd(ellipsize(row.name, nameWidth), nameWidth), 'text'),
         seg(' '),
         seg(barWidth >= 3 ? bar(row.value === null ? null : row.value / max, barWidth) : ' '.repeat(barWidth), 'accent'),

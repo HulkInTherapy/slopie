@@ -107,9 +107,9 @@ describe('interactive wallboard', () => {
     const deck = buildDeck(storySnapshot());
     finish({ ...storySnapshot(), sequence: 20 });
     await tick();
-    expect(stdout.screen).toContain(`1/${deck.length}`);
+    expect(stdout.screen).toContain(`1 / ${deck.length}`);
     stdin.emit('data', '\x1b[C');
-    expect(stdout.screen).toContain(`2/${deck.length}`);
+    expect(stdout.screen).toContain(`2 / ${deck.length}`);
     stdin.emit('data', '\x1b[D');
     stdin.emit('data', '\x1b[D');
     expect(stdout.screen).toContain('this is the start');
@@ -147,7 +147,7 @@ describe('interactive wallboard', () => {
     await tick(5);
     finish({ ...storySnapshot(), sequence: 20 });
     await tick();
-    expect(stdout.screen).toContain('make me bigger');
+    expect(stdout.screen).toContain('Make the window bigger.');
     stdout.columns = 80;
     stdout.rows = 24;
     stdout.emit('resize');
@@ -243,12 +243,12 @@ describe('keys, colours and diffing', () => {
     expect(splitKeys('qqq')).toEqual(['qqq']);
   });
 
-  it('uses only the orange / white / gray palette and honours NO_COLOR', () => {
+  it('uses only the grey ramp plus the one indigo accent, and honours NO_COLOR', () => {
     expect(detectColorMode({ NO_COLOR: '1' })).toBe('none');
     expect(detectColorMode({ COLORTERM: 'truecolor' })).toBe('truecolor');
     const ansi = (['brand', 'accent', 'title', 'value', 'text', 'muted', 'faint'] as const).map(style => lineToAnsi([{ text: 'x', style }], 'truecolor')).join('');
     const colours = new Set([...ansi.matchAll(/38;2;(\d+;\d+;\d+)/g)].map(match => match[1]));
-    expect([...colours].sort()).toEqual(['104;102;95', '166;162;155', '238;234;228', '242;164;94']);
+    expect([...colours].sort()).toEqual(['124;124;255', '138;143;152', '247;248;248', '93;97;104']);
     expect(lineToAnsi([{ text: 'x', style: 'brand' }], 'none')).toBe('\x1b[1mx\x1b[0m');
   });
 

@@ -5,7 +5,7 @@
  * synchronized-output markers (DEC 2026), which terminals without support simply ignore.
  */
 import { BOLD, Canvas, DIM, ITALIC, UNDERLINE } from './canvas.js';
-import { C, channels, DEFAULT, to16, to256, type Rgb } from './color.js';
+import { C, channels, DEFAULT, luminance, to16, to256, type Rgb } from './color.js';
 
 export type ColorDepth = 'truecolor' | '256' | '16' | 'none';
 
@@ -40,15 +40,16 @@ function bgCode(color: Rgb, depth: ColorDepth): string {
   if (color < 0 || depth === 'none') return '';
   if (depth === 'truecolor') return `;48;2;${channels(color).join(';')}`;
   if (depth === '256') return `;48;5;${to256(color)}`;
-  // 16 colours: only paint backgrounds for strong fills (pixel art), never the card ink.
-  if (color === C.ink) return '';
+  // 16 colours: only paint backgrounds for strong fills (pixel art), never the card background.
+  if (color === C.bg) return '';
   return `;${to16(color) + 10}`;
 }
 
 export function sgrFor(fg: Rgb, bg: Rgb, attr: number, depth: ColorDepth): string {
   let codes = '0';
   if (attr & BOLD) codes += ';1';
-  if (attr & DIM) codes += ';2';
+  // Without colour, the tertiary tones (labels, hints, hairlines) keep their place as dim text.
+  if (attr & DIM || (depth === 'none' && fg >= 0 && luminance(fg) < 0.45)) codes += ';2';
   if (attr & ITALIC) codes += ';3';
   if (attr & UNDERLINE) codes += ';4';
   codes += fgCode(fg, depth) + bgCode(bg, depth);

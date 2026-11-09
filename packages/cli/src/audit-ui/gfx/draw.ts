@@ -1,4 +1,4 @@
-/** Drawing helpers on top of Canvas: rich text, wrapping, boxes, bars and pixel lines. */
+/** Drawing helpers on top of Canvas: rich text, wrapping, bars and pixel lines. */
 import { Canvas, textWidth, type Style } from './canvas.js';
 import { C, fade, type Rgb } from './color.js';
 
@@ -8,10 +8,10 @@ export interface Rect { x: number; y: number; w: number; h: number }
 const NUMBERISH = /^[(\[]?[~<>]?[$£€#×]?\d[\d,.]*(?:[%×xKMBkh]|st|nd|rd|th|am|pm)?[)\].,!:;?]*$|^×\d+[.,]?$/i;
 
 /**
- * Headline styling: numbers and money pop in orange, quoted phrases in peach italics.
- * Words are split on spaces; quotes may span words.
+ * Rich text: numbers lifted to primary, quoted phrases in italics. Words are split on spaces;
+ * quotes may span words.
  */
-export function rich(text: string, base: Style, accent: Style = { fg: C.orange, bold: true }, quote: Style = { fg: C.peach, italic: true }): Span[] {
+export function rich(text: string, base: Style, accent: Style = { fg: C.text }, quote: Style = { italic: true }): Span[] {
   const spans: Span[] = [];
   let inQuote = false;
   for (const word of text.split(/(\s+)/)) {
@@ -91,39 +91,8 @@ export function wrapText(text: string, width: number, maxLines = Infinity): stri
   return kept;
 }
 
-/** Letter-spaced small-caps label: "THE BILL" → "T H E   B I L L". */
-export function spaced(text: string): string {
-  return text.toUpperCase().split(' ').map(word => [...word].join(' ')).join('   ');
-}
-
-export function box(canvas: Canvas, r: Rect, color: Rgb, options: { rounded?: boolean; dashed?: boolean; fill?: Rgb; ascii?: boolean } = {}): void {
-  if (r.w < 2 || r.h < 2) return;
-  const [tl, tr, bl, br, hz, vt] = options.ascii ? ['+', '+', '+', '+', '-', '|']
-    : options.rounded === false ? ['┌', '┐', '└', '┘', options.dashed ? '┄' : '─', options.dashed ? '┆' : '│']
-      : ['╭', '╮', '╰', '╯', options.dashed ? '┄' : '─', options.dashed ? '┆' : '│'];
-  const bg = options.fill;
-  if (bg !== undefined) for (let y = r.y + 1; y < r.y + r.h - 1; y++) for (let x = r.x + 1; x < r.x + r.w - 1; x++) canvas.put(x, y, ' ', C.cream, bg);
-  canvas.put(r.x, r.y, tl, color, bg);
-  canvas.put(r.x + r.w - 1, r.y, tr, color, bg);
-  canvas.put(r.x, r.y + r.h - 1, bl, color, bg);
-  canvas.put(r.x + r.w - 1, r.y + r.h - 1, br, color, bg);
-  for (let x = r.x + 1; x < r.x + r.w - 1; x++) { canvas.put(x, r.y, hz, color, bg); canvas.put(x, r.y + r.h - 1, hz, color, bg); }
-  for (let y = r.y + 1; y < r.y + r.h - 1; y++) { canvas.put(r.x, y, vt, color, bg); canvas.put(r.x + r.w - 1, y, vt, color, bg); }
-}
-
 const EIGHTHS_H = ['', '▏', '▎', '▍', '▌', '▋', '▊', '▉'];
 const EIGHTHS_V = ['', '▁', '▂', '▃', '▄', '▅', '▆', '▇'];
-
-/** Horizontal bar with 1/8-cell precision. */
-export function hbar(canvas: Canvas, x: number, y: number, width: number, frac: number, color: Rgb, ascii = false): number {
-  const total = Math.max(0, Math.min(1, frac)) * width;
-  const eighths = Math.round(total * 8);
-  const full = Math.floor(eighths / 8);
-  const rest = eighths % 8;
-  for (let i = 0; i < full; i++) canvas.put(x + i, y, ascii ? '=' : '█', color);
-  if (rest > 0 && full < width) canvas.put(x + full, y, ascii ? '-' : EIGHTHS_H[rest]!, color);
-  return total;
-}
 
 /** Vertical bar growing up from `bottom` (inclusive) with 1/8-cell precision. */
 export function vbar(canvas: Canvas, x: number, bottom: number, height: number, frac: number, color: Rgb, width = 1, ascii = false): void {
@@ -161,29 +130,3 @@ export function textCenter(canvas: Canvas, cx: number, y: number, text: string, 
 }
 
 export { fade, textWidth };
-
-/**
- * Share bar with a guaranteed sliver: any non-zero value shows at least a 1/8 cell, so a 0.1% row
- * is never an empty line. ASCII: '#' for whole cells and '.' for the partial cell or sliver.
- */
-export function bar8(canvas: Canvas, x: number, y: number, width: number, frac: number, color: Rgb, ascii = false, track?: Rgb): void {
-  if (width <= 0) return;
-  const f = Math.max(0, Math.min(1, frac));
-  let eighths = Math.round(f * width * 8);
-  if (f > 0 && eighths === 0) eighths = 1;
-  const full = Math.floor(eighths / 8);
-  const rest = eighths % 8;
-  if (track !== undefined) for (let i = 0; i < width; i++) canvas.put(x + i, y, ascii ? ' ' : '·', track);
-  for (let i = 0; i < full; i++) canvas.put(x + i, y, ascii ? '#' : '█', color);
-  if (rest > 0 && full < width) canvas.put(x + full, y, ascii ? '.' : EIGHTHS_H[rest]!, color);
-}
-
-/** Square-cornered panel with its title set into the top border: ┌ TITLE ───┐. */
-export function panel(canvas: Canvas, r: Rect, title: string, color: Rgb, titleColor: Rgb, ascii = false, alpha = 1): void {
-  if (r.w < 4 || r.h < 2) return;
-  box(canvas, r, fade(color, alpha), { rounded: false, ascii });
-  if (title) {
-    const text = ` ${title} `;
-    canvas.text(r.x + 1, r.y, text, { fg: titleColor, bold: true, alpha }, r.w - 3);
-  }
-}

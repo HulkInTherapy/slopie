@@ -1,20 +1,24 @@
-/** Three-row block digits for the hero number. Every glyph is 3 cells wide except punctuation. */
+/**
+ * Three-row digits for the hero number in plain text: the display face's heavy strokes
+ * (theme/display.ts), so --plain shares the interactive board's typeface. Every glyph is 3 cells
+ * wide except punctuation.
+ */
 
 const GLYPHS: Record<string, readonly [string, string, string]> = {
-  '0': ['█▀█', '█ █', '▀▀▀'],
-  '1': ['▀█ ', ' █ ', '▀▀▀'],
-  '2': ['▀▀█', '█▀▀', '▀▀▀'],
-  '3': ['▀▀█', ' ▀█', '▀▀▀'],
-  '4': ['█ █', '▀▀█', '  ▀'],
-  '5': ['█▀▀', '▀▀█', '▀▀▀'],
-  '6': ['█▀▀', '█▀█', '▀▀▀'],
-  '7': ['▀▀█', '  █', '  ▀'],
-  '8': ['█▀█', '█▀█', '▀▀▀'],
-  '9': ['█▀█', '▀▀█', '▀▀▀'],
-  ',': [' ', ' ', '▄'],
-  '.': [' ', ' ', '▀'],
-  '<': ['  ', '▄▀', ' ▀'],
-  '—': ['   ', '▀▀▀', '   '],
+  '0': ['┏━┓', '┃ ┃', '┗━┛'],
+  '1': ['╺┓ ', ' ┃ ', '╺┻╸'],
+  '2': ['╺━┓', '┏━┛', '┗━╸'],
+  '3': ['╺━┓', '╺━┫', '╺━┛'],
+  '4': ['╻ ╻', '┗━┫', '  ╹'],
+  '5': ['┏━╸', '┗━┓', '╺━┛'],
+  '6': ['┏━╸', '┣━┓', '┗━┛'],
+  '7': ['╺━┓', '  ┃', '  ╹'],
+  '8': ['┏━┓', '┣━┫', '┗━┛'],
+  '9': ['┏━┓', '┗━┫', '╺━┛'],
+  ',': [' ', ' ', '╻'],
+  '.': [' ', ' ', '╸'],
+  '<': ['  ', '╺┓', ' ╹'],
+  '—': ['   ', '╺━╸', '   '],
 };
 
 const ASCII_GLYPHS: Record<string, readonly [string, string, string]> = {

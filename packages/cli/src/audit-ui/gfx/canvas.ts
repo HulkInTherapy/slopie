@@ -85,7 +85,7 @@ export class Canvas {
     const alpha = style.alpha ?? 1;
     // Fully transparent text is not drawn at all (16-colour terminals would show it as black).
     if (alpha <= 0.02) return Math.min(maxW, textWidth(text));
-    const fg = style.fg === undefined ? C.cream : fade(style.fg, alpha);
+    const fg = style.fg === undefined ? C.text : fade(style.fg, alpha);
     const attr = (style.bold ? BOLD : 0) | (style.dim ? DIM : 0) | (style.italic ? ITALIC : 0) | (style.underline ? UNDERLINE : 0);
     let used = 0;
     for (const grapheme of graphemes(sanitize(text))) {
@@ -104,7 +104,7 @@ export class Canvas {
 
   fill(x: number, y: number, w: number, h: number, ch = ' ', style: Style = {}): void {
     for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
-      this.put(xx, yy, ch, style.fg === undefined ? C.cream : fade(style.fg, style.alpha ?? 1), style.bg ?? this.base);
+      this.put(xx, yy, ch, style.fg === undefined ? C.text : fade(style.fg, style.alpha ?? 1), style.bg ?? this.base);
     }
   }
 

@@ -1,6 +1,7 @@
 /**
  * The slopie palette and colour maths. Colours are 0xRRGGBB integers; -1 means "terminal default".
- * Orange family + neutrals only. Gradients stay inside the family (black → ember → orange → peach → cream).
+ * Near-monochrome: four greys, two chart inks and one indigo accent used sparingly (see
+ * docs/design/tui-redesign.md). Every colour in the audit UI is one of these tokens.
  */
 export type Rgb = number;
 export const DEFAULT: Rgb = -1;
@@ -8,20 +9,23 @@ export const DEFAULT: Rgb = -1;
 export const hx = (rrggbb: string): Rgb => parseInt(rrggbb, 16);
 
 export const C = {
-  orange: hx('ff7a1a'),
-  ember: hx('ff4d00'),
-  peach: hx('ffb070'),
-  cream: hx('fff4e6'),
-  white: hx('ffffff'),
-  gray: hx('9a9a9a'),
-  slate: hx('5c5c5c'),
-  coal: hx('2a2a2a'),
-  /** Card background: a warm near-black so fades have a known start colour. */
-  ink: hx('0d0b0a'),
-  /** Mascot-only shades (still orange family). */
-  rust: hx('c94a0a'),
-  deep: hx('8a2e05'),
-  pupil: hx('1c0f08'),
+  /** Card background, painted edge to edge (fades start from it). */
+  bg: hx('08090a'),
+  /** Primary text: headlines, values, display type. */
+  text: hx('f7f8f8'),
+  /** Secondary: supporting copy. */
+  text2: hx('8a8f98'),
+  /** Tertiary: labels, axes, hints. */
+  text3: hx('5d6168'),
+  /** Hairlines and empty tracks. */
+  rule: hx('1f2125'),
+  /** Chart ink for ordinary marks, and a softer one for estimates. */
+  bar: hx('3e424a'),
+  barSoft: hx('25282d'),
+  /** The one accent: the single point a screen is about. */
+  accent: hx('7c7cff'),
+  /** Placeholder ink (the locked title). */
+  ghost: hx('16181b'),
 } as const;
 
 const r = (c: Rgb) => (c >> 16) & 255;
@@ -39,10 +43,10 @@ export function mix(a: Rgb, bColor: Rgb, t: number): Rgb {
 }
 
 /** Fade a colour in from the card background. */
-export const fade = (color: Rgb, alpha: number): Rgb => (alpha >= 1 ? color : mix(C.ink, color, alpha));
+export const fade = (color: Rgb, alpha: number): Rgb => (alpha >= 1 ? color : mix(C.bg, color, Math.max(0, alpha)));
 
-const HEAT: readonly Rgb[] = [hx('1a1512'), hx('5a1d05'), C.ember, C.orange, C.peach, C.cream];
-/** Heat ramp for heatmaps, t in 0..1. */
+const HEAT: readonly Rgb[] = [hx('17191c'), C.bar, C.text2, C.text];
+/** Single-hue ramp for heatmaps (near-black → white), t in 0..1. */
 export function heat(t: number): Rgb {
   const k = Math.max(0, Math.min(1, t)) * (HEAT.length - 1);
   const i = Math.min(HEAT.length - 2, Math.floor(k));
@@ -51,10 +55,10 @@ export function heat(t: number): Rgb {
 
 /* ── quantisation ─────────────────────────────────────────────────────────── */
 
-/** Hand-tuned so orange never turns red or brown on 256-colour terminals. */
+/** Hand-tuned: the greys stay on the neutral grey ramp, the accent keeps its indigo. */
 const TUNED_256 = new Map<Rgb, number>([
-  [C.orange, 208], [C.ember, 202], [C.peach, 215], [C.cream, 230], [C.white, 231], [C.gray, 247], [C.slate, 240],
-  [C.coal, 235], [C.ink, 233], [C.rust, 166], [C.deep, 94], [C.pupil, 232],
+  [C.bg, 232], [C.text, 255], [C.text2, 245], [C.text3, 241], [C.rule, 234], [C.bar, 238], [C.barSoft, 235],
+  [C.accent, 105], [C.ghost, 233],
 ]);
 const CUBE = [0, 95, 135, 175, 215, 255];
 
@@ -77,7 +81,7 @@ export function to256(color: Rgb): number {
   return grayErr < cubeErr ? 232 + grayIndex : cube;
 }
 
-/** 16-colour SGR foreground code (30–37, 90–97). */
+/** 16-colour SGR foreground code (30–37, 90–97): greys by lightness, the indigo accent as bright blue. */
 export function to16(color: Rgb): number {
   const red = r(color), green = g(color), blue = b(color);
   const max = Math.max(red, green, blue), min = Math.min(red, green, blue);
@@ -85,16 +89,12 @@ export function to16(color: Rgb): number {
   if (max - min < 40) {
     if (lum > 200) return 97;
     if (lum > 120) return 37;
-    if (lum > 50) return 90;
+    // Hairlines and chart inks stay visible as dark grey; only the background itself is black.
+    if (lum > 25) return 90;
     return 30;
   }
-  // Warm hues: ember → red, orange/peach → yellow (most themes draw yellow as orange-ish).
-  if (red > green && red > blue) {
-    // Hue, not brightness, decides red vs yellow: ember stays red, every orange/peach shade is yellow.
-    if (green / red < 0.36) return lum > 90 ? 91 : 31;
-    if (lum > 200) return 97;
-    return lum > 140 ? 93 : 33;
-  }
+  if (blue > red && blue > green) return lum > 90 ? 94 : 34;
+  if (red > green && red > blue) return lum > 90 ? 91 : 31;
   return lum > 128 ? 97 : 37;
 }
 

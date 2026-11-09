@@ -6,16 +6,17 @@
 import type { Line, Style } from './layout.js';
 
 type Rgb = readonly [number, number, number];
-const PALETTE: Record<'orange' | 'white' | 'gray' | 'dark', { rgb: Rgb; ansi256: number }> = {
-  orange: { rgb: [0xf2, 0xa4, 0x5e], ansi256: 215 },
-  white: { rgb: [0xee, 0xea, 0xe4], ansi256: 255 },
-  gray: { rgb: [0xa6, 0xa2, 0x9b], ansi256: 248 },
-  dark: { rgb: [0x68, 0x66, 0x5f], ansi256: 241 },
+/** The audit palette (gfx/color.ts): primary, secondary, tertiary and the one accent. */
+const PALETTE: Record<'accent' | 'white' | 'gray' | 'dark', { rgb: Rgb; ansi256: number }> = {
+  accent: { rgb: [0x7c, 0x7c, 0xff], ansi256: 105 },
+  white: { rgb: [0xf7, 0xf8, 0xf8], ansi256: 255 },
+  gray: { rgb: [0x8a, 0x8f, 0x98], ansi256: 245 },
+  dark: { rgb: [0x5d, 0x61, 0x68], ansi256: 241 },
 };
 
 const STYLES: Record<Style, { color: keyof typeof PALETTE; bold?: boolean }> = {
-  brand: { color: 'orange', bold: true },
-  accent: { color: 'orange' },
+  brand: { color: 'white', bold: true },
+  accent: { color: 'accent' },
   title: { color: 'gray', bold: true },
   value: { color: 'white', bold: true },
   text: { color: 'white' },

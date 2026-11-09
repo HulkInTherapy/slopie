@@ -68,7 +68,8 @@ for (const m of data.matchAll(re)) {
 const text = grid.map(row => row.map(c => c.ch).join('').trimEnd()).join('\n');
 fs.writeFileSync(file!.replace(/\.ansi$/, '.txt'), text + '\n');
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const INK = '0d0b0a';
+// The page background follows the card's own background (top-left cell), so themes capture cleanly.
+const INK = grid[0]![0]!.bg ?? '0d0b0a';
 const rows = grid.map(row => row.map(c => {
   const fg = c.fg ?? 'e8e2da', bg = c.bg ?? INK;
   const weight = c.bold ? 'font-weight:700;' : '';
@@ -78,6 +79,12 @@ const rows = grid.map(row => row.map(c => {
   if (c.ch === '▀') return `<i style="background:linear-gradient(#${fg} 50%,#${bg} 50%)"></i>`;
   if (c.ch === '▄') return `<i style="background:linear-gradient(#${bg} 50%,#${fg} 50%)"></i>`;
   if (c.ch === '█') return `<i style="background:#${fg}"></i>`;
+  // Eighth blocks too, so bars and sparklines sit on the cell edge as they do in a terminal.
+  const low = '▁▂▃▅▆▇'.indexOf(c.ch), left = '▏▎▍▌▋▊▉'.indexOf(c.ch);
+  if (low >= 0) { const p = [1, 2, 3, 5, 6, 7][low]! * 12.5; return `<i style="background:linear-gradient(to top,#${fg} ${p}%,#${bg} ${p}%)"></i>`; }
+  if (left >= 0) { const p = (left + 1) * 12.5; return `<i style="background:linear-gradient(to right,#${fg} ${p}%,#${bg} ${p}%)"></i>`; }
+  if (c.ch === '▖') return `<i style="background:linear-gradient(#${bg} 50%,transparent 50%),linear-gradient(to right,#${fg} 50%,#${bg} 50%)"></i>`;
+  if (c.ch === '▐') return `<i style="background:linear-gradient(to right,#${bg} 50%,#${fg} 50%)"></i>`;
   return `<b style="color:#${fg};background:#${bg};${weight}${it}${op}">${esc(c.ch === ' ' ? ' ' : c.ch)}</b>`;
 }).join('')).map(r => `<div>${r}</div>`).join('\n');
 const CW = 10, CH = 21;
