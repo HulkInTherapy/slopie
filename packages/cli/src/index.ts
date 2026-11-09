@@ -123,8 +123,9 @@ example:
   potsherd sync --json | jq .seconds
   SLOPIE_RECORDS_DIR=/tmp/recs potsherd sync --full
 
-records: ~/.slopie/records/<harness>/<project>/<date>_<session>.txt, one per session, mode 0700.
-sessions the harness later deletes keep their record; forget/ignore remove them.`);
+one plain-text record per session under ~/.slopie/records (mode 0700).
+sessions the harness later deletes keep their record;
+forget and ignore remove them.`);
   sync.action(async (opts: Record<string, unknown>) => {
     const o = globals(program, sync, opts);
     await run(() => runSync({...o, ...rec(opts), full: Boolean(opts['full']), ...(opts['sidecar'] ? {sidecar: true} : {}),

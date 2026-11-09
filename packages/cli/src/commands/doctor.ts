@@ -53,8 +53,11 @@ export async function runDoctor(o: GlobalOptions): Promise<number> {
   if (legacyParts.length) {
     print('');
     print(t.dim('no longer used'));
-    print(`  ${paths.tildify(legacy)}: ${legacyParts.join(', ')} from potsherd 1.x. slopie 1.9 does not use them (only audit-derived/, the audit cache).`);
-    print(`  ${state ? 'the records already hold the archived sessions, so they are' : 'after one  slopie sync  they are'} safe to remove by hand; slopie never deletes them.`);
+    print(`  ${paths.tildify(legacy)}`);
+    print(`  ${legacyParts.join(', ')}: potsherd 1.x data that slopie 1.9 does not use`);
+    print('  (only audit-derived/ is still used: the audit\'s cache).');
+    print(`  ${state ? 'The records hold the archived sessions, so they are' : 'After one  slopie sync  they are'} safe to`);
+    print('  remove by hand. slopie never deletes them.');
   }
   return 0;
 }

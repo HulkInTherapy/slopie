@@ -177,7 +177,8 @@ export async function runForget(o: RecordsOptions & {session?: string; remove?: 
   const next = o.remove ? list.filter(e => !ids.has(e.sourceId)) : [...list.filter(e => !ids.has(e.sourceId)), ...entries];
   writeForgetList(next, root);
   if (!o.json) print(o.remove ? `unforgot ${full}; the next slopie sync writes its record again.` : `forgot ${full}: removed from the records now; the audit no longer counts it.`);
-  if (!o.remove && process.env['SLOPIE_NO_SYNC'] !== '1') {
+  if (!o.remove) {
+    // Explicit: the record goes now, not at the next background sync.
     try { await syncRecords({...(o.recordsDir ? {recordsDir: o.recordsDir} : {}), workerUrl: workerUrl()}); } catch (e) {
       if (!(e instanceof SyncBusyError)) throw e;
       if (!o.json) print('(a sync is running; the record goes when it finishes and the next one starts)');

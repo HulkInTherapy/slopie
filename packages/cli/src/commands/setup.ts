@@ -112,17 +112,17 @@ function plan(o: SetupOptions, clients: readonly SetupClient[]): Change[] {
   for (const c of clients) {
     if (c === 'claude') {
       const dir = paths.claudeDir(o.claudeDir);
-      add(c, path.join(dir, 'skills', SKILL, 'SKILL.md'), 'skill (the records note)', o.remove ? null : skillText(records));
+      add(c, path.join(dir, 'skills', SKILL, 'SKILL.md'), 'skill', o.remove ? null : skillText(records));
       const settings = path.join(dir, 'settings.json');
-      add(c, settings, 'SessionStart hook (sync + continuation pointer)', claudeSettings(read(settings), o.remove ? null : hookCommand('claude')));
+      add(c, settings, 'SessionStart hook', claudeSettings(read(settings), o.remove ? null : hookCommand('claude')));
     } else if (c === 'codex') {
       const home = paths.codexDir(o.codexDir);
       const file = path.join(home, 'AGENTS.md');
-      add(c, file, 'AGENTS.md block (the records note)', withBlock(read(file), o.remove ? null : agentNote(records)));
+      add(c, file, 'AGENTS.md note', withBlock(read(file), o.remove ? null : agentNote(records)));
     } else {
       const root = path.join(paths.piDir(o.piDir), 'agent');
-      add(c, path.join(root, 'skills', SKILL, 'SKILL.md'), 'skill (the records note)', o.remove ? null : skillText(records));
-      add(c, path.join(root, 'extensions', 'slopie.ts'), 'extension (sync on session start)', o.remove ? null : piExtension());
+      add(c, path.join(root, 'skills', SKILL, 'SKILL.md'), 'skill', o.remove ? null : skillText(records));
+      add(c, path.join(root, 'extensions', 'slopie.ts'), 'extension', o.remove ? null : piExtension());
     }
   }
   return out;
@@ -157,7 +157,7 @@ export async function runSetup(o: SetupOptions): Promise<number> {
       return {client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map(p => p.what)};
     });
     if (o.json) printJson({records: paths.recordsDir(), clients: rows});
-    else for (const r of rows) print(`${r.client.padEnd(8)}${r.installed ? 'installed' : r.detected ? `not installed: ${r.missing.join(', ')}` : 'not found on this machine'}`);
+    else for (const r of rows) print(`  ${r.client.padEnd(8)}${r.installed ? 'installed' : r.detected ? `missing: ${r.missing.join(', ')}  (slopie setup --${r.client})` : 'not found on this machine'}`);
     return 0;
   }
   if (!clients.length) {
