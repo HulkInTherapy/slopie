@@ -22420,7 +22420,7 @@ var init_analytics = __esm({
     HARNESSES = ["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot"];
     LAUNCH_ORDER = ["codex", "claude", "opencode", "pi", "cursor", "gemini", "copilot"];
     RESUME_MAX_BYTES = 64 * 1024 * 1024;
-    offline2 = () => process.env["POTSHERD_OFFLINE"] === "1";
+    offline2 = () => process.env["POTSHERD_OFFLINE"] === "1" || process.env["SLOPIE_ONLINE"] !== "1";
     metric = (value, unit, basis, definition) => ({ value, numerator: value, denominator: null, unit, measurementBasis: basis, state: value === null ? "unavailable" : "observed", definition });
     routeKey = (route) => JSON.stringify(route);
     PRIVATE_CHARTS = /* @__PURE__ */ new Set(["priciest_project", "project_graveyard", "continue_count", "typo_fingerprint", "day_night_topics"]);
@@ -52026,6 +52026,7 @@ async function runAuditOverview(o) {
   if (harnesses?.some((h) => !["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot"].includes(h))) throw new UserError("Choose overview sources from claude,codex,pi,opencode,cursor,gemini,copilot.");
   if (o.export && path52.extname(o.export).toLowerCase() !== ".svg") throw new UserError("Use a .svg path for the safe share preview.");
   if (o.tone && !["elegant", "witty", "chaotic", "roast"].includes(o.tone)) throw new UserError("Choose a tone: elegant, witty, chaotic, roast.");
+  if (o.online) process.env["SLOPIE_ONLINE"] = "1";
   let options = {
     launch: true,
     tone: o.tone,
@@ -60556,7 +60557,7 @@ function main(rawArgv) {
     program2.name(publicCommandName).description("rescue, index, search and re-enter every coding-agent session on your machine").version(VERSION, "-v, --version").showHelpAfterError(`(run  ${publicCommandName} --help  for the list of verbs)`)
   );
   const audit2 = addGlobals(
-    program2.command("audit").description("count what Claude Code has already deleted, and what it deletes next").option("--overview", "open the terminal audit (the default)").option("--tone <tone>", "voice override: elegant,witty,chaotic,roast").option("--legacy", "use the existing retention audit").option("--plain", "print the new overview without interactive controls").option("--no-motion", "keep the new terminal view still").option("--private", "show project names in the new private explorer").option("--harness <list>", "scope the overview to claude,codex,pi,opencode,cursor,gemini,copilot").option("--project <path>", "scope the overview to this project").option("--since <when>", "overview events on or after this date").option("--until <when>", "overview events on or before this date").option("--timezone <zone>", "calendar timezone for the overview").option("--export <path>", "save a public-safe overview SVG").option("--sweep", "also list the sessions the next sweep will take, by title").option("--verify", "print standalone python that recomputes the four numbers, then exit")
+    program2.command("audit").description("your year with coding agents: a Wrapped computed from local history").option("--overview", "open the terminal audit (the default)").option("--tone <tone>", "voice override: elegant,witty,chaotic,roast").option("--online", "opt in: let a free hosted model (OpenCode Zen / TypeSafe Jev) polish story wording; sends aggregates and a few filtered quotes").option("--legacy", "use the existing retention audit").option("--plain", "print the new overview without interactive controls").option("--no-motion", "keep the new terminal view still").option("--private", "show project names in the new private explorer").option("--harness <list>", "scope the overview to claude,codex,pi,opencode,cursor,gemini,copilot").option("--project <path>", "scope the overview to this project").option("--since <when>", "overview events on or after this date").option("--until <when>", "overview events on or before this date").option("--timezone <zone>", "calendar timezone for the overview").option("--export <path>", "save a public-safe overview SVG").option("--sweep", "also list the sessions the next sweep will take, by title").option("--verify", "print standalone python that recomputes the four numbers, then exit")
   ).addHelpText("after", `
 example:
   potsherd audit
