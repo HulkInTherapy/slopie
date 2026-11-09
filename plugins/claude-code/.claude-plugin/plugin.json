@@ -1,7 +1,7 @@
 {
   "name": "potsherd",
-  "version": "1.8.6",
-  "description": "Rescue, index, search, interrogate and re-enter every coding-agent session on your machine. Takes a copy before Claude Code's 30-day sweep can delete one.",
+  "version": "1.9.0",
+  "description": "slopie — search your past coding-agent sessions. One skill, slopie, that your agent uses whenever you mention earlier work. Plus `slopie audit`, a Wrapped of your year.",
   "author": {
     "name": "HulkInTherapy",
     "url": "https://github.com/HulkInTherapy"
@@ -16,8 +16,7 @@
     "transcript",
     "memory",
     "search",
-    "archive",
-    "rescue",
-    "mcp"
+    "records",
+    "audit"
   ]
 }

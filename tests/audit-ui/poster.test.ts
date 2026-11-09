@@ -50,7 +50,7 @@ describe('poster: entry animation', () => {
         const f = frame(w, h, t, true, '16', true);
         expect(f.text, `${w}×${h} t=${t}`).not.toMatch(/\$0\b/);
         const rows = f.text.split('\n');
-        const at = rows.findIndex(r => r.includes('At API prices'));
+        const at = rows.findIndex(r => r.includes('AT API PRICES'));
         const price = at >= 0 ? rows[at + 1]!.match(/\$([\d,]+)/) : null;
         if (price) expect(Number(price[1]!.replace(/,/g, ''))).toBeGreaterThanOrEqual(5130);
       }
@@ -65,10 +65,11 @@ describe('poster: entry animation', () => {
     const mid = frame(120, 40, 1100, true);
     expect(mid.busy).toBe(true);
     expect(mid.text).toContain('MANNERS'); // printed
-    const meter = (t: string) => (t.match(/22 (━+)/)?.[1] ?? '').length;
+    // The manners split: count the cells in the accent fill (the track is the same glyph in barSoft).
+    const meter = (f: { c: { fg: Int32Array } }) => [...f.c.fg].filter(v => v === C.accent).length;
     const done = frame(120, 40, SETTLED_MS, true);
-    expect(meter(mid.text)).toBeLessThan(meter(done.text)); // the manners split is still filling
-    expect(done.text).toContain('At API prices');
+    expect(meter(mid)).toBeLessThan(meter(done)); // the diagrams are still filling
+    expect(done.text).toContain('AT API PRICES');
   });
 });
 
@@ -130,7 +131,7 @@ describe('poster: picker', () => {
     const c = new Canvas(120, 40, C.bg);
     renderCard({ c, w: 120, h: 40, t: Infinity, tier: tierFor(120, 40)!, caps: { color: 'truecolor', motion: false, unicode: true }, blink: false, state: {}, index: deck.length - 1, total: deck.length }, deck.at(-1)!);
     const text = c.toText();
-    expect(text).not.toContain('Catchphrase');
+    expect(text).not.toContain('CATCHPHRASE');
     expect(text).not.toContain('angriest');
     expect(text).not.toMatch(/(^|\s)0 (subagents|prompts|days)/);
     expect(text).not.toContain('…');

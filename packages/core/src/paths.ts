@@ -40,6 +40,22 @@ export function potsherdDir(override?: string): string {
   return path.join(home(), '.potsherd');
 }
 
+/** slopie 1.9's own state: config, forget list and (by default) the records. `SLOPIE_DIR` overrides. */
+export function slopieDir(override?: string): string {
+  if (override) return path.resolve(expandTilde(override));
+  const env = process.env['SLOPIE_DIR'];
+  if (env && env.trim()) return path.resolve(expandTilde(env.trim()));
+  return path.join(home(), '.slopie');
+}
+
+/** The plain-text session records. `SLOPIE_RECORDS_DIR` overrides. */
+export function recordsDir(override?: string): string {
+  if (override) return path.resolve(expandTilde(override));
+  const env = process.env['SLOPIE_RECORDS_DIR'];
+  if (env && env.trim()) return path.resolve(expandTilde(env.trim()));
+  return path.join(slopieDir(), 'records');
+}
+
 export function dbPath(root = potsherdDir()): string {
   return path.join(root, 'potsherd.db');
 }

@@ -114,79 +114,44 @@ describe('the shipped bundle, with no node_modules anywhere', () => {
   });
 
   it('audits — the first command anyone runs, and it needs no database', () => {
-    const r = run(['audit', '--legacy', '--claude-dir', FIXTURE, '--json']);
+    const r = run(['audit', '--json', '--claude-dir', FIXTURE], { SLOPIE_NO_SYNC: '1' });
     expect(r.code, r.stderr).toBe(0);
-    const j = JSON.parse(r.stdout) as Record<string, number>;
-    expect(j['deleted']).toBe(3);
-    expect(j['promptsLost']).toBe(6);
+    expect(JSON.parse(r.stdout)).toHaveProperty('metrics');
   });
 
-  it('rescues — archives and rebuilds ghosts, on Node’s own sqlite', () => {
-    const root = path.join(sandbox, 'pd-rescue');
-    const r = run(['rescue', '--yes', '--no-settings', '--json', '--claude-dir', FIXTURE, '--potsherd-dir', root]);
+  /** Records built with the lone bundle (parsed inline: no worker file beside it), in their own directory. */
+  function records(): string {
+    const dir = tempDir('slopie-lonely-records-');
+    dirs.push(dir);
+    const r = run(['sync', '--claude-dir', FIXTURE, '--json'], { SLOPIE_RECORDS_DIR: dir, SLOPIE_DIR: dir + '-home' });
     expect(r.code, r.stderr).toBe(0);
-    const j = JSON.parse(r.stdout) as Record<string, number>;
-    expect(j['ghostsBuilt']).toBeGreaterThan(0);
-    expect(j['promptsRecovered']).toBeGreaterThan(0);
-    expect(fs.existsSync(path.join(root, 'potsherd.db'))).toBe(true);
+    return dir;
+  }
+
+  it('syncs records and searches them on Node’s own sqlite, finding a prompt from a deleted session', () => {
+    const dir = records();
+    expect(fs.readFileSync(path.join(dir, 'INDEX.tsv'), 'utf8')).toContain('(prompt history only; transcript not kept)');
+    const r = run(['search', 'pgbouncer'], { SLOPIE_RECORDS_DIR: dir });
+    expect(r.code, r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/→ slopie search --session \S+ --turns \d+-\d+/);
+    expect(r.stdout).toContain('pgbouncer');
   });
 
-  it('indexes and searches, and finds a prompt from a deleted session', () => {
-    const root = path.join(sandbox, 'pd-find');
-    const completeFixture=path.join(sandbox,'complete-claude');fs.cpSync(FIXTURE,completeFixture,{recursive:true});
-    const history=path.join(completeFixture,'history.jsonl');fs.writeFileSync(history,fs.readFileSync(history,'utf8').split('\n').filter(line=>{if(!line.trim())return false;try{const row=JSON.parse(line);return typeof row.sessionId==='string';}catch{return false;}}).join('\n')+'\n');
-    expect(run(['rescue', '--yes', '--no-settings', '--quiet', '--claude-dir', completeFixture, '--potsherd-dir', root]).code).toBe(0);
-    const indexed=run(['index', '--full', '--no-embed', '--harness', 'claude', '--claude-dir', completeFixture, '--potsherd-dir', root]);
-    expect(indexed.code,indexed.stderr+'\n'+indexed.stdout).toBe(0);
-    const r = run(['find', 'pgbouncer', '--json', '--potsherd-dir', root]);
+  it('reports which sqlite it used, in --json', () => {
+    const r = run(['doctor', '--json', '--claude-dir', FIXTURE]);
     expect(r.code, r.stderr).toBe(0);
-    const j = JSON.parse(r.stdout) as {contractVersion:number;evidence:{role:string;text:string}[]};
-    expect(j.contractVersion).toBe(2);expect(j.evidence.length).toBeGreaterThan(0);
-    expect(j.evidence.some(item=>item.text.toLowerCase().includes('pgbouncer'))).toBe(true);
-  });
-
-  it('reports which sqlite it used, in the human view and in --json', () => {
-    const root = path.join(sandbox, 'pd-find');
-    const completeFixture=path.join(sandbox,'complete-claude');fs.cpSync(FIXTURE,completeFixture,{recursive:true});
-    const history=path.join(completeFixture,'history.jsonl');fs.writeFileSync(history,fs.readFileSync(history,'utf8').split('\n').filter(line=>{if(!line.trim())return false;try{const row=JSON.parse(line);return typeof row.sessionId==='string';}catch{return false;}}).join('\n')+'\n');
-    const human = run(['doctor', '--claude-dir', FIXTURE, '--potsherd-dir', root, '--width', '80']);
-    expect(human.stdout).toContain('node:sqlite');
-    const j = JSON.parse(
-      run(['doctor', '--json', '--claude-dir', FIXTURE, '--potsherd-dir', root]).stdout,
-    ) as { db: { driver: string } };
-    expect(j.db.driver).toBe('node:sqlite');
+    expect((JSON.parse(r.stdout) as { sqlite: string }).sqlite).toBe('node:sqlite');
   });
 
   it('prints no experimental warning on the way past', () => {
-    // Node warns the first time `node:sqlite` loads. It would land on top of
-    // every screen and in front of every `--json` consumer's stderr, for a
-    // decision the user did not make and cannot act on.
-    const root = path.join(sandbox, 'pd-find');
-    const completeFixture=path.join(sandbox,'complete-claude');fs.cpSync(FIXTURE,completeFixture,{recursive:true});
-    const history=path.join(completeFixture,'history.jsonl');fs.writeFileSync(history,fs.readFileSync(history,'utf8').split('\n').filter(line=>{if(!line.trim())return false;try{const row=JSON.parse(line);return typeof row.sessionId==='string';}catch{return false;}}).join('\n')+'\n');
-    const r = run(['ls', '--potsherd-dir', root]);
+    const dir = records();
+    const r = run(['threads'], { SLOPIE_RECORDS_DIR: dir });
+    expect(r.code).toBe(0);
     expect(r.stderr).toBe('');
   });
 
   it('puts the warning back when asked — if this Node emits one at all', (ctx) => {
-    // The escape hatch must not be a flag that does nothing (`10.1`: six plan
-    // claims about other software proved false, and the worst *succeeds* and
-    // does nothing). But whether there is a warning to put back is a fact
-    // about the Node running this, not about potsherd: it was experimental in
-    // 22.5 and unflagged later, and the runner's Node had already stopped
-    // printing it when this test first went to CI — four red legs asserting
-    // that somebody else's warning still existed.
-    //
-    // So the premise is established rather than assumed (`09 §7.2`): ask this
-    // Node directly, and skip loudly if the answer is no.
-    //
-    // **FIX-J §4.3.** It said `skip` and it printed its reason, and then it
-    // `return`ed — which vitest reports as a **pass**. That is C-10's defect,
-    // found here by sweeping the suite for the pattern rather than by anything
-    // going wrong: on a Node that has stopped warning about `node:sqlite`, this
-    // test went green having asserted nothing about the flag it exists to
-    // prove is not a no-op. The reason it printed was already right; only the
-    // verdict was wrong. `ctx.skip()` is the verdict.
+    // Whether there is a warning to put back is a fact about the Node running this: ask it, and skip loudly if not.
     const probe = spawnSync(process.execPath, ['-e', "require('node:sqlite')"], {
       encoding: 'utf8',
     });
@@ -198,47 +163,27 @@ describe('the shipped bundle, with no node_modules anywhere', () => {
       ctx.skip();
       return;
     }
-    const root = path.join(sandbox, 'pd-find');
-    const completeFixture=path.join(sandbox,'complete-claude');fs.cpSync(FIXTURE,completeFixture,{recursive:true});
-    const history=path.join(completeFixture,'history.jsonl');fs.writeFileSync(history,fs.readFileSync(history,'utf8').split('\n').filter(line=>{if(!line.trim())return false;try{const row=JSON.parse(line);return typeof row.sessionId==='string';}catch{return false;}}).join('\n')+'\n');
-    const loud = run(['ls', '--potsherd-dir', root], { POTSHERD_SQLITE_WARN: '1' });
+    const dir = records();
+    const loud = run(['threads'], { SLOPIE_RECORDS_DIR: dir, POTSHERD_SQLITE_WARN: '1' });
     expect(loud.stderr).toContain('ExperimentalWarning');
   });
 });
 
 describe('POTSHERD_SQLITE selects a driver, and is not a flag that does nothing', () => {
+  const driver = (env: NodeJS.ProcessEnv) =>
+    (JSON.parse(execFileSync(process.execPath, [bundle, 'doctor', '--json', '--claude-dir', FIXTURE], { encoding: 'utf8', env })) as { sqlite: string }).sqlite;
+
   it('forces the addon when asked, inside the checkout', () => {
-    const root = tempDir('potsherd-drv-');
-    dirs.push(root);
-    const out = execFileSync(
-      process.execPath,
-      [bundle, 'doctor', '--json', '--claude-dir', FIXTURE, '--potsherd-dir', root],
-      { encoding: 'utf8', env: { ...process.env, POTSHERD_SQLITE: 'better-sqlite3' } },
-    );
-    expect((JSON.parse(out) as { db: { driver: string } }).db.driver).toBe('better-sqlite3');
+    expect(driver({ ...process.env, POTSHERD_SQLITE: 'better-sqlite3' })).toBe('better-sqlite3');
   });
 
   it('forces the built-in when asked, inside the same checkout', () => {
-    const root = tempDir('potsherd-drv-');
-    dirs.push(root);
-    const out = execFileSync(
-      process.execPath,
-      [bundle, 'doctor', '--json', '--claude-dir', FIXTURE, '--potsherd-dir', root],
-      { encoding: 'utf8', env: { ...process.env, POTSHERD_SQLITE: 'node' } },
-    );
-    expect((JSON.parse(out) as { db: { driver: string } }).db.driver).toBe('node:sqlite');
+    expect(driver({ ...process.env, POTSHERD_SQLITE: 'node' })).toBe('node:sqlite');
   });
 
   it('prefers the addon when nothing is forced', () => {
-    const root = tempDir('potsherd-drv-');
-    dirs.push(root);
     const env = { ...process.env };
     delete env['POTSHERD_SQLITE'];
-    const out = execFileSync(
-      process.execPath,
-      [bundle, 'doctor', '--json', '--claude-dir', FIXTURE, '--potsherd-dir', root],
-      { encoding: 'utf8', env },
-    );
-    expect((JSON.parse(out) as { db: { driver: string } }).db.driver).toBe('better-sqlite3');
+    expect(driver(env)).toBe('better-sqlite3');
   });
 });

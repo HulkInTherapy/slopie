@@ -3,7 +3,8 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { db as store, Theme, type Exchange } from '@potsherd/core';
+import { Theme, type Exchange } from '@potsherd/core';
+import { openDatabase } from '../packages/core/src/sqlite-driver.js';
 import {
   MASK_RE,
   elideBinary,
@@ -393,7 +394,7 @@ describe('the mask', () => {
   it('survives fts5 tokenisation as three searchable tokens', () => {
     // The claim in redact.ts's header, checked against the sqlite this repo
     // actually ships rather than against the documentation.
-    const db = store.open({ file: ':memory:' });
+    const db = openDatabase(':memory:');
     try {
       db.exec('CREATE VIRTUAL TABLE t USING fts5(body)');
       const mask = maskFor('aws', SECRET);

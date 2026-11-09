@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {createHash} from 'node:crypto';
-import {open} from '../packages/core/src/db.js';
+import {openDatabase} from '../packages/core/src/sqlite-driver.js';
+/** A WAL-mode SQLite store shaped like the 1.8 archive's sync_state table (the store itself is gone in 1.9). */
+function open({file}:{file:string}){const db=openDatabase(file);db.exec("PRAGMA journal_mode=WAL;CREATE TABLE IF NOT EXISTS sync_state(key TEXT PRIMARY KEY,value TEXT,updated_at TEXT)");return db;}
 import {openAuditSqliteSnapshot} from '../packages/core/src/audit-sqlite.js';
 import {describeStore} from '../packages/core/src/adapters/opencode.js';
-import {readArchiveState,ARCHIVE_UNAVAILABLE_WARNING} from '../packages/core/src/archive-state.js';
-import {audit} from '../packages/core/src/audit.js';
-import {renderAuditCard} from '../packages/core/src/render/audit-card.js';
-import {Theme} from '../packages/core/src/theme.js';
 const dirs:string[]=[];afterEach(()=>dirs.splice(0).forEach(d=>fs.rmSync(d,{recursive:true,force:true})));
 function fixture(){const dir=fs.mkdtempSync(path.join(os.tmpdir(),'audit-sqlite-snapshot-'));dirs.push(dir);return {dir,file:path.join(dir,'potsherd.db')};}
 function inventory(dir:string){return Object.fromEntries(fs.readdirSync(dir).sort().map(n=>[n,createHash('sha256').update(fs.readFileSync(path.join(dir,n))).digest('hex')]));}
@@ -33,11 +31,5 @@ describe('frozen audit SQLite checkpoint',()=>{
   });
   it('reuses a supplied frozen OpenCode reader without reopening or closing the source',()=>{
     const {dir,file}=fixture(),writer=open({file});writer.exec('CREATE TABLE session(id TEXT,directory TEXT);CREATE TABLE message(id TEXT,session_id TEXT,role TEXT,content TEXT)');writer.close();const before=inventory(dir),snapshot=openAuditSqliteSnapshot(file);try{expect(describeStore(file,snapshot.db).ok).toBe(true);expect(snapshot.db.prepare('SELECT count(*) n FROM session').get()).toEqual({n:0});snapshot.assertCurrent();}finally{snapshot.db.close();}expect(inventory(dir)).toEqual(before);
-  });
-  it('preserves legacy archive counters without creating WAL support files',()=>{
-    const {dir,file}=fixture(),writer=open({file});writer.close();const before=inventory(dir),state=readArchiveState(dir);expect(state?.ghosts).toBe(0);expect(state?.rescues).toBe(0);expect(inventory(dir)).toEqual(before);
-  });
-  it('keeps legacy local counts and live-WAL archive counters without changing the source',async()=>{
-    const {dir,file}=fixture(),writer=open({file}),claude=fs.mkdtempSync(path.join(os.tmpdir(),'audit-legacy-claude-'));dirs.push(claude);fs.mkdirSync(path.join(claude,'projects'));fs.writeFileSync(path.join(claude,'history.jsonl'),JSON.stringify({sessionId:'missing-fixture',display:'A synthetic retained request',project:'/synthetic',timestamp:Date.now()})+'\n');try{writer.pragma('wal_checkpoint(TRUNCATE)');writer.exec("INSERT INTO sync_state(key,value,updated_at) VALUES('live','yes','2026-10-01T00:00:00Z')");const before=inventory(dir),report=await audit(claude,new Date(),{potsherdDir:dir});expect(report.archive).not.toBeNull();expect(report.warnings).not.toContain(ARCHIVE_UNAVAILABLE_WARNING);const card=renderAuditCard(report,new Theme({color:false}));expect(card).not.toContain('archive stats are unavailable');expect(report.archive?.ghosts).toBe(0);expect(inventory(dir)).toEqual(before);}finally{writer.close();}
   });
 });

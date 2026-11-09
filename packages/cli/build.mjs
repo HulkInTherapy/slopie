@@ -9,39 +9,15 @@ mkdirSync(path.join(here, 'dist'), { recursive: true });
 // @potsherd/core is bundled in rather than published separately: one npm
 // package means `npx potsherd audit` resolves one thing.
 //
-// What stays external, and why it is a shorter list than it was.
-//
-// The rule is now **"external only if it cannot be bundled"**, not "external if
-// it is a dependency". `commander` is pure JavaScript and is needed by every
-// single invocation, so leaving it out bought nothing and cost the one thing
-// that mattered: a bundle that cannot run beside an empty `node_modules`. A
-// marketplace install of the plugin is exactly that situation — `dist/` is
-// gitignored and nothing installs dependencies for a git clone — and the whole
-// of open item A comes from it.
-//
-// What remains is genuinely unbundlable:
-//   better-sqlite3, sqlite-vec        native addons
-//   @huggingface/transformers         native (onnxruntime), and 300 MB of it
-//   @anthropic-ai/claude-agent-sdk    resolves its own vendored cli.js by path
-//   @anthropic-ai/sdk                 optional; only the API-key path uses it
-//   @modelcontextprotocol/sdk, zod    not reachable from the CLI at all
-//
-// Every one of the first four is loaded lazily and degrades to a sentence, so a
-// bundle with none of them present still runs `audit`, `rescue`, `guard` and
-// `doctor` — the rescue path, which is what the product is named for.
-const external = [
-  'better-sqlite3',
-  'sqlite-vec',
-  '@huggingface/transformers',
-  '@anthropic-ai/claude-agent-sdk',
-  '@anthropic-ai/sdk',
-  '@modelcontextprotocol/sdk',
-  'zod',
-];
+// External only if it cannot be bundled: better-sqlite3 is a native addon, loaded lazily (the search index
+// falls back to node:sqlite without it). Everything else, commander included, is bundled, so the bundle runs
+// beside an empty node_modules (a plugin install is a git clone with no install step).
+const external = ['better-sqlite3'];
 
 const targets = [
   { in: 'src/index.ts', out: 'dist/potsherd.js' },
   { in: 'src/audit-native-worker.ts', out: 'dist/audit-native-worker.js' },
+  { in: 'src/records-worker.ts', out: 'dist/records-worker.js' },
 ];
 
 for (const t of targets) {
@@ -74,7 +50,6 @@ for (const file of ['LICENSE', 'NOTICE', 'README.md']) {
 }
 
 mkdirSync(path.join(here,'licenses'),{recursive:true});
-copyFileSync(path.join(repo,'licenses','js-tiktoken-MIT.txt'),path.join(here,'licenses','js-tiktoken-MIT.txt'));
 
 copyFileSync(path.join(repo,'licenses','models-dev-MIT.txt'),path.join(here,'licenses','models-dev-MIT.txt'));
 

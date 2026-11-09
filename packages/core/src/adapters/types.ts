@@ -1,4 +1,4 @@
-import type { Continuation, EvidenceRecord } from '../memory/contracts.js';
+import type { Continuation, EvidenceRecord } from '../sources/contracts.js';
 /**
  * The L0 adapter contract — the one interface every harness adapter codes to.
  *

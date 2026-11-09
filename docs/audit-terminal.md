@@ -1,6 +1,6 @@
 # Slopie terminal audit
 
-`slopie audit` opens a fullscreen wallboard. The `potsherd` executable remains compatible. `--legacy` opens the local retention audit; `--sweep` and `--verify` keep their existing routes.
+`slopie audit` opens a fullscreen wallboard. The `potsherd` executable remains compatible. (The 1.x retention audit, `--legacy`, `--sweep` and `--verify`, was removed in 1.9.)
 
 The board shows current API-equivalent value, known tokens, models and pricing, three projects with source-backed requested-work tags, repeated short user-role lines and observed model-directed reactions. Wide terminals show the meaningful cards together; smaller terminals use left/right mixed-content pages. There are no section tabs or scrolling controls. `?` opens help, `s` freezes presentation while paging/help/quit remain usable, `d` reads a captured source, Esc returns and `q` exits. Paste does not trigger commands. ASCII, no-color and reduced-motion paths retain the data. Plain output prints the complete report without a viewport cap; JSON and safe SVG use the public aggregate representation.
 

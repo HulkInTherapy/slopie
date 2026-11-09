@@ -15,6 +15,10 @@ export interface Tokens {
   bar: Rgb;
   barSoft: Rgb;
   accent: Rgb;
+  accentHi: Rgb;
+  accentMid: Rgb;
+  accentLo: Rgb;
+  faint: Rgb;
   ghost: Rgb;
   /** Display face for hero numbers and titles; the heavy stroke face is the narrow fallback. */
   face: DisplayFace;

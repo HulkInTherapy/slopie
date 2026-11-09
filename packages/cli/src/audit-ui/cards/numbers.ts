@@ -5,7 +5,7 @@ import { countUp } from '../gfx/motion.js';
 import type { Counter, DeckCard } from '../story/deck.js';
 import { meter } from '../theme/charts.js';
 import { displayHeight, displayWidth, drawDisplay, fitDisplay, type DisplayOptions } from '../theme/display.js';
-import { fade, rule, txt, txtRight, vrule, type K } from '../theme/kit.js';
+import { facts, fade, heroScale, label, rule, txt, txtRight, vrule, type K } from '../theme/kit.js';
 import { fadeIn } from '../theme/tokens.js';
 
 type Data<T extends DeckCard['kind']> = Extract<DeckCard, { kind: T }>['data'];
@@ -21,44 +21,44 @@ export function scaleBody(k: K, data: Data<'scale'>, r: Rect): void {
   const { tk, L, s } = k;
   const counters = data.counters;
   const finals = counters.map(c => counterText(c, c.value));
-  // One row of solid numerals when they all fit, else a 2×2 grid; the stroke face is the last resort.
-  const tryLayout = (cols: number, tall: boolean, face: 'solid' | 'heavy'): DisplayOptions | null => {
-    if (!k.uni) return null;
-    const colW = Math.floor((r.w + 4) / cols) - 4;
-    const o: DisplayOptions = { face, tall };
-    return finals.every(f => displayWidth(f.replace(/[KMBT]$/, ''), o) + (/[KMBT]$/.test(f) ? 2 : 0) <= colW - 2) ? o : null;
-  };
-  let cols = counters.length;
-  let opts = tryLayout(cols, L && r.h >= 12, 'solid') ?? tryLayout(cols, false, 'solid');
-  if (!opts && counters.length > 2) { cols = 2; opts = tryLayout(2, L && r.h >= 16, 'solid') ?? tryLayout(2, false, 'solid'); }
-  if (!opts) { cols = counters.length; opts = tryLayout(cols, false, 'heavy'); }
-  if (!opts) cols = Math.min(counters.length, 2);
-  const colW = Math.floor((r.w + 4) / cols);
+  const factRows = data.facts.length && r.h >= 14 ? 3 : 0;
+  const area = { ...r, h: r.h - factRows };
+  // A 2×2 grid of display numbers that fills the box; one row when only two counters.
+  const cols = counters.length <= 2 ? counters.length : 2;
+  const rows = Math.ceil(counters.length / cols);
+  const colW = Math.floor(r.w / cols);
+  const fits = (o: DisplayOptions) => finals.every(f => displayWidth(f.replace(/[KMBT]$/, ''), o) + (/[KMBT]$/.test(f) ? 2 : 0) <= colW - 6);
+  const tall = L && area.h >= rows * 9;
+  let opts: DisplayOptions | null = null;
+  if (k.uni) for (const o of [{ face: 'solid' as const, tall, scale: heroScale(k) }, { face: 'solid' as const, tall }, { face: 'solid' as const }, { face: 'heavy' as const }]) if (fits(o)) { opts = o; break; }
   const numH = opts ? displayHeight(opts) : 1;
   const blockH = numH + 2;
-  const rows = Math.ceil(counters.length / cols);
-  const rowGap = L ? 2 : 1;
-  const totalH = rows * blockH + (rows - 1) * rowGap;
-  const y0 = r.y + Math.max(0, Math.floor((r.h - totalH) / 3));
+  const gap = Math.max(1, Math.floor((area.h - rows * blockH) / (rows + 1)));
+  const y0 = area.y + Math.max(0, Math.floor((area.h - rows * blockH - (rows - 1) * gap) / 2));
   counters.forEach((counter, i) => {
     const col = i % cols, row = Math.floor(i / cols);
-    const x = r.x + col * colW;
-    const y = y0 + row * (blockH + rowGap);
+    const x = r.x + col * colW + (col ? 4 : 0);
+    const y = y0 + row * (blockH + gap);
     const start = i * 150;
     const a = fade(k, start, 260);
-    if (col) vrule(k, x - 3, y, blockH, a);
+    const ink = fadeIn(tk, i === 0 ? tk.accentHi : tk.text, a);
     const value = s.caps.motion ? countUp(counter.value, s.t, start, 950) : counter.value;
     if (s.caps.motion && s.t < start + 950) k.busy = true;
     const text = counterText(counter, value);
     if (opts) {
-      // A compact suffix (8.4B) is set small beside the numerals, not as a display letter.
+      // A compact suffix (8.4B) is set small beside the numerals, in the accent.
       const [, digits, unit] = /^(.*?)([KMBT]?)$/.exec(text)!;
-      const dw = drawDisplay(k.c, x, y, digits!, fadeIn(tk, tk.text, a), tk.bg, opts);
-      if (unit) txt(k, x + dw + 1, y + displayHeight(opts) - 1, unit, tk.text2, { bold: true, a });
+      const dw = drawDisplay(k.c, x, y, digits!, ink, tk.bg, opts);
+      if (unit) txt(k, x + dw + 1, y + displayHeight(opts) - 1, unit, tk.accentHi, { bold: true, a });
     }
-    else txt(k, x, y, text, tk.text, { bold: true, a });
-    txt(k, x, y + numH + 1, cap(counter.label), tk.text2, { a }, colW - 4);
+    else txt(k, x, y, text, ink, { bold: true, a });
+    label(k, x, y + numH + 1, counter.label, a, colW - 4);
   });
+  if (factRows) {
+    const fy = r.y + r.h - 2;
+    rule(k, r.x, fy - 1, r.w, tk.rule, fade(k, 900));
+    facts(k, r.x, fy, r.w, data.facts, fade(k, 900));
+  }
 }
 
 /* ── the legacy bill: a ledger (snapshots without spend data) ────────────── */

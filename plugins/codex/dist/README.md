@@ -1,6 +1,6 @@
 # Generated local candidate artifacts
 
-Both this plugin's CLI and MCP bundles run independently of a sibling plugin or repository checkout. Bundled transport tokenizer assets require no download. Semantic model assets are acquired only by explicit maintain policy; missing assets leave labelled lexical/source access.
+This plugin's CLI bundle (which also serves `slopie mcp`) runs independently of a sibling plugin or repository checkout. There are no model assets: memory is plain-text records plus a SQLite FTS5 index.
 
 SQLite uses a locally available better-sqlite3 driver or Node's built-in node:sqlite when available. No native addon is vendored. This package includes its ESM marker, licenses and a hash manifest. Source maps are omitted.
 

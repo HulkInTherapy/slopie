@@ -2,6 +2,53 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
+## 1.9.0 — Search your past sessions
+
+**slopie — search your past coding-agent sessions.** Plus `slopie audit`, a Wrapped of your year.
+
+Memory is rebuilt around what measured best, and cut down to one thing. Every session is kept as a plain-text record. Your agent gets exactly one skill, `slopie`, and one command, `slopie search` (or one MCP tool, `search`). The old memory stack is gone. The audit is unchanged.
+
+- **`slopie sync`** writes one record per session to `~/.slopie/records` (or `SLOPIE_RECORDS_DIR`), plus `INDEX.tsv`. It covers Claude Code (with Desktop agent sessions), Codex (`.jsonl.zst`, archived sessions), pi, and the 1.x rescue archive.
+  - Every line carries its turn tag and time, and tool output is shortened with a pointer to the raw line.
+  - Subagents are named after their parent, and sessions known only from `history.jsonl` get prompt-only records.
+  - Copies of a session are merged, and the one with the most turns wins.
+  - Sync is incremental per source file and writes atomically. Directories are 0700.
+  - Records outlive the harness deleting the transcript.
+  - On a 35 GB history the full build takes about a minute, and a sync with nothing new about 0.3 s.
+
+  Records also sync in the background of `slopie audit` and from the session-start hook.
+- **One source layer.** The audit's discovery and opt-out policy are now shared, so the audit and the records read the same files the same way. The audit's numbers are unchanged: a 1.8.5 and a 1.9.0 snapshot of the same 35 GB history are identical.
+- **One skill, `slopie`.** Every integration installs exactly one: the Claude Code and Codex plugins, `slopie setup` (a Claude Code skill, a marked `slopie` block in Codex's `AGENTS.md`, a pi skill plus extension). Its description is one sentence: "Search everything you and the user did in past coding sessions (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session." Its body is the evaluated note: the record format, a one-line answer protocol, and one line on `slopie search`. The plugins ship no other skills or commands. `slopie setup --note` prints the body for any other agent. A session-start hook keeps the records current and, after a resume or compaction, prints this session's record path and the exact `slopie search` commands, in at most 10 lines and with no summary.
+- **One command, `slopie search`.** Its options pick the mode. With words it returns ranked passages from every thread. With `--session <id> --turns 120-160` (or `-30`) it reads a turn range. With words and `--session` it searches inside one thread, including full tool output. With `--project` / `--since` alone it lists threads. Every reply ends with the exact next command. It runs on a local SQLite FTS5 index (BM25 with a contextual prefix, plus a session-card lane). **`slopie mcp`** serves it as one MCP tool, `search`, with the same parameters, for harnesses without a shell. The pre-release verbs `read`, `threads` and `grep` remain as hidden aliases.
+- **Privacy.** `slopie forget <session>` (new) and `slopie ignore <project>` remove sessions from the records and the index, and keep them out of the audit. Both lists live in `~/.slopie` and are seeded once, read-only, from the 1.8 lists.
+- **Removed, a clean break:**
+  - the 1.x memory store (capture, ingest, recall, graft, read and write);
+  - the MCP tools `potsherd_recall`, `potsherd_read`, `potsherd_graft` and `potsherd_write`;
+  - embeddings, `sqlite-vec`, ONNX and model assets;
+  - notes, tags, cards, open threads, link suggestions and keyphrases;
+  - the bridges, and the 1.x retention audit (`audit --legacy`, `--sweep`, `--verify`), together with the verbs that served them (`rescue`, `guard`, `maintain`, `index`, `find`, `ask`, `ls`, `show`, `stats`, `card`, `note`, `tag`, `pin`, `link`, `graft`, `export`, `stack`, `reader`).
+
+  The dependencies `@huggingface/transformers`, `sqlite-vec`, `js-tiktoken`, `@anthropic-ai/*`, `@modelcontextprotocol/sdk` and `zod` are removed.
+- **`~/.potsherd` is left untouched.** Only the audit's cache in it is still used. `slopie doctor` says when the rest is safe to remove by hand.
+- **Fix:** `slopie audit --online` now actually turns on the opt-in online wording. In 1.8.5 the flag was parsed but never passed through.
+- **Evaluation (R6), on the real 35 GB history with Claude Haiku and Sonnet:**
+  - The records match the reference exporter's turn for turn.
+  - Records + note + `rg`: 97% / 100% on 31 fresh questions, and 89% / 85% on 33 hard ones. The same agents scored 39% / 64% over the raw files.
+  - With the CLI added: 100% / 100% and 88% / 88%, with Haiku's median cost per question about a quarter lower.
+  - The final surface (one `slopie` skill, one `slopie search`) on 40 fresh, frozen questions (CONFIRM3), one rep: Haiku 39/40 and Sonnet 39/40. Both misses were the same borderline roster question.
+
+  The optional full-output sidecar (`sync --sidecar`) and extra note guidance were measured, gave mixed results, and are not defaults. See `docs/memory.md`.
+
+## 1.8.7 — Readable
+
+- **Bigger type.** Every card has one hero number in the display face, secondary numbers in the thinner stroke face, and labels set as small uppercase captions above bold values. On big terminals (170×50 and up) the hero doubles in size.
+- **More colour.** The indigo accent now comes in tints: eyebrows, key figures, chart fills, heatmaps and chips use it, so every card has a clear focal point. Body text is a lighter grey; the dim grey is kept for labels and footnotes.
+- **Less text.** Each card has one short headline and at most one line under it. Detail moved into label/value rows.
+- **Charts in the accent.** Bars, heatmaps and meters are drawn in indigo tints with the one point that matters in the full accent. Meters are solid one-row bars.
+- **Layouts that fill large terminals.** Cards lay out in a content box that grows with the terminal (up to 176×52) and is centred, with taller charts and more air.
+- **A new awards podium.** Gold, silver and bronze stand on a podium with their rank in the display face; ranks 4–6 sit in one row beneath. The board's facts grid gets proper spacing.
+- Same numbers, same data: this release changes only how they look.
+
 ## 1.8.6 — New look
 
 - **A new look for `slopie audit`.**

@@ -1,7 +1,7 @@
 {
   "name": "slopie",
-  "version": "1.8.6",
-  "description": "Slopie: inspect retained coding-agent history with a terminal audit and sourced local memory.",
+  "version": "1.9.0",
+  "description": "slopie — search your past coding-agent sessions. Plus `slopie audit`, a Wrapped of your year.",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/HulkInTherapy/slopie",
@@ -13,13 +13,13 @@
   "keywords": [
     "claude-code",
     "codex",
-    "cursor",
+    "pi",
     "session",
     "history",
     "transcript",
     "memory",
     "search",
-    "archive",
+    "audit",
     "cli",
     "mcp"
   ],
@@ -36,6 +36,8 @@
     "dist/potsherd.js.map",
     "dist/audit-native-worker.js",
     "dist/audit-native-worker.js.map",
+    "dist/records-worker.js",
+    "dist/records-worker.js.map",
     "README.md",
     "LICENSE",
     "NOTICE",
@@ -50,29 +52,8 @@
     "better-sqlite3": "^12.11.1"
   },
   "devDependencies": {
-    "@potsherd/bridges": "workspace:*",
     "@potsherd/core": "workspace:*",
     "@types/better-sqlite3": "^7.6.13",
     "commander": "^12.1.0"
-  },
-  "peerDependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.238",
-    "@anthropic-ai/sdk": "^0.120.0",
-    "@huggingface/transformers": "^4.2.0",
-    "sqlite-vec": "^0.1.9"
-  },
-  "peerDependenciesMeta": {
-    "@anthropic-ai/claude-agent-sdk": {
-      "optional": true
-    },
-    "@anthropic-ai/sdk": {
-      "optional": true
-    },
-    "@huggingface/transformers": {
-      "optional": true
-    },
-    "sqlite-vec": {
-      "optional": true
-    }
   }
 }

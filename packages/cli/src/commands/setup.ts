@@ -1,435 +1,278 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import process from 'node:process';
-import { format as fmt, paths, setup, indexAll, withPublicationLease, lock } from '@potsherd/core';
-// `packages/core/src/index.ts` is reserved for the integrator this phase, so
-// the barrel line — `export * as setup from './setup.js';` — is written out in
-// `phases/phase-5/registration-T5.5.txt` rather than added here. Until it
-// lands, this one import reaches the module directly, so the branch builds,
-// typechecks and tests green; swap it for `setup` in the line above once the
-// barrel carries it.
-
-import { confirm, print, printJson, themeFrom, UserError, type GlobalOptions } from '../output.js';
+import { agentNote, paths } from '@potsherd/core';
+import { confirm, fold, print, printJson, themeFrom, UserError, type GlobalOptions } from '../output.js';
+import { LEGACY_WHAT, legacyChanges, type LegacyTarget } from './setup-legacy.js';
 
 /**
- * The flags the commander block registers, in help order.
+ * `slopie setup`: teach the user's agents the records.
  *
- * Re-exported here so registering the verb needs one import from one module,
- * and so the flag list can never drift from the client list it is built from.
+ *   claude   ~/.claude/skills/slopie/SKILL.md (the one skill) + a SessionStart hook in ~/.claude/settings.json
+ *   codex    a marked `slopie` block in ~/.codex/AGENTS.md (the same text)
+ *   pi       ~/.pi/agent/skills/slopie/SKILL.md (the one skill) + ~/.pi/agent/extensions/slopie.ts (sync on start;
+ *            the continuation pointer after a resume or compaction, injected with pi.sendMessage)
+ *
+ * The skill body is the evaluated note (records format, answer protocol, `slopie search`). A pre-release
+ * `slopie-memory` skill is removed. Every write
+ * shows its diff first, asks (or takes --yes), keeps a backup of a file it changes, and never touches content it
+ * did not write. `--remove` takes out exactly what it put in.
+ *
+ * It also removes the MCP server potsherd 1.x registered (setup-legacy.ts), whose program 1.9 no longer ships:
+ * in the same reviewable plan, with the same backup, touching only the entry potsherd wrote.
  */
-export const SETUP_CLIENTS: readonly setup.ClientId[] = setup.CLIENT_IDS;
+export const SETUP_CLIENTS = ['claude', 'codex', 'pi'] as const;
+export type SetupClient = (typeof SETUP_CLIENTS)[number];
 
 export interface SetupOptions extends GlobalOptions {
-  /** The clients named on the command line, in `CLIENTS` order. */
-  clients?: setup.ClientId[];
+  clients?: SetupClient[];
   all?: boolean;
   dryRun?: boolean;
   status?: boolean;
   remove?: boolean;
+  /** Print the note setup installs (for any other harness), and nothing else. */
+  note?: boolean;
 }
 
-/**
- * `potsherd setup` — register the potsherd MCP server with the agent the user
- * names, so the six tools are reachable from Cursor, Gemini CLI, opencode,
- * Copilot, pi, Codex and Claude Code without anyone hand-editing JSON.
- *
- * This is the one verb that writes into *another tool's* directory, which
- * `00-README.md` otherwise forbids outright, so it carries phase 0's whole
- * consent apparatus: it shows the diff, it asks, it never writes without a `y`,
- * it backs the file up first, and it merges rather than replaces — a user with
- * three other MCP servers keeps all three, and the prompt says their names
- * before the question.
- *
- * Three refusals are deliberate:
- *   - a config potsherd cannot rewrite losslessly (comments, bad JSON, an
- *     inline TOML table) is never touched; the snippet is printed instead.
- *   - a client with no evidence of being installed is reported, not failed, and
- *     its snippet is printed to paste later.
- *   - a stanza pointing at an MCP server that is not built is refused. Phase 0
- *     settled this for the guard hook — *a hook that looks installed and
- *     silently does nothing is worse than no hook* — and an MCP entry that
- *     fails to spawn is the same failure with a longer feedback loop.
- */
+const BEGIN = '<!-- slopie:begin -->';
+const END = '<!-- slopie:end -->';
+/** The 1.9.0 pre-release markers: a block between them is replaced too. */
+const OLD_MARKERS = ['<!-- slopie:memory:begin -->', '<!-- slopie:memory:end -->'] as const;
+export const SKILL = 'slopie';
+/** The 1.9.0 pre-release skill name; setup removes a skill of this name that it wrote. */
+const OLD_SKILL = 'slopie-memory';
+export const SKILL_DESCRIPTION = 'Search everything you and the user did in past coding sessions (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session.';
+
+interface Change {
+  client: SetupClient | LegacyTarget;
+  file: string;
+  what: string;
+  before: string | null;
+  after: string | null;
+  /** Recomputes `after` from the file as it is when written (a file its client may have changed meanwhile). */
+  transform?: (text: string) => string | null;
+}
+
+export function skillText(recordsDir: string): string {
+  return `---\nname: ${SKILL}\ndescription: ${JSON.stringify(SKILL_DESCRIPTION)}\n---\n\n${agentNote(recordsDir)}\n`;
+}
+
+/** The Codex AGENTS.md block: the skill's name and description as a heading, then the same body. */
+export function agentsBlock(recordsDir: string): string {
+  return `## ${SKILL}\n${SKILL_DESCRIPTION}\n\n${agentNote(recordsDir)}`;
+}
+
+/** The argv that runs this slopie: `slopie` when it is on PATH, else this exact node + entry. */
+export function slopieArgv(): string[] {
+  const onPath = (process.env['PATH'] ?? '').split(path.delimiter).some(d => d && fs.existsSync(path.join(d, 'slopie')));
+  const entry = process.argv[1] ?? '';
+  return onPath || !entry ? ['slopie'] : [process.execPath, path.resolve(entry)];
+}
+
+const sh = (a: string) => (/^[A-Za-z0-9_./:@+-]+$/.test(a) ? a : JSON.stringify(a));
+
+/** The command a hook runs. */
+export function hookCommand(harness: SetupClient): string {
+  return [...slopieArgv(), 'hook', 'session-start', '--harness', harness].map(sh).join(' ');
+}
+
+function read(file: string): string | null {
+  try { return fs.readFileSync(file, 'utf8'); } catch { return null; }
+}
+
+function cutBlock(cur: string, begin: string, end: string): string {
+  const a = cur.indexOf(begin), b = cur.indexOf(end);
+  return a >= 0 && b > a ? (cur.slice(0, a).replace(/\n+$/, '') + cur.slice(b + end.length).replace(/^\n+/, '\n')).replace(/^\n+$/, '') : cur;
+}
+
+function withBlock(text: string | null, block: string | null): string | null {
+  const cur = text ?? '';
+  const without = cutBlock(cutBlock(cur, BEGIN, END), ...OLD_MARKERS);
+  if (!block) return without.trim() ? without.replace(/\n*$/, '\n') : text === null ? null : '';
+  return (without.trim() ? without.replace(/\n*$/, '\n\n') : '') + `${BEGIN}\n${block}\n${END}\n`;
+}
+
+function claudeSettings(text: string | null, command: string | null): string {
+  let obj: Record<string, unknown> = {};
+  if (text && text.trim()) {
+    try { obj = JSON.parse(text) as Record<string, unknown>; } catch { throw new UserError(`${paths.claudePaths().settings} is not plain JSON; add the hook by hand: ${command}`); }
+  }
+  const hooks = (obj['hooks'] && typeof obj['hooks'] === 'object' ? obj['hooks'] : {}) as Record<string, unknown>;
+  const list = (Array.isArray(hooks['SessionStart']) ? hooks['SessionStart'] : []) as {hooks?: {command?: string}[]}[];
+  const kept = list.filter(e => !(e.hooks ?? []).some(h => typeof h.command === 'string' && h.command.includes('hook session-start --harness claude')));
+  if (command) kept.push({matcher: 'startup|resume|compact', hooks: [{type: 'command', command, timeout: 20}]} as never);
+  const next = {...obj, hooks: {...hooks, SessionStart: kept}};
+  if (!kept.length) delete (next.hooks as Record<string, unknown>)['SessionStart'];
+  if (!Object.keys(next.hooks).length) delete (next as Record<string, unknown>)['hooks'];
+  return JSON.stringify(next, null, 2) + '\n';
+}
+
+function piExtension(): string {
+  const [cmd, ...args] = slopieArgv();
+  return `// slopie (installed by \`slopie setup\`): keep the session records current when a pi session starts, and after
+// a resume or a compaction give the agent this session's record path and the commands to read it (at most 10 lines).
+import { spawn } from 'node:child_process';
+const CMD = ${JSON.stringify(cmd)};
+const ARGS = ${JSON.stringify([...args, 'hook', 'session-start', '--harness', 'pi'])};
+function hook(source, sessionId) {
+  return new Promise(resolve => {
+    let out = '';
+    try {
+      const child = spawn(CMD, ARGS, { stdio: ['pipe', 'pipe', 'ignore'] });
+      child.stdout.on('data', d => { if (out.length < 4000) out += d; });
+      child.on('close', () => resolve(out));
+      child.on('error', () => resolve(''));
+      child.stdin.on('error', () => {});
+      child.stdin.end(JSON.stringify({ session_id: sessionId, source }));
+    } catch { resolve(''); }
+  });
+}
+export default function (pi) {
+  const run = async (source, ctx) => {
+    try {
+      const id = ctx?.sessionManager?.getSessionId?.() ?? '';
+      const text = (await hook(source, id)).trim();
+      if (text && source !== 'startup') pi.sendMessage({ customType: 'slopie', content: text.split('\\n').slice(0, 10).join('\\n'), display: true }, { deliverAs: 'nextTurn' });
+    } catch {}
+  };
+  // Never awaited: a session start is not held up by slopie.
+  pi.on('session_start', (event, ctx) => { void run(event?.reason === 'resume' ? 'resume' : 'startup', ctx); });
+  pi.on('session_compact', (_event, ctx) => { void run('compact', ctx); });
+}
+`;
+}
+
+/** The other clients potsherd 1.x could register its server with; cleaned when no client is named (or --all). */
+const LEGACY_ONLY: LegacyTarget[] = ['cursor', 'gemini', 'opencode', 'copilot'];
+
+function plan(o: SetupOptions, clients: readonly SetupClient[], others = false): Change[] {
+  const records = paths.recordsDir();
+  const out: Change[] = [];
+  const add = (client: SetupClient, file: string, what: string, after: string | null) => {
+    const before = read(file);
+    if (before !== after && !(before === null && after === null)) out.push({client, file, what, before, after});
+  };
+  const oldSkill = (client: SetupClient, skills: string) => {
+    const file = path.join(skills, OLD_SKILL, 'SKILL.md');
+    const before = read(file);
+    if (before !== null && before.startsWith(`---\nname: ${OLD_SKILL}\n`)) out.push({client, file, what: `old ${OLD_SKILL} skill`, before, after: null});
+  };
+  for (const c of clients) {
+    if (c === 'claude') {
+      const dir = paths.claudeDir(o.claudeDir);
+      add(c, path.join(dir, 'skills', SKILL, 'SKILL.md'), 'skill', o.remove ? null : skillText(records));
+      oldSkill(c, path.join(dir, 'skills'));
+      const settings = path.join(dir, 'settings.json');
+      add(c, settings, 'SessionStart hook', claudeSettings(read(settings), o.remove ? null : hookCommand('claude')));
+    } else if (c === 'codex') {
+      const home = paths.codexDir(o.codexDir);
+      const file = path.join(home, 'AGENTS.md');
+      add(c, file, 'AGENTS.md slopie block', withBlock(read(file), o.remove ? null : agentsBlock(records)));
+    } else {
+      const root = path.join(paths.piDir(o.piDir), 'agent');
+      add(c, path.join(root, 'skills', SKILL, 'SKILL.md'), 'skill', o.remove ? null : skillText(records));
+      oldSkill(c, path.join(root, 'skills'));
+      add(c, path.join(root, 'extensions', 'slopie.ts'), 'extension', o.remove ? null : piExtension());
+    }
+  }
+  const legacyOpts = {...(o.claudeDir ? {claudeDir: o.claudeDir} : {}), ...(o.codexDir ? {codexDir: o.codexDir} : {}), ...(o.piDir ? {piDir: o.piDir} : {})};
+  for (const l of legacyChanges([...clients, ...(others ? LEGACY_ONLY : [])], legacyOpts)) {
+    const before = read(l.file);
+    if (before === null) continue;
+    const after = l.transform(before);
+    // One file can carry both a slopie change and the legacy removal (never today; kept apart if it ever does).
+    if (after !== before) out.push({client: l.client, file: l.file, what: LEGACY_WHAT, before, after, transform: l.transform});
+  }
+  return out;
+}
+
+function detected(o: SetupOptions): SetupClient[] {
+  const found: SetupClient[] = [];
+  if (fs.existsSync(paths.claudeDir(o.claudeDir))) found.push('claude');
+  if (fs.existsSync(paths.codexDir(o.codexDir))) found.push('codex');
+  if (fs.existsSync(paths.piDir(o.piDir))) found.push('pi');
+  return found;
+}
+
+function diff(before: string | null, after: string | null): string[] {
+  const a = (before ?? '').split('\n'), b = (after ?? '').split('\n');
+  const setA = new Set(a), setB = new Set(b);
+  return [...a.filter(l => !setB.has(l) && l.trim()).map(l => `- ${l}`), ...b.filter(l => !setA.has(l) && l.trim()).map(l => `+ ${l}`)].slice(0, 40);
+}
+
 export async function runSetup(o: SetupOptions): Promise<number> {
   const t = themeFrom(o);
-  const wanted = chosen(o);
-  const resolution = setup.resolveMcpServer(process.argv[1]);
-
-  if (o.status) return status(o, wanted);
-
-  const plans = setup.planClients(wanted, {
-    remove: o.remove ?? false,
-    ...(o.claudeDir ? { claudeDir: o.claudeDir } : {}),
-    resolution,
-  });
-
-  // Split before printing anything: what can be written, what is already done,
-  // what potsherd refuses to touch, and what is not installed here.
-  const absent = plans.filter((p) => !p.detection.present);
-  const live = plans.filter((p) => p.detection.present);
-  const blocked = live.filter((p) => !p.safe);
-  const done = live.filter((p) => p.safe && p.noop);
-  const todo = live.filter((p) => p.safe && !p.noop);
-
-  // The binary check comes before the diff, because if it fails there is no
-  // honest version of this write to consent to.
-  const unbuilt = !o.remove && !resolution.exists;
-
-  if (o.json) {
-    printJson({
-      dryRun: Boolean(o.dryRun),
-      remove: Boolean(o.remove),
-      server: serverJson(resolution),
-      results: plans.map((p) => planJson(p, o)),
+  if (o.note) {
+    // Evaluation seams (R6): the CLI line can be left out, and the R5 §7 sentences added.
+    const note = agentNote(paths.recordsDir(), {cli: process.env['SLOPIE_NOTE_CLI'] !== '0', protocol: process.env['SLOPIE_NOTE_PROTOCOL'] !== '0', guidance: process.env['SLOPIE_NOTE_GUIDANCE'] === '1', sidecar: process.env['SLOPIE_NOTE_SIDECAR'] === '1'});
+    if (o.json) printJson({note, records: paths.recordsDir()}); else process.stdout.write(note + '\n');
+    return 0;
+  }
+  const clients = o.clients?.length ? o.clients : detected(o);
+  if (o.status) {
+    const rows = SETUP_CLIENTS.map(c => {
+      const pending = plan({...o, remove: false}, [c]);
+      return {client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map(p => p.what)};
     });
-    return unbuilt && todo.length && !o.dryRun ? 1 : blocked.length ? 1 : 0;
+    if (o.json) printJson({records: paths.recordsDir(), clients: rows});
+    else for (const r of rows) {
+      const text = r.installed ? 'installed' : r.detected ? `missing: ${r.missing.join(', ')} (slopie setup --${r.client})` : 'not found on this machine';
+      fold(text, Math.max(20, t.width - 12)).forEach((row, i) => print(`  ${i ? ''.padEnd(8) : r.client.padEnd(8)}${row}`));
+    }
+    return 0;
   }
-
-  let changed = 0;
-  let refused = 0;
-
-  if (unbuilt && todo.length) {
-    print('');
-    print(`  ${t.warn('the potsherd MCP server is not built on this machine.')}`);
-    if (resolution.file) {
-      print(`  it would be  ${fmt.elideMiddle(paths.tildify(resolution.file), Math.max(32, t.width - 15), t)}`);
+  if (!clients.length) {
+    print('no Claude Code, Codex or pi directory found; name one: slopie setup --claude | --codex | --pi');
+    return 1;
+  }
+  const changes = plan(o, clients, !o.clients?.length || !!o.all);
+  if (!changes.length) {
+    if (o.json) printJson({changes: []}); else print(o.remove ? 'nothing to remove.' : `already set up for ${clients.join(', ')}.`);
+    return 0;
+  }
+  if (o.json && o.dryRun) { printJson({changes: changes.map(c => ({client: c.client, file: c.file, what: c.what, remove: c.after === null}))}); return 0; }
+  if (!o.json) {
+    for (const c of changes) {
+      print(`${t.bold(c.client)}  ${paths.tildify(c.file)}  ${t.dim(c.what)}`);
+      for (const l of diff(c.before, c.after)) print(t.dim(`    ${l.slice(0, Math.max(20, t.width - 6))}`));
+    }
+  }
+  if (o.dryRun) { print(t.dim('dry run: nothing written.')); return 0; }
+  if (!o.yes && !(await confirm(o.remove ? 'remove these?' : 'write these?', {default: true}))) { print('nothing written.'); return 1; }
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  for (const c of changes) {
+    if (c.transform) {
+      // Recomputed from the file as it is now: its client may have written it while the plan was on screen.
+      const now = read(c.file);
+      if (now === null) continue;
+      c.before = now;
+      c.after = c.transform(now);
+      if (c.after === now) continue;
+    }
+    const ours = [SKILL, OLD_SKILL].some(k => c.file.includes(`${path.sep}${k}${path.sep}`)) || c.file.endsWith(`${path.sep}slopie.ts`);
+    if (c.before !== null && !ours) fs.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
+    if (c.after === null) {
+      fs.rmSync(c.file, {force: true});
+      const dir = path.dirname(c.file);
+      if ([SKILL, OLD_SKILL].includes(path.basename(dir))) fs.rmSync(dir, {recursive: true, force: true});
     } else {
-      print(`  no ${setup.MCP_BIN} on your PATH, and no checkout to build it from.`);
-    }
-    print('');
-    print(t.dim('  a stanza pointing at a binary that is not there looks installed'));
-    print(t.dim('  and silently gives the model nothing, which is worse than no'));
-    print(t.dim(`  stanza at all. so potsherd ${o.dryRun ? 'would refuse' : 'refuses'} to write it.`));
-    print('');
-    print('  build it first:  pnpm install && pnpm build');
-  }
-
-  for (const plan of todo) {
-    printPlan(plan, o, t, resolution, unbuilt);
-
-    if (o.dryRun) {
-      print(`  ${t.dim('dry run: nothing was written.')}`);
-      continue;
-    }
-    if (unbuilt) {
-      refused++;
-      continue;
-    }
-
-    let approved = o.yes ?? false;
-    if (!approved) {
-      if (!process.stdin.isTTY) {
-        throw new UserError(
-          `setup needs a terminal to confirm the change to ${paths.tildify(plan.path)}`,
-          `potsherd setup --${plan.client} --yes`,
-        );
-      }
-      approved = await confirm(
-        o.remove ? `  remove it from ${plan.label}?` : `  add it to ${plan.label}?`,
-        { default: false },
-      );
-    }
-    if (!approved) {
-      print(`  no change made to ${short(plan.path, t, 22)}`);
-      continue;
-    }
-    const { backup } = setup.applySetupPlan(plan);
-    changed++;
-    print(
-      o.remove
-        ? `  ${t.ok('removed')}  ${short(plan.path, t, 11)}`
-        : `  ${t.ok('registered')}  ${plan.label} can now reach your sessions`,
-    );
-    if (backup) print(`  ${t.dim('backup:')} ${short(backup, t, 11)}`);
-  }
-
-  for (const plan of done) {
-    print('');
-    if (o.remove) {
-      print(`  ${plan.label}: potsherd was not registered; nothing to remove.`);
-    } else {
-      print(`  ${plan.label}: already registered, unchanged.`);
-      print(`  ${t.dim(short(plan.path, t, 2))}`);
-    }
-  }
-
-  for (const plan of blocked) {
-    refused++;
-    print('');
-    for (const line of setup.manualSteps(plan)) print('  ' + line);
-  }
-
-  for (const plan of absent) {
-    print('');
-    print(`  ${plan.label} is not installed here — nothing was written.`);
-    print(`  ${t.dim(`no ${short(plan.path, t, 6)}`)}`);
-    print(`  ${t.dim(`and no ${plan.detection.bins.join(' or ')} on your PATH`)}`);
-    if (!o.remove) {
-      print(`  ${t.dim('when you install it, this is the stanza:')}`);
-      for (const line of plan.snippet.trimEnd().split('\n')) print('    ' + t.dim(line));
-    }
-  }
-
-  if(!o.dryRun&&!refused&&(changed>0||done.length>0)){
-    const root=paths.potsherdDir(o.potsherdDir);
-    // Setup deliberately initializes and enrolls the successfully selected capture hosts.
-    const indexed=await lock.withLockAsync('setup-memory',()=>withPublicationLease(root,(db,beforeCommit)=>indexAll({db,beforeCommit,root,potsherdDir:root,harnesses:o.remove?[]:live.filter(p=>p.safe).map(p=>p.client),...(o.remove?{removeHarnesses:live.filter(p=>p.safe).map(p=>p.client)}:{enrollHarnesses:live.filter(p=>p.safe).map(p=>p.client)}),...(o.claudeDir?{claudeDir:o.claudeDir}:{}),...(o.codexDir?{codexHome:o.codexDir}:{}),...(o.piDir?{piDir:o.piDir}:{}),...(o.opencodeDir?{opencodeDir:o.opencodeDir}:{}),embed:false})),{root,wait:2000});
-    if(indexed.totals.failed)throw new UserError('memory capture did not finish','Run potsherd maintain to retry the durable work');
-  }
-  if (!o.quiet) nextStep(o, t, { changed, refused, todo: todo.length, plans });
-  return refused ? 1 : 0;
-}
-
-/** The block shown per client, above the question. */
-function printPlan(
-  plan: setup.SetupPlan,
-  o: SetupOptions,
-  t: ReturnType<typeof themeFrom>,
-  resolution: setup.McpResolution,
-  unbuilt = false,
-): void {
-  const verb = plan.action === 'remove' ? 'remove' : plan.action === 'update' ? 're-point' : 'add';
-  const prep = plan.action === 'remove' ? 'from' : plan.action === 'update' ? 'in' : 'to';
-  print('');
-  print(
-    unbuilt
-      ? `  once it is built, this is what potsherd would ${verb} ${prep} ${plan.label}.`
-      : `  potsherd will ${verb} one MCP server ${prep} ${plan.label}.`,
-  );
-  print('');
-  const pathW = Math.max(24, t.width - 11);
-  print(`  file   ${fmt.elideMiddle(paths.tildify(plan.path), pathW, t)}`);
-  if (plan.action !== 'remove') {
-    print(`  runs   ${fmt.elideMiddle(commandLine(resolution), Math.max(32, t.width - 11), t)}`);
-    const tools = fmt.wrap(TOOLS.join(', '), Math.max(24, t.width - 9));
-    print(`  tools  ${tools[0] ?? ''}`);
-    for (const l of tools.slice(1)) print(`         ${l}`);
-  }
-  if (plan.keeps.length) {
-    // The single most important thing this screen can say: your other servers
-    // survive. Named, not counted, because a count is not evidence.
-    print(
-      `  keeps  ${t.accent(String(plan.keeps.length))} other MCP ${fmt.plural(plan.keeps.length, 'server')} here: ${fmt.joinFit(plan.keeps, Math.max(24, t.width - 40))}`,
-    );
-  }
-  if (plan.detection.verified === 'docs') {
-    // D11: this printed on one line and ran to 179 characters at --width 80,
-    // unwrapped and unelided, on the same screen where `runs` elides to
-    // exactly 80 and `tools` wraps. It is a sentence, so it wraps: eliding a
-    // reason to fit leaves half a reason, and `05` gives every line 80 columns.
-    const note = `${plan.label}'s schema is unverified: ${plan.detection.evidenceNote}`;
-    const lines = fmt.wrap(note, Math.max(24, t.width - 9));
-    print(`  ${t.warn('note')}   ${lines[0] ?? ''}`);
-    for (const l of lines.slice(1)) print(`         ${l}`);
-  }
-  print('');
-  for (const raw of plan.diff.split('\n')) {
-    // The two file headers carry a path and nothing else, and a path is the one
-    // thing here that can outrun any terminal. They elide in the middle like
-    // every other path potsherd prints; `--json` still carries the whole diff.
-    const line =
-      raw.startsWith('--- ') || raw.startsWith('+++ ')
-        ? raw.slice(0, 4) + fmt.elideMiddle(raw.slice(4), Math.max(24, t.width - 6), t)
-        : raw;
-    const tone =
-      line.startsWith('+') && !line.startsWith('+++')
-        ? t.ok(line)
-        : line.startsWith('-') && !line.startsWith('---')
-          ? t.warn(line)
-          : t.dim(line);
-    print('  ' + tone);
-  }
-  print('');
-}
-
-/** `--status`: what is registered where, and whether it would still run. */
-function status(o: SetupOptions, wanted: setup.ClientId[]): number {
-  const t = themeFrom(o);
-  const rows = setup
-    .detectAll(o.claudeDir ? { claudeDir: o.claudeDir } : {})
-    .filter((d) => wanted.includes(d.client));
-
-  if (o.json) {
-    printJson({
-      server: serverJson(setup.resolveMcpServer(process.argv[1])),
-      clients: rows.map((d) => ({
-        client: d.client,
-        label: d.label,
-        path: d.path,
-        installed: d.bin !== null,
-        present: d.present,
-        evidence: d.evidence,
-        registered: d.registered,
-        command: d.registeredCommand,
-        runnable: setup.commandRunnable(d.registeredCommand),
-        otherServers: d.others,
-        verified: d.verified,
-        evidenceNote: d.evidenceNote,
-      })),
-    });
-    return rows.some((d) => d.registered && setup.commandRunnable(d.registeredCommand) === false) ? 1 : 0;
-  }
-
-  let broken = 0;
-  let docsOnly = 0;
-  const anyRegistered = rows.some((d) => d.registered);
-  print('');
-  for (const d of rows) {
-    const runnable = setup.commandRunnable(d.registeredCommand);
-    const state = !d.present
-      ? t.dim('not installed')
-      : !d.registered
-        ? t.dim('not registered')
-        : runnable === false
-          ? t.warn('registered but broken')
-          : t.ok('registered');
-    if (d.registered && runnable === false) broken++;
-    // D8. The write path, `--dry-run` and `--json` all carry the unverified
-    // label; `--status` printed a bare `registered` for all seven and so was
-    // the one surface where four schemas potsherd has never seen a real file
-    // of looked exactly like three it has. `--status` is the verb somebody
-    // runs *later*, to check — it is the surface that most needs to carry it.
-    const unverified = d.verified === 'docs';
-    if (unverified) docsOnly++;
-    print(`  ${d.label.padEnd(20)}${state}${unverified ? t.warn('  · schema unverified') : ''}`);
-    print(`  ${' '.repeat(20)}${t.dim(fmt.elideMiddle(paths.tildify(d.path), Math.max(24, t.width - 24), t))}`);
-    if (unverified) {
-      // The reason, wrapped rather than elided: it is a sentence, not a path,
-      // and half a sentence is not evidence.
-      for (const l of fmt.wrap(d.evidenceNote, Math.max(24, t.width - 24))) {
-        print(`  ${' '.repeat(20)}${t.dim(l)}`);
+      fs.mkdirSync(path.dirname(c.file), {recursive: true});
+      if (c.transform) {
+        // A file another program keeps open (~/.claude.json): replaced whole, with its mode kept.
+        const tmp = `${c.file}.slopie-tmp-${process.pid}`;
+        fs.writeFileSync(tmp, c.after, {mode: fs.statSync(c.file).mode & 0o777});
+        fs.renameSync(tmp, c.file);
+      } else {
+        fs.writeFileSync(c.file, c.after);
       }
     }
-    if (d.registered && runnable === false) {
-      print(`  ${' '.repeat(20)}${t.dim('that command does not run from here; re-run  potsherd setup')}`);
-    }
   }
-  print('');
-  // Wrapped like the sentence below it. Printed straight, it is 79 characters
-  // and overflowed every terminal narrower than 80 — found by widening the
-  // "every verb fits the width it was given" check to the nine verbs it had
-  // never covered.
-  for (const l of fmt.wrap(
-    'registered means the stanza is in that file, not that the client has read it.',
-    Math.max(24, t.width - 2),
-  )) {
-    print(`  ${t.dim(l)}`);
+  if (o.json) printJson({written: changes.map(c => c.file)});
+  else {
+    print(`${o.remove ? 'removed' : 'done'}: ${changes.length} file${changes.length === 1 ? '' : 's'}.`);
+    if (!o.remove && !fs.existsSync(path.join(paths.recordsDir(), 'INDEX.tsv'))) print(`next:  slopie sync   ${t.dim('(writes the records the note points at)')}`);
   }
-  if (docsOnly) {
-    // Wrapped, not clipped: `05` gives every line of this screen 80 columns,
-    // and this sentence is longer than one of them.
-    const note =
-      `schema unverified means potsherd has never read a real config for ` +
-      `${docsOnly === 1 ? 'that client' : 'those clients'}; the stanza follows ` +
-      `the published documentation and nothing more.`;
-    for (const l of fmt.wrap(note, Math.max(24, t.width - 2))) print(`  ${t.dim(l)}`);
-  }
-  print('');
-  // `05`: every verb ends with the next verb. `--status` is a report, so the
-  // next verb is the one that acts on it — registering one client if none is
-  // registered, and looking at what a change would be if some already are.
-  // Two spellings, because the gloss does not fit 60 columns and `05` says a
-  // line never wraps past the width it was given.
-  const [cmd, gloss] = anyRegistered
-    ? ['potsherd setup --all --dry-run', 'to see what would change']
-    : ['potsherd setup --claude', 'to register one, after a diff and a y'];
-  const wide = `  run  ${cmd}  ${gloss}`;
-  print(
-    wide.length <= t.width
-      ? `  ${t.dim('run')}  ${cmd}  ${t.dim(gloss)}`
-      : `  ${t.dim('run')}  ${cmd}`,
-  );
-  return broken ? 1 : 0;
-}
-
-/** Every verb ends with the next verb (`05`). */
-function nextStep(
-  o: SetupOptions,
-  t: ReturnType<typeof themeFrom>,
-  s: { changed: number; refused: number; todo: number; plans: setup.SetupPlan[] },
-): void {
-  print('');
-  if (o.dryRun) {
-    // `--all` is one flag; spelling out all seven would run to 96 columns.
-    const flags = o.all ? '--all' : s.plans.map((p) => `--${p.client}`).join(' ');
-    const cmd = fmt.clip(`potsherd setup ${flags}`, Math.max(24, t.width - 22), t);
-    print(`  run  ${t.accent(cmd)}  to write it.`);
-  } else if (s.changed && o.remove) {
-    print(`  run  ${t.accent('potsherd setup --status')}  to confirm it is gone.`);
-  } else if (s.changed) {
-    print(`  restart the client, then ask it:  ${t.accent('"what did we decide about X last month?"')}`);
-  } else {
-    print(`  run  ${t.accent('potsherd setup --status')}  to see what is registered where.`);
-  }
-  print('');
-}
-
-/**
- * A path, folded to `~` and elided in the middle so it cannot outrun the
- * terminal (`05`: never wrap, elide in the middle, the last segment is what
- * identifies a file). `indent` is the width of whatever precedes it.
- */
-function short(p: string, t: ReturnType<typeof themeFrom>, indent: number): string {
-  return fmt.elideMiddle(paths.tildify(p), Math.max(24, t.width - indent), t);
-}
-
-/** The current agent-facing MCP contract. */
-const TOOLS = ['recall', 'read', 'graft'].map((v) => `potsherd_${v}`);
-
-function commandLine(res: setup.McpResolution): string {
-  return [res.command, ...res.args].map(paths.tildify).join(' ');
-}
-
-function serverJson(res: setup.McpResolution): Record<string, unknown> {
-  return {
-    name: setup.SERVER_NAME,
-    command: res.command,
-    args: res.args,
-    via: res.via,
-    ...(res.file ? { file: res.file } : {}),
-    built: res.exists,
-    tools: TOOLS,
-  };
-}
-
-function planJson(plan: setup.SetupPlan, o: SetupOptions): Record<string, unknown> {
-  return {
-    client: plan.client,
-    label: plan.label,
-    path: plan.path,
-    format: plan.format,
-    present: plan.detection.present,
-    evidence: plan.detection.evidence,
-    verified: plan.detection.verified,
-    evidenceNote: plan.detection.evidenceNote,
-    action: plan.detection.present ? plan.action : 'none',
-    safe: plan.safe,
-    ...(plan.reason ? { reason: plan.reason } : {}),
-    noop: plan.noop,
-    keeps: plan.keeps,
-    snippet: plan.snippet,
-    ...(plan.diff ? { diff: plan.diff } : {}),
-    // `--json` carries the same data as the human view, and the human view
-    // never writes on a dry run either.
-    written: false,
-    wouldWrite: Boolean(plan.detection.present && plan.safe && !plan.noop && !o.dryRun),
-  };
-}
-
-function chosen(o: SetupOptions): setup.ClientId[] {
-  if (o.all) return [...setup.CLIENT_IDS];
-  const picked = o.clients ?? [];
-  if (picked.length) return setup.CLIENT_IDS.filter((id) => picked.includes(id));
-  // `--status` is the one mode that has an obvious answer for "which agent":
-  // all of them. Its own `--help` line says *"report what is registered
-  // where"* — a question about the machine, not about one client — and making
-  // it demand `--all` to answer that was the flag disagreeing with its
-  // description. It changes nothing, so there is nothing to be careful about.
-  if (o.status) return [...setup.CLIENT_IDS];
-  // 110 characters at every width before this: the seven client flags on one
-  // line after `try:`. `05` gives an error one line of what happened and one of
-  // the fix, and neither may run off the screen — so the fix names one flag and
-  // the verb that lists the rest, which is a thing a reader can act on.
-  throw new UserError(
-    'setup needs to know which agent to configure',
-    'potsherd setup --claude       (potsherd setup --status lists all seven)',
-  );
+  void os;
+  return 0;
 }

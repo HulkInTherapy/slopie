@@ -1,6 +1,6 @@
 import fs from 'node:fs';
-import type { EvidenceRecord, Continuation } from '../memory/contracts.js';
-import { hash } from '../memory/spans.js';
+import type { EvidenceRecord, Continuation } from '../sources/contracts.js';
+import { hash } from '../sources/spans.js';
 import { readJsonlLines, parseJsonLine } from './jsonl.js';
 import { isRecord, extractTypedText, extractTextFromContent, stringifyToolInput, stringifyToolOutput } from './content.js';
 export const LEGACY_EXCHANGE_MAPPING_VERSION='exchange-record-map-v1';

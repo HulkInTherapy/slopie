@@ -19,10 +19,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - name: configure public test asset paths
-        run: |
-          echo "POTSHERD_TEST_MODELS_DIR=$RUNNER_TEMP/potsherd-ci-assets/models" >> "$GITHUB_ENV"
-          echo "POTSHERD_TEST_TOKENIZER_DIR=$RUNNER_TEMP/potsherd-ci-assets/models" >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v4
         with:
           version: 10.18.0
@@ -32,13 +28,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - name: initialize isolated public test asset store
-        run: node packages/cli/bin/potsherd.js maintain --migrate --potsherd-dir "${{ runner.temp }}/potsherd-ci-assets" --json
-      - name: acquire verified public test assets
-        run: node packages/cli/bin/potsherd.js maintain --acquire-assets --potsherd-dir "${{ runner.temp }}/potsherd-ci-assets" --json
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm privacy
       - run: pnpm vendor
-      - run: sh plugins/codex/bin/potsherd-mcp --selftest
-      - run: sh plugins/claude-code/bin/potsherd-mcp --selftest
+      - name: the vendored plugins start and serve the one search tool
+        run: |
+          for p in claude-code codex; do
+            sh plugins/$p/bin/potsherd --version
+            printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | sh plugins/$p/bin/potsherd mcp > /tmp/tools.json
+            grep -q '"name":"search"' /tmp/tools.json
+            test "$(grep -o '"name":"[a-z_]*","description"' /tmp/tools.json | wc -l)" -eq 1
+          done

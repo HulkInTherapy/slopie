@@ -3,7 +3,7 @@
  * grid, horizontal meters and eighth-block sparklines. One ink for ordinary marks; the accent
  * marks the single point the chart is about.
  */
-import { mix, type Rgb } from '../gfx/color.js';
+import { heat, mix, type Rgb } from '../gfx/color.js';
 import type { Rect } from '../gfx/draw.js';
 import { easeOutCubic, seg } from '../gfx/motion.js';
 import { money, shortDate } from '../format.js';
@@ -19,20 +19,22 @@ function grow(k: K, start: number, dur = 600): number {
   return g;
 }
 
-/** Horizontal meter, `w` cells, value 0..1: a heavy line on a hairline track (━━━━━━──────). */
-export function meter(k: K, x: number, y: number, w: number, frac: number, color: Rgb, start = 0): void {
+/** Horizontal meter, `w` cells, value 0..1: a 1-row solid bar on a solid track (track barSoft). */
+export function meter(k: K, x: number, y: number, w: number, frac: number, color: Rgb, start = 0, track: Rgb = k.tk.barSoft): void {
   const f = Math.max(0, Math.min(1, frac)) * grow(k, start);
   const { tk } = k;
   if (!k.uni) {
     const n = Math.round(f * w);
-    for (let i = 0; i < w; i++) k.c.put(x + i, y, i < n ? '=' : '-', i < n ? color : tk.rule, tk.bg, 0);
+    for (let i = 0; i < w; i++) k.c.put(x + i, y, i < n ? '#' : '-', i < n ? color : tk.rule, tk.bg, 0);
     return;
   }
-  // Half-cell precision: a full ━ per cell, ╸ for the last half.
+  // Half-cell precision: █ per full cell, ▌ (fill over track) for the last half.
   const halves = Math.round(f * w * 2);
   for (let i = 0; i < w; i++) {
     const on = halves - i * 2;
-    k.c.put(x + i, y, on >= 2 ? '━' : on === 1 ? '╸' : '─', on >= 1 ? color : tk.rule, tk.bg, 0);
+    if (on >= 2) k.c.put(x + i, y, '█', color, tk.bg, 0);
+    else if (on === 1) k.c.put(x + i, y, '▌', color, track, 0);
+    else k.c.put(x + i, y, '█', track, tk.bg, 0);
   }
 }
 
@@ -59,8 +61,8 @@ export function monthBars(k: K, r: Rect, months: readonly MonthBar[], start = 30
   const n = list.length;
   const colW = Math.max(2, Math.min(6, Math.floor((r.w + 1) / n)));
   const barW = Math.max(1, colW - (colW >= 4 ? 2 : 1));
-  const h = r.h - 2; // bars, then baseline, then labels
-  const base = r.y + h; // baseline row
+  const h = r.h - 3; // the peak's value, bars, then baseline, then labels
+  const base = r.y + 1 + h; // baseline row
   const max = Math.max(...list.map(m => m.measured + m.extra), 1e-9);
   const peak = list.reduce((a, m, i) => (m.measured > list[a]!.measured ? i : a), 0);
   rule(k, r.x, base, n * colW - (colW - barW), tk.rule);
@@ -69,7 +71,7 @@ export function monthBars(k: K, r: Rect, months: readonly MonthBar[], start = 30
     const x = r.x + i * colW;
     const solid = (m.measured / max) * h * g;
     const total = ((m.measured + m.extra) / max) * h * g;
-    const ink = i === peak ? tk.accent : tk.bar;
+    const ink = i === peak ? tk.accent : tk.accentLo;
     const cells = Math.ceil(total);
     for (let row = 0; row < cells; row++) {
       const y = base - 1 - row;
@@ -83,7 +85,7 @@ export function monthBars(k: K, r: Rect, months: readonly MonthBar[], start = 30
       for (let b = 0; b < barW; b++) k.c.put(x + b, y, ch, color, tk.bg, 0);
     }
     const lab = monthLabel(m.month);
-    if (colW >= 4 || i % 2 === 0 || i === n - 1) txt(k, x, base + 1, colW >= 4 ? lab : lab.slice(0, colW - 0), i === peak ? tk.text : tk.text3, {}, colW >= 4 ? colW : colW * 2 - 1);
+    if (colW >= 4 || i % 2 === 0 || i === n - 1) txt(k, x, base + 1, colW >= 4 ? lab : lab.slice(0, colW - 0), i === peak ? tk.accentHi : tk.text3, { bold: i === peak }, colW >= 4 ? colW : colW * 2 - 1);
   });
   // Peak value above its bar.
   const pk = list[peak]!;
@@ -94,7 +96,7 @@ export function monthBars(k: K, r: Rect, months: readonly MonthBar[], start = 30
   if (top >= r.y) txt(k, lx, top, label, tk.text, { bold: true, a: la });
 }
 
-/** GitHub-style daily grid in one hue: weeks across, Mon–Sun down (half-block pixels). */
+/** GitHub-style daily grid on the indigo ramp: weeks across, Mon–Sun down (one row per day when `r.h` ≥ 8, else half-block pixels). */
 export function dayGrid(k: K, r: Rect, days: readonly { day: string; usd: number }[], start = 600): { w: number } {
   const { tk } = k;
   if (!days.length) return { w: 0 };
@@ -107,11 +109,11 @@ export function dayGrid(k: K, r: Rect, days: readonly { day: string; usd: number
   const max = Math.max(...days.map(d => d.usd), 1e-9);
   const brightest = [...days].sort((a, b) => b.usd - a.usd)[0]!;
   const pixel = k.s.caps.color === 'truecolor' || k.s.caps.color === '256';
+  const tall = r.h >= 8 && k.uni;
   const g = grow(k, start, 900);
   const empty = mix(tk.bg, tk.text, 0.06);
-  const lo = mix(tk.bg, tk.text, 0.2);
   txt(k, r.x, r.y, 'Mon', tk.text3);
-  txt(k, r.x, r.y + 3, 'Sun', tk.text3);
+  txt(k, r.x, r.y + (tall ? 6 : 3), 'Sun', tk.text3);
   for (let w = 0; w < weeks; w++) {
     if (w / weeks > g) break;
     for (let d = 0; d < 7; d++) {
@@ -121,14 +123,16 @@ export function dayGrid(k: K, r: Rect, days: readonly { day: string; usd: number
       const iso = day.toISOString().slice(0, 10);
       const usd = byDay.get(iso) ?? 0;
       const v = usd > 0 ? Math.sqrt(usd / max) : 0;
-      const color = usd <= 0 ? empty : iso === brightest.day ? tk.accent : mix(lo, tk.text, v);
-      if (pixel) setPx(k, r.x + lx + w, r.y * 2 + d, color);
+      const color = usd <= 0 ? empty : iso === brightest.day ? tk.accentHi : heat(0.1 + v * 0.75);
+      if (tall) k.c.put(r.x + lx + w, r.y + d, '▀', color, tk.bg, 0);
+      else if (pixel) setPx(k, r.x + lx + w, r.y * 2 + d, color);
       else if (d % 2 === 0) k.c.put(r.x + lx + w, r.y + d / 2, usd <= 0 ? '·' : v > 0.5 ? '#' : '+', usd <= 0 ? tk.rule : tk.text2, tk.bg, 0);
     }
   }
   const ca = fade(k, start + 900);
-  txt(k, r.x + lx, r.y + 4, `Brightest ${shortDate(brightest.day, true)}`, tk.text3, { a: ca });
-  txtRight(k, r.x + lx + weeks, r.y + 4, money(brightest.usd), tk.text2, { a: ca });
+  const fy = r.y + (tall ? 7 : 4);
+  txt(k, r.x + lx, fy, `Brightest ${shortDate(brightest.day, true)}`, tk.text3, { a: ca });
+  txtRight(k, r.x + lx + weeks, fy, money(brightest.usd), tk.accentHi, { bold: true, a: ca });
   return { w: lx + weeks };
 }
 

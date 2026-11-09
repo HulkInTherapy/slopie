@@ -1,21 +1,20 @@
 {
   "contractVersion": 2,
-  "version": "1.8.6",
-  "sourceRevision": "b44a600eb0cca44cf43665d8f40bc7dda019993f",
+  "version": "1.9.0",
+  "sourceRevision": "40952d604ad4160d7fc33119780500a311122baa",
   "files": {
     "dist/potsherd.js": {
-      "bytes": 3909104,
-      "sha256": "8b6cf22429b508a00dbb9c2e08f3a654857617dd3de6d58a902eab65b16369b9"
-    },
-    "dist/mcp.js": {
-      "bytes": 2915176,
-      "sha256": "2e5a2a19bcd142ba610387e4639c24623717e666bec9b8f77cf679431130933d"
+      "bytes": 1585283,
+      "sha256": "ee283b76de5c1faf630d3654f364c4eec238e505a462d7334a9731b67a15a8f5"
     },
     "dist/audit-native-worker.js": {
       "bytes": 86000,
       "sha256": "4656815736a32ff77d886375c907532d16740349a101074646e44704f29a5cfd"
+    },
+    "dist/records-worker.js": {
+      "bytes": 50294,
+      "sha256": "d821e7236e7a3d33e3278972484acaf1072fb2bed25c6dad33b52a93c7317856"
     }
   },
-  "budgetTokenizer": "cl100k-base/js-tiktoken@1.0.21",
-  "semanticAssets": "explicit maintain acquisition; not bundled or downloaded on read"
+  "memory": "plain-text records + SQLite FTS5; no models"
 }
