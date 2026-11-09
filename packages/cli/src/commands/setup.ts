@@ -10,7 +10,8 @@ import { confirm, print, printJson, themeFrom, UserError, type GlobalOptions } f
  *
  *   claude   ~/.claude/skills/slopie-memory/SKILL.md (the note) + a SessionStart hook in ~/.claude/settings.json
  *   codex    a marked block in ~/.codex/AGENTS.md (the note)
- *   pi       ~/.pi/agent/skills/slopie-memory/SKILL.md (the note) + ~/.pi/agent/extensions/slopie.ts (sync on start)
+ *   pi       ~/.pi/agent/skills/slopie-memory/SKILL.md (the note) + ~/.pi/agent/extensions/slopie.ts (sync on start;
+ *            the continuation pointer after a resume or compaction, injected with pi.sendMessage)
  *
  * The note is R5's NOTE_B verbatim with the records path filled in, plus one line on the CLI tools. Every write
  * shows its diff first, asks (or takes --yes), keeps a backup of a file it changes, and never touches content it
@@ -89,15 +90,35 @@ function claudeSettings(text: string | null, command: string | null): string {
 
 function piExtension(): string {
   const [cmd, ...args] = slopieArgv();
-  return `// slopie: keep the session records current when a pi session starts (installed by \`slopie setup\`).
+  return `// slopie (installed by \`slopie setup\`): keep the session records current when a pi session starts, and after
+// a resume or a compaction give the agent this session's record path and the commands to read it (at most 10 lines).
 import { spawn } from 'node:child_process';
-export default function (pi) {
-  pi.on('session_start', async () => {
+const CMD = ${JSON.stringify(cmd)};
+const ARGS = ${JSON.stringify([...args, 'hook', 'session-start', '--harness', 'pi'])};
+function hook(source, sessionId) {
+  return new Promise(resolve => {
+    let out = '';
     try {
-      const child = spawn(${JSON.stringify(cmd)}, ${JSON.stringify([...args, 'hook', 'session-start', '--harness', 'pi'])}, { detached: true, stdio: 'ignore' });
-      child.unref();
-    } catch {}
+      const child = spawn(CMD, ARGS, { stdio: ['pipe', 'pipe', 'ignore'] });
+      child.stdout.on('data', d => { if (out.length < 4000) out += d; });
+      child.on('close', () => resolve(out));
+      child.on('error', () => resolve(''));
+      child.stdin.on('error', () => {});
+      child.stdin.end(JSON.stringify({ session_id: sessionId, source }));
+    } catch { resolve(''); }
   });
+}
+export default function (pi) {
+  const run = async (source, ctx) => {
+    try {
+      const id = ctx?.sessionManager?.getSessionId?.() ?? '';
+      const text = (await hook(source, id)).trim();
+      if (text && source !== 'startup') pi.sendMessage({ customType: 'slopie', content: text.split('\\n').slice(0, 10).join('\\n'), display: true }, { deliverAs: 'nextTurn' });
+    } catch {}
+  };
+  // Never awaited: a session start is not held up by slopie.
+  pi.on('session_start', (event, ctx) => { void run(event?.reason === 'resume' ? 'resume' : 'startup', ctx); });
+  pi.on('session_compact', (_event, ctx) => { void run('compact', ctx); });
 }
 `;
 }

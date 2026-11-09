@@ -57,7 +57,7 @@ Records sync on `slopie sync`, in the background of `slopie audit`, and from the
 
 - **Claude Code:** `~/.claude/skills/slopie-memory/SKILL.md`, plus a SessionStart hook in `~/.claude/settings.json`.
 - **Codex:** a marked block in `~/.codex/AGENTS.md`.
-- **pi:** `~/.pi/agent/skills/slopie-memory/SKILL.md`, plus an extension that syncs on session start.
+- **pi:** `~/.pi/agent/skills/slopie-memory/SKILL.md`, plus an extension that syncs on session start and, after a resume or compaction, hands the agent the same pointer with `pi.sendMessage` (delivered with the next prompt).
 
 The Claude Code and Codex plugins carry the same skill and hook. Two more commands help: `slopie setup --note` prints the note to paste anywhere, and `slopie setup --remove` takes out exactly what setup wrote.
 
