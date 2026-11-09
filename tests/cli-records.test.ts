@@ -44,7 +44,26 @@ describe('slopie sync / search (and the hidden read / threads / grep aliases)', 
     expect(run(f, ['read', IDS.claude, '--from', '-2']).stdout).toContain('[turns 4-5 of 5; end of thread.');
     expect(run(f, ['threads', '--text', 'pool']).stdout).toContain('threads containing all of: pool');
     expect(run(f, ['grep', IDS.claude, 'ZEBRA_MIDDLE_NEEDLE_42']).stdout).toContain('(output)');
-    expect(run(f, ['search', 'x', '--json']).stdout).toMatch(/^\{\s*"text":/);
+    const j = JSON.parse(run(f, ['search', 'pgbouncer', '--json']).stdout) as { mode: string; indexed_at: string; partial: boolean; hits: { session: string; read_cmd: string }[]; next: string[] };
+    expect(j).toMatchObject({ mode: 'search', partial: false });
+    expect(j.hits[0]!.read_cmd).toMatch(/^slopie search --session /);
+    expect(j.next.length).toBeGreaterThan(0);
+  });
+
+  it('search refreshes a stale index first, within its budget, and says how old the index is', () => {
+    const f = setup();
+    expect(run(f, ['sync', '--quiet']).code).toBe(0);
+    const idx = path.join(f.recordsDir, '.slopie', 'index.sqlite');
+    const old = new Date(Date.now() - 3600_000);
+    fs.utimesSync(idx, old, old);
+    const env = process.env['SLOPIE_NO_SYNC'];
+    delete process.env['SLOPIE_NO_SYNC'];
+    try {
+      const t0 = Date.now();
+      const out = run(f, ['search', 'pgbouncer']).stdout;
+      expect(Date.now() - t0).toBeLessThan(8000);
+      expect(out).toMatch(/^\(index: [^)]+ old\)/);
+    } finally { process.env['SLOPIE_NO_SYNC'] = env; }
   });
 
   it('a verb before sync says how to build the records', () => {

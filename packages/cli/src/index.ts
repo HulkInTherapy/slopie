@@ -145,17 +145,22 @@ forget and ignore remove them.`);
       .option('--since <date>', 'only activity on or after this date')
       .option('--until <date>', 'only activity on or before this date')
       .addOption(new Option('--harness <name>', 'only this harness').choices(['claude', 'codex', 'pi']))
+      .option('--latest', 'threads with these words, newest last activity first (each with its last matching passage)')
+      .option('--include-subagents', 'list subagent threads as their own rows (default: under their parent)')
+      .option('--parent <id>', "list a thread's child threads (subagents, delegated tasks)")
       .addOption(new Option('-k <n>', 'passages to return (default 8, max 30)')),
   )).addHelpText('after', `
 example:
   potsherd search "pgbouncer pool size"                      # passages, every thread
+  potsherd search "slopie release" --latest                  # newest threads with these words first
   potsherd search "ECONNREFUSED" --session 9c4d2f18          # inside one thread
   potsherd search --session 9c4d2f18 --turns -30             # read its last 30 turns
   potsherd search --project api --since 2026-11-01           # list threads`);
   search.action((query: string[], opts: Record<string, unknown>) => {
     const o = globals(program, search, opts);
     void run(async () => runSearch({...o, ...rec(opts), query: query.join(' '), k: opts['k'], project: str(opts['project']), harness: str(opts['harness']),
-      since: str(opts['since']), until: str(opts['until']), session: str(opts['session']), turns: str(opts['turns'])}), o);
+      since: str(opts['since']), until: str(opts['until']), session: str(opts['session']), turns: str(opts['turns']),
+      latest: Boolean(opts['latest']), includeSubagents: Boolean(opts['includeSubagents']), parent: str(opts['parent'])}), o);
   });
 
   const read = addGlobals(records(
