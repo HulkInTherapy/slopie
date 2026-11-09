@@ -59,7 +59,12 @@ const HARNESSES: AuditHarness[] = ['claude', 'codex', 'pi', 'opencode', 'cursor'
 const LAUNCH_ORDER: AuditHarness[] = ['codex', 'claude', 'opencode', 'pi', 'cursor', 'gemini', 'copilot'];
 /** Appended tails up to this size are parsed on the main thread; bigger ones go to the pool. */
 const RESUME_MAX_BYTES = 64 * 1024 * 1024;
-const offline = () => process.env['POTSHERD_OFFLINE'] === '1';
+/**
+ * The audit is fully local unless the user opts in with `slopie audit --online` (SLOPIE_ONLINE=1):
+ * only then may the free hosted model polish story wording or classify requested work.
+ * POTSHERD_OFFLINE=1 still forces offline.
+ */
+const offline = () => process.env['POTSHERD_OFFLINE'] === '1' || process.env['SLOPIE_ONLINE'] !== '1';
 
 const metric = (value: number | null, unit: string, basis: string, definition: string): AuditMetric =>
   ({value, numerator: value, denominator: null, unit, measurementBasis: basis, state: value === null ? 'unavailable' : 'observed', definition});

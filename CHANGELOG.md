@@ -4,6 +4,7 @@ Public releases use package versions. Internal development phase numbers are pla
 
 ## 1.8.5 — Every session counted, much faster
 
+- **Local by default.** `slopie audit` now makes no network requests. The free hosted model that polishes story wording is opt-in with `--online` (it never received prompts, only aggregates and a few filtered quotes).
 - **Complete history.** Reads Codex's compressed `.jsonl.zst` rollouts, archived sessions, the potsherd rescue archive, Claude Desktop agent sessions and Cursor/Gemini/Copilot prompts. Live, archived, copied and forked copies of a session count once: counters are deduplicated per session and fork lineage, and divergent tails are merged. Codex sessions imported from Claude Code and `codex exec` runs are not counted as chats; automated runs are reported separately.
 - **Honest spend.** Spend is now split into three parts, never added together: *measured* (request logs), *recovered* (Claude Code's own usage stats for days without logs) and a labelled *estimate* range for prompts whose logs were deleted. Long-context tiers and request-time model/tier are priced correctly. Models without a published price stay unpriced instead of being guessed. You also get monthly and daily spend, this month, per active day and your priciest day.
 - **Models you actually used.** The model quiz and model share count only models recorded on responses, ranked by output tokens, with a last-30-days view and eras. The quiz no longer guesses a prompt's model from other prompts on the same day.

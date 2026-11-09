@@ -16,6 +16,7 @@ export interface AuditOptions extends GlobalOptions {
   timezone?: string;
   export?: string;
   tone?:string;
+  online?:boolean;
 }
 
 /**

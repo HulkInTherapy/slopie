@@ -1,60 +1,79 @@
 # Slopie
 
-[Slopie](https://github.com/HulkInTherapy/slopie), formerly Potsherd, is local memory for coding-agent sessions. Capture supported history, find exact source evidence, and save scoped handoffs with provenance.
-
-Requires Node.js 22 or newer.
-
-## Audit your recorded history
+**A Wrapped for your coding agents.** One command reads the session history that Claude Code, Codex, Cursor and pi already keep on your disk, and tells you who you were this year.
 
 ```sh
 npx slopie audit
 ```
 
-The interactive audit opens one responsive wallboard with recorded API-equivalent value, known tokens, favourite models and prices, your top projects, requested work focus and source-backed repeated lines. Small terminals use left/right pages; `?` opens help, `s` freezes the displayed results, `d` opens a captured source and `q` exits. There are no section tabs or scrolling controls. `--plain` prints the full report; `--json` uses the safe aggregate representation. `--ascii`, `--no-color` and `--no-motion` support simpler terminals.
+No signup, no API key, nothing uploaded. Requires Node.js 22+.
 
-Native Claude Code, Codex, OpenCode and pi usage is read before retained-history fallback. Message/request identities, cumulative usage, cache inclusion and recorded per-response models determine the totals. Known machine/test inputs and copied history are separated from personal language. Reaction counts describe recorded feedback associated with a known assistant model; they are not model-quality benchmarks or universal human-authorship claims.
+![An example Slopie poster: "The 2AM Deployer", $6,413 at API prices, 6 f-bombs per thank-you, nemesis GPT-6 Sol](https://raw.githubusercontent.com/HulkInTherapy/slopie/main/docs/images/slopie-poster.png)
 
-Prices revalue recorded usage at a dated current catalog. Exact known Claude models can use an explicitly named Anthropic first-party reference when the serving provider is unrecorded. Native recorded API-cost fields remain a separate basis. None is an invoice or subscription bill. Missing models, usage, rates and contradictory cache-duration fields stay unavailable.
+<sub>Example poster rendered from test data. Yours is computed from your own history.</sub>
 
-Selected redacted conversations may be sent to OpenCode Zen and TypeSafe/Jev for free semantic analysis. A recipient notice is physically displayed immediately before each actual request, with no extra Enter or consumer key required. Offline and cache-only work makes no transfer claim. Set `POTSHERD_OFFLINE=1` to keep the retrospective local. Free capacity is limited; quota errors leave local facts usable and do not produce invented stories or quotes. Private semantic accuracy remains unqualified.
+## What you get
 
-Jev selects the largest complete recent scope fitting the free allowance, or a visibly smaller selection of newest whole episodes. Recorded requests, assistant-reported outcomes and supported success remain distinct. `--tone elegant|witty|chaotic|roast` overrides the inferred voice. The audit remains experimental; large inventories can take longer, and source-format or pricing gaps are disclosed. See [coverage and privacy](docs/audit-terminal.md).
+A short story in your terminal (←/→ to move), ending on one poster you can share:
 
-Use `slopie audit --legacy` for the local retention audit. `--sweep` and `--verify` keep their prior behavior.
+- **Your archetype.** One of 22, like *The 2AM Deployer*, *Jekyll & Hyde*, *Middle Management*, *The 'Keep going' Button* or *First Spared in the Uprising*, plus 5 rare legendary combos. Every tagline quotes one of your own numbers.
+- **The bill.** What your agent work would cost at API list prices, per agent and per month, plus your priciest day and your single most expensive sentence.
+- **Your manners.** F-bombs per thank-you, how your swearing changed over the year, the hour you're angriest and the hour you're a saint.
+- **Your models.** Which model actually did the work (by recorded output tokens), the one you swear at most and the one you thank most.
+- **Your habits.** Catchphrase, what you call your agent, longest sit, late nights, streaks, how many subagents you launched.
 
-## Install and use
+Press `s` to save the poster as an image with no project names on it. `--plain` prints the story as text, and `--json` prints the numbers.
 
-Install with `npm install -g slopie` and run `slopie audit`. The `potsherd` executable remains a compatibility alias. To build this checkout from source:
+It takes about 20 seconds the first time on a large history, then about a second.
+
+## Private by default
+
+The audit runs entirely on your machine: it reads your session files and writes only a local cache. It makes no network requests unless you pass `--online`, which lets a free hosted model (OpenCode Zen / TypeSafe Jev) polish the story's wording. Even then it sends only aggregates and a few filtered short quotes, never your prompts, and you see a notice before each request.
+
+## How the numbers are made
+
+- **Supported agents:** Claude Code, Codex (including compressed `.jsonl.zst` sessions and archives), Claude Desktop agent sessions, pi, OpenCode, and Cursor/Gemini/Copilot prompts.
+- **Each session counts once.** Copies, forks, resumes and archives of a session are deduplicated per session lineage, and divergent tails are merged. Codex sessions imported from Claude Code and `codex exec` automation runs aren't counted as chats.
+- **Spend has three parts, never added together:**
+  - *measured*, from recorded token usage;
+  - *recovered*, from Claude Code's own usage stats on days whose logs are gone;
+  - an *estimated* range for prompts whose logs were deleted, clearly labelled.
+
+  Prices are current API list prices, including long-context tiers. They are not your subscription bill.
+- **Unknown models stay unpriced.** A model without a published price is reported as unpriced tokens, never guessed. Model shares count only models actually recorded on responses.
+- **Checked against independent scripts.** On a 35 GB, 4,400-prompt history, the totals match two scripts that parse the raw files directly, to within 0.5%.
+
+More detail: [coverage and privacy](docs/audit-terminal.md).
+
+## Memory for your agents
+
+Slopie started as local memory for coding agents, and that's still underneath: *your agents forget, slopie remembers.* `slopie setup` connects it to Claude Code, Codex, pi or OpenCode. Your agent can then search past sessions across projects and quote them exactly. The agent contract has four tools:
+
+- `potsherd_recall`: scoped search;
+- `potsherd_read`: exact source evidence;
+- `potsherd_graft`: handoffs;
+- `potsherd_write`: explicit memory.
+
+See [MCP configuration](docs/mcp-clients.md) and the [agent contract](docs/AGENT-CONTRACT.md). The memory features are less mature than the audit; [release notes](docs/release-candidate.md) list measured results and limits.
+
+## Install, build, upgrade
+
+To install globally:
+
+```sh
+npm install -g slopie
+slopie audit
+```
+
+`potsherd` remains a compatibility alias, and existing `POTSHERD_*` settings and data paths keep working. To build from source:
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
 pnpm vendor
-node packages/cli/bin/slopie.js --help
+node packages/cli/bin/slopie.js audit
 ```
 
-Use an owned test store and explicit source roots to try capture and search:
-
-```sh
-node packages/cli/bin/slopie.js maintain --migrate --potsherd-dir /path/to/test-store
-node packages/cli/bin/slopie.js index --enroll codex,claude --codex-dir /path/to/codex --claude-dir /path/to/claude --potsherd-dir /path/to/test-store
-node packages/cli/bin/slopie.js find "latest project decisions" --project /example/project --potsherd-dir /path/to/test-store --json
-```
-
-`--enroll` enables automatic capture for those source roots. Semantic model assets require explicit `maintain --acquire-assets --rebuild`; missing assets produce labelled degraded coverage.
-
-## Integrations and support
-
-The v2 agent contract exposes four tools: `potsherd_recall` for scoped recall, `potsherd_read` for exact source evidence, `potsherd_graft` for deterministic handoffs, and `potsherd_write` for explicit authored memory. The [Codex plugin](plugins/codex/README.md), [Claude Code plugin](plugins/claude-code/README.md), native pi extension, and OpenCode MCP configuration use this contract. See [installation and MCP configuration](docs/mcp-clients.md), the [agent contract](docs/AGENT-CONTRACT.md), and the [reader contract](docs/reader-contract.md).
-
-Existing `POTSHERD_*` settings, `--potsherd-dir`, local data/cache paths, plugin identities and tool IDs retain their compatibility names.
-
-Host verification differs by integration. [Historical memory release notes](docs/release-candidate.md) describe measured results and remaining limits; [release history](CHANGELOG.md) tracks product versions. This release is not certified as unattended primary memory.
-
-## Evidence and upgrades
-
-Only explicit write creates authored memory. Relevance scores and source links do not prove a claim; verify exact evidence and distinguish human decisions from assistant recaps, tool observations, and historical instructions. Reader validation checks structure and citation membership, not semantic entailment. Partial capture cannot establish global absence.
-
-Before upgrading, back up the store and retain the previous package. `maintain --migrate` creates a pre-upgrade backup. To roll back, stop owned host/MCP processes, preserve the upgraded store, restore a copy of the backup, and run the previous package against that copy.
+Before upgrading the memory store, back it up. `slopie maintain --migrate` creates a pre-upgrade backup. See the [changelog](CHANGELOG.md).
 
 MIT licensed. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
