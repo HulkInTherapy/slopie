@@ -13,12 +13,13 @@
  *   t3 TOOL Bash 09:13 | command
  *   t3 > output line
  *
- * Tool output is capped at 500 head + 300 tail characters with a `full output: <raw path>:<line>` pointer.
+ * Tool output up to 4000 characters is kept whole (R7; R5/R6 cut everything over 800). Longer output keeps 2000 head +
+ * 1000 tail characters with a `full output: <raw path>:<line>` pointer.
  */
 import type {Role, Session, Turn} from '../sources/sessions.js';
 import {cpLen, cpSlice, pySplitlines, pyStrip, squash} from '../sources/text.js';
 
-export const CAP = {USER: 6000, ASSISTANT: 8000, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_HEAD: 500, TOOL_OUT_TAIL: 300} as const;
+export const CAP = {USER: 6000, ASSISTANT: 8000, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_WHOLE: 4000, TOOL_OUT_HEAD: 2000, TOOL_OUT_TAIL: 1000} as const;
 /** Per-output cap of the optional full-output sidecar (`<record>.out.txt`). */
 export const SIDECAR_CAP = 20000;
 export const ARCHIVE_MARK = '/.potsherd/archive/';
@@ -61,7 +62,7 @@ export function recTurn(t: Turn, sidecar = false): RecTurn {
     if (t.output) {
       let o = pyStrip(t.output);
       const total = t.outputLen ?? cpLen(o);
-      if (total > CAP.TOOL_OUT_HEAD + CAP.TOOL_OUT_TAIL) {
+      if (total > CAP.TOOL_OUT_WHOLE) {
         if (sidecar) { const n = cpLen(o); r.full = n > SIDECAR_CAP ? cpSlice(o, 0, SIDECAR_CAP) + ` …[+${n - SIDECAR_CAP} chars]` : o; }
         o = cpSlice(o, 0, CAP.TOOL_OUT_HEAD) + `\n…[${total - CAP.TOOL_OUT_HEAD - CAP.TOOL_OUT_TAIL} chars cut; full output: ${t.outRef ?? t.ref}]…\n` + cpSlice(o, -CAP.TOOL_OUT_TAIL);
       }

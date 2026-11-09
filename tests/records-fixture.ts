@@ -42,7 +42,7 @@ export interface Fixture {
 
 export function claudeSession(turns: 'full' | 'prefix' = 'full'): string {
   const base = {sessionId: IDS.claude, cwd: PROJECT};
-  const longOutput = 'head-of-output ' + 'x'.repeat(900) + ` ${NEEDLE} ` + 'y'.repeat(900) + ' tail-of-output';
+  const longOutput = 'head-of-output ' + 'x'.repeat(2400) + ` ${NEEDLE} ` + 'y'.repeat(2400) + ' tail-of-output';
   const rows = [
     {type: 'custom-title', customTitle: 'Fix the login redirect', sessionId: IDS.claude},
     {...base, type: 'user', uuid: 'u1', timestamp: '2026-10-01T09:12:00.000Z', message: {role: 'user', content: 'the login page loops back to /signin after OAuth'}},

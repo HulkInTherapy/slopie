@@ -28,7 +28,7 @@ import {delegEdges, type Deleg} from './deleg.js';
 import {RecordIndex, parseRecordText} from './index-db.js';
 
 /** Bump when the rendered format changes: every record is rewritten once. */
-export const FORMAT_VERSION = 2;
+export const FORMAT_VERSION = 3;
 const STATE_VERSION = 1;
 /** Bumped when parsing extracts new metadata (2: delegation hashes): every source is parsed again, kept records stay. */
 const PARSE_VERSION = 2;

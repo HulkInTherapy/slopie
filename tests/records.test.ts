@@ -26,7 +26,7 @@ describe('records: the R5 §11.1 format', () => {
     const rel = rowOf(f, IDS.claude)![9]!;
     expect(rel).toBe(`claude/work-demo-app/2026-10-01_${IDS.claude}.txt`);
     const text = record(f, IDS.claude).replaceAll(f.root, '<root>');
-    const cut = 'head-of-output ' + 'x'.repeat(485);
+    const cut = 'head-of-output ' + 'x'.repeat(1985);
     expect(text).toBe([
       `## session claude:${IDS.claude}`,
       `## project: ${PROJECT}`,
@@ -39,8 +39,8 @@ describe('records: the R5 §11.1 format', () => {
       't2 ASSISTANT 2026-10-01 09:13 | Looking at the callback handler first.',
       't3 TOOL Bash 09:13 | rg -n "redirect_uri" src/',
       `t3 > ${cut}`,
-      `t3 > …[1054 chars cut; full output: <root>/.claude/projects/-work-demo-app/${IDS.claude}.jsonl:5]…`,
-      `t3 > ${'y'.repeat(285)} tail-of-output`,
+      `t3 > …[1854 chars cut; full output: <root>/.claude/projects/-work-demo-app/${IDS.claude}.jsonl:5]…`,
+      `t3 > ${'y'.repeat(985)} tail-of-output`,
       't4 SYSTEM 2026-10-01 11:40 | <system-reminder>injected</system-reminder>',
       't5 USER 2026-10-01 11:40 | ship it',
       't5 | with the pgbouncer pool at 40',
