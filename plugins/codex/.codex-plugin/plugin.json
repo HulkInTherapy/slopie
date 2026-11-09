@@ -1,7 +1,7 @@
 {
   "name": "potsherd",
-  "version": "1.8.5",
-  "description": "Rescue, index, search, interrogate and re-enter every coding-agent session on your machine. Indexes each Codex thread as it ends, and exposes the whole archive over MCP.",
+  "version": "1.9.0",
+  "description": "Slopie: every coding-agent session kept as plain-text records your agent can search with rg, sed or the slopie CLI, plus the terminal audit. Teaches the agent the record format and points it back to its own record after compaction.",
   "author": {
     "name": "HulkInTherapy",
     "url": "https://github.com/HulkInTherapy"
@@ -16,18 +16,17 @@
     "transcript",
     "memory",
     "search",
-    "archive",
-    "mcp"
+    "records",
+    "audit"
   ],
   "interface": {
     "displayName": "Slopie",
-    "shortDescription": "Audit and recall retained coding-agent sessions",
-    "longDescription": "potsherd keeps a local, searchable archive of every coding-agent session on your machine and answers questions over it. This plugin indexes each Codex thread as it ends and exposes the archive to Codex over MCP.",
+    "shortDescription": "Plain-text memory of your coding-agent sessions",
+    "longDescription": "Slopie keeps every Claude Code, Codex and pi session on this machine as a plain-text record (~/.slopie/records) with an INDEX.tsv, and teaches Codex the format so it can find and continue earlier work with its own shell tools or the slopie CLI. Local only: no models, no daemon, no network.",
     "developerName": "HulkInTherapy",
     "category": "Productivity",
     "capabilities": [
-      "Read",
-      "Write"
+      "Read"
     ],
     "websiteURL": "https://github.com/HulkInTherapy/slopie",
     "defaultPrompt": [

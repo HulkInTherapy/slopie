@@ -4,13 +4,13 @@
     "name": "HulkInTherapy",
     "url": "https://github.com/HulkInTherapy"
   },
-  "description": "potsherd \u2014 a local-first rescue, search, recall and interrogation layer over every coding-agent session on your machine.",
+  "description": "slopie: your coding-agent sessions as plain-text records your agents can search, and a terminal audit of your year with them.",
   "plugins": [
     {
       "name": "potsherd",
       "source": "./plugins/claude-code",
-      "description": "Takes a copy of every Claude Code session before the 30-day sweep can delete it, then makes the whole archive searchable from inside Claude Code.",
-      "version": "1.8.5",
+      "description": "Keeps every Claude Code session as a plain-text record and teaches Claude Code to search it; after compaction it points the agent back to its own record.",
+      "version": "1.9.0",
       "author": {
         "name": "HulkInTherapy",
         "url": "https://github.com/HulkInTherapy"
@@ -26,9 +26,8 @@
         "transcript",
         "memory",
         "search",
-        "archive",
-        "rescue",
-        "mcp"
+        "records",
+        "audit"
       ]
     }
   ]

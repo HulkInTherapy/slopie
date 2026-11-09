@@ -1,7 +1,7 @@
 {
   "name": "potsherd",
-  "version": "1.8.5",
-  "description": "Rescue, index, search, interrogate and re-enter every coding-agent session on your machine. Takes a copy before Claude Code's 30-day sweep can delete one.",
+  "version": "1.9.0",
+  "description": "Slopie: every coding-agent session kept as plain-text records your agent can search with rg, sed or the slopie CLI, plus the terminal audit. Teaches the agent the record format and points it back to its own record after compaction.",
   "author": {
     "name": "HulkInTherapy",
     "url": "https://github.com/HulkInTherapy"
@@ -16,8 +16,7 @@
     "transcript",
     "memory",
     "search",
-    "archive",
-    "rescue",
-    "mcp"
+    "records",
+    "audit"
   ]
 }

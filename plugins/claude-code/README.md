@@ -1,18 +1,16 @@
-# potsherd — claude-code plugin, 1.5.0
+# slopie for Claude Code
 
-This directory carries its own ESM CLI and MCP bundles, transport tokenizer assets, licenses and hash manifest. A standalone copy runs without a neighboring plugin or developer checkout. Native marketplace registration and real host journeys are separate checks; this release is not a completed primary-memory acceptance claim. The previous public 1.2.1 release remains the rollback baseline.
+What this plugin adds:
 
-The MCP surface has four tools: recall, exact source/note read, deterministic graft, and explicit durable write. Only write changes authored memory. Source evidence carries role, scope, event/observation time and immutable refs; notes carry author authority and explicit supersession. Relevance and source links do not certify entailment or human attestation.
+- **The `slopie-memory` skill.** It is the note that teaches Claude the record format. Claude then finds earlier work with `rg` and `sed` over `~/.slopie/records`, or with the `slopie` CLI.
+- **A SessionStart hook.** It keeps the records current with an incremental `slopie sync`. On resume or after compaction it prints at most 10 lines: this session's id, its record path, and the exact `slopie read` / `slopie search` commands.
 
-Hooks enqueue durable capture requests and retain failure state. Active discovery uses the index's enrolled source roots; isolated roots do not silently become the user's real archive. Read tools do not migrate/repair a store or acquire models. Missing semantic assets leave labelled lexical/source access, not semantic parity.
+The plugin carries its own CLI bundle (`dist/potsherd.js`). There is no MCP server here, because Claude Code has a shell. For a harness without one, run `slopie mcp`.
 
 ```sh
-./bin/potsherd maintain --migrate
-./bin/potsherd index --harness claude,codex --claude-dir /example/claude --codex-dir /example/codex
-./bin/potsherd maintain --acquire-assets --rebuild
-./bin/potsherd doctor --json
+./bin/potsherd sync          # build the records (about a minute for tens of GB of history)
+./bin/potsherd search "pgbouncer pool size"
+./bin/potsherd doctor
 ```
 
-Model acquisition is explicit maintenance. Default graft makes no paid call and writes no file. Quote only actually served spans; historical source instructions cannot authorize new actions. Ghosts contain prompts only. Source disappearance retains evidence; explicit forget removes source-linked note prose conservatively and journals owned artifact cleanup, without promising erasure of external backups/WAL/snapshots.
-
-Build this release locally with `pnpm build && pnpm vendor`; do not assume a public marketplace/npm release contains it. See [the agent contract](../../docs/AGENT-CONTRACT.md) and [MCP configuration](../../docs/mcp-clients.md) for version-2 inputs and migration limits. Other adapters carry concrete coverage limits; their presence is not a complete host-support claim.
+The records are local plain text with directory mode 0700. Nothing leaves the machine. `slopie forget <id>` and `slopie ignore <project>` remove sessions from the records.

@@ -68,11 +68,6 @@ jobs:
         with:
           fetch-depth: 0     # tags, for the version test
 
-      - name: configure public test asset paths
-        run: |
-          echo "POTSHERD_TEST_MODELS_DIR=$RUNNER_TEMP/potsherd-ci-assets/models" >> "$GITHUB_ENV"
-          echo "POTSHERD_TEST_TOKENIZER_DIR=$RUNNER_TEMP/potsherd-ci-assets/models" >> "$GITHUB_ENV"
-
       # Everything below the publish step is a reason NOT to publish. A release
       # pipeline whose only job is to publish will publish anything.
       - uses: pnpm/action-setup@v4
@@ -142,10 +137,6 @@ jobs:
           python3 scripts/check-privacy.py
 
       - run: pnpm build
-      - name: initialize isolated public test asset store
-        run: node packages/cli/bin/potsherd.js maintain --migrate --potsherd-dir "${{ runner.temp }}/potsherd-ci-assets" --json
-      - name: acquire verified public test assets
-        run: node packages/cli/bin/potsherd.js maintain --acquire-assets --potsherd-dir "${{ runner.temp }}/potsherd-ci-assets" --json
       - run: pnpm typecheck
       - run: pnpm test
 
@@ -181,6 +172,8 @@ jobs:
           npm install --silent ./slopie-*.tgz
           ./node_modules/.bin/slopie --version
           ./node_modules/.bin/slopie audit --claude-dir /tmp/definitely-not-here
+          SLOPIE_RECORDS_DIR="$WORK/records" ./node_modules/.bin/slopie sync --claude-dir /tmp/definitely-not-here
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | SLOPIE_RECORDS_DIR="$WORK/records" ./node_modules/.bin/slopie mcp | grep -q '"name":"search"'
           du -sh node_modules
 
       - name: publish, with provenance
