@@ -7,6 +7,8 @@ import { sourceId } from '../packages/core/src/sources/identity.js';
 import { writeIgnoreList } from '../packages/core/src/ignore.js';
 import { parseRecordText } from '../packages/core/src/records/index-db.js';
 import { Engine } from '../packages/core/src/records/engine.js';
+import { activeDays } from '../packages/core/src/records/format.js';
+import { delegEdges, delegKey, delegOf } from '../packages/core/src/records/deleg.js';
 import { claudeSession, IDS, makeFixture, NEEDLE, PROJECT, syncOptions, type Fixture } from './records-fixture.js';
 
 const made: Fixture[] = [];
@@ -46,17 +48,27 @@ describe('records: the R5 §11.1 format', () => {
     ].join('\n'));
   });
 
-  it('writes INDEX.tsv with one line per session and the ten columns', async () => {
+  it('writes INDEX.tsv with one line per session and the eleven columns', async () => {
     const f = fixture();
     await syncRecords(syncOptions(f));
     const rows = index(f);
-    expect(rows[0]).toEqual(['harness', 'id', 'project', 'start', 'end', 'turns', 'parent', 'title', 'first_user_msg', 'file']);
+    expect(rows[0]).toEqual(['harness', 'id', 'project', 'start', 'end', 'turns', 'parent', 'title', 'first_user_msg', 'file', 'active']);
     const ids = rows.slice(1).map(r => r[1]).sort();
     expect(ids).toEqual([IDS.agent, IDS.claude, IDS.codex, IDS.codexZst, IDS.pi, IDS.promptOnly].sort());
     const codex = rowOf(f, IDS.codex)!;
     expect(codex.slice(0, 8)).toEqual(['codex', IDS.codex, PROJECT, '2026-10-02T10:00:00Z', '2026-10-02T10:00:09Z', '3', '', 'Check the pool size']);
     expect(codex[8]).toBe('what is the pgbouncer pool size?');
     for (const r of rows.slice(1)) expect(fs.existsSync(path.join(f.recordsDir, r[9]!))).toBe(true);
+    // active: every UTC date with a turn, so `rg <date> INDEX.tsv` finds threads by activity, not only by start date
+    expect(codex[10]).toBe('2026-10-02');
+    for (const r of rows.slice(1)) expect(r[10]).toMatch(/^\d{4}-\d\d-\d\d( \d{4}-\d\d-\d\d)*$/);
+  });
+
+  it('lists every active date of a long thread in INDEX.tsv', () => {
+    const s = {start: '2026-06-28T10:00:00Z', end: '2026-07-15T09:00:00Z', turns: [
+      {ts: '2026-06-28T10:00:00Z'}, {ts: '2026-06-28T23:59:00Z'}, {ts: null}, {ts: '2026-07-14T08:00:00Z'}, {ts: '2026-07-15T09:00:00Z'}]};
+    expect(activeDays(s)).toBe('2026-06-28 2026-07-14 2026-07-15');
+    expect(activeDays({start: '2026-01-02T00:00:00Z', end: null, turns: []})).toBe('2026-01-02');
   });
 
   it('reads compressed Codex rollouts and drops Codex threads imported from Claude', async () => {
@@ -225,5 +237,36 @@ describe('records: read back', () => {
     expect(back.session.turns.map(t => t.role)).toEqual(['USER', 'ASSISTANT', 'TOOL', 'SYSTEM', 'USER']);
     expect(back.session.turns[4]!.text).toBe('ship it\nwith the pgbouncer pool at 40');
     expect(back.header.children).toEqual([{id: IDS.agent, kind: 'subagent'}]);
+  });
+});
+
+describe('delegation edges (R7)', () => {
+  const task = 'You are fixing four bugs in the living room.\n\nDetails follow.';
+  it('hashes the dispatched prompt and every delegate_task call', () => {
+    const child = delegOf({turns: [
+      {role: 'SYSTEM', ts: null, text: '# AGENTS.md', ref: 'x:1'},
+      {role: 'USER', ts: '2026-10-29T14:24:15Z', text: `Act as the implementation sub-agent for this task.\n\n${task}`, ref: 'x:2'},
+    ]});
+    const orch = delegOf({turns: [
+      {role: 'USER', ts: '2026-10-29T14:00:00Z', text: 'fix the room', ref: 'y:1'},
+      {role: 'TOOL', ts: '2026-10-29T14:24:10.5Z', tool: 'mcp__t3-code__delegate_task', text: JSON.stringify({title: 'Room bugs', role: 'implementation', task}), ref: 'y:2'},
+    ]});
+    expect(child?.task).toBe(delegKey(task));
+    expect(child?.calls).toBeUndefined();
+    expect(orch?.calls).toEqual([[delegKey(task), '2026-10-29T14:24:10.5Z']]);
+    expect(delegKey('a  b\n c')).toBe(delegKey('a b c'));
+    expect(delegOf({turns: [{role: 'USER', ts: null, text: 'plain prompt', ref: 'z:1'}]})).toBeUndefined();
+  });
+
+  it('links each dispatched thread to the latest call at or before its start', () => {
+    const k = delegKey(task);
+    const edges = delegEdges([
+      {id: 'orch-a', start: '2026-10-01T00:00:00Z', parent: null, deleg: {calls: [[k, '2026-10-29T10:00:00Z']]}},
+      {id: 'orch-b', start: '2026-10-02T00:00:00Z', parent: null, deleg: {calls: [[k, '2026-10-29T14:24:10Z']]}},
+      {id: 'child', start: '2026-10-29T14:24:15Z', parent: null, deleg: {task: k}},
+      {id: 'sub', start: '2026-10-29T14:25:00Z', parent: 'child', deleg: {task: k}},
+      {id: 'orphan', start: '2026-10-29T15:00:00Z', parent: null, deleg: {task: delegKey('other')}},
+    ]);
+    expect([...edges]).toEqual([['child', 'orch-b']]);
   });
 });

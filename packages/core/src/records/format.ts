@@ -22,7 +22,7 @@ export const CAP = {USER: 6000, ASSISTANT: 8000, SYSTEM: 300, TOOL_IN: 600, TOOL
 /** Per-output cap of the optional full-output sidecar (`<record>.out.txt`). */
 export const SIDECAR_CAP = 20000;
 export const ARCHIVE_MARK = '/.potsherd/archive/';
-export const INDEX_HEADER = 'harness\tid\tproject\tstart\tend\tturns\tparent\ttitle\tfirst_user_msg\tfile';
+export const INDEX_HEADER = 'harness\tid\tproject\tstart\tend\tturns\tparent\ttitle\tfirst_user_msg\tfile\tactive';
 
 /** One turn as the record shows it: every cap and pointer already applied. */
 export interface RecTurn {
@@ -81,6 +81,9 @@ export function recSession(s: Session, sidecar = false): RecSession {
     turns: s.turns.map(t => recTurn(t, sidecar))};
 }
 
+/** "subagent of <id>", "fork of <id>", or "delegated by <id>" for a task another thread dispatched (records/deleg.ts). */
+export const relation = (kind: string | null, parent: string): string => (kind === 'delegated' ? `delegated by ${parent}` : `${kind ?? 'None'} of ${parent}`);
+
 export const fmtTs = (ts: string | null): string => (ts ? ts.replace('T', ' ').slice(0, 16) : '?');
 
 /** Searchable / readable text of one turn (same caps as the record). */
@@ -104,7 +107,7 @@ export function render(s: RecSession, h: Header): string {
   out.push(`## project: ${s.project || '?'}`);
   out.push(`## title: ${s.title || ''}`);
   out.push(`## time: ${s.start || '?'} -> ${s.end || '?'}   turns: ${s.turns.length}`);
-  out.push(`## parent: ${s.parent ? `${s.parentKind ?? 'None'} of ${s.parent}` : 'none'}`);
+  out.push(`## parent: ${s.parent ? relation(s.parentKind, s.parent) : 'none'}`);
   out.push(`## children: ${kids || 'none'}`);
   out.push(`## raw: ${h.sources.join(' | ')}` + (h.archiveOnly ? '   [deleted from harness; recovered from .potsherd archive]' : ''));
   s.turns.forEach((t, i) => {
@@ -164,8 +167,19 @@ export function recordRelPath(s: {harness: string; project: string | null; start
   return `${s.harness}/${slug(s.project)}/${(s.start || '0000-00-00').slice(0, 10)}_${sidFile(s.harness, s.id, s.parent, s.parentKind)}.txt`;
 }
 
+/**
+ * Every UTC date (YYYY-MM-DD) on which the session has a turn, ascending, space-separated. INDEX.tsv's last column, so
+ * `rg 2026-07-14 INDEX.tsv` lists every thread active that day, including long threads that started weeks earlier.
+ */
+export function activeDays(s: {start: string | null; end: string | null; turns: readonly {ts: string | null}[]}): string {
+  const days = new Set<string>();
+  for (const t of s.turns) if (t.ts && /^\d{4}-\d\d-\d\d/.test(t.ts)) days.add(t.ts.slice(0, 10));
+  if (!days.size) for (const x of [s.start, s.end]) if (x) days.add(x.slice(0, 10));
+  return [...days].sort().join(' ');
+}
+
 export function indexLine(s: RecSession, rel: string): string {
   const par = s.parent ? `${s.parentKind ?? 'None'}:${s.parent}` : '';
   const title = cpSlice((s.title || '').replace(/\t/g, ' ').replace(/\n/g, ' '), 0, 100);
-  return [s.harness, s.id, s.project || '', s.start || '', s.end || '', String(s.turns.length), par, title, firstUser(s).replace(/\t/g, ' '), rel].join('\t');
+  return [s.harness, s.id, s.project || '', s.start || '', s.end || '', String(s.turns.length), par, title, firstUser(s).replace(/\t/g, ' '), rel, activeDays(s)].join('\t');
 }

@@ -187,11 +187,19 @@ describe('MCP: exactly the R5 §11.2 surface', () => {
 });
 
 describe('the agent note', () => {
-  it('is R5 NOTE_B verbatim with the records path filled in, then one CLI line', () => {
+  it('is R5 NOTE_B with the R7 INDEX and delegation lines and the records path filled in, then one CLI line', () => {
     const r5 = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'records', 'r5-note.json'), 'utf8')) as {NOTE_B_template: string};
-    expect(NOTE_B_TEMPLATE.split('{RECORDS}').join('{DATA}/records')).toBe(r5.NOTE_B_template);
+    // R7: the INDEX line names `end` as last activity and documents the `active` dates column; nothing else changed.
+    const R5_INDEX = '- INDEX.tsv: one line per session: harness, id, project (working dir), start, end, turns, parent, title, first user message, file.';
+    const R7_INDEX = "- INDEX.tsv: one line per session: harness, id, project (working dir), start, end (last activity), turns, parent, title, first user message, file, active (every UTC date with a turn, so rg '2026-07-14' INDEX.tsv lists every thread active that day, including long threads that started earlier).";
+    const R5_SUB = '- Subagent sessions have "parent: subagent of <id>"; their files are named <date>_<parent-id>__agent-*.txt.';
+    const R7_SUB = R5_SUB + ' Tasks another thread dispatched have "parent: delegated by <id>" (that thread briefed, tracked and applied the work, and lists them under children).';
+    expect(NOTE_B_TEMPLATE).toContain(R7_INDEX);
+    expect(NOTE_B_TEMPLATE).toContain(R7_SUB);
+    const r5Now = NOTE_B_TEMPLATE.split(R7_INDEX).join(R5_INDEX).split(R7_SUB).join(R5_SUB);
+    expect(r5Now.split('{RECORDS}').join('{DATA}/records')).toBe(r5.NOTE_B_template);
     const note = agentNote('/records-root');
-    expect(note).toBe(r5.NOTE_B_template.split('{DATA}/records').join('/records-root') + '\n' + CLI_LINE);
+    expect(note).toBe(NOTE_B_TEMPLATE.split('{RECORDS}').join('/records-root') + '\n' + CLI_LINE);
     expect(agentNote('/r', {cli: false})).not.toContain('slopie search');
     expect(agentNote('/r', {guidance: true})).toContain(GUIDANCE);
   });

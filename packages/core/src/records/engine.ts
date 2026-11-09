@@ -13,6 +13,7 @@ import {readSession, type Harness} from '../sources/sessions.js';
 import * as paths from '../paths.js';
 import {stateDir} from './sync.js';
 import {INDEX_FILE} from './index-db.js';
+import {relation} from './format.js';
 
 export type CallStyle = 'mcp' | 'cli';
 
@@ -144,7 +145,7 @@ export class Engine {
     if (s.parent && this.hitParent) {
       const p = this.parentOf(s);
       const pt = p && (p.title ?? '').trim() ? ` "${(p.title ?? '').trim().slice(0, 60)}"` : '';
-      par = ` · ${s.parent_kind} of ${s.parent}${pt}` + (s.parent_kind === 'subagent' ? ' (the user worked in the parent thread)' : '');
+      par = ` · ${relation(s.parent_kind, s.parent)}${pt}` + (s.parent_kind === 'subagent' ? ' (the user worked in the parent thread)' : s.parent_kind === 'delegated' ? ' (that thread dispatched and tracked this task)' : '');
     }
     const arch = s.archive_only ? ' · [deleted from harness; recovered from archive]' : '';
     return `${s.harness} ${s.id} · ${s.project || '?'} · ${shortTs(s.start)} → ${shortTs(s.end)} · ${s.n_turns} turns · "${(s.title ?? '').trim().slice(0, 80)}"${par}${arch}`;
@@ -283,7 +284,7 @@ export class Engine {
     for (const s of page) {
       const ch = JSON.parse(s.children || '[]') as unknown[];
       const extra: string[] = [];
-      if (s.parent) extra.push(`${s.parent_kind} of ${s.parent}`);
+      if (s.parent) extra.push(relation(s.parent_kind, s.parent));
       if (ch.length) extra.push(`${ch.length} child threads`);
       if (s.archive_only) extra.push('deleted from harness, archived copy');
       if (firstHit.has(s.key)) extra.push(`first match t${firstHit.get(s.key)}`);
@@ -336,7 +337,7 @@ export class Engine {
     const offset = Math.max(0, Math.trunc(Number(o.offset ?? 0)) || 0);
     const maxHits = Math.max(1, Math.min(Math.trunc(Number(o.max_hits ?? 40)) || 40, 200));
     const page = hits.slice(offset, offset + maxHits);
-    const parent = s.parent && this.hitParent ? `, ${s.parent_kind} of ${s.parent}` : '';
+    const parent = s.parent && this.hitParent ? `, ${relation(s.parent_kind, s.parent)}` : '';
     const out = [`${hits.length} matches for ${pyRepr(o.pattern)} in ${s.harness} ${s.id} (${s.n_turns} turns, reading order${parent}):`, ...page];
     if (offset + page.length < hits.length) out.push(`[more: ${this.grepCall(s.id, o.pattern, offset + page.length)}]`);
     if (!hits.length) out.push(`No match. This clears only this spelling in this thread; try another spelling or ${this.name('search')}.`);

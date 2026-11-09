@@ -24,11 +24,14 @@ import {openAuditSqliteSnapshot} from '../audit-sqlite.js';
 import type {AuditOverviewOptions} from '../analytics/contracts.js';
 import {ARCHIVE_MARK, INDEX_HEADER, indexLine, recTurn, lastAssistant, firstUser, recordRelPath, render, renderSidecar, sidFile, type RecSession} from './format.js';
 import {runJobs, type ParseJob, type ParseResult} from './worker.js';
+import {delegEdges, type Deleg} from './deleg.js';
 import {RecordIndex, parseRecordText} from './index-db.js';
 
 /** Bump when the rendered format changes: every record is rewritten once. */
-export const FORMAT_VERSION = 1;
+export const FORMAT_VERSION = 2;
 const STATE_VERSION = 1;
+/** Bumped when parsing extracts new metadata (2: delegation hashes): every source is parsed again, kept records stay. */
+const PARSE_VERSION = 2;
 
 export interface SyncOptions {
   recordsDir?: string;
@@ -85,6 +88,8 @@ interface SourceState {
   start?: string | null;
   end?: string | null;
   project?: string | null;
+  /** Delegation hashes (R7, records/deleg.ts). */
+  deleg?: Deleg;
 }
 
 interface SessionState {
@@ -109,6 +114,7 @@ interface SessionState {
 interface State {
   v: number;
   format: number;
+  parse?: number;
   sidecar: boolean;
   sources: Record<string, SourceState>;
   sessions: Record<string, SessionState>;
@@ -326,8 +332,9 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     // Format change: keep the parse metadata, rewrite every record.
     state = {...state, sessions: Object.fromEntries(Object.entries(state.sessions).map(([k, v]) => [k, {...v, sig: ''}]))};
   }
+  if (state && (state.parse ?? 1) !== PARSE_VERSION) state = {...state, sources: {}};
   const prev: State = state ?? {v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {}};
-  const next: State = {v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {}};
+  const next: State = {v: STATE_VERSION, format: FORMAT_VERSION, parse: PARSE_VERSION, sidecar, sources: {}, sessions: {}};
   const policy = loadPolicy(paths.potsherdDir(o.potsherdDir), paths.slopieDir(o.slopieDir));
 
   // ---- 1. discover
@@ -385,6 +392,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
       if (r.status === 'ok') {
         const s = r.session;
         Object.assign(base, {id: s.id, parent: s.parent, parentKind: s.parentKind, nTurns: s.turns.length, start: s.start, end: s.end, project: s.project});
+        if (r.deleg) base.deleg = r.deleg;
       }
       next.sources[m.file] = base;
     }
@@ -437,6 +445,12 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     // A Codex spawn edge can name a parent only after parsing: re-key so the file name stays stable.
     b.key = keyOf(b.harness, b.id, b.parent, b.parentKind);
     sessions.push(b);
+  }
+  // Delegation edges: a thread dispatched through delegate_task gets its dispatcher as parent (kind 'delegated').
+  // The record file name does not depend on it, so keys stay stable.
+  for (const [child, by] of delegEdges(sessions.map(b => ({id: b.id, start: b.start, parent: b.parent, deleg: b.best ? next.sources[b.best]?.deleg : undefined})))) {
+    const b = sessions.find(x => x.id === child && !x.parent);
+    if (b) { b.parent = by; b.parentKind = 'delegated'; }
   }
   // Sessions whose sources have all gone keep their records (unless forgotten / ignored).
   const present = new Set(sessions.map(s => s.key));
