@@ -44,8 +44,10 @@ export function readIgnoreConfig(root: string = potsherdDir()): IgnoreConfig {
   let text: string;
   try {
     text = fs.readFileSync(file, 'utf8');
-  } catch {
-    return { list: [], rest: {}, file };
+  } catch (e) {
+    // Missing is the fresh-install state; anything else (permissions, a directory) is unreadable, not empty.
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { list: [], rest: {}, file };
+    return { list: [], rest: {}, file, error: `config.json could not be read (${(e as NodeJS.ErrnoException).code ?? 'error'})` };
   }
   let parsed: unknown;
   try {

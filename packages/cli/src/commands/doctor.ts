@@ -33,7 +33,8 @@ export async function runDoctor(o: GlobalOptions): Promise<number> {
     sqlite: sqliteDriverName(),
     sources: census,
     records: {dir: records, built: !!state, sessions: state?.sessions ? Object.keys(state.sessions).length : 0, mode, index: fs.existsSync(index) ? fs.statSync(index).size : 0},
-    privacy: {ignored: policy.ignoredList, forgotten: policy.forgotten.size, forgetFile: readForgetList() !== null},
+    privacy: {ignored: policy.ignoredList, forgotten: policy.forgotten.size, forgetFile: (() => { try { return readForgetList() !== null; } catch { return true; } })(),
+      error: policy.errorDetail},
     legacy: {dir: legacy, present: legacyParts, unused: legacyParts.length > 0},
   };
   if (o.json) { printJson(report); return 0; }
@@ -47,6 +48,7 @@ export async function runDoctor(o: GlobalOptions): Promise<number> {
   if (state) print(`  ${paths.tildify(records)}  ${report.records.sessions} sessions  mode ${mode}  index ${mb(report.records.index)}`);
   else print(`  not built yet: ${t.accent('slopie sync')}`);
   print(`  ignored projects: ${policy.ignoredList.length ? policy.ignoredList.join(', ') : 'none'} · forgotten sessions: ${policy.forgotten.size}`);
+  if (policy.errorDetail) print(`  ${t.warn('unreadable opt-outs:')} ${policy.errorDetail}; sync and audit stop until it is fixed`);
   print('');
   print(t.dim('agents'));
   await runSetup({...o, json: false, status: true});

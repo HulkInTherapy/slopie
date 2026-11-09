@@ -80,7 +80,7 @@ export {
   type IgnoreConfig,
   type IgnoreChange,
 } from './ignore.js';
-export { loadPolicy, legacyForgotten, readForgetList, writeForgetList, forgetPath, type Policy, type ForgetEntry } from './sources/policy.js';
+export { loadPolicy, assertPolicy, PolicyError, legacyForgotten, readForgetList, writeForgetList, forgetPath, type Policy, type ForgetEntry } from './sources/policy.js';
 
 // ------------------------------------------------- the shared source layer
 export { discover, listFiles, readCodexImports, archiveEvidenceDir, type Discovered } from './sources/discover.js';

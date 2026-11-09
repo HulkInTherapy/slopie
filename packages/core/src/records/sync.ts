@@ -13,7 +13,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import * as paths from '../paths.js';
 import {discover, listFiles} from '../sources/discover.js';
-import {loadPolicy, type Policy} from '../sources/policy.js';
+import {assertPolicy, loadPolicy, type Policy} from '../sources/policy.js';
 import {sourceId} from '../sources/identity.js';
 import {forEachRecord} from '../sources/lines.js';
 import {claudeSubagentParent, isoTs, type Harness} from '../sources/sessions.js';
@@ -318,6 +318,9 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const mark = (name: string) => { const now = Date.now(); phases[name] = (now - tp) / 1000; tp = now; };
   const dir = paths.recordsDir(o.recordsDir);
   const sidecar = o.sidecar ?? process.env['SLOPIE_SIDECAR'] === '1';
+  // The opt-outs first: when they cannot be read, nothing is written or removed (carrying on would undo them).
+  const policy = loadPolicy(paths.potsherdDir(o.potsherdDir), paths.slopieDir(o.slopieDir));
+  assertPolicy(policy);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive: true, mode: 0o700});
   try { fs.chmodSync(dir, 0o700); } catch { /* not ours to change */ }
   mkdirPrivate(stateDir(dir), dir);
@@ -328,7 +331,6 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   }
   const prev: State = state ?? {v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {}};
   const next: State = {v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {}};
-  const policy = loadPolicy(paths.potsherdDir(o.potsherdDir), paths.slopieDir(o.slopieDir));
 
   // ---- 1. discover
   const {sources, historyFiles, codexHomes, codexImported} = discoverSources(o, state);
