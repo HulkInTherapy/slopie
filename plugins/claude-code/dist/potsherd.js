@@ -17416,10 +17416,10 @@ function activeDays(s) {
   }
   return [...days].sort().join(" ");
 }
-function indexLine(s, rel) {
+function indexLine(s, rel, later = []) {
   const par = s.parent ? `${s.parentKind ?? "None"}:${s.parent}` : "";
   const title = cpSlice((s.title || "").replace(/\t/g, " ").replace(/\n/g, " "), 0, 100);
-  return [s.harness, s.id, s.project || "", s.start || "", s.end || "", String(s.turns.length), par, title, firstUser(s).replace(/\t/g, " "), rel, activeDays(s)].join("	");
+  return [s.harness, s.id, s.project || "", s.start || "", s.end || "", String(s.turns.length), par, title, firstUser(s).replace(/\t/g, " "), rel, activeDays(s), later.map((x) => `${x.id} (${x.harness}, ${x.start.slice(0, 10)})`).join(", ")].join("	");
 }
 var CAP, SIDECAR_CAP, ARCHIVE_MARK, INDEX_HEADER, capOf, relation, fmtTs;
 var init_format2 = __esm({
@@ -17429,7 +17429,7 @@ var init_format2 = __esm({
     CAP = { USER: 6e3, ASSISTANT: 8e3, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_WHOLE: 4e3, TOOL_OUT_HEAD: 2e3, TOOL_OUT_TAIL: 1e3 };
     SIDECAR_CAP = 2e4;
     ARCHIVE_MARK = "/.potsherd/archive/";
-    INDEX_HEADER = "harness	id	project	start	end	turns	parent	title	first_user_msg	file	active";
+    INDEX_HEADER = "harness	id	project	start	end	turns	parent	title	first_user_msg	file	active	later";
     capOf = (role) => role === "USER" ? CAP.USER : role === "ASSISTANT" ? CAP.ASSISTANT : role === "SYSTEM" ? CAP.SYSTEM : 6e3;
     relation = (kind3, parent) => kind3 === "delegated" ? `delegated by ${parent}` : kind3 === "import" ? `import of ${parent} (continued in Codex; the turns before the import are in that record)` : `${kind3 ?? "None"} of ${parent}`;
     fmtTs = (ts) => ts ? ts.replace("T", " ").slice(0, 16) : "?";
@@ -18548,7 +18548,7 @@ async function syncLocked(o) {
     next.sessions[s.key] = {
       sig,
       rel,
-      line: indexLine(rec2, rel),
+      line: indexLine(rec2, rel, s.later),
       start: rec2.start ?? "",
       harness: rec2.harness,
       id: rec2.id,
@@ -18724,7 +18724,7 @@ var init_sync = __esm({
     init_deleg();
     init_refs();
     init_index_db();
-    FORMAT_VERSION = 3;
+    FORMAT_VERSION = 4;
     STATE_VERSION = 1;
     PARSE_VERSION = 4;
     IMPORT_SLACK_MS = 10 * 60 * 1e3;
@@ -19211,7 +19211,7 @@ var init_spec = __esm({
   "packages/core/dist/records/spec.js"() {
     "use strict";
     NOTE_B_TEMPLATE = `The user's agent history (Claude Code, Codex, Pi; all projects; including sessions the harness deleted) is exported as plain text records under {RECORDS}:
-- INDEX.tsv: one line per session: harness, id, project (working dir), start, end (last activity), turns, parent, title, first user message, file, active (every UTC date with a turn, so rg '2026-07-14' INDEX.tsv lists every thread active that day, including long threads that started earlier).
+- INDEX.tsv: one line per session: harness, id, project (working dir), start, end (last activity), turns, parent, title, first user message, file, active (every UTC date with a turn, so rg '2026-07-14' INDEX.tsv lists every thread active that day, including long threads that started earlier), later (later threads that name this one, where the work or a decision often continued).
 - <harness>/<project-slug>/<start-date>_<session-id>.txt: one file per session. Header lines start with "## " (session, project, title, time, parent, children, later threads that mention it, raw source paths).
 - Every content line starts with its turn tag: "t12 USER 2026-08-20 20:26 | text", "t13 ASSISTANT ...", "t14 TOOL Bash 20:27 | command", tool output lines "t14 > ...", continuation lines "t12 | ...". SYSTEM turns are injected/harness text.
 - Tool output is shortened; "full output: <raw path>:<line>" points to the original JSONL line (Codex .zst: use zstdcat).

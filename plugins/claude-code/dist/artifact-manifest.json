@@ -1,11 +1,11 @@
 {
   "contractVersion": 2,
   "version": "1.9.0",
-  "sourceRevision": "3392fac9f755d1ffb3f788e675b81caf01a47888",
+  "sourceRevision": "3a306feb30b1c76f1d9120075adc1e2dfa35306f",
   "files": {
     "dist/potsherd.js": {
-      "bytes": 1630644,
-      "sha256": "d152491ef2468436909d918c01bc816041a159b289eec252fd23fa2b3ee0c94d"
+      "bytes": 1630839,
+      "sha256": "68ce2b9e9e61234d19f87f32d6c9820153c1ac59b708fdb2fb14866207c5f078"
     },
     "dist/audit-native-worker.js": {
       "bytes": 86000,
