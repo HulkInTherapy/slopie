@@ -32,9 +32,11 @@ jobs:
       - run: pnpm test
       - run: pnpm privacy
       - run: pnpm vendor
-      - name: the vendored plugins start and serve the four memory tools
+      - name: the vendored plugins start and serve the one search tool
         run: |
           for p in claude-code codex; do
             sh plugins/$p/bin/potsherd --version
-            printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | sh plugins/$p/bin/potsherd mcp | grep -q '"name":"grep"'
+            printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | sh plugins/$p/bin/potsherd mcp > /tmp/tools.json
+            grep -q '"name":"search"' /tmp/tools.json
+            test "$(grep -o '"name":"[a-z_]*","description"' /tmp/tools.json | wc -l)" -eq 1
           done
