@@ -17339,6 +17339,9 @@ function render(s, h) {
   out.push(`## time: ${s.start || "?"} -> ${s.end || "?"}   turns: ${s.turns.length}`);
   out.push(`## parent: ${s.parent ? relation(s.parentKind, s.parent) : "none"}`);
   out.push(`## children: ${kids || "none"}`);
+  const later = h.later?.length ? `## mentioned later in: ${h.later.map((x) => `${x.id} (${x.harness}, ${x.start.slice(0, 10)})`).join(", ")}` : null;
+  if (later)
+    out.push(later);
   out.push(`## raw: ${h.sources.join(" | ")}` + (h.archiveOnly ? "   [deleted from harness; recovered from .potsherd archive]" : ""));
   s.turns.forEach((t, i) => {
     const tag = `t${i + 1}`;
@@ -17361,6 +17364,8 @@ function render(s, h) {
     for (const l of lines.slice(1))
       out.push(`${tag} | ${l}`);
   });
+  if (later)
+    out.push(later);
   return out.join("\n") + "\n";
 }
 function renderSidecar(s, recordName) {
@@ -17499,6 +17504,55 @@ var init_deleg = __esm({
   }
 });
 
+// packages/core/dist/records/refs.js
+function refsOf(s) {
+  const out = /* @__PURE__ */ new Set();
+  for (const t of s.turns) {
+    if (t.role !== "USER" && t.role !== "ASSISTANT")
+      continue;
+    for (const m of t.text.matchAll(ID)) {
+      out.add(m[1].toLowerCase());
+      if (out.size >= MAX_REFS)
+        return [...out];
+    }
+  }
+  return out.size ? [...out] : void 0;
+}
+function backlinks(sessions, cap = 10) {
+  const byPrefix = /* @__PURE__ */ new Map();
+  for (const s of sessions) {
+    if (s.id.startsWith("agent-"))
+      continue;
+    const k = s.id.slice(0, 8).toLowerCase();
+    byPrefix.set(k, byPrefix.has(k) ? null : { id: s.id, start: s.start });
+  }
+  const out = /* @__PURE__ */ new Map();
+  for (const s of sessions) {
+    if (!s.refs || !s.start)
+      continue;
+    for (const r3 of s.refs) {
+      const t = byPrefix.get(r3);
+      if (!t || t.id === s.id || !t.start || !(t.start < s.start))
+        continue;
+      const l = out.get(t.id) ?? [];
+      if (!l.some((x) => x.id === s.id))
+        l.push({ id: s.id, harness: s.harness, start: s.start });
+      out.set(t.id, l);
+    }
+  }
+  for (const [k, l] of out)
+    out.set(k, l.sort((a, b2) => a.start < b2.start ? 1 : a.start > b2.start ? -1 : a.id < b2.id ? -1 : 1).slice(0, cap));
+  return out;
+}
+var ID, MAX_REFS;
+var init_refs = __esm({
+  "packages/core/dist/records/refs.js"() {
+    "use strict";
+    ID = /(?<![0-9a-f])([0-9a-f]{8})(?:-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?(?![0-9a-f])/gi;
+    MAX_REFS = 300;
+  }
+});
+
 // packages/core/dist/records/worker.js
 import os6 from "node:os";
 import { Worker, parentPort } from "node:worker_threads";
@@ -17509,7 +17563,7 @@ function parseJob(job) {
     const s = readSession(job.file, harness, job.sub, lim);
     if (!s || !s.id)
       return { file: job.file, status: "none" };
-    return { file: job.file, status: "ok", session: recSession(s, job.sidecar), deleg: delegOf(s) };
+    return { file: job.file, status: "ok", session: recSession(s, job.sidecar), deleg: delegOf(s), refs: refsOf(s) };
   } catch (e) {
     return { file: job.file, status: "err", err: `${job.file}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 500) };
   }
@@ -17567,6 +17621,7 @@ var init_worker = __esm({
     init_sessions();
     init_format2();
     init_deleg();
+    init_refs();
   }
 });
 
@@ -17595,7 +17650,9 @@ function parseRecordText(text) {
     return null;
   const [harness, ...idParts] = sess.split(":");
   const time4 = /^(.*?) -> (.*?)\s+turns: \d+$/.exec(h["time"] ?? "");
-  const parentM = /^(.*) of (.*)$/.exec(h["parent"] ?? "");
+  const pr = h["parent"] ?? "";
+  const dm = /^delegated by (\S+)/.exec(pr), km = /^(\S+) of (\S+)/.exec(pr);
+  const parentM = dm ? ["", "delegated", dm[1]] : km && pr !== "none" ? ["", km[1], km[2]] : null;
   const turns = [];
   let lastDate = "";
   for (; i < lines.length; i++) {
@@ -18156,6 +18213,8 @@ async function syncLocked(o) {
         Object.assign(base3, { id: s.id, parent: s.parent, parentKind: s.parentKind, nTurns: s.turns.length, start: s.start, end: s.end, project: s.project });
         if (r3.deleg)
           base3.deleg = r3.deleg;
+        if (r3.refs)
+          base3.refs = r3.refs;
       }
       next.sources[m.file] = base3;
     }
@@ -18244,6 +18303,11 @@ async function syncLocked(o) {
       b2.parent = by;
       b2.parentKind = "delegated";
     }
+  }
+  for (const [id, l] of backlinks(sessions.map((b2) => ({ id: b2.id, harness: b2.harness, start: b2.start, parentKind: b2.parentKind, refs: b2.best ? next.sources[b2.best]?.refs : void 0 })))) {
+    for (const b2 of sessions)
+      if (b2.id === id)
+        b2.later = l;
   }
   const present = new Set(sessions.map((s) => s.key));
   const kept = [];
@@ -18390,7 +18454,8 @@ async function syncLocked(o) {
     (kids.get(s.id) ?? []).map((c) => [c.id, c.kind]),
     s.archiveOnly,
     s.history ? s.history.length : -1,
-    s.importCut ?? null
+    s.importCut ?? null,
+    (s.later ?? []).map((x) => x.id)
   ]);
   const writeOne = (s, rec2, sig) => {
     rec2.parent = s.parent;
@@ -18405,7 +18470,7 @@ async function syncLocked(o) {
     const rel = canonicalRel(recordRelPath(rec2));
     const file = path19.join(dir, rel);
     mkdirPrivate(path19.dirname(file), dir);
-    const text = render(rec2, { children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly });
+    const text = render(rec2, { children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly, later: s.later });
     writeAtomic2(file, text);
     const last = Date.parse(rec2.end ?? rec2.start ?? "");
     if (Number.isFinite(last)) {
@@ -18609,10 +18674,11 @@ var init_sync = __esm({
     init_format2();
     init_worker();
     init_deleg();
+    init_refs();
     init_index_db();
     FORMAT_VERSION = 3;
     STATE_VERSION = 1;
-    PARSE_VERSION = 2;
+    PARSE_VERSION = 3;
     IMPORT_SLACK_MS = 10 * 60 * 1e3;
     SyncBusyError = class extends Error {
       pid;
@@ -19098,7 +19164,7 @@ var init_spec = __esm({
     "use strict";
     NOTE_B_TEMPLATE = `The user's agent history (Claude Code, Codex, Pi; all projects; including sessions the harness deleted) is exported as plain text records under {RECORDS}:
 - INDEX.tsv: one line per session: harness, id, project (working dir), start, end (last activity), turns, parent, title, first user message, file, active (every UTC date with a turn, so rg '2026-07-14' INDEX.tsv lists every thread active that day, including long threads that started earlier).
-- <harness>/<project-slug>/<start-date>_<session-id>.txt: one file per session. Header lines start with "## " (session, project, title, time, parent, children, raw source paths).
+- <harness>/<project-slug>/<start-date>_<session-id>.txt: one file per session. Header lines start with "## " (session, project, title, time, parent, children, later threads that mention it, raw source paths).
 - Every content line starts with its turn tag: "t12 USER 2026-08-20 20:26 | text", "t13 ASSISTANT ...", "t14 TOOL Bash 20:27 | command", tool output lines "t14 > ...", continuation lines "t12 | ...". SYSTEM turns are injected/harness text.
 - Tool output is shortened; "full output: <raw path>:<line>" points to the original JSONL line (Codex .zst: use zstdcat).
 - Subagent sessions have "parent: subagent of <id>"; their files are named <date>_<parent-id>__agent-*.txt. Tasks another thread dispatched have "parent: delegated by <id>" (that thread briefed, tracked and applied the work, and lists them under children).

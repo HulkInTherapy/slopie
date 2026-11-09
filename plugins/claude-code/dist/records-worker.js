@@ -1300,6 +1300,21 @@ function delegOf(s) {
   return d.task || d.calls ? d : void 0;
 }
 
+// packages/core/src/records/refs.ts
+var ID = /(?<![0-9a-f])([0-9a-f]{8})(?:-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?(?![0-9a-f])/gi;
+var MAX_REFS = 300;
+function refsOf(s) {
+  const out = /* @__PURE__ */ new Set();
+  for (const t of s.turns) {
+    if (t.role !== "USER" && t.role !== "ASSISTANT") continue;
+    for (const m of t.text.matchAll(ID)) {
+      out.add(m[1].toLowerCase());
+      if (out.size >= MAX_REFS) return [...out];
+    }
+  }
+  return out.size ? [...out] : void 0;
+}
+
 // packages/core/src/records/worker.ts
 function parseJob(job) {
   try {
@@ -1307,7 +1322,7 @@ function parseJob(job) {
     const lim = job.sidecar ? { output: 3e4 } : {};
     const s = readSession(job.file, harness, job.sub, lim);
     if (!s || !s.id) return { file: job.file, status: "none" };
-    return { file: job.file, status: "ok", session: recSession(s, job.sidecar), deleg: delegOf(s) };
+    return { file: job.file, status: "ok", session: recSession(s, job.sidecar), deleg: delegOf(s), refs: refsOf(s) };
   } catch (e) {
     return { file: job.file, status: "err", err: `${job.file}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 500) };
   }
