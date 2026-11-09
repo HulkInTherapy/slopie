@@ -47,7 +47,7 @@ More detail: [coverage and privacy](docs/audit-terminal.md).
 
 ## Memory for your agents
 
-Slopie started as local memory for coding agents, and that's still underneath: *your agents forget, slopie remembers.* `slopie setup` connects it to Claude Code, Codex, pi or OpenCode. Your agent can then search past sessions across projects and quote them exactly. The agent contract has four tools:
+Slopie started as local memory for coding agents, and that's still underneath: *your agents forget, slopie remembers.* `slopie setup` connects it to Claude Code, Codex, pi or OpenCode. Your agent can then search past sessions across projects and quote them exactly. The v2 agent contract has four tools:
 
 - `potsherd_recall`: scoped search;
 - `potsherd_read`: exact source evidence;
