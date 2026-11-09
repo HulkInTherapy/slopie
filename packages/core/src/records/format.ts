@@ -16,7 +16,7 @@
  * Tool output is capped at 500 head + 300 tail characters with a `full output: <raw path>:<line>` pointer.
  */
 import type {Role, Session, Turn} from '../sources/sessions.js';
-import {pySplitlines, pyStrip, squash} from '../sources/text.js';
+import {cpLen, cpSlice, pySplitlines, pyStrip, squash} from '../sources/text.js';
 
 export const CAP = {USER: 6000, ASSISTANT: 8000, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_HEAD: 500, TOOL_OUT_TAIL: 300} as const;
 /** Per-output cap of the optional full-output sidecar (`<record>.out.txt`). */
@@ -55,14 +55,15 @@ const capOf = (role: Role): number => (role === 'USER' ? CAP.USER : role === 'AS
 export function recTurn(t: Turn, sidecar = false): RecTurn {
   if (t.role === 'TOOL') {
     let inp = pyStrip(t.text || '');
-    if (inp.length > CAP.TOOL_IN) inp = inp.slice(0, CAP.TOOL_IN) + ` …[+${inp.length - CAP.TOOL_IN} chars]`;
+    const inLen = cpLen(inp);
+    if (inLen > CAP.TOOL_IN) inp = cpSlice(inp, 0, CAP.TOOL_IN) + ` …[+${inLen - CAP.TOOL_IN} chars]`;
     const r: RecTurn = {role: 'TOOL', ts: t.ts, tool: t.tool ?? '', text: inp, out: null};
     if (t.output) {
       let o = pyStrip(t.output);
-      const total = t.outputLen ?? o.length;
+      const total = t.outputLen ?? cpLen(o);
       if (total > CAP.TOOL_OUT_HEAD + CAP.TOOL_OUT_TAIL) {
-        if (sidecar) r.full = o.length > SIDECAR_CAP ? o.slice(0, SIDECAR_CAP) + ` …[+${o.length - SIDECAR_CAP} chars]` : o;
-        o = o.slice(0, CAP.TOOL_OUT_HEAD) + `\n…[${total - CAP.TOOL_OUT_HEAD - CAP.TOOL_OUT_TAIL} chars cut; full output: ${t.outRef ?? t.ref}]…\n` + o.slice(Math.max(0, o.length - CAP.TOOL_OUT_TAIL));
+        if (sidecar) { const n = cpLen(o); r.full = n > SIDECAR_CAP ? cpSlice(o, 0, SIDECAR_CAP) + ` …[+${n - SIDECAR_CAP} chars]` : o; }
+        o = cpSlice(o, 0, CAP.TOOL_OUT_HEAD) + `\n…[${total - CAP.TOOL_OUT_HEAD - CAP.TOOL_OUT_TAIL} chars cut; full output: ${t.outRef ?? t.ref}]…\n` + cpSlice(o, -CAP.TOOL_OUT_TAIL);
       }
       r.out = o;
     }
@@ -70,7 +71,8 @@ export function recTurn(t: Turn, sidecar = false): RecTurn {
   }
   let text = pyStrip(t.text || '');
   const cap = capOf(t.role);
-  if (text.length > cap) text = text.slice(0, cap) + ` …[+${(t.textLen ?? text.length) - cap} chars; raw: ${t.ref}]`;
+  const n = cpLen(text);
+  if (n > cap) text = cpSlice(text, 0, cap) + ` …[+${(t.textLen ?? n) - cap} chars; raw: ${t.ref}]`;
   return {role: t.role, ts: t.ts, text};
 }
 
@@ -135,14 +137,14 @@ export function renderSidecar(s: RecSession, recordName: string): string | null 
 }
 
 export function firstUser(s: RecSession | {turns: readonly {role: Role; text: string}[]}): string {
-  for (const t of s.turns) if (t.role === 'USER') return squash(t.text).slice(0, 140);
+  for (const t of s.turns) if (t.role === 'USER') return cpSlice(squash(t.text), 0, 140);
   return '';
 }
 
 export function lastAssistant(s: {turns: readonly {role: Role; text: string}[]}): string {
   for (let i = s.turns.length - 1; i >= 0; i--) {
     const t = s.turns[i]!;
-    if (t.role === 'ASSISTANT') { const x = squash(t.text); return x.slice(Math.max(0, x.length - 200)); }
+    if (t.role === 'ASSISTANT') return cpSlice(squash(t.text), -200);
   }
   return '';
 }
@@ -150,7 +152,7 @@ export function lastAssistant(s: {turns: readonly {role: Role; text: string}[]})
 /** Directory name for a project path. */
 export function slug(project: string | null): string {
   if (!project) return '_unknown';
-  return project.replace(/[^A-Za-z0-9._-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 120) || '_root';
+  return cpSlice(project.replace(/[^A-Za-z0-9._-]/g, '-').replace(/^-+|-+$/g, ''), 0, 120) || '_root';
 }
 
 /** File-name id: Claude subagents carry their parent (`<parent>__agent-<id>`). */
@@ -164,6 +166,6 @@ export function recordRelPath(s: {harness: string; project: string | null; start
 
 export function indexLine(s: RecSession, rel: string): string {
   const par = s.parent ? `${s.parentKind ?? 'None'}:${s.parent}` : '';
-  const title = (s.title || '').replace(/\t/g, ' ').replace(/\n/g, ' ').slice(0, 100);
+  const title = cpSlice((s.title || '').replace(/\t/g, ' ').replace(/\n/g, ' '), 0, 100);
   return [s.harness, s.id, s.project || '', s.start || '', s.end || '', String(s.turns.length), par, title, firstUser(s).replace(/\t/g, ' '), rel].join('\t');
 }

@@ -14,7 +14,7 @@
  */
 import path from 'node:path';
 import {forEachRecord, headOf} from './lines.js';
-import {pyDumps, pyStr, pyStrip} from './text.js';
+import {cpLen, cpSlice, pyDumps, pyStr, pyStrip} from './text.js';
 
 export type Harness = 'claude' | 'codex' | 'pi';
 export type Role = 'USER' | 'ASSISTANT' | 'TOOL' | 'SYSTEM';
@@ -64,8 +64,9 @@ const str = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 /** Head 2/3 + tail 1/3 of an over-long field, original length remembered (Python `_put`). */
 function put(t: Turn, key: 'text' | 'output', v: string | null | undefined, lim: number): Turn {
   const s = v ?? '';
-  if (key === 'text') t.textLen = s.length; else t.outputLen = s.length;
-  const capped = s.length <= lim ? s : s.slice(0, Math.floor(lim * 2 / 3)) + '\n[...]\n' + s.slice(s.length - Math.ceil(lim / 3));
+  const n = cpLen(s);
+  if (key === 'text') t.textLen = n; else t.outputLen = n;
+  const capped = n <= lim ? s : cpSlice(s, 0, Math.floor(lim * 2 / 3)) + '\n[...]\n' + cpSlice(s, -Math.ceil(lim / 3));
   if (key === 'text') t.text = capped; else t.output = capped;
   return t;
 }
@@ -204,9 +205,9 @@ export function parseClaude(file: string, subParent: string | null = null, lim: 
         if (t === 'text' && pyStrip(bt)) {
           const last = turns[turns.length - 1];
           if (last && last.role === 'ASSISTANT' && mid && last.mid === mid) {
-            const n0 = last.textLen ?? last.text.length;
+            const n0 = last.textLen ?? cpLen(last.text);
             put(last, 'text', last.text + '\n' + bt, TL);
-            last.textLen = n0 + 1 + bt.length;
+            last.textLen = n0 + 1 + cpLen(bt);
           } else {
             turns.push(put({role: 'ASSISTANT', ts, ref, mid, text: ''}, 'text', bt, TL));
           }
@@ -422,6 +423,23 @@ export function parsePi(file: string): Session {
   return s;
 }
 
+/** The reference exporter's backstop for readers that do not cap at parse time (pi): lengths kept, long fields capped. */
+function shrink(s: Session, lim: ReadLimits): Session {
+  for (const t of s.turns) {
+    for (const [k, l] of [['text', lim.text ?? TEXT_LIM], ['output', lim.output ?? OUT_LIM]] as const) {
+      const v = k === 'text' ? t.text : t.output;
+      if (typeof v !== 'string') continue;
+      const n = cpLen(v);
+      if (k === 'text') t.textLen ??= n; else t.outputLen ??= n;
+      if (n > l + 16) {
+        const capped = cpSlice(v, 0, Math.floor(l * 2 / 3)) + '\n[...]\n' + cpSlice(v, -Math.ceil(l / 3));
+        if (k === 'text') t.text = capped; else t.output = capped;
+      }
+    }
+  }
+  return s;
+}
+
 /** Harness of an unlabelled transcript (archive copies), from its first records. */
 export function sniff(file: string): Harness | 'unknown' {
   const head = headOf(file, 256 * 1024);
@@ -445,5 +463,5 @@ export function sniff(file: string): Harness | 'unknown' {
 export function readSession(file: string, harness: Harness, subParent: string | null, lim: ReadLimits = {}): Session | null {
   if (harness === 'claude') return parseClaude(file, subParent, lim);
   if (harness === 'codex') return parseCodex(file, lim);
-  return parsePi(file);
+  return shrink(parsePi(file), lim);
 }

@@ -60,3 +60,19 @@ function pyRepr(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(pyRepr).join(', ')}]`;
   return `{${Object.entries(v as Record<string, unknown>).map(([k, x]) => `${pyRepr(k)}: ${pyRepr(x)}`).join(', ')}}`;
 }
+
+const SURROGATE = /[\uD800-\uDFFF]/;
+
+/** Python `len(s)`: code points, not UTF-16 units. */
+export function cpLen(s: string): number {
+  if (!SURROGATE.test(s)) return s.length;
+  let n = 0;
+  for (const _ of s) n++;
+  return n;
+}
+
+/** Python `s[a:b]` (code points; negative indexes count from the end). */
+export function cpSlice(s: string, a: number, b?: number): string {
+  if (!SURROGATE.test(s)) return s.slice(a, b);
+  return Array.from(s).slice(a, b).join('');
+}

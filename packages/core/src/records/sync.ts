@@ -17,6 +17,7 @@ import {loadPolicy, type Policy} from '../sources/policy.js';
 import {sourceId} from '../sources/identity.js';
 import {forEachRecord} from '../sources/lines.js';
 import {claudeSubagentParent, isoTs, type Harness} from '../sources/sessions.js';
+import {cpLen} from '../sources/text.js';
 import {nativeAuditRoots} from '../analytics/native-census.js';
 import {probeFile} from '../analytics/copy-prune.js';
 import {openAuditSqliteSnapshot} from '../audit-sqlite.js';
@@ -66,6 +67,8 @@ export interface SyncResult {
   indexBytes: number;
   seconds: number;
   phases: Record<string, number>;
+  /** Peak resident memory of the process (all parser threads included), MB. */
+  maxRssMb: number;
 }
 
 interface SourceState {
@@ -269,7 +272,11 @@ function discoverSources(o: SyncOptions, state: State | null): {sources: Src[]; 
     }
   }
   const codexHomes = [...new Set(nativeAuditRoots('codex', opts).map(r => path.dirname(r)))];
-  return {sources: out, historyFiles: found.historyFiles, codexHomes, codexImported: found.codexImported};
+  const historyFiles = [...found.historyFiles];
+  // The rescue archive's copy of history.jsonl can hold prompts the live file has since lost.
+  const archived = path.join(paths.potsherdDir(o.potsherdDir), 'archive', 'claude', 'history.jsonl');
+  if (process.env['SLOPIE_AUDIT_ARCHIVE'] !== '0' && fs.existsSync(archived) && !historyFiles.includes(archived)) historyFiles.push(archived);
+  return {sources: out, historyFiles, codexHomes, codexImported: found.codexImported};
 }
 
 /** Exact copies (same size, same head and tail bytes) are parsed once. */
@@ -327,7 +334,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
 
   // ---- 2. parse what changed (exact copies once)
   const result: SyncResult = {recordsDir: dir, sources: sources.length, parsed: 0, errors: [], sessions: 0, byHarness: {}, subagents: 0, promptOnly: 0, kept: 0,
-    written: 0, removed: 0, droppedImports: 0, excludedByPolicy: 0, recordBytes: 0, indexBytes: 0, seconds: 0, phases};
+    written: 0, removed: 0, droppedImports: 0, excludedByPolicy: 0, recordBytes: 0, indexBytes: 0, seconds: 0, phases, maxRssMb: 0};
   const todo: Src[] = [];
   for (const s of sources) {
     const p = prev.sources[s.file];
@@ -454,12 +461,14 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     });
   }
   for (const [sid, rows0] of hist) {
+    // One turn per prompt: the same prompt (time, text, project) in two history files counts once.
+    const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+    const sorted = [...rows0].sort((a, b) => a.at - b.at || cmp(a.display, b.display) || cmp(String(a.project), String(b.project)) || cmp(a.ref, b.ref));
     const seen = new Set<string>();
-    const rows = rows0.filter(r => { const k = JSON.stringify([r.at, r.display, r.project, r.ref]); if (seen.has(k)) return false; seen.add(k); return true; })
-      .sort((a, b) => a.at - b.at || (a.display < b.display ? -1 : a.display > b.display ? 1 : 0) || String(a.project).localeCompare(String(b.project)) || (a.ref < b.ref ? -1 : 1));
+    const rows = sorted.filter(r => { const k = JSON.stringify([r.at, r.display, r.project]); if (seen.has(k)) return false; seen.add(k); return true; });
     const turns = rows.map(r => ({ts: isoTs(r.at), text: r.display, ref: r.ref}));
     sessions.push({key: `claude:${sid}`, harness: 'claude', id: sid, parent: null, parentKind: null, nTurns: turns.length, size: 0, start: turns[0]!.ts, end: turns[turns.length - 1]!.ts,
-      project: rows[0]!.project, best: null, paths: [], archiveOnly: false, history: turns, sources: [...new Set(rows.map(r => r.ref.slice(0, r.ref.lastIndexOf(':'))))].sort()});
+      project: rows[0]!.project, best: null, paths: [], archiveOnly: false, history: turns, sources: [...new Set(rows0.map(r => r.ref.slice(0, r.ref.lastIndexOf(':'))))].sort()});
   }
   // Opt-outs.
   const keep = (h: string, id: string, parent: string | null, project: string | null) => !policy.ignored(project) && !isForgotten(policy, h, id, parent);
@@ -511,7 +520,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     }
     if (s.history) {
       const rec: RecSession = {harness: 'claude', id: s.id, project: s.project, title: '(prompt history only; transcript not kept)', start: s.start, end: s.end, parent: null, parentKind: null,
-        turns: s.history.map(t => recTurn({role: 'USER', ts: t.ts, text: t.text, textLen: t.text.length, ref: t.ref}))};
+        turns: s.history.map(t => recTurn({role: 'USER', ts: t.ts, text: t.text, textLen: cpLen(t.text), ref: t.ref}))};
       writeOne(s, rec, sig);
       continue;
     }
@@ -573,5 +582,6 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   for (const [, s] of rows) { try { result.recordBytes += fs.statSync(path.join(dir, s.rel)).size; } catch { /* raced */ } }
   if (index) result.indexBytes = index.bytes();
   result.seconds = (Date.now() - t0) / 1000;
+  result.maxRssMb = Math.round(process.resourceUsage().maxRSS / 1024);
   return result;
 }
