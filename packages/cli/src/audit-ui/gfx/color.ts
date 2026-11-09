@@ -1,6 +1,6 @@
 /**
  * The slopie palette and colour maths. Colours are 0xRRGGBB integers; -1 means "terminal default".
- * Near-monochrome: four greys, two chart inks and one indigo accent used sparingly (see
+ * Four greys, two chart inks and one indigo accent with its tints (see
  * docs/design/tui-redesign.md). Every colour in the audit UI is one of these tokens.
  */
 export type Rgb = number;
@@ -14,18 +14,24 @@ export const C = {
   /** Primary text: headlines, values, display type. */
   text: hx('f7f8f8'),
   /** Secondary: supporting copy. */
-  text2: hx('8a8f98'),
+  text2: hx('b4b8c1'),
   /** Tertiary: labels, axes, hints. */
-  text3: hx('5d6168'),
+  text3: hx('7d828c'),
   /** Hairlines and empty tracks. */
-  rule: hx('1f2125'),
+  rule: hx('2e3138'),
   /** Chart ink for ordinary marks, and a softer one for estimates. */
-  bar: hx('3e424a'),
-  barSoft: hx('25282d'),
+  bar: hx('565b66'),
+  barSoft: hx('30333a'),
   /** The one accent: the single point a screen is about. */
   accent: hx('7c7cff'),
   /** Placeholder ink (the locked title). */
   ghost: hx('16181b'),
+  /** Accent tints: hero numbers and labels on dark (hi), chart fills and tracks (mid, lo). */
+  accentHi: hx('a5a5ff'),
+  accentMid: hx('5b5bd6'),
+  accentLo: hx('34347a'),
+  /** Footer key hints and track backgrounds only. */
+  faint: hx('4a4e57'),
 } as const;
 
 const r = (c: Rgb) => (c >> 16) & 255;
@@ -45,8 +51,8 @@ export function mix(a: Rgb, bColor: Rgb, t: number): Rgb {
 /** Fade a colour in from the card background. */
 export const fade = (color: Rgb, alpha: number): Rgb => (alpha >= 1 ? color : mix(C.bg, color, Math.max(0, alpha)));
 
-const HEAT: readonly Rgb[] = [hx('17191c'), C.bar, C.text2, C.text];
-/** Single-hue ramp for heatmaps (near-black → white), t in 0..1. */
+const HEAT: readonly Rgb[] = [hx('1a1b22'), C.accentLo, C.accentMid, C.accent, C.accentHi];
+/** Single-hue ramp for heatmaps (near-black → indigo → lilac white), t in 0..1. */
 export function heat(t: number): Rgb {
   const k = Math.max(0, Math.min(1, t)) * (HEAT.length - 1);
   const i = Math.min(HEAT.length - 2, Math.floor(k));
@@ -57,8 +63,8 @@ export function heat(t: number): Rgb {
 
 /** Hand-tuned: the greys stay on the neutral grey ramp, the accent keeps its indigo. */
 const TUNED_256 = new Map<Rgb, number>([
-  [C.bg, 232], [C.text, 255], [C.text2, 245], [C.text3, 241], [C.rule, 234], [C.bar, 238], [C.barSoft, 235],
-  [C.accent, 105], [C.ghost, 233],
+  [C.bg, 232], [C.text, 255], [C.text2, 250], [C.text3, 244], [C.rule, 236], [C.bar, 240], [C.barSoft, 236],
+  [C.accent, 105], [C.ghost, 233], [C.accentHi, 147], [C.accentMid, 62], [C.accentLo, 60], [C.faint, 239],
 ]);
 const CUBE = [0, 95, 135, 175, 215, 255];
 

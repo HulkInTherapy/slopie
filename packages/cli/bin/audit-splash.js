@@ -17,7 +17,7 @@ const PLAIN_FLAGS = new Set(['--json', '--plain', '--export', '--legacy', '--swe
 
 /** The audit palette (mirrors C in audit-ui/gfx/color.ts), with its tuned 256-colour indices. */
 export const SPLASH_PALETTE = {
-  bg: ['#08090a', 232], text: ['#f7f8f8', 255], text2: ['#8a8f98', 245], text3: ['#5d6168', 241], rule: ['#1f2125', 234], accent: ['#7c7cff', 105],
+  bg: ['#08090a', 232], text: ['#f7f8f8', 255], text2: ['#b4b8c1', 250], text3: ['#7d828c', 244], rule: ['#2e3138', 236], accent: ['#7c7cff', 105],
 };
 export const PRIVACY_LINE = 'all local · nothing leaves this machine';
 export const FIRST_CAPTION = 'finding your agents';

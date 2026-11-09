@@ -9,6 +9,7 @@ import { wrapSpans, type Span } from '../gfx/draw.js';
 import { easeOutCubic, seg } from '../gfx/motion.js';
 import type { Scene } from '../cards/scene.js';
 import { fadeIn, TK, type Tokens } from './tokens.js';
+import { displaySupported, displayWidth, drawDisplay } from './display.js';
 
 export interface K {
   s: Scene;
@@ -64,27 +65,56 @@ export function vrule(k: K, x: number, y: number, h: number, a = 1): void {
 }
 
 /** Section label: small, uppercase, tertiary ("THE BILL"). */
-export function label(k: K, x: number, y: number, text: string, a = 1, maxW = Infinity): number {
-  return txt(k, x, y, text.toUpperCase().replace(/…$/, ''), k.tk.text3, { a }, maxW);
+export function label(k: K, x: number, y: number, text: string, a = 1, maxW = Infinity, color: Rgb = k.tk.text3): number {
+  return txt(k, x, y, text.toUpperCase().replace(/…$/, ''), color, { a }, maxW);
+}
+
+/** The eyebrow over every card ("THE BILL"): uppercase, in the light accent. */
+export function kicker(k: K, x: number, y: number, text: string, a = 1, maxW = Infinity, color: Rgb = k.tk.accentHi): number {
+  return txt(k, x, y, text.toUpperCase().replace(/…$/, ''), color, { a, bold: true }, maxW);
+}
+
+/** A label/value pair: dim small-caps label above, the value bold below (accent when `hot`). Returns rows used. */
+export function stat(k: K, x: number, y: number, name: string, value: string, o: { hot?: boolean; a?: number; maxW?: number; sub?: string } = {}): number {
+  const a = o.a ?? 1;
+  label(k, x, y, name, a, o.maxW);
+  txt(k, x, y + 1, value, o.hot ? k.tk.accentHi : k.tk.text, { bold: true, a }, o.maxW);
+  if (o.sub) { txt(k, x, y + 2, o.sub, k.tk.text2, { a }, o.maxW); return 3; }
+  return 2;
 }
 
 const NUMBERISH = /^[(\[]?[~<>≈]?[$£€#×]?\d[\d,.]*(?:[%×xKMBkh]|st|nd|rd|th|am|pm)?[)\].,!:;?]*$|^×\d+[.,]?$/i;
 
 /** Supporting copy: secondary tone, numbers lifted to primary (no colour, no weight). */
 export function supportSpans(k: K, text: string, base: Rgb = k.tk.text2): Span[] {
-  return text.split(/(\s+)/).filter(Boolean).map(word => ({ text: word, style: { fg: NUMBERISH.test(word) ? k.tk.text : base, bg: k.tk.bg } }));
+  return text.split(/(\s+)/).filter(Boolean).map(word => ({ text: word, style: { fg: NUMBERISH.test(word) ? k.tk.accentHi : base, bg: k.tk.bg, bold: NUMBERISH.test(word) } }));
+}
+
+/** At most ~9 words: a long statement is cut back to its first clause; two short sentences (≤ 12 words) stay. */
+export function shortHead(head: string): string {
+  const n = (t: string) => t.split(/\s+/).length;
+  // "X: 266 subagents launched." keeps X; a short tail ("The one that got away: paper-boats.") stays.
+  const m = head.match(/^(.*?)[:;—]\s(.*)$/);
+  if (m && n(m[1]!.trim()) >= 3 && n(m[2]!.trim()) > 2) return m[1]!.trim().replace(/[,]$/, '') + '.';
+  if (n(head) <= 9) return head;
+  if (n(head) <= 12) return head;
+  const first = head.match(/^(.*?[.!?])(?=\s)/)?.[1]?.trim();
+  return first && n(first) >= 2 ? first : head;
 }
 
 /**
- * The two-tone headline: the statement in bold primary, the support continuing in secondary.
- * Returns the rows used (never more than `maxLines`; the support is dropped before anything is cut).
+ * The headline: ONE statement in bold primary (its figures in the light accent), a blank row,
+ * then at most one line of support in secondary: its first sentence, only if it fits one line of
+ * ~90 columns. Returns the rows used.
  */
 export function headline(k: K, x: number, y: number, w: number, head: string, support: string, maxLines = 3, a = 1): number {
-  const headSpans: Span[] = head.split(/(\s+)/).filter(Boolean).map(t => ({ text: t, style: { fg: k.tk.text, bg: k.tk.bg, bold: true } }));
-  const both = support ? [...headSpans, { text: ' ', style: { fg: k.tk.text2, bg: k.tk.bg } }, ...supportSpans(k, support)] : headSpans;
-  // The support is dropped before the statement; the statement itself is never cut.
-  let lines = wrapSpans(both, w);
-  if (lines.length > maxLines) lines = wrapSpans(headSpans, w);
+  const headSpans: Span[] = shortHead(head).split(/(\s+)/).filter(Boolean).map(t => ({ text: t, style: { fg: NUMBERISH.test(t) ? k.tk.accentHi : k.tk.text, bg: k.tk.bg, bold: true } }));
+  const lines = wrapSpans(headSpans, w);
+  if (support && maxLines - lines.length >= 2) {
+    const first = (support.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? support).trim();
+    const sl = wrapSpans(supportSpans(k, first), Math.min(w, 90));
+    if (sl.length === 1) lines.push([], sl[0]!);
+  }
   lines.forEach((line, i) => {
     let cx = x;
     for (const sp of line) cx += txt(k, cx, y + i, sp.text, sp.style.fg!, { bold: sp.style.bold, italic: sp.style.italic, a });
@@ -103,7 +133,7 @@ export function header(k: K, right?: string): number {
   // The rule under the header doubles as the story's progress: done part one tone up.
   const done = s.share || right !== undefined ? 0 : Math.round(iw * ((s.index + (s.caps.motion ? seg(s.t, 0, 500, easeOutCubic) : 1)) / s.total));
   if (s.caps.motion && s.t < 500) k.busy = true;
-  for (let i = 0; i < iw; i++) k.c.put(mx + i, y + 1, k.uni ? '─' : '-', i < done ? tk.text3 : tk.rule, tk.bg, 0);
+  for (let i = 0; i < iw; i++) k.c.put(mx + i, y + 1, k.uni ? '─' : '-', i < done ? tk.accent : tk.rule, tk.bg, 0);
   return y + 2;
 }
 
@@ -123,10 +153,40 @@ export function footer(k: K, opts: { keys?: [string, string][]; right?: [string,
     const need = textWidth(key) + (word ? 1 + textWidth(word) : 0);
     if (x + need > mx + iw - rw - 3) break;
     x += txt(k, x, y, key, tk.text2);
-    if (word) x += 1 + txt(k, x + 1, y, word, tk.text3);
+    if (word) x += 1 + txt(k, x + 1, y, word, tk.faint);
     x += 3;
   }
   return y;
 }
 
 export { textWidth };
+
+export interface Fact { label: string; value: string; hot?: boolean }
+
+/** A bottom row of label/value tiles spread across `w` (label text3 above, value bold). Returns rows used. */
+export function facts(k: K, x: number, y: number, w: number, items: readonly Fact[], a = 1): number {
+  const list = items.filter(f => f.value);
+  if (!list.length) return 0;
+  const colW = Math.floor(w / list.length);
+  list.forEach((f, i) => stat(k, x + i * colW, y, f.label, f.value, { hot: f.hot, a, maxW: colW - 3 }));
+  return 2;
+}
+
+/** A secondary number in the thin stroke display face (3 rows) when it can be set, else bold text. */
+export function strokeNum(k: K, x: number, y: number, text: string, color: Rgb, a = 1, maxW = Infinity): { w: number; h: number } {
+  const o = { face: 'heavy' as const };
+  if (k.uni && displaySupported(text) && displayWidth(text, o) <= maxW) {
+    return { w: drawDisplay(k.c, x, y, text, fadeIn(k.tk, color, a), k.tk.bg, { ...o, currency: fadeIn(k.tk, k.tk.accentHi, a) }), h: 3 };
+  }
+  return { w: txt(k, x, y, text, color, { bold: true, a }, maxW), h: 1 };
+}
+
+/** Hero display scale: twice the size on big terminals. */
+export const heroScale = (k: K) => (k.s.big ? 2 : 1);
+
+/** A small filled chip (" EPIC "): bold text on a solid fill. Returns its width. */
+export function chip(k: K, x: number, y: number, text: string, bg: Rgb, fg: Rgb = k.tk.bg, a = 1): number {
+  if (a <= 0.02) return textWidth(text) + 2;
+  if (k.s.caps.color === 'none') return txt(k, x, y, `[${text}]`, k.tk.text, { bold: true, a });
+  return k.c.text(x, y, ` ${text} `, { fg: fadeIn(k.tk, fg, a), bg: fadeIn(k.tk, bg, a), bold: true });
+}

@@ -61,7 +61,11 @@ export interface DisplayOptions {
   tall?: boolean;
   /** Colour of the `$` and `×` marks (secondary tone). */
   currency?: Rgb;
+  /** Pixel scale of the solid face (2 on big terminals for the hero). */
+  scale?: number;
 }
+
+const sc = (o: { face?: DisplayFace; scale?: number }) => (o.face === 'solid' ? Math.max(1, o.scale ?? 1) : 1);
 
 type Mark = '$' | '×';
 interface Laid { grids: (Grid | Mark)[] }
@@ -87,15 +91,15 @@ export function displayWidth(text: string, o: DisplayOptions): number {
   const { grids } = layout(text, o);
   let w = 0;
   grids.forEach((g, i) => {
-    if (i) w += typeof g === 'string' || typeof grids[i - 1] === 'string' ? 1 : gapOf(o.face);
-    w += typeof g === 'string' ? 1 : colsOf(g, o.face);
+    if (i) w += typeof g === 'string' || typeof grids[i - 1] === 'string' ? 1 : gapOf(o.face) * sc(o);
+    w += typeof g === 'string' ? 1 : colsOf(g, o.face) * sc(o);
   });
   return w;
 }
 
 /** Height in cell rows. */
-export function displayHeight(o: { tall?: boolean; face?: DisplayFace }): number {
-  return o.tall ? 5 : 3;
+export function displayHeight(o: { tall?: boolean; face?: DisplayFace; scale?: number }): number {
+  return (o.tall ? 5 : 3) * sc(o);
 }
 
 /** Draw `text` with its top-left at (x, y) in one colour on background `bg`. Returns the width. */
@@ -103,20 +107,20 @@ export function drawDisplay(c: Canvas, x: number, y: number, text: string, fg: R
   const { grids } = layout(text, o);
   let cx = x;
   grids.forEach((g, i) => {
-    if (i) cx += typeof g === 'string' || typeof grids[i - 1] === 'string' ? 1 : gapOf(o.face);
+    if (i) cx += typeof g === 'string' || typeof grids[i - 1] === 'string' ? 1 : gapOf(o.face) * sc(o);
     if (typeof g === 'string') {
       c.put(cx, g === '$' ? y : y + displayHeight(o) - 1, g, o.currency ?? fg, bg, 0);
       cx += 1;
       return;
     }
-    if (o.face === 'solid') drawSolid(c, cx, y, g, fg, bg);
+    if (o.face === 'solid') drawSolid(c, cx, y, g, fg, bg, sc(o));
     else {
       g.forEach((row, ry) => row.forEach((a, rx) => {
         const ch = HEAVY.get(key(a));
         if (ch) c.put(cx + rx, y + ry, ch, fg, bg, 0);
       }));
     }
-    cx += colsOf(g, o.face);
+    cx += colsOf(g, o.face) * sc(o);
   });
   return cx - x;
 }
@@ -126,14 +130,19 @@ export function drawDisplay(c: Canvas, x: number, y: number, text: string, fg: R
  * pixel at its top-left, its right arm in the second column, its down arm below. Pixels are
  * folded into ▀ ▄ █ cells in the one ink colour.
  */
-function drawSolid(c: Canvas, x: number, y: number, g: Grid, fg: Rgb, bg: Rgb): void {
+function drawSolid(c: Canvas, x: number, y: number, g: Grid, fg: Rgb, bg: Rgb, k = 1): void {
   // 3-row glyphs: 2 px per stroke row → 5 px (3 cell rows). Tall (5-row) glyphs: 2 px → 9 px (5 rows).
   const ky = 2;
-  const W = g[0]!.length * 2 - 1;
+  const W = (g[0]!.length * 2 - 1) * k;
   // One spare pixel row at the bottom carries descenders (the comma).
-  const H = g.length * ky;
+  const H = g.length * ky * k;
   const on = new Set<string>();
-  const set = (px: number, py: number) => { if (px >= 0 && px < W && py >= 0 && py < H) on.add(`${px},${py}`); };
+  const set = (px: number, py: number) => {
+    for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) {
+      const X = px * k + i, Y = py * k + j;
+      if (X >= 0 && X < W && Y >= 0 && Y < H) on.add(`${X},${Y}`);
+    }
+  };
   g.forEach((row, ry) => row.forEach((a, rx) => {
     if (!a.some(Boolean)) return;
     const px = rx * 2, py = ry * ky;
@@ -152,6 +161,11 @@ function drawSolid(c: Canvas, x: number, y: number, g: Grid, fg: Rgb, bg: Rgb): 
 /** The face's setting of `text` if it fits `maxW`, else the narrower heavy stroke face, else null. */
 export function fitDisplay(text: string, maxW: number, base: DisplayOptions): DisplayOptions | null {
   if (!displaySupported(text)) return null;
+  if ((base.scale ?? 1) > 1 && base.face === 'solid') {
+    const big = { ...base };
+    if (displayWidth(text, big) <= maxW) return big;
+    base = { ...base, scale: 1 };
+  }
   for (const face of base.face === 'solid' ? (['solid', 'heavy'] as const) : (['heavy'] as const)) {
     const o = { ...base, face };
     if (displayWidth(text, o) <= maxW) return o;

@@ -68,13 +68,13 @@ export interface CoverData {
 export type DeckCard =
   | Base<'cover', CoverData>
   | Base<'cold_open', { quote: string; stamp: string; caption: string }>
-  | Base<'scale', { counters: Counter[] }>
+  | Base<'scale', { counters: Counter[]; facts: { label: string; value: string }[] }>
   | Base<'bill', { total: number; lines: BillLine[]; more: number; byAgent: { name: string; share: number }[]; priciest: { cost: number; day: string; model: string | null } | null; spend: SpendView | null }>
   | Base<'clock', { grid: number[][]; peakHour: number | null; peakWeekday: number | null; lateNightPct: number | null; callouts: { label: string; value: string; sub: string }[] }>
   | Base<'guess', { options: Option[]; answer: number; basis: string; after: string | null }>
   | Base<'faceoff', { best: Gauge | null; worst: Gauge | null; compare: { label: string; observed: number; expected: number | null; highlight: boolean }[]; compareUnit: string; eras: { month: string; label: string }[] }>
-  | Base<'mood', { months: { month: string; pct: number }[]; tip: number }>
-  | Base<'fuse', { median: number; sessions: number; of: number; firstPrompt: number; hist: number[] }>
+  | Base<'mood', { months: { month: string; pct: number }[]; tip: number; facts: { label: string; value: string }[] }>
+  | Base<'fuse', { median: number; sessions: number; of: number; firstPrompt: number; hist: number[]; backMin: number | null }>
   | Base<'talk', { tiles: Tile[] }>
   | Base<'manners', { kind: number; rude: number; kindLabel: string; rudeLabel: string; prompts: number | null }>
   | Base<'projects', { rows: ProjectRow[]; gotAway: { name: string; prompts: number; days: number; idle: number; lastDay: string; lastWords: string | null } | null }>
@@ -198,17 +198,20 @@ function scale(story: AuditStory | null, board: BoardData): DeckCard | null {
   if (counters.length < 4 && streak) counters.push({ label: 'DAY STREAK', value: streak, style: 'days' });
   const span = story?.totals.spanDays;
   const words = story?.totals.words;
-  const support = [
-    span ? `${count(span)} days from your first prompt to your latest` : board.range.from ? `since ${shortDate(board.range.from, true)}` : null,
-    words ? `${compact(words)} words typed` : null,
-    streak && counters.every(c => c.label !== 'DAY STREAK') ? `longest streak ${streak} days` : null,
-  ].filter(Boolean).join(' · ');
   return {
     kind: 'scale', id: 'scale', kicker: 'THE SCALE OF IT', expression: 'idle',
     headline: `${count(prompts)} things you said to a machine.`,
-    support,
+    // The detail moves to a facts row under the counters.
+    support: '',
     notes: ['Prompts are messages you typed yourself. Tool output, pasted context and slash commands are not counted.', 'Chats are top-level conversations; subagents fold into the chat that started them.', 'Tokens include input, output, cache and reasoning tokens where the agent recorded them.'],
-    data: { counters: counters.slice(0, 4) },
+    data: {
+      counters: counters.slice(0, 4),
+      facts: [
+        streak && counters.every(c => c.label !== 'DAY STREAK') ? { label: 'longest streak', value: `${streak} days` } : null,
+        words ? { label: 'words typed', value: compact(words) } : null,
+        span ? { label: 'first to latest', value: `${count(span)} days` } : null,
+      ].filter((x): x is { label: string; value: string } => !!x),
+    },
   };
 }
 
@@ -222,12 +225,12 @@ function bill(story: AuditStory | null, board: BoardData): DeckCard | null {
   const card = cardOf(story, 'most_expensive_sentence');
   const sv = spendOf(story);
   const headline = sv
-    ? `${money(sv.measuredUsd)} of agent work, at API list prices.`
+    ? `${money(sv.measuredUsd)} of agent work.`
     : pricey
       ? `Your most expensive sentence cost ${money(pricey.costUsd)}.`
       : `Your agents would have cost ${money(total)} at API prices.`;
   const support = sv
-    ? [sv.perActiveDayUsd > 0 ? `${money(sv.perActiveDayUsd)} per active day` : null, sv.priciestDay ? `worst day ${shortDate(sv.priciestDay.day)}: ${money(sv.priciestDay.usd)}` : null, pricey ? `and that sentence? ${money(pricey.costUsd)}` : null].filter(Boolean).join(' · ') + '.'
+    ? [sv.perActiveDayUsd > 0 ? `${money(sv.perActiveDayUsd)} per active day` : null, sv.priciestDay ? `worst day ${shortDate(sv.priciestDay.day)}` : null].filter(Boolean).join(' · ')
     : pricey
     ? `${shortDate(pricey.day)}${pricey.model ? `, ${modelName(pricey.model)}` : ''}. That's ${Math.round(pricey.timesMedian)}× your median prompt and ${Math.round(pricey.sharePct)}% of everything.`
     : card ? mask(card.support) : 'What your recorded tokens would cost at public list prices. Not a bill.';
@@ -264,7 +267,7 @@ function clock(story: AuditStory | null): DeckCard | null {
   const peak = rhythm.peakHour !== null && rhythm.peakWeekday !== null ? `${WEEKDAYS[rhythm.peakWeekday]} around ${hourLabel(rhythm.peakHour).toLowerCase().replace(' ', '')}` : null;
   const peakLine = rhythm.peakHour !== null && rhythm.peakWeekday !== null ? `${WEEKDAYS[rhythm.peakWeekday]}, ${hourLabel(rhythm.peakHour)}. That's you.` : null;
   const headline = peakLine ?? copy?.headline ?? (story?.peakTime ? `You're a ${mask(story.peakTime.label)} person.` : peak ? `Peak you: ${peak}.` : 'Your week, hour by hour.');
-  const support = (peakLine && copy ? copy.headline + ' ' + copy.support : null) ?? copy?.support ?? story?.peakTime?.narrative ?? (rhythm.lateNightDaysPct !== null ? `${Math.round(rhythm.lateNightDaysPct)}% of your days end after 1am.` : '');
+  const support = (peakLine ? '' : null) ?? copy?.support ?? story?.peakTime?.narrative ?? (rhythm.lateNightDaysPct !== null ? `${Math.round(rhythm.lateNightDaysPct)}% of your days end after 1am.` : '');
   const busiest = [...(spendOf(story)?.daily ?? [])].sort((a, b) => b.prompts - a.prompts)[0];
   return {
     kind: 'clock', id: owl ? 'night_owl' : 'clock', kicker: 'YOUR CLOCK', expression: (rhythm.lateNightDaysPct ?? 0) >= 25 ? 'sleepy' : 'idle',
@@ -386,11 +389,9 @@ function faceoff(story: AuditStory | null): DeckCard | null {
   const headline = beat?.line ?? verdict;
   const support = beat ? verdict : worstCard ? mask(worstCard.support) : bestCard ? mask(bestCard.support) : '';
   const honey = cardOf(story, 'honeymoon');
-  const callouts = [
-    beat && beat.eras.length ? `eras: ${erasLine(beat.eras)}` : null,
-    beat?.now ?? null,
-    honey ? mask(honey.headline) : null,
-  ].filter((x): x is string => !!x);
+  // The eras are drawn as a strip; only the "last 30 days" line stays as text.
+  const callouts = [beat?.now ?? null].filter((x): x is string => !!x);
+  void honey;
   return {
     kind: 'faceoff', id: 'faceoff', kicker: 'THE MODEL LINEUP', expression: 'side-eye', headline, support, callouts,
     notes: ['Rates per 100 prompts sent to each model, compared with what the other models got from you in the same months (month-matched), so a model is not blamed for the month you had.', 'Only models with at least 40 prompts seen in transcripts are ranked.'],
@@ -419,6 +420,8 @@ function compareOf(card: StoryCard | null): { compare: { label: string; observed
   };
 }
 
+const pctText = (v: number) => `${v < 10 ? v.toFixed(1).replace(/\.0$/, '') : Math.round(v)}%`;
+
 function mood(story: AuditStory | null): DeckCard | null {
   const card = cardOf(story, 'mood_drift');
   if (!card || !story) return null;
@@ -440,9 +443,18 @@ function mood(story: AuditStory | null): DeckCard | null {
   ].filter((x): x is string => !!x);
   return {
     kind: 'mood', id: card.id, kicker: mellow ? 'YOU MELLOWED OUT' : amends ? 'MAKING AMENDS' : 'THE TURN', expression: mellow || amends ? 'proud' : 'smirk',
-    headline: mask(card.headline), support: mask(card.support), callouts,
+    headline: mask(card.headline),
+    support: num(card, 'earlyPct') !== null && num(card, 'latePct') !== null ? `Swearing: ${pctText(num(card, 'earlyPct')!)} → ${pctText(num(card, 'latePct')!)} of prompts.` : mask(card.support),
+    callouts,
     notes: ['Share of each month’s prompts that contain a swear word or an insult (months with 40+ prompts).', 'The marked month is the first one that reached half of your recent rate.', 'Pasted text is ignored: only what you typed counts.'],
-    data: { months, tip },
+    data: {
+      months, tip,
+      facts: manners ? [
+        num(manners, 'ratio') !== null ? { label: 'f-bombs per thank-you', value: `${count(num(manners, 'ratio')!)}` } : null,
+        num(manners, 'pleases') !== null ? { label: 'pleases', value: count(num(manners, 'pleases')!) } : null,
+        num(manners, 'thanks') !== null ? { label: 'thank-yous', value: count(num(manners, 'thanks')!) } : null,
+      ].filter((x): x is { label: string; value: string } => !!x) : [],
+    },
   };
 }
 
@@ -451,11 +463,12 @@ function fuse(story: AuditStory | null): DeckCard | null {
   const card = cardOf(story, 'fuse_length');
   if (!f || !card) return null;
   return {
-    kind: 'fuse', id: card.id, kicker: 'HOW YOU SNAP', expression: 'smirk', headline: mask(card.headline), support: mask(card.support),
+    kind: 'fuse', id: card.id, kicker: 'HOW YOU SNAP', expression: 'smirk', headline: mask(card.headline), support: '',
     callouts: [cardOf(story, 'esc_key'), cardOf(story, 'rage_day'), cardOf(story, 'walk_away')].filter((x): x is StoryCard => !!x).map(x => mask(x.headline) + (x.support && x.id !== 'walk_away' ? ' ' + mask(x.support) : '')),
     notes: ['Sessions with at least 5 prompts and at least one swear. The fuse is the median prompt number of the first swear.'],
     data: {
       median: f.medianTurn, sessions: f.sessions, of: f.ofSessions, firstPrompt: f.firstPromptSwears,
+      backMin: Number(/(\d+) minutes?/.exec(cardOf(story, 'walk_away')?.headline ?? '')?.[1] ?? NaN) || null,
       hist: (card.chart.series[0]?.points ?? []).filter(p => Number(p.x) >= 1).sort((a, b) => Number(a.x) - Number(b.x)).map(p => p.y),
     },
   };
@@ -557,7 +570,7 @@ function thenNow(story: AuditStory | null): DeckCard | null {
   const card = cardOf(story, 'first_vs_latest');
   if (!first || !latest || !card) return null;
   return {
-    kind: 'then_now', id: card.id, kicker: 'THEN AND NOW', expression: 'proud', headline: mask(card.headline), support: mask(card.support),
+    kind: 'then_now', id: card.id, kicker: 'THEN AND NOW', expression: 'proud', headline: mask(card.headline), support: '',
     notes: ['Your first and latest prompts on this machine. A quote is shown only when it passes the privacy filter; otherwise just the length.'],
     data: {
       then: { day: first.day, words: first.words, quote: first.shellCommand ? null : safeQuote(first.quote), shell: first.shellCommand },
@@ -617,7 +630,7 @@ function awards(story: AuditStory | null): DeckCard | null {
   });
   return {
     kind: 'awards', id: 'awards', kicker: 'THE AWARDS', expression: 'proud',
-    headline: `${trophies.length} awards nobody asked for.`, support: 'Every one is real, ranked by how unusual it is for you. Receipts on the shelf.',
+    headline: `${trophies.length} awards nobody asked for.`, support: '',
     notes: ['Every award comes from a detector that fired on your history and carries its receipt; none are participation trophies.'],
     data: { trophies },
   };

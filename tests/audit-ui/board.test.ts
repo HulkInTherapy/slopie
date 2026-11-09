@@ -46,9 +46,9 @@ describe('final board (personality poster)', () => {
       expect(text).not.toMatch(/\w\.\.\.(?!\.)/); // no ASCII ellipsis either (dot leaders start after a space)
       expect(text).toContain('npx slopie audit');
       // The default poster keeps the price, the prompts/days box, the catchphrase and all six core facts.
-      expect(text).toContain('At API prices');
-      expect(text).toMatch(/\bPrompts\b/);
-      expect(text).toMatch(/\bDays\b/);
+      expect(text).toContain('AT API PRICES');
+      expect(text).toMatch(/\bPROMPTS\b/);
+      expect(text).toMatch(/\bDAYS\b/);
       expect(text).toContain('“real quick” ×212');
       for (const label of CORE_LABELS) expect(text, `${label} at ${w}×${h}`).toContain(label);
       expect(text).toContain('6 f-bombs per thank-you');
@@ -60,13 +60,13 @@ describe('final board (personality poster)', () => {
 
   it('the 120×40 poster: tier, sub-role, tagline, big price, stats, six facts with quiet diagrams, awards', () => {
     const text = boardText(storySnapshot(), 120, 40);
-    expect(lineWith(text, 'with a streak of The Spec Writer')).toMatch(/^\s+Epic {2}with a streak of The Spec Writer/);
+    expect(lineWith(text, 'with a streak of The Spec Writer')).toMatch(/^\s+EPIC {3}with a streak of The Spec Writer/);
     expect(text).toContain('your agent has seen you at your worst');
     // Each fact under its own small label, on one grid; no tiles, no boxes.
     for (const label of CORE_LABELS) expect(text).toContain(label);
     expect(text).not.toMatch(/[╭╮╰╯┌┐└┘]/);
     // Diagrams: the manners split, the arc sparkline, the 24h strip with its axis.
-    expect(text).toMatch(/22 ━+─* ?━*─* 131|22 ━[━─]+ 131/);
+    expect(text).toMatch(/22 [█▌]+ 131/);
     expect(text).toMatch(/Dec [▁▂▃▄▅▆▇█]{11,22} Oct/);
     expect(text).toContain('11 PM angriest');
     expect(text).toContain('9 AM calmest');
@@ -81,30 +81,31 @@ describe('final board (personality poster)', () => {
     expect(text).not.toContain('SOFT SPOT');
     expect(text).not.toContain('MOOD CLOCK');
     // The catchphrase has its own slot, so it is not also a fact.
-    expect(text).toContain('Catchphrase');
-    expect(text).not.toContain('CATCHPHRASE');
+    expect(text).toContain('CATCHPHRASE');
+    expect(text.split('CATCHPHRASE').length - 1).toBe(1); // the stat, never also a fact
     // The awards that repeat nothing on the poster, with their receipts.
     expect(text).toContain("Didn't Miss a Day");
     expect(text).toContain('23 days  ·  Aug 2–Aug 24');
     expect(text).toContain('Middle Management');
     expect(text).toContain('266 subagents');
     for (const repeat of ['Potty Mouth', 'The $412 Sentence', 'Iron Chair', 'Trademark Pending']) expect(text).not.toContain(repeat);
-    expect(text).toContain('slopie remembers. → slopie setup');
+    // The memory line is the first thing to go when the taller 1.9 poster needs the rows (kept on ≥ 132×44).
     // No decorative glyphs, no mascot.
     expect(text).not.toMatch(/[♥☠✿★☆✧✦✸◥◆▸■]/u);
   });
 
-  it('uses the accent on three marks only: the rarity tier, the angriest hour, the status dot', () => {
+  it('puts the accent on the rarity chip, the angriest hour and the status dot', () => {
     const deck = buildDeck(storySnapshot());
     const c = new Canvas(120, 40, C.bg);
     renderCard({ c, w: 120, h: 40, t: Infinity, tier: tierFor(120, 40)!, caps: { color: 'truecolor', motion: false, unicode: true }, blink: false, state: {}, index: deck.length - 1, total: deck.length }, deck.at(-1)!);
     const accented = new Set<number>();
     for (let i = 0; i < c.fg.length; i++) if (c.fg[i] === C.accent && c.ch[i] !== ' ') accented.add(Math.floor(i / 120));
     const words = [...accented].map(y => [...c.row(y)].filter((_, x) => c.fg[y * 120 + x] === C.accent).join('').trim());
-    expect(words).toHaveLength(3);
-    expect(words).toContain('Epic');
     expect(words).toContain('●');
-    expect(words.find(w => w !== 'Epic' && w !== '●')).toMatch(/^[▁▂▃▄▅▆▇█]$/);
+    expect(words.some(w => /^[▁▂▃▄▅▆▇█▌]+$/.test(w))).toBe(true);
+    // The rarity is a filled chip: the accent as its background.
+    const chipRow = [...Array(40).keys()].find(y => c.row(y).includes(' EPIC '))!;
+    expect(c.bg[chipRow * 120 + c.row(chipRow).indexOf('EPIC')]).toBe(C.accent);
   });
 
   it('keeps trophies from repeating a fact on the poster', () => {
@@ -123,7 +124,7 @@ describe('final board (personality poster)', () => {
         const text = boardText(snapshot, w, h);
         expect(text.split('\n').length).toBeLessThanOrEqual(h);
         expect(text).not.toContain('…');
-        expect(text, `${title} ${w}×${h}`).toMatch(new RegExp(`\\b${tier[0]!.toUpperCase()}${tier.slice(1)}\\b`));
+        expect(text, `${title} ${w}×${h}`).toMatch(new RegExp(`\\b${tier.toUpperCase()}\\b`));
         for (const label of CORE_LABELS) expect(text, `${title} ${w}×${h}`).toContain(label);
       }
     }
@@ -131,7 +132,7 @@ describe('final board (personality poster)', () => {
 
   it('hides any hero number the snapshot does not have (never a zero)', () => {
     const old = boardText(withoutV19(), 120, 40);
-    expect(old).toContain('At API prices'); // legacy single total still known
+    expect(old).toContain('AT API PRICES'); // legacy single total still known
     const snapshot = storySnapshot();
     const story = (snapshot.launch as unknown as { story: { totals: { activeDays: number } } }).story;
     story.totals.activeDays = 0;

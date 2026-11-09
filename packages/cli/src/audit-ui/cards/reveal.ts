@@ -9,7 +9,7 @@
 import { textWidth, wrapText, type Rect } from '../gfx/draw.js';
 import type { DeckCard } from '../story/deck.js';
 import { meter } from '../theme/charts.js';
-import { fade, label, rule, txt, txtRight, type K } from '../theme/kit.js';
+import { chip, fade, label, rule, strokeNum, txt, txtRight, type K } from '../theme/kit.js';
 import { drawGhost, drawTitle, planTitle } from '../theme/title.js';
 
 type Data = Extract<DeckCard, { kind: 'archetype' }>['data'];
@@ -53,16 +53,16 @@ export function archetypeBody(k: K, d: Data, r: Rect): void {
 
   const heights = (f: Fit) => {
     const plan = f.bigTitle ? planTitle(k, d.title, iw, f.titleLines) : { lines: [d.title], big: false, h: 1, w: textWidth(d.title), face: tk.face };
-    let h = plan.h + f.air + (d.tier ? 2 : 0);
+    let h = plan.h + 1 + f.air + (d.tier ? 2 : 0);
     if (f.tagline && tag.length <= 2 && tag.length) h += tag.length;
     if (f.profile && prof.length && prof.length <= 2) h += prof.length;
     h += f.air;
     if (d.deciding.length) h += 1 + f.air + d.deciding.reduce((a, m) => a + (own(m) ? 1 : 0) + f.step, 0) + (f.step === 1 ? 1 : 0);
-    if (f.code && d.code) h += 1 + f.air + 1 + (f.note ? 2 : 0);
+    if (f.code && d.code) h += 1 + f.air + 3;
     return { h, plan };
   };
   // Fit: the evidence always shows; the note, profile, code, tagline and air go first.
-  const fit: Fit = { titleLines: 2, bigTitle: true, tagline: true, profile: true, code: true, note: true, step: 2, air: 2 };
+  const fit: Fit = { titleLines: 2, bigTitle: true, tagline: true, profile: false, code: true, note: false, step: 2, air: 2 };
   const drops: ((f: Fit) => void)[] = [
     f => { f.titleLines = 1; }, f => { f.note = false; }, f => { f.step = 1; }, f => { f.air = 1; }, f => { f.profile = false; },
     f => { f.code = false; }, f => { f.tagline = false; }, f => { f.bigTitle = false; },
@@ -76,27 +76,31 @@ export function archetypeBody(k: K, d: Data, r: Rect): void {
   const ta = fade(k, T.title, 600);
   if (ta < 1) drawGhost(k, mx, y, plan, 1 - ta);
   drawTitle(k, mx, y, plan, tk.text, ta);
-  y += plan.h + fit.air;
+  // A 1-row accent underline that draws in under the title.
+  const ul = s.caps.motion ? Math.max(0, Math.min(1, (s.t - T.title - 300) / 500)) : 1;
+  const ulW = Math.round(Math.min(iw, plan.w) * ul);
+  for (let i = 0; i < ulW; i++) k.c.put(mx + i, y + plan.h, k.uni ? '▀' : '=', tk.accent, tk.bg, 0);
+  y += plan.h + 1 + fit.air;
 
   // Tier + sub-role, the runner-up on the right.
   const sa = fade(k, T.tier);
   if (d.tier) {
-    let x = mx + txt(k, mx, y, TIER[d.tier]!, tk.accent, { bold: true, a: sa });
-    if (d.subRole && x + 2 + textWidth(d.subRole) <= mx + iw) x += txt(k, x + 2, y, d.subRole, tk.text2, { a: sa }) + 2;
+    let x = mx + chip(k, mx, y, TIER[d.tier]!.toUpperCase(), tk.accent, tk.bg, sa);
+    if (d.subRole && x + 2 + textWidth(d.subRole) <= mx + iw) x += txt(k, x + 2, y, d.subRole, tk.text, { a: sa }) + 2;
     const [first, second] = d.runners;
     const named = !!first && !!d.subRole?.includes(first.title);
     const almost = named ? second?.title : first?.title;
     const lead = named ? 'Also close' : 'Runner-up';
     if (almost && x + 4 + textWidth(`${lead}  ${almost}`) <= mx + iw) {
-      const w = txtRight(k, mx + iw, y, almost, tk.text2, { a: sa });
-      txtRight(k, mx + iw - w - 2, y, lead, tk.text3, { a: sa });
+      const w = txtRight(k, mx + iw, y, almost, tk.text2, { bold: true, a: sa });
+      txtRight(k, mx + iw - w - 2, y, lead + ':', tk.text2, { a: sa });
     }
     y += 2;
   }
 
   // Tagline and profile: the two-tone pair, each whole or not at all.
   const ca = fade(k, T.copy);
-  if (fit.tagline && tag.length && tag.length <= 2) for (const line of tag) txt(k, mx, y++, line, tk.text, { italic: true, a: ca });
+  if (fit.tagline && tag.length && tag.length <= 2) for (const line of tag) txt(k, mx, y++, line, tk.accentHi, { italic: true, a: ca });
   if (fit.profile && prof.length && prof.length <= 2) for (const line of prof) txt(k, mx, y++, line, tk.text2, { a: ca });
   y += fit.air;
 
@@ -110,12 +114,12 @@ export function archetypeBody(k: K, d: Data, r: Rect): void {
       const start = T.evidence + i * 380;
       const la = fade(k, start - 120, 240);
       const alone = own(m);
-      txt(k, cx, y, m.display, tk.text, { a: la });
+      txt(k, cx, y, m.display, tk.text, { bold: i === 0, a: la });
       if (alone) y += 1;
       const bx = cx + (alone ? 0 : labelW);
       const bw = alone ? Math.max(8, Math.min(44, cw - wordW - 2)) : barW;
-      meter(k, bx, y, bw, m.band, i === 0 ? tk.text : tk.text2, start);
-      txt(k, bx + bw + 2, y, band(m.band), m.band >= 0.8 ? tk.text : tk.text2, { a: fade(k, start + 420) });
+      meter(k, bx, y, bw, m.band, tk.accent, start);
+      txt(k, bx + bw + 2, y, band(m.band), tk.accentHi, { bold: true, a: fade(k, start + 420) });
       y += fit.step;
     });
     if (fit.step === 1) y++;
@@ -125,10 +129,11 @@ export function archetypeBody(k: K, d: Data, r: Rect): void {
     y += fit.air;
     const a = fade(k, T.copy + 200);
     label(k, mx, y, 'your code', a);
-    let x = cx + txt(k, cx, y, d.code, tk.text, { bold: true, a });
+    const big = y + 3 <= bottom + 1 ? strokeNum(k, cx, y, d.code, tk.accentHi, a) : { w: txt(k, cx, y, d.code, tk.accentHi, { bold: true, a }), h: 1 };
+    let x = cx + big.w;
     const words = d.codeWords.join(k.uni ? ' · ' : ', ');
-    if (words && x + 3 + textWidth(words) <= mx + iw) x += txt(k, x + 3, y, words, tk.text2, { a }) + 3;
-    if (fit.note && d.tier && textWidth(NOTE[d.tier]!) <= cw) txt(k, cx, y + 2, NOTE[d.tier]!, tk.text3, { a });
+    if (words && x + 3 + textWidth(words) <= mx + iw) x += txt(k, x + 3, y + big.h - 1, words, tk.text2, { a }) + 3;
+    if (fit.note && d.tier && textWidth(NOTE[d.tier]!) <= cw) txt(k, cx, y + big.h + 1, NOTE[d.tier]!, tk.text3, { a });
   }
   if (s.caps.motion && s.t < T.settle) k.busy = true;
 }

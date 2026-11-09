@@ -42,6 +42,8 @@ export interface Scene {
   total: number;
   /** Rendering for the exported share card: no project names, no quotes. */
   share?: boolean;
+  /** A big terminal (≥ 170×50): the hero is set at twice the size inside the content box. */
+  big?: boolean;
   /** Something was (or may have been) sent off this machine during the run (Jev wording). */
   online?: boolean;
 }

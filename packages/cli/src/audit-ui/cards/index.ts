@@ -8,12 +8,27 @@ import { faceoffBody, guessBody } from './models.js';
 import { billBody, scaleBody } from './numbers.js';
 import { awardsBody, delegationBody, projectsBody } from './places.js';
 import { archetypeBody } from './reveal.js';
-import type { Scene } from './scene.js';
+import { tierFor, type Scene } from './scene.js';
+import { Canvas } from '../gfx/canvas.js';
+import { TK } from '../theme/tokens.js';
 import { erasBody, spendBody } from './spend.js';
 import { clockBody, fuseBody, moodBody } from './time.js';
 import { coldOpenBody, mannersBody, talkBody, thenNowBody } from './words.js';
 
+/** The content box: cards are laid out in at most 132×44 cells, centred on bigger terminals. */
+export const BOX_W = 132, BOX_H = 44;
+
 export function renderCard(s: Scene, card: DeckCard): boolean {
+  const bw = Math.min(s.w, BOX_W), bh = Math.min(s.h, BOX_H);
+  if (bw === s.w && bh === s.h) return drawCard(s, card);
+  const sub = new Canvas(bw, bh, s.c.base);
+  const busy = drawCard({ ...s, c: sub, w: bw, h: bh, tier: tierFor(bw, bh) ?? s.tier, big: s.w >= 170 && s.h >= 50 }, card);
+  s.c.fill(0, 0, s.w, s.h, ' ', { bg: TK.bg });
+  s.c.blit(sub, Math.floor((s.w - bw) / 2), Math.floor((s.h - bh) / 2), false);
+  return busy;
+}
+
+function drawCard(s: Scene, card: DeckCard): boolean {
   // The board is full-screen and draws its own chrome (it is also the share image).
   if (card.kind === 'board') return boardBody(s, card.data);
   const o: ChromeOptions = {};
