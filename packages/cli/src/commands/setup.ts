@@ -25,6 +25,8 @@ export interface SetupOptions extends GlobalOptions {
   dryRun?: boolean;
   status?: boolean;
   remove?: boolean;
+  /** Print the note setup installs (for any other harness), and nothing else. */
+  note?: boolean;
 }
 
 const BEGIN = '<!-- slopie:memory:begin -->';
@@ -142,6 +144,12 @@ function diff(before: string | null, after: string | null): string[] {
 
 export async function runSetup(o: SetupOptions): Promise<number> {
   const t = themeFrom(o);
+  if (o.note) {
+    // Evaluation seams (R6): the CLI line can be left out, and the R5 §7 sentences added.
+    const note = agentNote(paths.recordsDir(), {cli: process.env['SLOPIE_NOTE_CLI'] !== '0', guidance: process.env['SLOPIE_NOTE_GUIDANCE'] === '1', sidecar: process.env['SLOPIE_NOTE_SIDECAR'] === '1'});
+    if (o.json) printJson({note, records: paths.recordsDir()}); else process.stdout.write(note + '\n');
+    return 0;
+  }
   const clients = o.clients?.length ? o.clients : detected(o);
   if (o.status) {
     const rows = SETUP_CLIENTS.map(c => {

@@ -247,6 +247,7 @@ example (what slopie setup installs):
       .option('--dry-run', 'print every change, write nothing')
       .option('--status', 'what is installed where')
       .option('--remove', 'take it all out again')
+      .option('--note', 'print the note it installs (paste it into any other agent) and exit')
       .option('-y, --yes', 'do not ask'),
   );
   for (const id of SETUP_CLIENTS) setup.option(`--${id}`, `only ${id}`);
@@ -255,12 +256,13 @@ example:
   potsherd setup                                     # every agent found on this machine
   potsherd setup --claude --dry-run                  # show the diff, write nothing
   potsherd setup --status
+  potsherd setup --note                              # the note itself, for any other agent
   potsherd setup --remove`);
   setup.action(async (opts: Record<string, unknown>) => {
     const o = globals(program, setup, opts);
     const clients = SETUP_CLIENTS.filter((id) => opts[id]);
     await run(
-      () => runSetup({ ...o, clients, all: Boolean(opts['all']), dryRun: Boolean(opts['dryRun']), status: Boolean(opts['status']), remove: Boolean(opts['remove']) }),
+      () => runSetup({ ...o, clients, all: Boolean(opts['all']), dryRun: Boolean(opts['dryRun']), status: Boolean(opts['status']), remove: Boolean(opts['remove']), note: Boolean(opts['note']) }),
       o,
     );
   });

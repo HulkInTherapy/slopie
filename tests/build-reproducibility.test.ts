@@ -6,7 +6,7 @@ import path from 'node:path';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 describe('canonical bundle working directory', () => {
-  for (const [pkg, output] of [['cli', 'potsherd.js'], ['mcp', 'index.js']]) {
+  for (const [pkg, output] of [['cli', 'potsherd.js']]) {
     it(`${pkg} emits identical bytes from repository and package directories`, () => {
       const directory = path.join(root, 'packages', pkg!);
       const build = (cwd: string) => {

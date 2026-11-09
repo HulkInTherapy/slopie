@@ -5,7 +5,7 @@ import path from 'node:path';
 import {createAuditSession, publicAuditSnapshot} from '../../packages/core/src/analytics/index.js';
 import {classifyText, extractFile} from '../../packages/core/src/analytics/extract.js';
 import {PriceBook, usageCost} from '../../packages/core/src/analytics/pricing.js';
-import {sourceId} from '../../packages/core/src/memory/source-identity.js';
+import {sourceId} from '../../packages/core/src/sources/identity.js';
 import {openDatabase} from '../../packages/core/src/sqlite-driver.js';
 import type {AuditOverviewOptions} from '../../packages/core/src/analytics/contracts.js';
 

@@ -57,7 +57,9 @@ export class RecordIndex {
     const file = path.join(dir, INDEX_FILE);
     const db = openDatabase(file);
     try { fs.chmodSync(file, 0o600); } catch { /* best effort */ }
-    db.exec('pragma journal_mode=wal; pragma synchronous=normal;');
+    // A rollback journal, not WAL: readers (search, MCP, an agent sandbox) can then open the index on a
+    // read-only mount, where WAL would need to create its -shm file.
+    db.exec('pragma journal_mode=delete; pragma synchronous=normal;');
     db.exec(SCHEMA);
     db.exec('begin');
     return new RecordIndex(db, file);
@@ -108,7 +110,6 @@ export class RecordIndex {
     this.db.prepare(`insert or replace into meta values('built', ?)`).run(new Date().toISOString());
     this.db.exec('commit');
     try { this.db.exec(`insert into ctx(ctx) values('optimize')`); } catch { /* optional */ }
-    try { this.db.exec('pragma wal_checkpoint(truncate)'); } catch { /* optional */ }
     this.db.close();
   }
 

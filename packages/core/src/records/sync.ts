@@ -97,6 +97,8 @@ interface SessionState {
   parent: string | null;
   parentKind: string | null;
   project: string | null;
+  /** Turns in the written record. */
+  n?: number;
   /** History-only (prompt-only) record. */
   history?: boolean;
   /** Its sources are gone; the record is kept as written. */
@@ -503,7 +505,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     if (sideText) writeAtomic(side, sideText); else if (fs.existsSync(side)) fs.unlinkSync(side);
     const old = prev.sessions[s.key];
     if (old && old.rel !== rel) { try { fs.unlinkSync(path.join(dir, old.rel)); } catch { /* gone */ } try { fs.unlinkSync(path.join(dir, old.rel.slice(0, -4) + '.out.txt')); } catch { /* none */ } }
-    next.sessions[s.key] = {sig, rel, line: indexLine(rec, rel), start: rec.start ?? '', harness: rec.harness, id: rec.id, parent: rec.parent, parentKind: rec.parentKind, project: rec.project,
+    next.sessions[s.key] = {sig, rel, line: indexLine(rec, rel), start: rec.start ?? '', harness: rec.harness, id: rec.id, parent: rec.parent, parentKind: rec.parentKind, project: rec.project, n: rec.turns.length,
       ...(s.history ? {history: true} : {}), ...(sidecar && sideText ? {sidecar: true} : {})};
     index?.put(s.key, rec, {rel, children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly, best: s.best, firstUser: firstUser(rec), lastAssistant: lastAssistant(rec)}, sig);
     result.written++;
@@ -513,6 +515,16 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     const old = prev.sessions[s.key];
     const fileOk = old && fs.existsSync(path.join(dir, old.rel));
     if (old && old.sig === sig && fileOk && (!index || indexed.get(s.key) === sig)) { next.sessions[s.key] = old; continue; }
+    // A record never loses turns: when the copy it was written from is gone and only a shorter one is left
+    // (e.g. an older archive snapshot), the record is kept as written.
+    if (old && fileOk && !old.history && !s.history && (old.n ?? 0) > s.nTurns) {
+      next.sessions[s.key] = {...old, kept: true};
+      if (index && !indexed.has(s.key)) {
+        const rec = parseRecordText(fs.readFileSync(path.join(dir, old.rel), 'utf8'));
+        if (rec) index.put(s.key, rec.session, {...rec.header, rel: old.rel, best: null, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, old.sig);
+      }
+      continue;
+    }
     if (old && old.sig === sig && fileOk && index) {
       // Record unchanged, index row missing or stale: rebuild the row from the record text.
       const rec = parseRecordText(fs.readFileSync(path.join(dir, old.rel), 'utf8'));
