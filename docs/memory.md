@@ -23,7 +23,7 @@ So 1.9 ships records, the note, the CLI and an MCP wrapper. There are no embeddi
 `slopie sync` writes `~/.slopie/records`, or the directory in `SLOPIE_RECORDS_DIR`:
 
 ```
-INDEX.tsv                                     harness, id, project, start, end, turns, parent, title, first user message, file, active
+INDEX.tsv                                     harness, id, project, start, end, turns, parent, title, first user message, file, active, later
 claude/<project-slug>/<date>_<session>.txt    one file per session
 claude/<project-slug>/<date>_<parent>__agent-<id>.txt   Claude subagents, named after their parent
 codex/…   pi/…

@@ -23,7 +23,7 @@ export const CAP = {USER: 6000, ASSISTANT: 8000, SYSTEM: 300, TOOL_IN: 600, TOOL
 /** Per-output cap of the optional full-output sidecar (`<record>.out.txt`). */
 export const SIDECAR_CAP = 20000;
 export const ARCHIVE_MARK = '/.potsherd/archive/';
-export const INDEX_HEADER = 'harness\tid\tproject\tstart\tend\tturns\tparent\ttitle\tfirst_user_msg\tfile\tactive';
+export const INDEX_HEADER = 'harness\tid\tproject\tstart\tend\tturns\tparent\ttitle\tfirst_user_msg\tfile\tactive\tlater';
 
 /** One turn as the record shows it: every cap and pointer already applied. */
 export interface RecTurn {
@@ -185,8 +185,9 @@ export function activeDays(s: {start: string | null; end: string | null; turns: 
   return [...days].sort().join(' ');
 }
 
-export function indexLine(s: RecSession, rel: string): string {
+/** INDEX.tsv's last column: later sessions that name this one ("<id> (<harness>, <date>), …"; see refs.ts). */
+export function indexLine(s: RecSession, rel: string, later: readonly {id: string; harness: string; start: string}[] = []): string {
   const par = s.parent ? `${s.parentKind ?? 'None'}:${s.parent}` : '';
   const title = cpSlice((s.title || '').replace(/\t/g, ' ').replace(/\n/g, ' '), 0, 100);
-  return [s.harness, s.id, s.project || '', s.start || '', s.end || '', String(s.turns.length), par, title, firstUser(s).replace(/\t/g, ' '), rel, activeDays(s)].join('\t');
+  return [s.harness, s.id, s.project || '', s.start || '', s.end || '', String(s.turns.length), par, title, firstUser(s).replace(/\t/g, ' '), rel, activeDays(s), later.map(x => `${x.id} (${x.harness}, ${x.start.slice(0, 10)})`).join(', ')].join('\t');
 }

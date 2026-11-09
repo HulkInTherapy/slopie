@@ -50,11 +50,11 @@ describe('records: the R5 §11.1 format', () => {
     ].join('\n'));
   });
 
-  it('writes INDEX.tsv with one line per session and the eleven columns', async () => {
+  it('writes INDEX.tsv with one line per session and the twelve columns', async () => {
     const f = fixture();
     await syncRecords(syncOptions(f));
     const rows = index(f);
-    expect(rows[0]).toEqual(['harness', 'id', 'project', 'start', 'end', 'turns', 'parent', 'title', 'first_user_msg', 'file', 'active']);
+    expect(rows[0]).toEqual(['harness', 'id', 'project', 'start', 'end', 'turns', 'parent', 'title', 'first_user_msg', 'file', 'active', 'later']);
     const ids = rows.slice(1).map(r => r[1]).sort();
     expect(ids).toEqual([IDS.agent, IDS.claude, IDS.codex, IDS.codexZst, IDS.pi, IDS.promptOnly].sort());
     const codex = rowOf(f, IDS.codex)!;

@@ -193,7 +193,7 @@ describe('the agent note', () => {
     const r5 = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'records', 'r5-note.json'), 'utf8')) as {NOTE_B_template: string};
     // R7: the INDEX line names `end` as last activity and documents the `active` dates column; nothing else changed.
     const R5_INDEX = '- INDEX.tsv: one line per session: harness, id, project (working dir), start, end, turns, parent, title, first user message, file.';
-    const R7_INDEX = "- INDEX.tsv: one line per session: harness, id, project (working dir), start, end (last activity), turns, parent, title, first user message, file, active (every UTC date with a turn, so rg '2026-07-14' INDEX.tsv lists every thread active that day, including long threads that started earlier).";
+    const R7_INDEX = "- INDEX.tsv: one line per session: harness, id, project (working dir), start, end (last activity), turns, parent, title, first user message, file, active (every UTC date with a turn, so rg '2026-07-14' INDEX.tsv lists every thread active that day, including long threads that started earlier), later (later threads that name this one, where the work or a decision often continued).";
     const R5_SUB = '- Subagent sessions have "parent: subagent of <id>"; their files are named <date>_<parent-id>__agent-*.txt.';
     const R7_SUB = R5_SUB + ' Tasks another thread dispatched have "parent: delegated by <id>" (that thread briefed, tracked and applied the work, and lists them under children).';
     expect(NOTE_B_TEMPLATE).toContain(R7_INDEX);

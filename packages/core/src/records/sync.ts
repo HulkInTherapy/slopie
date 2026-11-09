@@ -29,7 +29,7 @@ import {backlinks, type Later} from './refs.js';
 import {RecordIndex, parseRecordText} from './index-db.js';
 
 /** Bump when the rendered format changes: every record is rewritten once. */
-export const FORMAT_VERSION = 3;
+export const FORMAT_VERSION = 4;
 const STATE_VERSION = 1;
 /** Bumped when parsing extracts new metadata (2: delegation hashes): every source is parsed again, kept records stay. */
 const PARSE_VERSION = 4;
@@ -664,7 +664,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
       try { fs.unlinkSync(path.join(dir, old.rel)); } catch { /* gone */ }
       if (fileId(path.join(dir, old.rel.slice(0, -4) + '.out.txt')) !== fileId(side)) try { fs.unlinkSync(path.join(dir, old.rel.slice(0, -4) + '.out.txt')); } catch { /* none */ }
     }
-    next.sessions[s.key] = {sig, rel, line: indexLine(rec, rel), start: rec.start ?? '', harness: rec.harness, id: rec.id, parent: rec.parent, parentKind: rec.parentKind, project: rec.project, n: rec.turns.length,
+    next.sessions[s.key] = {sig, rel, line: indexLine(rec, rel, s.later), start: rec.start ?? '', harness: rec.harness, id: rec.id, parent: rec.parent, parentKind: rec.parentKind, project: rec.project, n: rec.turns.length,
       ...(s.history ? {history: true} : {}), ...(sidecar && sideText ? {sidecar: true} : {})};
     index?.put(s.key, rec, {rel, children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly, best: s.best, firstUser: firstUser(rec), lastAssistant: lastAssistant(rec)}, sig);
     result.written++;
