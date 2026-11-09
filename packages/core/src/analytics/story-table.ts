@@ -11,7 +11,7 @@
  *    only (never imputed from other days); they count as unknown-model prompts.
  *  - Word counters are dated, so a scoped story only sees words from its days.
  */
-import {sourceId} from '../memory/source-identity.js';
+import {sourceId} from '../sources/identity.js';
 import type {Aggregate} from './aggregate.js';
 import type {HistoryEntry, PromptFact, SourceFacts, UsageFact} from './extract.js';
 import {FLAG, has, type PromptFeatures} from './story-lexicon.js';

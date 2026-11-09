@@ -8,7 +8,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { openSqliteReadOnly, type Db } from '../db.js';
+import { openDatabase, type Db } from '../sqlite-driver.js';
+const openSqliteReadOnly = (file: string): Db => openDatabase(file, { readonly: true, fileMustExist: true });
 
 import type {
   Adapter,

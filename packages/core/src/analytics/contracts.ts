@@ -1,6 +1,6 @@
 /** Audit v1 shared contracts. Canonical identity and scope remain memory-owned. */
 import type { Harness } from '../adapters/types.js';
-import type { Scope, SpanRef, Epochs } from '../memory/contracts.js';
+import type { Scope, SpanRef, Epochs } from '../sources/contracts.js';
 import type {LaunchAudit,AuditTone,SemanticPeriod} from './launch-contracts.js';
 export type * from './story-contracts.js';
 export {STORY_VERSION} from './story-contracts.js';

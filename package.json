@@ -14,8 +14,6 @@
     "test": "vitest run",
     "privacy": "python3 scripts/check-privacy.py",
     "test:watch": "vitest",
-    "evals": "tsx evals/run.ts",
-    "evals:ask": "tsx evals/ask-run.ts",
     "potsherd": "node packages/cli/bin/potsherd.js"
   },
   "devDependencies": {
@@ -29,10 +27,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3",
-      "esbuild",
-      "onnxruntime-node",
-      "protobufjs",
-      "sharp"
+      "esbuild"
     ]
   }
 }

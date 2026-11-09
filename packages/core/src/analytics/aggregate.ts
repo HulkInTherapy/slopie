@@ -7,7 +7,7 @@
  *   files  -> conversations (top-level and child)
  */
 import path from 'node:path';
-import {sourceId} from '../memory/source-identity.js';
+import {sourceId} from '../sources/identity.js';
 import {digest} from './source.js';
 import {PriceBook, usageCost} from './pricing.js';
 import {canonicalModel} from './model-names.js';

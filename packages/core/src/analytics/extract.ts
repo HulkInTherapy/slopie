@@ -753,12 +753,12 @@ export function extractFile(file: string, requested: NativeHarness | 'auto', opt
 }
 
 const ZSTD_MAGIC = 0xfd2fb528;
-function headBytes(fd: number, max: number): Buffer {
+export function headBytes(fd: number, max: number): Buffer {
   const buffer = Buffer.alloc(max);
   const n = fs.readSync(fd, buffer, 0, max, 0);
   return buffer.subarray(0, n);
 }
-function isZstd(fd: number): boolean {
+export function isZstd(fd: number): boolean {
   const head = headBytes(fd, 4);
   return head.length === 4 && head.readUInt32LE(0) === ZSTD_MAGIC;
 }
@@ -779,7 +779,7 @@ const ZSTD_INPUT = 1024 * 1024;
 const ZSTD_OUTPUT = 1024 * 1024;
 
 /** Sequential reader over the decompressed bytes of a zstd file. */
-interface ZstdStream {
+export interface ZstdStream {
   read(target: Buffer, offset: number, length: number): number;
   /** Up to `max` leading decompressed bytes, without consuming them. */
   peek(max: number): Buffer;
@@ -820,7 +820,7 @@ function chunkedZstd(): {step: (input: Buffer) => Buffer[]; close: () => void} |
  * Streams a zstd file's decompressed bytes with bounded memory (1 MB of input per step). Falls back
  * to whole-file decompression (zstd CLI, or a Node without the chunked engine).
  */
-function zstdStream(fd: number, file: string, hashes: StreamHashes | null): ZstdStream {
+export function zstdStream(fd: number, file: string, hashes: StreamHashes | null): ZstdStream {
   zstdMode ??= zstdSupport();
   const engine = chunkedZstd();
   let pending: Buffer[] = [], inPos = 0, done = false;

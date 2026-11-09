@@ -63,13 +63,6 @@ The root commit after the rewrite is `6697ca9`, and the `v1.0.0` tag now points 
 **A clone taken before 22 August 2026 still holds the original blob.** Re-clone
 rather than pull if you have one.
 
-Bundled transport accounting tokenizer
--------------------------------------
-js-tiktoken 1.0.21 and cl100k-base ranks, MIT License.
-Copyright (c) 2022 OpenAI, Shantanu Jain.
-Full notice: licenses/js-tiktoken-MIT.txt.
-This tokenizer is a transport accounting unit, not the host model tokenizer.
-
 Models.dev
 ----------
 The terminal audit includes reduced public model/pricing metadata from Models.dev (Anomaly). Source: https://github.com/anomalyco/models.dev. Licensed under MIT; see licenses/models-dev-MIT.txt. Snapshot retrieval date and hash are retained in each audit price basis.

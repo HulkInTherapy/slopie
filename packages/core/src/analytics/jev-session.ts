@@ -1,5 +1,5 @@
 import {clean,digest} from './source.js';
-import {NORMALIZATION_VERSION} from '../memory/privacy.js';
+import {NORMALIZATION_VERSION} from '../sources/privacy.js';
 import {JEV_MODEL,JEV_QUESTION_VERSION,JEV_ATTEMPT_RESERVATION_USD} from './jev-contract.js';
 import {JevProvider,jevKeyFromEnvironment,type JevJob,type JevCacheIdentity} from './jev-provider.js';
 import {promptQuestionRequest,primaryIntent} from './jev-questions.js';
