@@ -48199,11 +48199,13 @@ function spendBody(s, sp, r3) {
     if (y >= r3.y + r3.h) return;
     c.text(r3.x, y, label4, { fg: C.gray, alpha: a });
     const w = c.text(r3.x + 16, y, v, { fg: color, bold: true, alpha: a });
-    if (extra) c.text(r3.x + 17 + w, y, extra, { fg: C.slate, alpha: a }, leftW - 17 - w);
+    const room2 = leftW - 17 - w;
+    const fit2 = (Array.isArray(extra) ? extra : [extra]).find((e) => e && e.length <= room2);
+    if (fit2) c.text(r3.x + 17 + w, y, fit2, { fg: C.slate, alpha: a }, room2);
     y++;
   };
   if (sp.recovered) line("+ recovered", money2(sp.recovered), "from usage counters", C.peach);
-  if (sp.estimated) line("\u2248 older prompts", `${money2(sp.estimated.low)}\u2013${money2(sp.estimated.high).slice(1)}`, `est., ${count4(sp.estimated.prompts)} prompts`, C.peach);
+  if (sp.estimated) line("\u2248 older prompts", `${money2(sp.estimated.low)}\u2013${money2(sp.estimated.high).slice(1)}`, [`est., ${count4(sp.estimated.prompts)} prompts`, `est., ${count4(sp.estimated.prompts)}`, "est."], C.peach);
   if (sp.recovered || sp.estimated) y++;
   if (sp.thisMonth !== null) line("this month", money2(sp.thisMonth));
   if (sp.perDay !== null) line("per active day", money2(sp.perDay));
