@@ -2,6 +2,16 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
+## 1.8.5 — Every session counted, much faster
+
+- **Complete history.** Reads Codex's compressed `.jsonl.zst` rollouts, archived sessions, the potsherd rescue archive, Claude Desktop agent sessions and Cursor/Gemini/Copilot prompts. Live, archived, copied and forked copies of a session count once: counters are deduplicated per session and fork lineage, and divergent tails are merged. Codex sessions imported from Claude Code and `codex exec` runs are not counted as chats; automated runs are reported separately.
+- **Honest spend.** Spend is now split into three parts, never added together: *measured* (request logs), *recovered* (Claude Code's own usage stats for days without logs) and a labelled *estimate* range for prompts whose logs were deleted. Long-context tiers and request-time model/tier are priced correctly. Models without a published price stay unpriced instead of being guessed. You also get monthly and daily spend, this month, per active day and your priciest day.
+- **Models you actually used.** The model quiz and model share count only models recorded on responses, ranked by output tokens, with a last-30-days view and eras. The quiz no longer guesses a prompt's model from other prompts on the same day.
+- **Faster.** On a ~35 GB, 4.4k-prompt history: first run ~19 s (was 27 s), warm re-runs ~1.3 s (was 2.3 s), peak memory ~1.1 GB. Archive copies already present live are skipped, zstd is streamed, and adapter results are cached.
+- **A personality poster.** The final board is a single dark "receipt": your archetype, your spend, prompts, days and catchphrase, your angriest and saint hours, six fun facts with small diagrams (manners, character arc, priciest sentence, longest sit, pet name, nemesis), and your top two trophies. It prints in on open and degrades without truncation down to 80×24. `s` saves the same poster with no project names.
+- **22 archetypes and 5 legendary combos**, scored on soft bands so rarity means something, with the runner-up named in words. Awards: 24 candidates ranked by surprise, metal by rarity. The priciest-day award quotes the spend card.
+- Fixes: malformed rows, timestamps out of range, India-time midnight (15-minute day buckets), undated prompts, model alias duplicates, Bedrock revision pricing, and shares that add up to exactly 100.
+
 ## 1.8.0 — Your story
 
 - `slopie audit` is now a story: a loading screen where Slopie, the new mascot, finds each coding agent on your machine and eats your history, then one full-screen card per insight (←/→ to move), ending on a share board. `s` saves an anonymised share card; `--plain` prints the story as text.
