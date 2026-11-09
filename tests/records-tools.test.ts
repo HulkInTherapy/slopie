@@ -179,6 +179,24 @@ describe('search: the one tool', () => {
     } finally { e.close(); }
   });
 
+  it('at the end of a thread names the later threads that mention it, and reads the first one next', async () => {
+    const g = makeFixture();
+    try {
+      await syncRecords(syncOptions(g));
+      const idx = path.join(g.recordsDir, 'INDEX.tsv');
+      fs.writeFileSync(idx, fs.readFileSync(idx, 'utf8').split('\n').map(l => {
+        const c = l.split('\t');
+        if (c[1] === IDS.claude) c[11] = `agent-0123456789abcdef0 (claude, 2026-10-02), ${IDS.codex} (codex, 2026-10-02)`;
+        return c.join('\t');
+      }).join('\n'));
+      const e = new Engine(g.recordsDir, 'mcp');
+      try {
+        expect(e.find({session: IDS.claude, turns: '-1'}).trimEnd().split('\n').at(-1)).toBe(
+          `[turns 5-5 of 5; end of thread. Mentioned later in: agent-0123456789abcdef0 (claude, 2026-10-02), ${IDS.codex} (codex, 2026-10-02); the work or a decision often continued there. Next: search(session="${IDS.codex}", turns="-30")]`);
+      } finally { e.close(); }
+    } finally { fs.rmSync(g.root, {recursive: true, force: true}); }
+  });
+
   it('parses turn ranges', () => {
     expect(parseTurns('120-160')).toEqual({from: 120, to: 160, char: null});
     expect(parseTurns('-30')).toEqual({from: -30, to: null, char: null});

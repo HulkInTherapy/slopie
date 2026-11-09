@@ -2,9 +2,11 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
-## 1.9.0 — Memory as plain text
+## 1.9.0 — Search your past sessions
 
-Memory is rebuilt around what measured best. Every session is kept as a plain-text record that your agent searches with its own tools. The old memory stack is gone.
+**slopie — search your past coding-agent sessions.** Plus `slopie audit`, a Wrapped of your year.
+
+Memory is rebuilt around what measured best, and cut down to one thing. Every session is kept as a plain-text record. Your agent gets exactly one skill, `slopie`, and one command, `slopie search` (or one MCP tool, `search`). The old memory stack is gone. The audit is unchanged.
 
 - **`slopie sync`** writes one record per session to `~/.slopie/records` (or `SLOPIE_RECORDS_DIR`), plus `INDEX.tsv`. It covers Claude Code (with Desktop agent sessions), Codex (`.jsonl.zst`, archived sessions), pi, and the 1.x rescue archive.
   - Every line carries its turn tag and time, and tool output is shortened with a pointer to the raw line.
@@ -16,8 +18,8 @@ Memory is rebuilt around what measured best. Every session is kept as a plain-te
 
   Records also sync in the background of `slopie audit` and from the session-start hook.
 - **One source layer.** The audit's discovery and opt-out policy are now shared, so the audit and the records read the same files the same way. The audit's numbers are unchanged: a 1.8.5 and a 1.9.0 snapshot of the same 35 GB history are identical.
-- **`slopie setup`** installs the evaluated nine-line note that teaches the record format, as a Claude Code skill, a marked block in Codex's `AGENTS.md`, and a pi skill and extension. It also installs a session-start hook. After a resume or compaction, the hook prints this session's record path and the exact commands to read it, in at most 10 lines and with no summary. `slopie setup --note` prints the note for any other agent.
-- **`slopie search | read | threads | grep`** are fast lookups over the same records. They use a local SQLite FTS5 index (BM25 with a contextual prefix, plus a session-card lane), and every reply ends with the exact next command. **`slopie mcp`** serves the same four tools for harnesses without a shell.
+- **One skill, `slopie`.** Every integration installs exactly one: the Claude Code and Codex plugins, `slopie setup` (a Claude Code skill, a marked `slopie` block in Codex's `AGENTS.md`, a pi skill plus extension). Its description is one sentence: "Search everything you and the user did in past coding sessions (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session." Its body is the evaluated note: the record format, a one-line answer protocol, and one line on `slopie search`. The plugins ship no other skills or commands. `slopie setup --note` prints the body for any other agent. A session-start hook keeps the records current and, after a resume or compaction, prints this session's record path and the exact `slopie search` commands, in at most 10 lines and with no summary.
+- **One command, `slopie search`.** Its options pick the mode. With words it returns ranked passages from every thread. With `--session <id> --turns 120-160` (or `-30`) it reads a turn range. With words and `--session` it searches inside one thread, including full tool output. With `--project` / `--since` alone it lists threads. Every reply ends with the exact next command. It runs on a local SQLite FTS5 index (BM25 with a contextual prefix, plus a session-card lane). **`slopie mcp`** serves it as one MCP tool, `search`, with the same parameters, for harnesses without a shell. The pre-release verbs `read`, `threads` and `grep` remain as hidden aliases.
 - **Privacy.** `slopie forget <session>` (new) and `slopie ignore <project>` remove sessions from the records and the index, and keep them out of the audit. Both lists live in `~/.slopie` and are seeded once, read-only, from the 1.8 lists.
 - **Removed, a clean break:**
   - the 1.x memory store (capture, ingest, recall, graft, read and write);

@@ -67,6 +67,7 @@ export class Engine {
   readonly db: Db;
   readonly sessions = new Map<string, S>();
   private mainById: Map<string, S> | null = null;
+  private laterByKey: Map<string, string> | null = null;
   readonly recordsDir: string;
   /** Print "subagent of <parent>" on every hit (on by default; SLOPIE_HIT_PARENT=0 turns it off, for ablation only). */
   hitParent = process.env['SLOPIE_HIT_PARENT'] !== '0';
@@ -149,6 +150,33 @@ export class Engine {
       keys = new Set([...base].filter(k => { const s = this.sessions.get(k)!; return (!o.since || (s.end ?? '') >= o.since) && (!o.until || (s.start ?? '') <= o.until); }));
     }
     return keys;
+  }
+
+  /** The INDEX.tsv `later` column (later threads that name this one by id), read once on first use. */
+  private laterOf(s: S): string {
+    if (!this.laterByKey) {
+      this.laterByKey = new Map();
+      try {
+        for (const line of fs.readFileSync(path.join(this.recordsDir, 'INDEX.tsv'), 'utf8').split('\n')) {
+          const f = line.split('\t');
+          if (f.length >= 12 && f[11]) this.laterByKey.set(`${f[0]}:${f[1]}`, f[11]);
+        }
+      } catch { /* no INDEX.tsv: no backlinks */ }
+    }
+    return this.laterByKey.get(s.key) ?? this.laterByKey.get(`${s.harness}:${s.id}`) ?? '';
+  }
+
+  /** The end-of-thread line: where the work went next (the record's "## mentioned later in"), else later threads in the project. */
+  private endOfThread(s: S): string {
+    const later = this.laterOf(s);
+    if (later) {
+      const items = [...later.matchAll(/(\S+) \(([^,)]+), ([^)]+)\)/g)].map(m => ({id: m[1]!, text: m[0]}));
+      if (items.length) {
+        const next = (items.find(x => !x.id.startsWith('agent-')) ?? items[0]!).id;
+        return ` Mentioned later in: ${items.slice(0, 6).map(x => x.text).join(', ')}${items.length > 6 ? ` … +${items.length - 6}` : ''}; the work or a decision often continued there. Next: ${this.call({session: next, turns: '-30'})}`;
+      }
+    }
+    return s.project ? ` Later threads in this project: ${this.call({project: s.project, since: (s.end ?? '').slice(0, 10) || undefined})}` : '';
   }
 
   private parentOf(s: S): S | null {
@@ -329,7 +357,7 @@ export class Engine {
     if (ch.length) out.push('children: ' + ch.slice(0, 20).map(x => `${x.id} (${x.kind})`).join(', ') + (ch.length > 20 ? ` … +${ch.length - 20}` : ''));
     // max_chars is the whole reply: header lines, turns and the footer (room for the longest footer is kept).
     const footerRoom = Math.max(`[turn ${N} of ${N} cut at character ${99999999} of ${99999999}; turns ${N}-${N} of ${N}. Continue: ${this.readCall(s.id, N, undefined, 99999999)}]`.length,
-      `[turns ${N}-${N} of ${N}; end of thread. Later threads in this project: ${this.call({project: s.project ?? '', since: '2026-01-01'})}]`.length) + 1;
+      `[turns ${N}-${N} of ${N}; end of thread.${this.endOfThread(s)}]`.length) + 1;
     let used = out.reduce((n, l) => n + l.length + 1, 0);
     let last = a - 1;
     let cut: {n: number; at: number; of: number} | null = null;
@@ -351,7 +379,7 @@ export class Engine {
     }
     if (cut) out.push(`[turn ${cut.n} cut at character ${cut.at} of ${cut.of}; ${last >= a ? `turns ${a}-${last}, then ` : ''}part of t${cut.n} of ${N}. Continue: ${this.readCall(s.id, cut.n, undefined, cut.at)}]`);
     else if (last < N) out.push(`[turns ${a}-${last} of ${N}. Continue: ${this.readCall(s.id, last + 1, Math.min(N, last + 40))}]`);
-    else out.push(`[turns ${a}-${last} of ${N}; end of thread.${s.project ? ` Later threads in this project: ${this.call({project: s.project, since: (s.end ?? '').slice(0, 10) || undefined})}` : ''}]`);
+    else out.push(`[turns ${a}-${last} of ${N}; end of thread.${this.endOfThread(s)}]`);
     return out.join('\n');
   }
 
