@@ -888,14 +888,6 @@ DEBT: list[tuple[str, str, int, str]] = [
     # `thinking` block for six phases and no rule here fired once. The
     # `transcript-record` rule added in phase 8 is one shape recovered from that
     # failure, not a general answer to it.
-
-    # ---- 1.9.0 review D13: the vendored bundles still carry the old schema
-    # examples until the next `pnpm vendor`, which rebuilds them from the
-    # cleaned packages/core/src/records/spec.ts. Delete these four with it.
-    ('plugins/claude-code/dist/potsherd.js', 'account-name', 1, 'stale vendored bundle; next pnpm vendor clears it'),
-    ('plugins/claude-code/dist/potsherd.js', 'project-name', 1, 'stale vendored bundle; next pnpm vendor clears it'),
-    ('plugins/codex/dist/potsherd.js', 'account-name', 1, 'stale vendored bundle; next pnpm vendor clears it'),
-    ('plugins/codex/dist/potsherd.js', 'project-name', 1, 'stale vendored bundle; next pnpm vendor clears it'),
 ]
 
 # ------------------------------------------------- the id inventory's ratchet
