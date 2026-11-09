@@ -17426,7 +17426,7 @@ var init_format2 = __esm({
     ARCHIVE_MARK = "/.potsherd/archive/";
     INDEX_HEADER = "harness	id	project	start	end	turns	parent	title	first_user_msg	file	active";
     capOf = (role) => role === "USER" ? CAP.USER : role === "ASSISTANT" ? CAP.ASSISTANT : role === "SYSTEM" ? CAP.SYSTEM : 6e3;
-    relation = (kind3, parent) => kind3 === "delegated" ? `delegated by ${parent}` : `${kind3 ?? "None"} of ${parent}`;
+    relation = (kind3, parent) => kind3 === "delegated" ? `delegated by ${parent}` : kind3 === "import" ? `import of ${parent} (continued in Codex; the turns before the import are in that record)` : `${kind3 ?? "None"} of ${parent}`;
     fmtTs = (ts) => ts ? ts.replace("T", " ").slice(0, 16) : "?";
   }
 });
@@ -17889,6 +17889,7 @@ function adoptRecordFiles(dir, prev) {
   }
 }
 function codexMeta(homes, imports) {
+  const importInfo = /* @__PURE__ */ new Map();
   const titles = /* @__PURE__ */ new Map();
   const db = /* @__PURE__ */ new Map();
   const imported = /* @__PURE__ */ new Set();
@@ -17903,9 +17904,15 @@ function codexMeta(homes, imports) {
     }
     try {
       const raw = JSON.parse(fs23.readFileSync(path19.join(home2, "external_agent_session_imports.json"), "utf8"));
-      for (const r3 of raw.records ?? [])
-        if (r3.imported_thread_id)
-          imported.add(r3.imported_thread_id);
+      for (const r3 of raw.records ?? []) {
+        if (!r3.imported_thread_id)
+          continue;
+        imported.add(r3.imported_thread_id);
+        if (typeof r3.imported_at === "number") {
+          const src = typeof r3.source_path === "string" ? /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/i.exec(r3.source_path)?.[1]?.toLowerCase() ?? null : null;
+          importInfo.set(r3.imported_thread_id, { at: new Date(r3.imported_at * 1e3).toISOString(), source: src });
+        }
+      }
     } catch {
     }
     let states = [];
@@ -17933,7 +17940,7 @@ function codexMeta(homes, imports) {
   }
   for (const id of imports)
     imported.add(id);
-  return { titles, db, imported };
+  return { titles, db, imported, importInfo };
 }
 function discoverSources(o, state) {
   const opts = {
@@ -18204,8 +18211,17 @@ async function syncLocked(o) {
   const sessions = [];
   for (const b2 of merged.values()) {
     if (b2.harness === "codex" && meta.imported.has(b2.id)) {
-      result.droppedImports++;
-      continue;
+      const info = meta.importInfo.get(b2.id);
+      const cut = info ? new Date(Date.parse(info.at) + IMPORT_SLACK_MS).toISOString() : null;
+      if (!cut || !b2.end || b2.end <= cut) {
+        result.droppedImports++;
+        continue;
+      }
+      b2.importCut = cut;
+      if (!b2.parent && info.source) {
+        b2.parent = info.source;
+        b2.parentKind = "import";
+      }
     }
     if (!b2.nTurns)
       continue;
@@ -18236,7 +18252,7 @@ async function syncLocked(o) {
   for (const [key, ss] of Object.entries(prev.sessions)) {
     if (present.has(key) || presentIds.has(`${ss.harness}:${ss.id}`))
       continue;
-    if (ss.harness === "codex" && meta.imported.has(ss.id))
+    if (ss.harness === "codex" && meta.imported.has(ss.id) && ss.parentKind !== "import")
       continue;
     if (!fs23.existsSync(path19.join(dir, ss.rel)))
       continue;
@@ -18373,11 +18389,17 @@ async function syncLocked(o) {
     s.parentKind,
     (kids.get(s.id) ?? []).map((c) => [c.id, c.kind]),
     s.archiveOnly,
-    s.history ? s.history.length : -1
+    s.history ? s.history.length : -1,
+    s.importCut ?? null
   ]);
   const writeOne = (s, rec2, sig) => {
     rec2.parent = s.parent;
     rec2.parentKind = s.parentKind;
+    if (s.importCut) {
+      const i = rec2.turns.findIndex((t) => !!t.ts && t.ts > s.importCut);
+      rec2.turns = i < 0 ? [] : rec2.turns.slice(i);
+      rec2.start = rec2.turns[0]?.ts ?? rec2.start;
+    }
     if (s.harness === "codex")
       rec2.title = s.codexTitle || rec2.title;
     const rel = canonicalRel(recordRelPath(rec2));
@@ -18570,7 +18592,7 @@ async function syncLocked(o) {
   result.maxRssMb = Math.round(process.resourceUsage().maxRSS / 1024);
   return result;
 }
-var FORMAT_VERSION, STATE_VERSION, PARSE_VERSION, SyncBusyError, hash2, PROMPT_ONLY_TITLE, promptKey, isForgotten;
+var FORMAT_VERSION, STATE_VERSION, PARSE_VERSION, IMPORT_SLACK_MS, SyncBusyError, hash2, PROMPT_ONLY_TITLE, promptKey, isForgotten;
 var init_sync = __esm({
   "packages/core/dist/records/sync.js"() {
     "use strict";
@@ -18591,6 +18613,7 @@ var init_sync = __esm({
     FORMAT_VERSION = 3;
     STATE_VERSION = 1;
     PARSE_VERSION = 2;
+    IMPORT_SLACK_MS = 10 * 60 * 1e3;
     SyncBusyError = class extends Error {
       pid;
       constructor(pid) {
