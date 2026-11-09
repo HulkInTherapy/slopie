@@ -184,7 +184,7 @@ export async function runSetup(o: SetupOptions): Promise<number> {
   const t = themeFrom(o);
   if (o.note) {
     // Evaluation seams (R6): the CLI line can be left out, and the R5 §7 sentences added.
-    const note = agentNote(paths.recordsDir(), {cli: process.env['SLOPIE_NOTE_CLI'] !== '0', guidance: process.env['SLOPIE_NOTE_GUIDANCE'] === '1', sidecar: process.env['SLOPIE_NOTE_SIDECAR'] === '1'});
+    const note = agentNote(paths.recordsDir(), {cli: process.env['SLOPIE_NOTE_CLI'] !== '0', protocol: process.env['SLOPIE_NOTE_PROTOCOL'] !== '0', guidance: process.env['SLOPIE_NOTE_GUIDANCE'] === '1', sidecar: process.env['SLOPIE_NOTE_SIDECAR'] === '1'});
     if (o.json) printJson({note, records: paths.recordsDir()}); else process.stdout.write(note + '\n');
     return 0;
   }

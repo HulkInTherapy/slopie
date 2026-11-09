@@ -8,7 +8,7 @@ import { writeIgnoreList } from '../packages/core/src/ignore.js';
 import { parseRecordText } from '../packages/core/src/records/index-db.js';
 import { Engine } from '../packages/core/src/records/engine.js';
 import { activeDays } from '../packages/core/src/records/format.js';
-import { delegEdges, delegKey, delegOf } from '../packages/core/src/records/deleg.js';
+import { annotateRelay, delegEdges, delegKey, delegOf, relayLinks } from '../packages/core/src/records/deleg.js';
 import { backlinks, refsOf } from '../packages/core/src/records/refs.js';
 import { render } from '../packages/core/src/records/format.js';
 import { claudeSession, IDS, makeFixture, NEEDLE, PROJECT, syncOptions, type Fixture } from './records-fixture.js';
@@ -262,7 +262,7 @@ describe('delegation edges (R7)', () => {
     ]});
     expect(child?.task).toBe(delegKey(task));
     expect(child?.calls).toBeUndefined();
-    expect(orch?.calls).toEqual([[delegKey(task), '2026-10-29T14:24:10.5Z']]);
+    expect(orch?.calls).toEqual([[delegKey(task), '2026-10-29T14:24:10.5Z', 'Room bugs']]);
     expect(delegKey('a  b\n c')).toBe(delegKey('a b c'));
     expect(delegOf({turns: [{role: 'USER', ts: null, text: 'plain prompt', ref: 'z:1'}]})).toBeUndefined();
   });
@@ -336,5 +336,21 @@ describe('backlinks (R7)', () => {
       expect([back.session.parent, back.session.parentKind]).toEqual(['p-1', kind]);
       expect(back.session.turns.length).toBe(1);
     }
+  });
+});
+
+describe('relayed results name the thread that did the work (R8)', () => {
+  it('annotates the dispatcher\'s relay turn with the delegated thread', () => {
+    const k = delegKey('review the branch');
+    const sessions = [
+      {id: 'orch', harness: 'claude', start: '2026-10-27T08:00:00Z', parent: null, deleg: {calls: [[k, '2026-10-27T09:00:00Z', 'review r1']] as [string, string | null, string | null][]}},
+      {id: 'rev', harness: 'codex', start: '2026-10-27T09:00:05Z', parent: null, deleg: {task: k}},
+    ];
+    const edges = delegEdges(sessions);
+    const relays = relayLinks(sessions, edges).get('orch')!;
+    expect(relays).toEqual([{title: 'review r1', child: 'rev', harness: 'codex', start: '2026-10-27T09:00:05Z'}]);
+    const text = 'Delegated task node:delegated-task:x%3Ar1 (review r1) [completed]:\nVERDICT: CHANGES';
+    expect(annotateRelay(text, '2026-10-27T09:31:00Z', relays)).toBe('Delegated task node:delegated-task:x%3Ar1 (review r1) [completed]: [from delegated thread rev (codex)]\nVERDICT: CHANGES');
+    expect(annotateRelay('Delegated task node:y (other) [completed]:', null, relays)).toBe('Delegated task node:y (other) [completed]:');
   });
 });

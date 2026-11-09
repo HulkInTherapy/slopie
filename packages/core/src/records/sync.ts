@@ -24,7 +24,7 @@ import {openAuditSqliteSnapshot} from '../audit-sqlite.js';
 import type {AuditOverviewOptions} from '../analytics/contracts.js';
 import {ARCHIVE_MARK, INDEX_HEADER, fmtTs, indexLine, recTurn, lastAssistant, firstUser, recordRelPath, render, renderSidecar, sidFile, type RecSession, type RecTurn} from './format.js';
 import {runJobs, type ParseJob, type ParseResult} from './worker.js';
-import {delegEdges, type Deleg} from './deleg.js';
+import {annotateRelay, delegEdges, relayLinks, type Deleg, type Relay} from './deleg.js';
 import {backlinks, type Later} from './refs.js';
 import {RecordIndex, parseRecordText} from './index-db.js';
 
@@ -32,7 +32,7 @@ import {RecordIndex, parseRecordText} from './index-db.js';
 export const FORMAT_VERSION = 3;
 const STATE_VERSION = 1;
 /** Bumped when parsing extracts new metadata (2: delegation hashes): every source is parsed again, kept records stay. */
-const PARSE_VERSION = 3;
+const PARSE_VERSION = 4;
 /** Turns this long after a Codex import are new work, not the replayed copy. */
 const IMPORT_SLACK_MS = 10 * 60 * 1000;
 
@@ -153,6 +153,8 @@ interface Merged {
   importCut?: string;
   /** Later sessions that name this one (records/refs.ts). */
   later?: Later[];
+  /** Tasks this session dispatched, by title, and the threads that did them (records/deleg.ts). */
+  relays?: Relay[];
   /** Prompt-only turns; `rec` is a turn carried over from the previous record as written. */
   history?: {ts: string | null; text: string; ref: string; rec?: RecTurn}[];
   sources: string[];
@@ -531,10 +533,14 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   }
   // Delegation edges: a thread dispatched through delegate_task gets its dispatcher as parent (kind 'delegated').
   // The record file name does not depend on it, so keys stay stable.
-  for (const [child, by] of delegEdges(sessions.map(b => ({id: b.id, start: b.start, parent: b.parent, deleg: b.best ? next.sources[b.best]?.deleg : undefined})))) {
+  const delegIn = sessions.map(b => ({id: b.id, harness: b.harness, start: b.start, parent: b.parent, deleg: b.best ? next.sources[b.best]?.deleg : undefined}));
+  const edges = delegEdges(delegIn);
+  for (const [child, by] of edges) {
     const b = sessions.find(x => x.id === child && !x.parent);
     if (b) { b.parent = by; b.parentKind = 'delegated'; }
   }
+  // Relay turns ("Delegated task … (<title>) [completed]: …") in a dispatcher name the thread that did the work.
+  for (const [id, l] of relayLinks(delegIn, edges)) for (const b of sessions) if (b.id === id) b.relays = l;
   // Backlinks: later sessions that name this one by id.
   for (const [id, l] of backlinks(sessions.map(b => ({id: b.id, harness: b.harness, start: b.start, parentKind: b.parentKind, refs: b.best ? next.sources[b.best]?.refs : undefined})))) {
     for (const b of sessions) if (b.id === id) b.later = l;
@@ -631,9 +637,10 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const indexed = index ? index.keys() : new Map<string, string>();
   const needParse: {s: Merged; sig: string}[] = [];
   const sigOf = (s: Merged) => hash([FORMAT_VERSION, sidecar, s.best, s.best ? next.sources[s.best]?.size : 0, s.best ? next.sources[s.best]?.mtimeMs : 0, s.nTurns, s.sources, s.codexTitle ?? null,
-    s.parent, s.parentKind, (kids.get(s.id) ?? []).map(c => [c.id, c.kind]), s.archiveOnly, s.history ? s.history.length : -1, s.importCut ?? null, (s.later ?? []).map(x => x.id)]);
+    s.parent, s.parentKind, (kids.get(s.id) ?? []).map(c => [c.id, c.kind]), s.archiveOnly, s.history ? s.history.length : -1, s.importCut ?? null, (s.later ?? []).map(x => x.id), (s.relays ?? []).map(r => [r.title, r.child])]);
   const writeOne = (s: Merged, rec: RecSession, sig: string) => {
     rec.parent = s.parent; rec.parentKind = s.parentKind;
+    if (s.relays?.length) for (const t of rec.turns) if (t.role === 'USER' && t.text.startsWith('Delegated task ')) t.text = annotateRelay(t.text, t.ts, s.relays);
     if (s.importCut) {
       const i = rec.turns.findIndex(t => !!t.ts && t.ts > s.importCut!);
       rec.turns = i < 0 ? [] : rec.turns.slice(i);
