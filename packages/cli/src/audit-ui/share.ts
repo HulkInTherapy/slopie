@@ -1,6 +1,6 @@
 /**
  * Share card: the board card rendered (anonymised) into a cell buffer, then into an SVG.
- * Half-block pixels become exact rectangles so Slopie and the heatmap stay crisp.
+ * Half-block pixels become exact rectangles so the display type and charts stay crisp.
  */
 import type { AuditSnapshot } from '../../../core/src/analytics/contracts.js';
 import { Canvas } from './gfx/canvas.js';
@@ -17,8 +17,8 @@ export function shareCanvas(snapshot: AuditSnapshot, columns = 120, rows = 40): 
   const deck = buildDeck(snapshot);
   const board = deck.at(-1);
   if (!board || board.kind !== 'board') return null;
-  const c = new Canvas(columns, rows, C.ink);
-  c.fill(0, 0, columns, rows, ' ', { bg: C.ink });
+  const c = new Canvas(columns, rows, C.bg);
+  c.fill(0, 0, columns, rows, ' ', { bg: C.bg });
   renderCard({
     c, w: columns, h: rows, t: Infinity, tier: tierFor(columns, rows)!, caps: { color: 'truecolor', motion: false, unicode: true },
     blink: false, state: {}, index: deck.length - 1, total: deck.length, share: true, online: wentOnline(snapshot),
@@ -33,7 +33,7 @@ export function canvasToSvg(c: Canvas, title = 'slopie audit'): string {
   // Pass 1: backgrounds. Pass 2: pixels and glyphs on top.
   for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) {
     const bg = c.bg[y * c.w + x]!;
-    if (bg >= 0 && bg !== C.ink) parts.push(`<rect x="${x * CW}" y="${y * CH}" width="${CW}" height="${CH}" fill="${hex(bg)}"/>`);
+    if (bg >= 0 && bg !== C.bg) parts.push(`<rect x="${x * CW}" y="${y * CH}" width="${CW}" height="${CH}" fill="${hex(bg)}"/>`);
   }
   for (let y = 0; y < c.h; y++) {
     let x = 0;
@@ -80,7 +80,7 @@ export function canvasToSvg(c: Canvas, title = 'slopie audit'): string {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
     `<title>${esc(title)}</title>`,
-    `<rect width="100%" height="100%" rx="14" fill="${hex(C.ink)}"/>`,
+    `<rect width="100%" height="100%" rx="14" fill="${hex(C.bg)}"/>`,
     `<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">`,
     ...parts,
     '</g>',

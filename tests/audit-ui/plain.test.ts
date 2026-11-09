@@ -25,7 +25,8 @@ describe('plain and share outputs', () => {
     expect(svg).not.toContain('Rotor-Notes');
     expect(svg).not.toContain('continue please');
     expect(svg).not.toContain('What the hell');
-    expect(svg).not.toMatch(/#(?!F2A45E|EEEAE4|A6A29B|68665F|10100F)[0-9A-Fa-f]{6}/);
+    // The grey ramp, the background and the one accent; nothing else.
+    expect(svg).not.toMatch(/#(?!F7F8F8|8A8F98|5D6168|7C7CFF|08090A)[0-9A-Fa-f]{6}/);
   });
 
   it('prints every story card as a text section before the board', () => {
@@ -42,8 +43,11 @@ describe('plain and share outputs', () => {
     const svg = renderAuditShareSvg(storySnapshot());
     expect(svg.startsWith('<svg')).toBe(true);
     expect(svg).toContain('2AM Deployer');
-    expect(svg).toContain('at API prices');
+    expect(svg).toContain('At API prices');
     expect(svg).toContain('npx slopie audit');
+    // The poster's palette: the grey ramp, the background and the one accent.
+    const fills = new Set([...svg.matchAll(/fill="(#[0-9A-F]{6})"/g)].map(m => m[1]));
+    for (const fill of fills) expect(['#08090A', '#F7F8F8', '#8A8F98', '#5D6168', '#7C7CFF', '#1F2125', '#3E424A', '#25282D']).toContain(fill);
     // Only the catchphrase / pet name the poster already shows; no project names or other prompt text.
     for (const secret of ['lantern-api', 'tidepool', 'paper-boats', 'sync layer', 'keep going', 'leave the tests']) expect(svg).not.toContain(secret);
   });

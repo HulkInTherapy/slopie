@@ -1,161 +1,112 @@
-/** The 1.9 spend card (lifetime · monthly bars · daily heat strip) and the model-eras strip. */
-import { C, fade, heat, mix, type Rgb } from '../gfx/color.js';
-import { spaced, textRight, textWidth, type Rect } from '../gfx/draw.js';
-import { bigWidth, drawBig } from '../gfx/font.js';
-import { countUp, easeOutCubic, seg } from '../gfx/motion.js';
+/**
+ * The bill (spend data): a ledger on the left (the hero number, then right-aligned figures), a
+ * hairline, and the charts on the right (monthly bars, the daily grid). Also the model-eras strip.
+ */
 import { count, money, shortDate } from '../format.js';
+import type { Rect } from '../gfx/draw.js';
+import { countUp, easeOutCubic, seg } from '../gfx/motion.js';
 import { monthLabel, type SpendView } from '../story/deck.js';
-import type { Scene } from './scene.js';
+import { dayGrid, monthBars } from '../theme/charts.js';
+import { displayHeight, displayWidth, drawDisplay, fitDisplay } from '../theme/display.js';
+import { fade, rule, textWidth, txt, txtRight, vrule, type K } from '../theme/kit.js';
+import { fadeIn } from '../theme/tokens.js';
 
-export function spendBody(s: Scene, sp: SpendView, r: Rect): boolean {
-  const { c, t, tier } = s;
-  let busy = t < 1800;
-  const pixel = s.caps.color !== 'none' && s.caps.unicode;
-  const side = r.w >= 90;
-  const leftW = side ? Math.min(44, Math.floor(r.w * 0.4)) : r.w;
+export function spendBody(k: K, sp: SpendView, r: Rect): void {
+  const { tk, L, s } = k;
+  const bottom = r.y + r.h - 1;
   let y = r.y;
-  // Lifetime, counting up.
-  const value = '$' + count(Math.round(countUp(sp.measured, t, 100, 1100)));
+  // Columns: the ledger, a hairline, the charts.
+  const side = r.w >= 70;
+  const lw = side ? (L ? 40 : 32) : r.w;
+  const cx = r.x + lw + (L ? 6 : 4);
+  const cw = r.x + r.w - cx;
+
+  // Hero number, counting up (right-aligned inside its final width, so it never jitters).
   const final = '$' + count(Math.round(sp.measured));
-  const scale = tier.id === 'L' && bigWidth(final, 2) <= leftW && r.h >= 18 ? 2 : 1;
-  if (pixel && bigWidth(final, scale) <= leftW) {
-    drawBig(c, r.x, y, value, { scale, color: (_x, py) => mix(C.cream, C.orange, py / (5 * scale - 1)) });
-    y += scale === 2 ? 6 : 4;
-  } else { c.text(r.x, y, final, { fg: C.orange, bold: true }); y += 2; }
-  const a = seg(t, 600, 400);
-  c.text(r.x, y++, 'lifetime, measured · API list prices', { fg: C.gray, alpha: a }, leftW);
-  y++;
-  // `extra` may list fallbacks, longest first: the first that fits is drawn whole, never cut mid-word.
-  const line = (label: string, v: string, extra: string | string[] = '', color: Rgb = C.cream) => {
-    if (y >= r.y + r.h) return;
-    c.text(r.x, y, label, { fg: C.gray, alpha: a });
-    const w = c.text(r.x + 16, y, v, { fg: color, bold: true, alpha: a });
-    const room = leftW - 17 - w;
-    const fit = (Array.isArray(extra) ? extra : [extra]).find(e => e && e.length <= room);
-    if (fit) c.text(r.x + 17 + w, y, fit, { fg: C.slate, alpha: a }, room);
-    y++;
-  };
-  if (sp.recovered) line('+ recovered', money(sp.recovered), 'from usage counters', C.peach);
-  if (sp.estimated) line('≈ older prompts', `${money(sp.estimated.low)}–${money(sp.estimated.high).slice(1)}`, [`est., ${count(sp.estimated.prompts)} prompts`, `est., ${count(sp.estimated.prompts)}`, 'est.'], C.peach);
-  if (sp.recovered || sp.estimated) y++;
-  if (sp.thisMonth !== null) line('this month', money(sp.thisMonth));
-  if (sp.perDay !== null) line('per active day', money(sp.perDay));
-  if (sp.priciestDay) line('priciest day', money(sp.priciestDay.usd), shortDate(sp.priciestDay.day, true));
+  const shown = '$' + count(Math.round(countUp(sp.measured, s.caps.motion ? s.t : Infinity, 100, 1000)));
+  if (s.caps.motion && s.t < 1100) k.busy = true;
+  const fit = k.uni ? fitDisplay(final, lw, { face: tk.face, tall: L && r.h >= 20, currency: tk.text2 }) : null;
+  const a0 = fade(k, 100, 400);
+  txt(k, r.x, y, 'Lifetime', tk.text3, { a: a0 });
+  y += 1;
+  if (fit) {
+    drawDisplay(k.c, r.x + displayWidth(final, fit) - displayWidth(shown, fit), y, shown, fadeIn(tk, tk.text, a0), tk.bg, fit);
+    y += displayHeight(fit) + 1;
+  } else {
+    txt(k, r.x + textWidth(final) - textWidth(shown), y, shown, tk.text, { bold: true, a: a0 });
+    y += 2;
+  }
+  const a1 = fade(k, 500);
+  txt(k, r.x, y, 'measured at API list prices', tk.text2, { a: a1 }, lw);
+  y += L && r.h >= 20 ? 2 : 1;
+
+  // The ledger: label · right-aligned figure · note. Whole lines only.
+  const valX = r.x + (L ? 26 : 24);
+  const lines: ([string, string, string] | null)[] = [];
+  if (sp.recovered) lines.push(['Recovered', money(sp.recovered), 'usage counters']);
+  if (sp.estimated) lines.push(['Older prompts', `${money(sp.estimated.low)}–${money(sp.estimated.high).slice(1)}`, 'est.']);
+  if (lines.length) lines.push(null);
+  if (sp.thisMonth !== null) lines.push(['This month', money(sp.thisMonth), '']);
+  if (sp.perDay !== null) lines.push(['Per active day', money(sp.perDay), '']);
+  if (sp.priciestDay) lines.push(['Priciest day', money(sp.priciestDay.usd), shortDate(sp.priciestDay.day)]);
   const hundred = sp.days.filter(d => d.usd >= 100).length;
-  if (hundred) line('$100+ days', count(hundred));
-
-  // Charts: to the right (wide) or below.
-  const cx = side ? r.x + leftW + 4 : r.x;
-  const cw = side ? r.x + r.w - cx : r.w;
-  let cy = side ? r.y : y + 1;
-  const room = r.y + r.h - cy;
-  if (sp.months.length >= 2 && room >= 6) {
-    const barH = Math.max(3, Math.min(side ? 12 : 6, room - (sp.days.length ? 8 : 3)));
-    busy = monthBars(s, sp, { x: cx, y: cy, w: cw, h: barH + 2 }) || busy;
-    cy += barH + 3;
+  if (hundred) lines.push(['$100+ days', count(hundred), '']);
+  for (const line of lines) {
+    if (y > bottom) break;
+    if (!line) { if (L && r.h >= 20) { rule(k, r.x, y, Math.min(lw, valX - r.x + 16), tk.rule, a1); y++; } continue; }
+    const [name, value, note] = line;
+    txt(k, r.x, y, name, tk.text2, { a: a1 });
+    txtRight(k, valX, y, value, tk.text, { a: a1 });
+    if (note && valX + 2 + textWidth(note) <= r.x + lw) txt(k, valX + 2, y, note, tk.text3, { a: a1 });
+    y++;
   }
-  if (sp.days.length && r.y + r.h - cy >= 6) busy = heatStrip(s, sp.days, { x: cx, y: cy, w: cw, h: r.y + r.h - cy }) || busy;
-  return busy;
-}
 
-function monthBars(s: Scene, sp: SpendView, r: Rect): boolean {
-  const { c, t } = s;
-  const months = sp.months.slice(-12);
-  const n = months.length;
-  const colW = Math.max(2, Math.min(7, Math.floor(r.w / n)));
-  const barW = Math.max(1, colW - 1);
-  const h = r.h - 2;
-  const bottom = r.y + 1 + h;
-  const max = Math.max(...months.map(m => m.measured + m.extra), 1e-9);
-  const pixel = s.caps.color === 'truecolor' || s.caps.color === '256';
-  c.text(r.x, r.y, s.tier.id === 'L' ? spaced('by month') : 'BY MONTH', { fg: C.gray });
-  const legend = months.some(m => m.extra > 0) ? (s.caps.unicode ? '█ measured  ░ recovered / est.' : '# measured  : recovered / est.') : '';
-  if (legend) textRight(c, r.x + Math.min(r.w, n * colW), r.y, legend, { fg: C.slate });
-  const peak = months.reduce((a, m, i) => (m.measured > months[a]!.measured ? i : a), 0);
-  let busy = false;
-  months.forEach((m, i) => {
-    const k = seg(t, 400 + i * 60, 500, easeOutCubic);
-    busy ||= k < 1;
-    const x = r.x + i * colW;
-    const total = ((m.measured + m.extra) / max) * h * 2 * k;
-    const solid = (m.measured / max) * h * 2 * k;
-    const color = i === peak ? C.cream : C.orange;
-    if (pixel) {
-      for (let py = 0; py < Math.round(total); py++) for (let b = 0; b < barW; b++) c.px(x + b, (bottom + 1) * 2 - 1 - py, py < Math.max(1, Math.round(solid)) ? color : mix(C.ink, C.peach, 0.35));
-    } else {
-      const cells = Math.round(total / 2), solidCells = Math.max(m.measured > 0 ? 1 : 0, Math.round(solid / 2));
-      for (let cy = 0; cy < cells; cy++) for (let b = 0; b < barW; b++) c.put(x + b, bottom - cy, cy < solidCells ? (s.caps.unicode ? '█' : '#') : (s.caps.unicode ? '░' : ':'), cy < solidCells ? color : C.peach);
+  if (!side) return;
+  vrule(k, cx - (L ? 3 : 2), r.y, r.h);
+  let cy = r.y;
+  const room = bottom - cy + 1;
+  const wantGrid = sp.days.length > 0 && room >= 16;
+  const barsH = Math.max(4, Math.min(L ? 13 : 10, room - (wantGrid ? 8 : 2)));
+  if (sp.months.length >= 2 && room >= 7) {
+    txt(k, cx, cy, 'By month', tk.text3);
+    if (sp.months.some(m => m.extra > 0)) {
+      const legend: [string, number][] = [[k.uni ? '■' : '#', tk.bar], [' measured   ', tk.text3], [k.uni ? '■' : ':', tk.barSoft], [' recovered, est.', tk.text3]];
+      let lx = r.x + r.w - legend.reduce((a, [t]) => a + textWidth(t), 0);
+      // Only when it clears the chart label with room to spare.
+      if (lx >= cx + textWidth('By month') + 4) for (const [t, col] of legend) lx += txt(k, lx, cy, t, col);
     }
-    if (colW >= 4 || i % 2 === 0 || i === n - 1) c.text(x, bottom + 1, monthLabel(m.month), { fg: i === peak ? C.orange : C.slate }, colW);
-  });
-  const pk = months[peak]!;
-  const la = seg(t, 1200, 300);
-  const label = money(pk.measured);
-  const px = Math.min(r.x + peak * colW, r.x + n * colW - textWidth(label));
-  const ty = bottom - Math.ceil(((pk.measured + pk.extra) / max) * h) - 1;
-  if (ty > r.y) c.text(px, ty, label, { fg: C.cream, bold: true, alpha: la });
-  return busy || la < 1;
-}
-
-/** GitHub-style daily grid: weeks across, weekdays down, brightness = $ that day. */
-function heatStrip(s: Scene, days: SpendView['days'], r: Rect): boolean {
-  const { c, t } = s;
-  const byDay = new Map(days.map(d => [d.day, d.usd]));
-  const last = new Date(days.at(-1)!.day + 'T12:00:00Z');
-  const weeks = Math.min(53, Math.max(4, r.w - 4));
-  const start = new Date(last);
-  start.setUTCDate(start.getUTCDate() - ((last.getUTCDay() + 6) % 7) - (weeks - 1) * 7);
-  const max = Math.max(...days.map(d => d.usd), 1e-9);
-  c.text(r.x, r.y, s.tier.id === 'L' ? spaced('every day') : 'EVERY DAY', { fg: C.gray });
-  const pixel = s.caps.color === 'truecolor' || s.caps.color === '256';
-  const gy = r.y + 1;
-  const k = seg(t, 700, 900, easeOutCubic);
-  for (let w = 0; w < weeks; w++) {
-    if (w / weeks > k) break;
-    for (let d = 0; d < 7; d++) {
-      const day = new Date(start);
-      day.setUTCDate(start.getUTCDate() + w * 7 + d);
-      if (day > last) continue;
-      const iso = day.toISOString().slice(0, 10);
-      const usd = byDay.get(iso) ?? 0;
-      const v = usd > 0 ? Math.sqrt(usd / max) : 0;
-      if (pixel) c.px(r.x + 4 + w, gy * 2 + d, usd > 0 ? heat(0.2 + v * 0.8) : mix(C.ink, C.coal, 0.6));
-      else if (d % 2 === 0) {
-        const ch = usd <= 0 ? '·' : v > 0.66 ? '█' : v > 0.33 ? '▓' : '░';
-        c.put(r.x + 4 + w, gy + d / 2, s.caps.unicode ? ch : usd <= 0 ? '.' : v > 0.5 ? '#' : '+', C.orange);
-      }
-    }
+    cy += 2;
+    monthBars(k, { x: cx, y: cy, w: cw, h: barsH }, sp.months);
+    cy += barsH + 1;
   }
-  c.text(r.x, gy, 'Mon', { fg: C.slate });
-  c.text(r.x, gy + 3, 'Sun', { fg: C.slate });
-  const busiest = [...days].sort((a, b) => b.usd - a.usd)[0]!;
-  const la = seg(t, 1500, 300);
-  if (r.h >= 6) c.text(r.x + 4, gy + 4, `brightest: ${shortDate(busiest.day, true)} · ${money(busiest.usd)}`, { fg: C.slate, alpha: la }, r.w - 4);
-  return k < 1 || la < 1;
+  if (wantGrid && bottom - cy >= 5) {
+    txt(k, cx, cy, 'Every day', tk.text3);
+    dayGrid(k, { x: cx, y: cy + 1, w: cw, h: 5 }, sp.days);
+  }
 }
 
-const ERA_COLORS = [C.orange, C.peach, C.cream, C.ember, C.gray];
-
-/** Model eras: one cell block per month, coloured by the model that did most of the work. */
-export function erasBody(s: Scene, eras: { month: string; label: string }[], r: Rect): boolean {
-  const { c, t } = s;
-  if (!eras.length) return false;
+/** Model eras: one block per month, a grey per model (the latest model in primary), a legend. */
+export function erasBody(k: K, eras: { month: string; label: string }[], r: Rect): void {
+  const { tk } = k;
+  if (!eras.length) return;
   const labels = [...new Set(eras.map(e => e.label))];
+  const latest = eras.at(-1)!.label;
+  const inks = [tk.text2, tk.text3, tk.bar, tk.barSoft];
+  const inkOf = (lab: string) => (lab === latest ? tk.text : inks[labels.filter(l => l !== latest).indexOf(lab) % inks.length]!);
   const colW = Math.max(2, Math.min(8, Math.floor(r.w / eras.length)));
   const y = r.y + 1;
-  const k = seg(t, 200, 900, easeOutCubic);
+  const g = k.s.caps.motion ? seg(k.s.t, 200, 900, easeOutCubic) : 1;
+  if (g < 1) k.busy = true;
   eras.forEach((e, i) => {
-    if (i / eras.length > k) return;
-    const color = ERA_COLORS[labels.indexOf(e.label) % ERA_COLORS.length]!;
-    for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < colW - 1; xx++) c.put(r.x + i * colW + xx, y + yy, s.caps.unicode ? '█' : '#', color);
-    if (colW >= 4 || i % 2 === 0) c.text(r.x + i * colW, y + 3, monthLabel(e.month), { fg: C.slate }, colW);
+    if (i / eras.length > g) return;
+    for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < colW - 1; xx++) k.c.put(r.x + i * colW + xx, y + yy, k.uni ? '█' : '#', inkOf(e.label), tk.bg, 0);
+    if (colW >= 4 || i % 2 === 0) txt(k, r.x + i * colW, y + 3, monthLabel(e.month), tk.text3, {}, colW * 2);
   });
   let lx = r.x;
-  const la = seg(t, 1100, 300);
-  labels.forEach((label, i) => {
-    lx += c.text(lx, y + 5, s.caps.unicode ? '■ ' : '# ', { fg: ERA_COLORS[i % ERA_COLORS.length]!, alpha: la });
-    lx += c.text(lx, y + 5, label, { fg: C.cream, alpha: la }) + 3;
-  });
-  void fade;
-  return k < 1 || la < 1;
+  const la = fade(k, 1100, 300);
+  for (const lab of labels) {
+    if (lx + textWidth(lab) + 2 > r.x + r.w) break;
+    lx += txt(k, lx, y + 5, k.uni ? '■ ' : '# ', inkOf(lab), { a: la });
+    lx += txt(k, lx, y + 5, lab, lab === latest ? tk.text : tk.text2, { a: la }) + 3;
+  }
 }

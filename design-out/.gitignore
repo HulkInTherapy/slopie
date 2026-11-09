@@ -1,0 +1,4 @@
+refs/
+raw/
+# Step-1 mockups (directions a/b/c); the shipped look is in final/.
+[abc]-*.png

@@ -1,218 +1,141 @@
-/** Projects (growing bars + a fading postcard), delegation (spawning clones), the awards shelf. */
-import { C, fade, mix } from '../gfx/color.js';
-import { box, hbar, spaced, textCenter, textRight, textWidth, wrapText, type Rect } from '../gfx/draw.js';
-import { bigWidth, drawBig } from '../gfx/font.js';
-import { easeOutCubic, seg, spring } from '../gfx/motion.js';
-import { count, money, shortDate } from '../format.js';
+/** Projects (ranked meters + the one that got away), delegation (monthly bars), the awards. */
+import { count, shortDate } from '../format.js';
+import { textWidth, vbar, wrapText, type Rect } from '../gfx/draw.js';
+import { easeOutCubic, seg } from '../gfx/motion.js';
 import { monthLabel, type DeckCard } from '../story/deck.js';
-import { BRONZE, GOLD, metalGlyph, SILVER } from './poster.js';
-import type { Scene } from './scene.js';
+import { meter } from '../theme/charts.js';
+import { displayHeight, displayWidth, drawDisplay, fitDisplay } from '../theme/display.js';
+import { fade, label, rule, txt, txtRight, vrule, type K } from '../theme/kit.js';
+import { fadeIn } from '../theme/tokens.js';
 
-type Data<K extends DeckCard['kind']> = Extract<DeckCard, { kind: K }>['data'];
+type Data<T extends DeckCard['kind']> = Extract<DeckCard, { kind: T }>['data'];
 
-function postcard(s: Scene, away: NonNullable<Data<'projects'>['gotAway']>, r: Rect, delay: number): boolean {
-  const { c, t } = s;
-  const appear = seg(t, delay, 400);
-  // Vivid at first, then it fades like an old photo.
-  const age = seg(t, delay + 900, 1600, easeOutCubic);
-  const a = appear * (1 - age * 0.45);
-  const border = fade(mix(C.peach, C.gray, age), appear);
-  box(c, r, border, { dashed: true, ascii: !s.caps.unicode });
-  const ix = r.x + 2, iw = r.w - 4;
-  c.text(ix, r.y + 1, 'WISH YOU WERE HERE', { fg: mix(C.peach, C.gray, age), alpha: appear, bold: true }, iw - 6);
-  // Postmark.
-  const stamp = `${away.idle}d`;
-  c.text(r.x + r.w - 3 - textWidth(stamp), r.y + 1, stamp, { fg: C.ink, bg: fade(mix(C.orange, C.slate, age), appear), bold: true });
-  let y = r.y + 3;
-  c.text(ix, y++, s.share ? 'a project' : away.name, { fg: mix(C.cream, C.gray, age), bold: true, alpha: appear }, iw);
-  c.text(ix, y++, `${count(away.prompts)} prompts in ${away.days} days`, { fg: C.gray, alpha: a }, iw);
-  c.text(ix, y++, `then silence for ${away.idle} days`, { fg: mix(C.orange, C.slate, age), alpha: appear }, iw);
-  if (away.lastWords && !s.share && y + 2 < r.y + r.h - 1) {
+function gotAway(k: K, away: NonNullable<Data<'projects'>['gotAway']>, r: Rect, delay: number): void {
+  const { tk, s } = k;
+  const a = fade(k, delay, 400);
+  let y = r.y;
+  label(k, r.x, y++, 'the one that got away', a, r.w);
+  y++;
+  txt(k, r.x, y++, s.share ? 'a project' : away.name, tk.text, { bold: true, a }, r.w);
+  txt(k, r.x, y++, `${count(away.prompts)} prompts in ${away.days} days`, tk.text2, { a }, r.w);
+  txt(k, r.x, y++, `then silence for ${away.idle} days`, tk.text, { a }, r.w);
+  if (away.lastWords && !s.share && y + 3 <= r.y + r.h) {
     y++;
-    c.text(ix, y++, 'your last words to it:', { fg: C.slate, alpha: a }, iw);
-    for (const line of wrapText(`“${away.lastWords}”`, iw, Math.max(1, r.y + r.h - 2 - y))) c.text(ix, y++, line, { fg: mix(C.cream, C.gray, age), italic: true, alpha: a });
+    txt(k, r.x, y++, 'your last words to it', tk.text3, { a }, r.w);
+    const lines = wrapText(`“${away.lastWords}”`, r.w);
+    if (lines.length <= Math.max(1, r.y + r.h - y - 2)) for (const line of lines) txt(k, r.x, y++, line, tk.text2, { italic: true, a });
   }
-  if (y < r.y + r.h - 1) textRight(c, r.x + r.w - 2, r.y + r.h - 2, shortDate(away.lastDay, true), { fg: C.slate, alpha: a });
-  return t < delay + 2500;
+  if (y + 1 < r.y + r.h) txt(k, r.x, y + 1, shortDate(away.lastDay, true), tk.text3, { a });
 }
 
-export function projectsBody(s: Scene, data: Data<'projects'>, r: Rect): boolean {
-  const { c, t, tier } = s;
-  const cardW = tier.id === 'L' ? 42 : 34;
-  const side = data.gotAway && r.w - cardW - 4 >= 34;
-  const below = data.gotAway && !side && r.h >= 12;
-  const barsW = side ? r.w - cardW - 4 : r.w;
-  const maxRows = below ? Math.max(2, r.h - 8) : r.h;
-  const rows = data.rows.slice(0, Math.min(6, Math.ceil(maxRows / (r.h >= 12 && !below ? 2 : 1))));
-  const step = rows.length * 2 <= maxRows ? 2 : 1;
+export function projectsBody(k: K, data: Data<'projects'>, r: Rect): void {
+  const { tk, L, s } = k;
+  const cardW = L ? 36 : 30;
+  const side = !!data.gotAway && r.w - cardW - 6 >= 34;
+  const barsW = side ? r.w - cardW - 6 : r.w;
+  const rows = data.rows.slice(0, Math.min(6, Math.max(1, Math.floor(r.h / (r.h >= 12 ? 2 : 1)))));
+  const step = rows.length * 2 <= r.h ? 2 : 1;
   const max = Math.max(...rows.map(p => p.prompts));
-  const nameW = Math.min(20, Math.max(...rows.map(p => textWidth(s.share ? 'Project A' : p.name))) + 1);
-  const valW = 6;
+  const nameW = Math.min(20, Math.max(...rows.map(p => textWidth(s.share ? 'Project A' : p.name))) + 2);
+  const valW = 7;
   const costW = rows.some(p => p.cost !== null) && barsW >= 50 ? 8 : 0;
-  const barW = Math.max(6, barsW - nameW - valW - costW - 3);
-  let busy = false;
+  const barW = Math.max(6, barsW - nameW - valW - costW - 2);
   rows.forEach((p, i) => {
     const y = r.y + i * step;
-    const k = s.caps.motion ? Math.min(1, spring((t - 100 - i * 90) / 1000, 2, 0.7)) : 1;
-    busy ||= t < 100 + i * 90 + 900;
+    const start = 100 + i * 90;
+    const a = fade(k, start, 260);
     const name = s.share ? `Project ${String.fromCharCode(65 + i)}` : p.name;
-    const away = data.gotAway && p.name === data.gotAway.name;
-    c.text(r.x, y, name, { fg: i === 0 ? C.cream : away ? C.peach : C.gray, bold: i === 0 }, nameW - 1);
-    hbar(c, r.x + nameW, y, barW, (p.prompts / max) * Math.max(0, k), i === 0 ? C.orange : away ? fade(C.peach, 0.7) : fade(C.orange, 0.55), !s.caps.unicode);
-    textRight(c, r.x + nameW + barW + 1 + valW, y, count(Math.round(p.prompts * Math.min(1, Math.max(0, k)))), { fg: C.cream });
-    if (costW && p.cost !== null) textRight(c, r.x + nameW + barW + 1 + valW + costW, y, '$' + count(Math.round(p.cost)), { fg: C.slate });
+    const away = !!data.gotAway && p.name === data.gotAway.name;
+    txt(k, r.x, y, name, i === 0 ? tk.text : tk.text2, { bold: i === 0, a }, nameW - 2);
+    meter(k, r.x + nameW, y, barW, p.prompts / max, i === 0 ? tk.text : away ? tk.text3 : tk.bar, start);
+    const g = s.caps.motion ? seg(s.t, start, 600, easeOutCubic) : 1;
+    txtRight(k, r.x + nameW + barW + valW, y, count(Math.round(p.prompts * g)), tk.text, { a });
+    if (costW && p.cost !== null) txtRight(k, r.x + nameW + barW + valW + costW, y, '$' + count(Math.round(p.cost)), tk.text3, { a });
   });
-  if (data.gotAway) {
-    if (side) busy = postcard(s, data.gotAway, { x: r.x + barsW + 4, y: r.y, w: cardW, h: Math.min(r.h, 13) }, 500) || busy;
-    else if (below) busy = postcard(s, data.gotAway, { x: r.x, y: r.y + rows.length * step + 1, w: Math.min(r.w, 56), h: Math.min(7, r.y + r.h - (r.y + rows.length * step + 1)) }, 500) || busy;
+  if (data.gotAway && side) {
+    const gx = r.x + barsW + 6;
+    vrule(k, gx - 3, r.y, Math.min(r.h, 12), fade(k, 500));
+    gotAway(k, data.gotAway, { x: gx, y: r.y, w: cardW, h: r.h }, 500);
+  } else if (data.gotAway && r.h - rows.length * step >= 8) {
+    const gy = r.y + rows.length * step + 1;
+    rule(k, r.x, gy, Math.min(r.w, 56), tk.rule, fade(k, 500));
+    gotAway(k, data.gotAway, { x: r.x, y: gy + 2, w: Math.min(r.w, 56), h: r.y + r.h - gy - 2 }, 500);
   }
-  return busy;
+  if (s.caps.motion && s.t < 1600) k.busy = true;
 }
 
-/* ── delegation: little Slopie clones ── */
+/* ── delegation: the total, then subagents by month ── */
 
-const MINI = ['.ooo.', 'oeoeo', 'rrrrr'];
-
-/** A 5×4-pixel Slopie (5 cols × 2 rows). `pop` 0..1 scales it in from a cream flash. */
-function clone(s: Scene, x: number, y: number, pop: number): void {
-  const { c } = s;
-  if (s.caps.color === 'none' || s.caps.color === '16') { c.text(x, y, s.caps.unicode ? '(•ᴗ•)' : '(o_o)', { fg: C.orange }); return; }
-  const flash = pop < 1 ? 1 - pop : 0;
-  MINI.forEach((row, py) => {
-    for (let px = 0; px < row.length; px++) {
-      const ch = row[px];
-      if (ch === '.') continue;
-      const base = ch === 'e' ? C.pupil : ch === 'r' ? C.rust : px === 1 && py === 0 ? C.peach : C.orange;
-      c.px(x + px, y * 2 + py, mix(base, C.cream, flash * 0.8));
-    }
-  });
-}
-
-export function delegationBody(s: Scene, data: Data<'delegation'>, r: Rect): boolean {
-  const { c, t, tier } = s;
-  const total = `${count(data.total)}`;
-  const a = seg(t, 0, 300);
-  const scale = tier.id === 'L' ? 2 : 1;
-  drawBig(c, r.x, r.y, total, { scale, color: (_x, py) => fade(mix(C.cream, C.orange, py / (5 * scale - 1)), a) });
-  const tw = bigWidth(total, scale);
-  c.text(r.x, r.y + (scale === 2 ? 6 : 4), 'subagents launched', { fg: C.gray, alpha: a });
-  if (!data.months.length) return a < 1;
-  const colW = 6;
-  // Keep the months that fit, dropping leading empty ones first (one zero month stays as "before").
+export function delegationBody(k: K, data: Data<'delegation'>, r: Rect): void {
+  const { tk, L, s } = k;
+  const total = count(data.total);
+  const a = fade(k, 0, 300);
+  const opts = k.uni ? fitDisplay(total, 30, { face: tk.face, tall: L }) : null;
+  const numH = opts ? displayHeight(opts) : 1;
+  if (opts) drawDisplay(k.c, r.x, r.y, total, fadeIn(tk, tk.text, a), tk.bg, opts);
+  else txt(k, r.x, r.y, total, tk.text, { bold: true, a });
+  txt(k, r.x, r.y + numH + 1, 'subagents launched', tk.text2, { a });
+  if (!data.months.length) return;
   let months = data.months;
   const firstUsed = months.findIndex(m => m.n > 0);
   if (firstUsed > 1) months = months.slice(firstUsed - 1);
-  const room = Math.floor((r.w - Math.max(tw, 20) - 6) / colW);
-  const sideBySide = room >= Math.min(months.length, 5);
-  const fit = sideBySide ? room : Math.floor(r.w / colW);
+  const leftW = Math.max(opts ? displayWidth(total, opts) : textWidth(total), 20) + 8;
+  const colW = 5;
+  const sideBySide = r.w - leftW >= Math.min(months.length, 5) * colW;
+  const gx = sideBySide ? r.x + leftW : r.x;
+  const fit = Math.floor((sideBySide ? r.w - leftW : r.w) / colW);
   if (months.length > fit) months = months.slice(months.length - fit);
-  const gx = sideBySide ? r.x + Math.max(tw, 20) + 6 : r.x;
-  const gy = sideBySide ? r.y : r.y + (scale === 2 ? 8 : 6);
-  const gh = Math.max(2, r.y + r.h - gy - 2);
-  const perCol = Math.max(1, Math.floor(gh / 2));
+  const gy = sideBySide ? r.y : r.y + numH + 3;
+  const gh = Math.max(3, Math.min(L ? 12 : 8, r.y + r.h - gy - 2));
   const max = Math.max(1, ...months.map(m => m.n));
-  const unit = Math.max(1, Math.ceil(max / perCol));
-  let order = 0;
-  let busy = false;
+  if (sideBySide) vrule(k, gx - 4, r.y, gh + 2, fade(k, 200));
+  const peak = months.reduce((b, m, i) => (m.n > months[b]!.n ? i : b), 0);
+  rule(k, gx, gy + gh, months.length * colW - 2);
   months.forEach((m, i) => {
     const x = gx + i * colW;
-    const stack = Math.ceil(m.n / unit);
-    for (let k = 0; k < stack; k++) {
-      const at = 250 + order++ * 28;
-      const pop = seg(t, at, 260);
-      busy ||= pop < 1;
-      if (pop <= 0) continue;
-      const hop = pop < 1 ? Math.round(Math.sin(Math.PI * pop) * 1) : 0;
-      clone(s, x, gy + gh - 2 - k * 2 - hop, pop);
-    }
-    if (!m.n) c.put(x + 2, gy + gh - 1, '·', C.slate);
-    c.text(x, gy + gh, monthLabel(m.month), { fg: data.firstMonth === m.month ? C.orange : C.slate });
+    const g = s.caps.motion ? seg(s.t, 250 + i * 60, 600, easeOutCubic) : 1;
+    if (g < 1) k.busy = true;
+    if (m.n > 0) vbar(k.c, x, gy + gh - 1, gh - 1, Math.max(0.04, (m.n / max) * g), i === peak ? tk.text : tk.bar, 3, !k.uni);
+    txt(k, x, gy + gh + 1, monthLabel(m.month), data.firstMonth === m.month ? tk.text : tk.text3);
   });
-  const la = seg(t, 400 + order * 28, 300);
-  const legend = `each slopie = ${unit} subagent${unit === 1 ? '' : 's'}`;
-  if (gy + gh + 1 <= r.y + r.h) c.text(gx, gy + gh + 1, legend, { fg: C.slate, alpha: la });
-  return busy || la < 1;
+  const pk = months[peak]!;
+  const la = fade(k, 300 + months.length * 60 + 400);
+  const ty = gy + gh - 2 - Math.ceil((pk.n / max) * (gh - 1));
+  if (ty >= r.y) txt(k, gx + peak * colW, ty, count(pk.n), tk.text, { bold: true, a: la });
 }
 
-/* ── awards shelf ── */
-
-const CUP = ['.#####.', '##ooo##', '#.ooo.#', '.#ooo#.', '..ooo..', '...o...', '..ooo..', '.ooooo.'];
+/* ── the awards: a grid of titles, values and their metal ── */
 
 type Metal = 'gold' | 'silver' | 'bronze';
-/** Cup colours per metal: [rim top, rim bottom, bowl top, bowl bottom]. */
-const METAL: Record<Metal, [number, number, number, number]> = {
-  gold: [C.cream, GOLD, GOLD, C.orange],
-  silver: [C.white, SILVER, SILVER, C.slate],
-  bronze: [C.peach, BRONZE, BRONZE, C.deep],
-};
-
 /** A trophy's metal: the engine's tier when it gives one, else rank (1 gold, 2–3 silver, rest bronze). */
 export function metalOf(tier: 'gold' | 'silver' | undefined, rank: number): Metal {
   return tier ?? (rank === 0 ? 'gold' : rank < 3 ? 'silver' : 'bronze');
 }
 
-function trophy(s: Scene, x: number, y: number, dy: number, a: number, metal: Metal, scale = 1): void {
-  const { c } = s;
-  if (s.caps.color === 'none' || s.caps.color === '16') {
-    const fg = metal === 'gold' ? C.orange : metal === 'silver' ? C.gray : C.rust;
-    c.text(x + 1, y + 1, '\\_/', { fg });
-    c.text(x + 2, y + 2, metal === 'gold' ? '*' : metal === 'silver' ? '+' : '|', { fg });
-    c.text(x + 1, y + 3, '/_\\', { fg });
-    return;
-  }
-  const [top, bottom, bowlTop, bowlBottom] = METAL[metal];
-  CUP.forEach((row, py) => {
-    for (let px = 0; px < row.length; px++) {
-      if (row[px] === '.') continue;
-      const color = row[px] === '#' ? mix(top, bottom, py / 7) : mix(bowlTop, bowlBottom, py / 7);
-      // Gold gets a highlight streak; bronze stays matte.
-      const shine = metal !== 'bronze' && px === 2 && py < 4 && row[px] === 'o';
-      const col = fade(shine ? C.white : color, a);
-      for (let sy = 0; sy < scale; sy++) for (let sx = 0; sx < scale; sx++) c.px(x + px * scale + sx, y * 2 + py * scale + sy + dy, col);
-    }
+export function awardsBody(k: K, data: Data<'awards'>, r: Rect): void {
+  const { tk, L, s } = k;
+  const cols = r.w >= 96 ? 3 : 2;
+  const gap = 6;
+  const colW = Math.floor((r.w - gap * (cols - 1)) / cols);
+  const cellH = L ? 5 : 4;
+  const rows = Math.min(Math.ceil(data.trophies.length / cols), Math.max(1, Math.floor((r.h + 1) / (cellH + 1))));
+  data.trophies.slice(0, rows * cols).forEach((award, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const x = r.x + col * (colW + gap);
+    const y = r.y + row * (cellH + 1);
+    const a = fade(k, 150 + i * 140, 360);
+    if (row) rule(k, x, y - 1, colW, tk.rule, a);
+    const metal = metalOf(award.tier, i);
+    // The first trophy is the one the year is about: its metal word in the accent.
+    label(k, x, y, metal, a);
+    if (i === 0) txt(k, x, y, metal.toUpperCase(), tk.accent, { a });
+    const title = wrapText(award.title, colW);
+    if (title.length > 2) return;
+    title.forEach((line, li) => txt(k, x, y + 1 + li, line, tk.text, { bold: true, a }));
+    const value = s.share && award.publicValue ? award.publicValue : award.value;
+    const vy = y + 1 + title.length;
+    if (textWidth(value) <= colW && vy < y + cellH) txt(k, x, vy, value, tk.text2, { a });
+    if (award.sub && vy + 1 < y + cellH && textWidth(award.sub) <= colW) txt(k, x, vy + 1, award.sub, tk.text3, { a });
   });
-}
-
-export function awardsBody(s: Scene, data: Data<'awards'>, r: Rect): boolean {
-  const { c, t, tier } = s;
-  const perRow = tier.id === 'L' ? Math.min(6, data.trophies.length) : 3;
-  const rowsNeeded = Math.ceil(data.trophies.length / perRow);
-  const big = tier.id === 'L' && r.h >= 14 && s.caps.color !== 'none' && s.caps.color !== '16';
-  const cupH = big ? 8 : 4;
-  const rowH = cupH + 7;
-  const shelves = Math.min(rowsNeeded, Math.max(1, Math.floor((r.h + 1) / rowH)));
-  const colW = Math.floor(r.w / perRow);
-  let busy = false;
-  for (let row = 0; row < shelves; row++) {
-    const y = r.y + row * rowH;
-    const shelfY = y + cupH;
-    const items = data.trophies.slice(row * perRow, (row + 1) * perRow);
-    const sa = seg(t, row * 300, 300);
-    for (let x = r.x; x < r.x + Math.min(r.w, items.length * colW); x++) c.put(x, shelfY, s.caps.unicode ? '▀' : '=', fade(C.rust, sa));
-    items.forEach((award, i) => {
-      const index = row * perRow + i;
-      const delay = 150 + index * 160;
-      const fall = s.caps.motion ? spring((t - delay) / 1000, 2.6, 0.45) : 1;
-      busy ||= t < delay + 900;
-      if (t < delay) return;
-      const cx = r.x + i * colW + Math.floor(colW / 2);
-      // Drop from just above the shelf row, never through the headline.
-      const dropRows = Math.min(6, Math.max(1, y - r.y + 2));
-      const dy = Math.round((1 - Math.min(1.15, fall)) * -dropRows);
-      const metal = metalOf(award.tier, index);
-      trophy(s, cx - (big ? 7 : 3), y, dy * 2, Math.min(1, fall * 1.5), metal, big ? 2 : 1);
-      if (metal === 'gold' && s.caps.unicode && fall >= 1) c.put(cx + (big ? 7 : 4), y + (big ? 0 : 0), '✦', fade(GOLD, seg(t, delay + 500, 300)));
-      const la = seg(t, delay + 300, 300);
-      const w = colW - 2;
-      // Titles get two lines rather than an ellipsis ("Most expensive sentence" in a narrow column).
-      const title = wrapText(award.title, w - 2, 2);
-      title.forEach((line, li) => textCenter(c, cx, shelfY + 1 + li, li === 0 ? `${metalGlyph(metal, s.caps.unicode)} ${line}` : line, { fg: C.gray, alpha: la }));
-      const valueY = shelfY + 1 + title.length;
-      const value = wrapText(s.share && award.publicValue ? award.publicValue : award.value, w, 2);
-      const ink = metal === 'gold' ? GOLD : metal === 'silver' ? SILVER : BRONZE;
-      value.forEach((line, li) => textCenter(c, cx, valueY + li, line, { fg: ink, bold: metal !== 'bronze', alpha: la }));
-      if (award.sub) textCenter(c, cx, valueY + value.length, wrapText(award.sub, w, 1)[0] ?? '', { fg: C.slate, alpha: la });
-    });
-  }
-  return busy;
+  if (s.caps.motion && s.t < 150 + data.trophies.length * 140 + 360) k.busy = true;
 }

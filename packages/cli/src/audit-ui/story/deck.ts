@@ -6,7 +6,6 @@
  * otherwise a local template built only from numbers in the snapshot.
  */
 import type { AuditSnapshot } from '../../../../core/src/analytics/contracts.js';
-import type { Expression } from '../mascot.js';
 import { compact, count, harnessName, hourLabel, modelName, money, shortDate } from '../format.js';
 import { sanitize } from '../text.js';
 import { boardData, type BoardData } from '../view-model.js';
@@ -15,6 +14,8 @@ import { boardSummaryData, type BoardSummary } from './board-data.js';
 import { modelShareOf, spendOf } from './v19.js';
 import type { AuditStory, StoryCard, StoryChart } from './types.js';
 
+
+export type Expression = 'idle' | 'blink' | 'waving' | 'waving2' | 'proud' | 'shocked' | 'sad' | 'smirk' | 'sleepy' | 'side-eye' | 'heart-eyes' | 'chewing' | 'chewing2';
 export type Kind =
   | 'cover' | 'cold_open' | 'scale' | 'bill' | 'clock' | 'guess' | 'faceoff' | 'mood' | 'fuse' | 'talk' | 'manners'
   | 'projects' | 'delegation' | 'then_now' | 'archetype' | 'awards' | 'insight' | 'board';
@@ -26,6 +27,7 @@ interface Base<K extends Kind, D> {
   kicker: string;
   headline: string;
   support: string;
+  /** The card's mood (kept in the deck data; the 1.8.6 look draws no mascot). */
   expression: Expression;
   /** `?` method notes, plain English. */
   notes: string[];
@@ -399,7 +401,7 @@ function faceoff(story: AuditStory | null): DeckCard | null {
 function erasLine(eras: { label: string }[]): string {
   const seq: string[] = [];
   for (const e of eras) if (seq.at(-1) !== e.label) seq.push(e.label);
-  return seq.join(' ▸ ');
+  return seq.join(' → ');
 }
 
 /** Observed vs month-matched expected per model, from the worst/best model chart. */

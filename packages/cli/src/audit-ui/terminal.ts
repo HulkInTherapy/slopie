@@ -2,7 +2,7 @@
  * The interactive `slopie audit` experience: loading story → story cards → share board.
  *
  * - Cell-diff rendering, one synchronized write per frame, 30 fps only while something moves.
- *   When everything is still, the only timer is Slopie's blink (two paints every few seconds).
+ *   When everything is still, no timer runs (the next paint waits for a key, a resize or data).
  * - ←/→ (h/l, space, enter) page; b board; s save share SVG; ? method notes; 1–4 guess; q/Ctrl-C quit.
  * - Alt screen, cursor, raw mode and bracketed paste are always restored (quit, signals, crashes).
  * - A transfer notice is acknowledged only after the frame showing it in full has been flushed.
@@ -14,11 +14,10 @@ import { renderCard } from './cards/index.js';
 import { revealDone, T } from './cards/reveal.js';
 import { MIN_COLS, MIN_ROWS, tierFor, type CardState, type Scene } from './cards/scene.js';
 import { Canvas } from './gfx/canvas.js';
-import { C, fade } from './gfx/color.js';
-import { box, textCenter, textWidth, wrapText } from './gfx/draw.js';
+import { C, mix } from './gfx/color.js';
+import { textCenter, textWidth, wrapText } from './gfx/draw.js';
 import { CellRenderer, detectCaps, type Caps } from './gfx/screen.js';
 import { LoadingStory, loadingModel } from './loading.js';
-import { drawMascot, mascotLine } from './mascot.js';
 import { applyAuditEvent, applyPreviewInvalidation, applyPrivacyEvent, type PrivacyView, type TransferEvent } from './session-state.js';
 import { storyShareSvg } from './share.js';
 import { buildDeck, type DeckCard } from './story/deck.js';
@@ -164,7 +163,6 @@ const FRAME_MS = 33;
 /** Card clocks run 1.5× real time: entrances read as snappy (most settle in ~1 s) without losing their shape. */
 const CARD_SPEED = 1.5;
 const TRANSFER_LINGER_MS = 1800;
-const BLINK_MS = 140;
 
 export async function runWallboard(session: AuditSession, options: TerminalOptions = {}): Promise<TerminalResult> {
   const stdin = options.io?.stdin ?? process.stdin;
@@ -189,11 +187,10 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   const states = new Map<string, CardState>();
   const story = new LoadingStory(started);
   let toast: { text: string; until: number } | null = null;
-  let blink = false;
+  const blink = false;
   let needsClear = true;
 
   let ticker: ReturnType<typeof setInterval> | null = null;
-  let blinkTimer: ReturnType<typeof setTimeout> | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let scheduled: ReturnType<typeof setTimeout> | null = null;
   let resolveDone: () => void = () => {};
@@ -252,13 +249,12 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   }
 
   function drawTooSmall(c: Canvas, w: number, h: number): void {
-    const msg = `Slopie needs ${MIN_COLS}×${MIN_ROWS}. You're at ${w}×${h}.`;
-    const y = Math.max(0, Math.floor(h / 2) - 3);
-    if (w >= 12 && h >= 8 && caps.color !== 'none' && caps.color !== '16') drawMascot(c, Math.floor((w - 10) / 2), y, blink ? 'blink' : 'sad', { size: 'compact' });
-    else textCenter(c, w / 2, y + 1, mascotLine('sad', !caps.unicode), { fg: C.orange, bold: true });
-    const lines = wrapText('make me bigger', w - 2, 1);
-    textCenter(c, w / 2, y + 5, lines[0] ?? '', { fg: C.cream, bold: true });
-    wrapText(msg, w - 2, 2).forEach((line, i) => textCenter(c, w / 2, y + 6 + i, line, { fg: C.gray }));
+    const msg = `slopie needs ${MIN_COLS}×${MIN_ROWS}. You're at ${w}×${h}.`;
+    const y = Math.max(0, Math.floor(h / 2) - 1);
+    const head = wrapText('Make the window bigger.', w - 2);
+    const body = wrapText(msg, w - 2);
+    if (head.length === 1) textCenter(c, w / 2, y, head[0]!, { fg: C.text, bold: true });
+    if (body.length <= 2) body.forEach((line, i) => textCenter(c, w / 2, y + 1 + i, line, { fg: C.text2 }));
   }
 
   /** Transfer banner (Jev): returns false when the notice cannot be shown in full. */
@@ -268,9 +264,10 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
     const text = sanitize(event.notice);
     const lines = wrapText(text, Math.max(10, w - 6), 99);
     if (lines.length > 4 || lines.length + 2 > h) return false;
+    // A full-width band one step up from the background, closed by a hairline.
     const height = lines.length + 2;
-    for (let y = 0; y < height; y++) for (let x = 0; x < w; x++) c.put(x, y, ' ', C.cream, C.coal);
-    lines.forEach((line, i) => c.text(3, 1 + i, line, { fg: C.cream, bg: C.coal, bold: i === 0 }));
+    for (let y = 0; y < height; y++) for (let x = 0; x < w; x++) c.put(x, y, y === height - 1 ? (caps.unicode ? '─' : '-') : ' ', C.text3, C.rule);
+    lines.forEach((line, i) => c.text(3, 1 + i, line, { fg: C.text, bg: C.rule, bold: i === 0 }));
     return true;
   }
 
@@ -291,19 +288,22 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
     const page = Math.min(notes!.page, pages - 1);
     notes!.page = page;
     const rows = all.slice(page * perPage, (page + 1) * perPage);
+    // A page of its own (no box): the card fades back, the notes sit on a hairline-framed column.
+    for (let i = 0; i < c.fg.length; i++) if (c.fg[i]! >= 0) c.fg[i] = mix(C.bg, c.fg[i]!, 0.12);
     const ph = rows.length + 4;
     const px = Math.floor((w - pw) / 2), py = Math.max(1, Math.floor((h - ph) / 2));
-    box(c, { x: px, y: py, w: pw, h: ph }, C.orange, { fill: C.coal, ascii: !caps.unicode });
-    rows.forEach((row, i) => c.text(px + 2, py + 1 + i, row.text, { fg: row.title ? C.orange : C.cream, bold: row.title, bg: C.coal }, pw - 4));
+    for (let y = py - 1; y < py + ph + 1; y++) for (let x = px - 2; x < px + pw; x++) c.put(x, y, ' ', C.text, C.bg);
+    for (let x = px - 2; x < px + pw; x++) { c.put(x, py - 1, caps.unicode ? '─' : '-', C.rule, C.bg); c.put(x, py + ph, caps.unicode ? '─' : '-', C.rule, C.bg); }
+    rows.forEach((row, i) => c.text(px, py + 1 + i, row.text, { fg: row.title ? C.text3 : C.text, bg: C.bg }, pw - 2));
     const foot = pages > 1 ? `${page + 1}/${pages}  ${caps.unicode ? '← →' : '< >'} page · ? or esc to close` : '? or esc to close';
-    c.text(px + 2, py + ph - 2, foot, { fg: C.gray, bg: C.coal });
+    c.text(px, py + ph - 1, foot, { fg: C.text2, bg: C.bg });
   }
 
   function compose(now: number): { canvas: Canvas; busy: boolean; bannerShown: boolean } {
     const { w, h } = size();
     const paintBg = caps.color === 'truecolor' || caps.color === '256';
-    const canvas = new Canvas(w, h, paintBg ? C.ink : -1);
-    if (paintBg) canvas.fill(0, 0, w, h, ' ', { bg: C.ink });
+    const canvas = new Canvas(w, h, paintBg ? C.bg : -1);
+    if (paintBg) canvas.fill(0, 0, w, h, ' ', { bg: C.bg });
     let busy = false;
     const tier = tierFor(w, h);
     if (!tier) {
@@ -331,7 +331,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
     if (toast && toast.until > now) {
       const text = ` ${toast.text} `;
       const tx = Math.max(0, Math.floor((w - textWidth(text)) / 2));
-      canvas.text(tx, h - (tier.id === 'L' ? 4 : 3), text, { fg: C.ink, bg: C.peach, bold: true });
+      canvas.text(tx, h - (tier.id === 'L' ? 4 : 3), text, { fg: C.text, bg: C.rule, bold: true });
     }
     const bannerShown = drawBanner(canvas, w, h);
     return { canvas, busy, bannerShown };
@@ -360,34 +360,10 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   function animate(busy: boolean): void {
     if (busy && caps.motion && !restored) {
       if (!ticker) ticker = setInterval(paint, FRAME_MS);
-      if (blinkTimer) { clearTimeout(blinkTimer); blinkTimer = null; }
       return;
     }
+    // Still: no timers at all until a key, a resize or new data arrives.
     if (ticker) { clearInterval(ticker); ticker = null; }
-    if (!blinkTimer && caps.motion && !restored) scheduleBlink();
-  }
-
-  let blinkCount = 0;
-  function scheduleBlink(): void {
-    const delay = 2600 + ((blinkCount++ * 977) % 1600);
-    blinkTimer = setTimeout(() => {
-      blink = true;
-      paintStill();
-      blinkTimer = setTimeout(() => {
-        blink = false;
-        blinkTimer = null;
-        paintStill();
-        if (!ticker) scheduleBlink();
-      }, BLINK_MS);
-    }, delay);
-  }
-
-  /** Repaint without starting the animation loop (blink frames). */
-  function paintStill(): void {
-    if (restored) return;
-    const { canvas } = compose(clock());
-    const out = renderer.frame(canvas, false);
-    if (out) stdout.write(out);
   }
 
   function flash(text: string, ms = 1600): void {
@@ -625,7 +601,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   try {
     await done;
   } finally {
-    for (const timer of [scheduled, toastTimer, bannerTimer, blinkTimer, inputTimer]) if (timer) clearTimeout(timer);
+    for (const timer of [scheduled, toastTimer, bannerTimer, inputTimer]) if (timer) clearTimeout(timer);
     if (ticker) clearInterval(ticker);
     stdin.off('data', onData);
     stdout.off('resize', onResize);
@@ -642,4 +618,3 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   return { snapshot: view.revoked ?? view.snapshot, reason };
 }
 
-export { fade };

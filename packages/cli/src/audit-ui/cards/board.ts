@@ -1,6 +1,6 @@
 /**
  * The final board: a personality poster (see poster.ts). It is the last card and the share
- * image, and draws its own chrome (no story rail).
+ * image, and draws its own chrome.
  */
 import type { BoardSummary } from '../story/board-data.js';
 import { posterBody } from './poster.js';

@@ -7,7 +7,6 @@ export interface Tier {
   id: 'L' | 'M' | 'S';
   /** Horizontal margin. */
   mx: number;
-  mascot: 'big' | 'compact' | 'line';
 }
 
 export const MIN_COLS = 60;
@@ -15,9 +14,9 @@ export const MIN_ROWS = 20;
 
 export function tierFor(w: number, h: number): Tier | null {
   if (w < MIN_COLS || h < MIN_ROWS) return null;
-  if (w >= 100 && h >= 30) return { id: 'L', mx: 4, mascot: 'big' };
-  if (w >= 76 && h >= 23) return { id: 'M', mx: 3, mascot: 'compact' };
-  return { id: 'S', mx: 2, mascot: 'line' };
+  if (w >= 100 && h >= 30) return { id: 'L', mx: 4 };
+  if (w >= 76 && h >= 23) return { id: 'M', mx: 3 };
+  return { id: 'S', mx: 2 };
 }
 
 /** Per-card interactive state that survives paging back and forth. */
@@ -36,7 +35,7 @@ export interface Scene {
   t: number;
   tier: Tier;
   caps: Caps;
-  /** Slopie's eyes are closed for this frame. */
+  /** Cursor blink phase for this frame (the terminal's shared blink clock). */
   blink: boolean;
   state: CardState;
   index: number;

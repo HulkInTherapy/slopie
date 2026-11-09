@@ -87,7 +87,7 @@ export function boardPlain(b: BoardSummary): string[] {
     const more = [sp.thisMonth !== null ? `this month ${money(sp.thisMonth)}` : null, sp.perDay !== null ? `per active day ${money(sp.perDay)}` : null, sp.priciestDay ? `priciest day ${money(sp.priciestDay.usd)} (${shortDate(sp.priciestDay.day)})` : null].filter(Boolean);
     if (more.length) rows.push(more.join(' · '));
   }
-  const bars = (title: string, list: BarRow[]) => { if (list.length) rows.push(`${title}: ` + list.map(r => `${r.label} ${r.value}${r.tags?.includes('fav') ? ' ♥' : ''}${r.tags?.includes('nemesis') ? ' ☠' : ''}`).join(' · ')); };
+  const bars = (title: string, list: BarRow[]) => { if (list.length) rows.push(`${title}: ` + list.map(r => `${r.label} ${r.value}${r.tags?.includes('fav') ? ' (favourite)' : ''}${r.tags?.includes('nemesis') ? ' (nemesis)' : ''}`).join(' · ')); };
   if (b.models) { bars(`models (${b.models.basis})`, b.models.rows); if (b.models.unknown) rows.push(`${count(b.models.unknown)} older prompts have no recorded model`); }
   if (b.agents) { bars(`agents (${b.agents.basis})`, b.agents.rows); if (b.agents.automated) rows.push(`+ ${count(b.agents.automated)} automated runs (not counted as chats)`); }
   if (b.time?.peak) rows.push(`peak: ${b.time.peak}${b.time.lines.length ? ' · ' + b.time.lines.join(' · ') : ''}`);
@@ -133,7 +133,7 @@ export function renderShareSvg(snapshot: AuditSnapshot, options: PlainOptions = 
   while (page.length && !lineText(page.at(-1)!)) page.pop();
   const cellWidth = 8.4;
   const cellHeight = 18;
-  const colors: Record<string, string> = { brand: '#F2A45E', accent: '#F2A45E', title: '#A6A29B', value: '#EEEAE4', text: '#EEEAE4', muted: '#A6A29B', faint: '#68665F' };
+  const colors: Record<string, string> = { brand: '#F7F8F8', accent: '#7C7CFF', title: '#8A8F98', value: '#F7F8F8', text: '#F7F8F8', muted: '#8A8F98', faint: '#5D6168' };
   const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const body = page.map((line, row) => {
     let column = 0;
@@ -150,7 +150,7 @@ export function renderShareSvg(snapshot: AuditSnapshot, options: PlainOptions = 
   const height = (page.length + 1) * cellHeight + 24;
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-    `<rect width="100%" height="100%" rx="12" fill="#10100F"/>`,
+    `<rect width="100%" height="100%" rx="12" fill="#08090A"/>`,
     `<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">`,
     ...body,
     '</g>',

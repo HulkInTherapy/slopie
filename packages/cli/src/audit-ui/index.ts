@@ -2,10 +2,10 @@
  * `slopie audit` terminal UI.
  *
  *   story/deck.ts     snapshot → the ordered story deck (pure, memoised; reads only story/source.ts)
- *   cards/*.ts        one renderer per card kind (chrome + its own visual), pure functions of time
- *   loading.ts        the loading story (agents light up, messages flow into Slopie)
- *   mascot.ts         Slopie as pixel data
- *   gfx/*.ts          cell canvas, palette, easing, block font, cell-diff renderer
+ *   cards/*.ts        one renderer per card kind (its own visual inside the shared chrome), pure functions of time
+ *   theme/*.ts        the design system: tokens, display face, chrome, kit, charts (docs/design/tui-redesign.md)
+ *   loading.ts        the loading screen (agents light up, counters settle on the real scan)
+ *   gfx/*.ts          cell canvas, palette, easing, cell-diff renderer
  *   terminal.ts       interactive runtime: input, resize, transfers, restore
  *   share.ts          share card → SVG
  *   view-model.ts     1.7.x board facts (fallback deck, details)
