@@ -1,19 +1,19 @@
 {
   "contractVersion": 2,
   "version": "1.9.0",
-  "sourceRevision": "282adc551ba05365bcfd4884c6c98fd574eff8f7",
+  "sourceRevision": "3392fac9f755d1ffb3f788e675b81caf01a47888",
   "files": {
     "dist/potsherd.js": {
-      "bytes": 1628046,
-      "sha256": "75794fd4cce4014dbcd416be4ad073398c763485106580d92cd99f5a9895b9e3"
+      "bytes": 1630644,
+      "sha256": "d152491ef2468436909d918c01bc816041a159b289eec252fd23fa2b3ee0c94d"
     },
     "dist/audit-native-worker.js": {
       "bytes": 86000,
       "sha256": "4656815736a32ff77d886375c907532d16740349a101074646e44704f29a5cfd"
     },
     "dist/records-worker.js": {
-      "bytes": 50241,
-      "sha256": "5beadeddf04ddcb0b0870433b1530321a79ef1d44544bdb65fde5b941f41d304"
+      "bytes": 50294,
+      "sha256": "d821e7236e7a3d33e3278972484acaf1072fb2bed25c6dad33b52a93c7317856"
     }
   },
   "memory": "plain-text records + SQLite FTS5; no models"

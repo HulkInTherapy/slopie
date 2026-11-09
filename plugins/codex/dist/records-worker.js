@@ -1271,13 +1271,13 @@ var FIRST_USERS = 3;
 function delegKey(task) {
   return createHash("sha1").update(task.replace(/\s+/g, " ").trim().slice(0, 400)).digest("hex").slice(0, 16);
 }
-function taskOf(input) {
+function field(input, name) {
   try {
     const j = JSON.parse(input);
-    if (j && typeof j === "object" && typeof j["task"] === "string") return j["task"];
+    if (j && typeof j === "object" && typeof j[name] === "string") return j[name];
   } catch {
   }
-  const m = /"task"\s*:\s*"((?:[^"\\]|\\.)*)/.exec(input);
+  const m = new RegExp(`"${name}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)`).exec(input);
   if (!m) return null;
   try {
     return JSON.parse(`"${m[1]}"`);
@@ -1293,8 +1293,8 @@ function delegOf(s) {
       users++;
       if (!d.task && PREFIX.test(t.text)) d.task = delegKey(t.text.replace(PREFIX, ""));
     } else if (t.role === "TOOL" && /delegate_task$/.test(t.tool ?? "")) {
-      const task = taskOf(t.text);
-      if (task) (d.calls ??= []).push([delegKey(task), t.ts]);
+      const task = field(t.text, "task");
+      if (task) (d.calls ??= []).push([delegKey(task), t.ts, field(t.text, "title")]);
     }
   }
   return d.task || d.calls ? d : void 0;

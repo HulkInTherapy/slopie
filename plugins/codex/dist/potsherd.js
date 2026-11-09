@@ -17441,14 +17441,14 @@ import { createHash as createHash12 } from "node:crypto";
 function delegKey(task) {
   return createHash12("sha1").update(task.replace(/\s+/g, " ").trim().slice(0, 400)).digest("hex").slice(0, 16);
 }
-function taskOf(input) {
+function field(input, name) {
   try {
     const j = JSON.parse(input);
-    if (j && typeof j === "object" && typeof j["task"] === "string")
-      return j["task"];
+    if (j && typeof j === "object" && typeof j[name] === "string")
+      return j[name];
   } catch {
   }
-  const m = /"task"\s*:\s*"((?:[^"\\]|\\.)*)/.exec(input);
+  const m = new RegExp(`"${name}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)`).exec(input);
   if (!m)
     return null;
   try {
@@ -17466,9 +17466,9 @@ function delegOf(s) {
       if (!d.task && PREFIX.test(t.text))
         d.task = delegKey(t.text.replace(PREFIX, ""));
     } else if (t.role === "TOOL" && /delegate_task$/.test(t.tool ?? "")) {
-      const task = taskOf(t.text);
+      const task = field(t.text, "task");
       if (task)
-        (d.calls ??= []).push([delegKey(task), t.ts]);
+        (d.calls ??= []).push([delegKey(task), t.ts, field(t.text, "title")]);
     }
   }
   return d.task || d.calls ? d : void 0;
@@ -17495,12 +17495,48 @@ function delegEdges(sessions) {
   }
   return out;
 }
-var PREFIX, FIRST_USERS;
+function relayLinks(sessions, edges) {
+  const byHash = /* @__PURE__ */ new Map();
+  for (const s of sessions)
+    if (s.deleg?.task && edges.has(s.id)) {
+      const l = byHash.get(s.deleg.task) ?? [];
+      l.push({ id: s.id, harness: s.harness, start: s.start ?? "" });
+      byHash.set(s.deleg.task, l);
+    }
+  const out = /* @__PURE__ */ new Map();
+  for (const s of sessions)
+    for (const [k, , title] of s.deleg?.calls ?? []) {
+      if (!title)
+        continue;
+      for (const c of byHash.get(k) ?? []) {
+        if (edges.get(c.id) !== s.id)
+          continue;
+        const l = out.get(s.id) ?? [];
+        if (!l.some((x) => x.child === c.id && x.title === title))
+          l.push({ title, child: c.id, harness: c.harness, start: c.start });
+        out.set(s.id, l);
+      }
+    }
+  return out;
+}
+function annotateRelay(text, ts, relays) {
+  const m = RELAY.exec(text);
+  if (!m)
+    return text;
+  const c = relays.filter((r3) => r3.title === m[1] && (!ts || r3.start <= ts)).sort((a, b2) => a.start < b2.start ? 1 : -1)[0];
+  if (!c)
+    return text;
+  const nl = text.indexOf("\n");
+  const tag = ` [from delegated thread ${c.child} (${c.harness})]`;
+  return nl < 0 ? text + tag : text.slice(0, nl) + tag + text.slice(nl);
+}
+var PREFIX, FIRST_USERS, RELAY;
 var init_deleg = __esm({
   "packages/core/dist/records/deleg.js"() {
     "use strict";
     PREFIX = /^\s*Act as the [\w -]{1,40}? sub-agent for this task\.\s*/i;
     FIRST_USERS = 3;
+    RELAY = /^Delegated task \S+ \((.*)\) \[[a-z_ -]+\]/;
   }
 });
 
@@ -18297,13 +18333,19 @@ async function syncLocked(o) {
     b2.key = keyOf(b2.harness, b2.id, b2.parent, b2.parentKind);
     sessions.push(b2);
   }
-  for (const [child, by] of delegEdges(sessions.map((b2) => ({ id: b2.id, start: b2.start, parent: b2.parent, deleg: b2.best ? next.sources[b2.best]?.deleg : void 0 })))) {
+  const delegIn = sessions.map((b2) => ({ id: b2.id, harness: b2.harness, start: b2.start, parent: b2.parent, deleg: b2.best ? next.sources[b2.best]?.deleg : void 0 }));
+  const edges = delegEdges(delegIn);
+  for (const [child, by] of edges) {
     const b2 = sessions.find((x) => x.id === child && !x.parent);
     if (b2) {
       b2.parent = by;
       b2.parentKind = "delegated";
     }
   }
+  for (const [id, l] of relayLinks(delegIn, edges))
+    for (const b2 of sessions)
+      if (b2.id === id)
+        b2.relays = l;
   for (const [id, l] of backlinks(sessions.map((b2) => ({ id: b2.id, harness: b2.harness, start: b2.start, parentKind: b2.parentKind, refs: b2.best ? next.sources[b2.best]?.refs : void 0 })))) {
     for (const b2 of sessions)
       if (b2.id === id)
@@ -18455,11 +18497,17 @@ async function syncLocked(o) {
     s.archiveOnly,
     s.history ? s.history.length : -1,
     s.importCut ?? null,
-    (s.later ?? []).map((x) => x.id)
+    (s.later ?? []).map((x) => x.id),
+    (s.relays ?? []).map((r3) => [r3.title, r3.child])
   ]);
   const writeOne = (s, rec2, sig) => {
     rec2.parent = s.parent;
     rec2.parentKind = s.parentKind;
+    if (s.relays?.length) {
+      for (const t of rec2.turns)
+        if (t.role === "USER" && t.text.startsWith("Delegated task "))
+          t.text = annotateRelay(t.text, t.ts, s.relays);
+    }
     if (s.importCut) {
       const i = rec2.turns.findIndex((t) => !!t.ts && t.ts > s.importCut);
       rec2.turns = i < 0 ? [] : rec2.turns.slice(i);
@@ -18678,7 +18726,7 @@ var init_sync = __esm({
     init_index_db();
     FORMAT_VERSION = 3;
     STATE_VERSION = 1;
-    PARSE_VERSION = 3;
+    PARSE_VERSION = 4;
     IMPORT_SLACK_MS = 10 * 60 * 1e3;
     SyncBusyError = class extends Error {
       pid;
@@ -19123,8 +19171,8 @@ let lets get got make made please tell show give went one ones also out up down 
         const hits = [];
         const { turns, partial } = this.fullTurns(s);
         turns.slice(0, s.n_turns).forEach((t, i) => {
-          for (const field of ["text", "output"]) {
-            const v = (field === "text" ? t.text : t.output) ?? "";
+          for (const field2 of ["text", "output"]) {
+            const v = (field2 === "text" ? t.text : t.output) ?? "";
             if (!v)
               continue;
             rx.lastIndex = 0;
@@ -19135,7 +19183,7 @@ let lets get got make made please tell show give went one ones also out up down 
                 continue;
               }
               const a = Math.max(0, m.index - 140), b2 = Math.min(v.length, m.index + m[0].length + 140);
-              hits.push(`t${i + 1} ${t.role}${t.role === "TOOL" ? " " + (t.tool ?? "") : ""}${field === "output" ? " (output)" : ""} ${shortTs(t.ts)}: ` + (a ? "\u2026" : "") + ws(v.slice(a, b2)) + (b2 < v.length ? "\u2026" : ""));
+              hits.push(`t${i + 1} ${t.role}${t.role === "TOOL" ? " " + (t.tool ?? "") : ""}${field2 === "output" ? " (output)" : ""} ${shortTs(t.ts)}: ` + (a ? "\u2026" : "") + ws(v.slice(a, b2)) + (b2 < v.length ? "\u2026" : ""));
             }
           }
         });
@@ -19338,19 +19386,22 @@ function agentNote(recordsDir2, o = {}) {
     lines.splice(lines.length - 1, 0, SIDECAR_LINE);
     note = lines.join("\n");
   }
+  if (o.protocol ?? true)
+    note += "\n" + PROTOCOL;
   if (o.guidance)
     note += "\n" + GUIDANCE;
   if (o.cli ?? true)
     note += "\n" + CLI_LINE;
   return note;
 }
-var CLI_LINE, GUIDANCE, SIDECAR_LINE;
+var CLI_LINE, GUIDANCE, PROTOCOL, SIDECAR_LINE;
 var init_note = __esm({
   "packages/core/dist/records/note.js"() {
     "use strict";
     init_spec();
     CLI_LINE = "If the slopie command is on PATH, start with it rather than rg: it searches these same records faster and more cheaply. slopie search <words> [--project P --since D --session ID]; slopie read <id> --from N [--to M] (--from -30 reads the end); slopie threads [--project P --since D --text W]; slopie grep <id> <text>. Each reply ends with the exact next command. Use rg/sed on the files for anything else.";
     GUIDANCE = "For 'which threads' questions, include threads that dispatched, coordinated or tracked the work, and long threads that started before the window but were active in it. For 'latest decision' questions, after the first hit check later threads in every harness and read the turns after an announced plan before answering. Do not answer NOT FOUND after reading only part of a session.";
+    PROTOCOL = 'Before you answer: cite the thread where the fact was produced, not one that pasted it, re-read it from a file, or received it as a relay ("Delegated task \u2026 [from delegated thread <id>]" names the thread that did the work). For a current, final or latest value, or the result of a step, read on past the first hit to the end of that step and check later threads ("## mentioned later in", rg -l --sortr modified) for a change. For which-threads questions, list every candidate thread in scope (no head), check each, and count the thread that dispatched the work ("parent: delegated by <id>") and long threads active in the window.';
     SIDECAR_LINE = "- Full tool outputs (up to 20 kB each) are also in <record>.out.txt beside each record, tagged the same way, so rg reaches text the record cut.";
   }
 });
@@ -30928,7 +30979,7 @@ function diff(before, after) {
 async function runSetup(o) {
   const t = themeFrom(o);
   if (o.note) {
-    const note = agentNote(paths_exports.recordsDir(), { cli: process7.env["SLOPIE_NOTE_CLI"] !== "0", guidance: process7.env["SLOPIE_NOTE_GUIDANCE"] === "1", sidecar: process7.env["SLOPIE_NOTE_SIDECAR"] === "1" });
+    const note = agentNote(paths_exports.recordsDir(), { cli: process7.env["SLOPIE_NOTE_CLI"] !== "0", protocol: process7.env["SLOPIE_NOTE_PROTOCOL"] !== "0", guidance: process7.env["SLOPIE_NOTE_GUIDANCE"] === "1", sidecar: process7.env["SLOPIE_NOTE_SIDECAR"] === "1" });
     if (o.json) printJson({ note, records: paths_exports.recordsDir() });
     else process7.stdout.write(note + "\n");
     return 0;
