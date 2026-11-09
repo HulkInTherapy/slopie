@@ -568,7 +568,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   }
   if (index) {
     for (const key of indexed.keys()) if (!next.sessions[key]) index.remove(key);
-    index.finish();
+    index.finish(!!o.full || result.written > 200);
   }
   // Stray record files (e.g. written by an older layout) that no session claims are removed too.
   const claimed = new Set(Object.values(next.sessions).flatMap(s => [s.rel, s.rel.slice(0, -4) + '.out.txt']));

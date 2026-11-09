@@ -106,10 +106,11 @@ export class RecordIndex {
     this.db.prepare('insert into cards(skey, title, asks) values(?,?,?)').run(key, `${s.title ?? ''} ${base(s.project)}`, asks.join('\n'));
   }
 
-  finish(): void {
+  /** Commits. `optimize` merges the FTS segments: worth it after a large rebuild, too slow for every small sync. */
+  finish(optimize = false): void {
     this.db.prepare(`insert or replace into meta values('built', ?)`).run(new Date().toISOString());
     this.db.exec('commit');
-    try { this.db.exec(`insert into ctx(ctx) values('optimize')`); } catch { /* optional */ }
+    if (optimize) try { this.db.exec(`insert into ctx(ctx) values('optimize')`); } catch { /* optional */ }
     this.db.close();
   }
 

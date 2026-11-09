@@ -25,9 +25,9 @@ describe('adapter contract', () => {
     const dir = tempDir();
     const copy = path.join(dir, 'adapters','types.ts');
     fs.mkdirSync(path.dirname(copy),{recursive:true});
-    fs.mkdirSync(path.join(dir,'memory'));
+    fs.mkdirSync(path.join(dir,'sources'));
     fs.copyFileSync(TYPES, copy);
-    fs.copyFileSync(path.join(repo,'packages/core/src/memory/contracts.ts'),path.join(dir,'memory/contracts.ts'));
+    fs.copyFileSync(path.join(repo,'packages/core/src/sources/contracts.ts'),path.join(dir,'sources/contracts.ts'));
     const tsc = path.join(repo, 'node_modules', 'typescript', 'bin', 'tsc');
     expect(() =>
       execFileSync(process.execPath, [

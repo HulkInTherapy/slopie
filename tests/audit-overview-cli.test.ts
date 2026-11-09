@@ -56,17 +56,12 @@ describe('compiled CLI audit route boundary',()=>{
     expect(result.stdout).not.toContain('\u001b');expect(result.stdout).toContain('PRIVATE-CUSTOMER-NAME');
     expect(fs.existsSync(f.attempts)).toBe(false);
   });
-  it('keeps legacy JSON and verifier independent from the new renderer',()=>{
-    const f=fixture(),legacy=f.run(['--legacy','--json']),verify=f.run(['--verify','--json']);
-    expect(legacy.status,legacy.stderr).toBe(0);expect(verify.status,verify.stderr).toBe(0);
-    expect(JSON.parse(legacy.stdout)).toHaveProperty('sessionsEver');
-    expect(JSON.parse(legacy.stdout)).not.toHaveProperty('metrics');
-    expect(JSON.parse(verify.stdout)).toHaveProperty('snippet');expect(fs.existsSync(f.attempts)).toBe(false);
-  });
-  it('rejects ambiguous new and legacy modes before rendering',()=>{
-    const f=fixture(),result=f.run(['--overview','--verify']);
-    expect(result.status).toBe(1);expect(result.stderr).toContain('cannot be combined');
-    expect(result.stdout).toBe('');expect(fs.existsSync(f.attempts)).toBe(false);
+  it('has no 1.x retention routes any more (--legacy, --sweep, --verify were removed in 1.9)',()=>{
+    for(const flag of ['--legacy','--sweep','--verify']){
+      const f=fixture(),result=f.run([flag,'--json']);
+      expect(result.status).toBe(1);expect(result.stderr).toContain(`unknown option '${flag}'`);
+      expect(result.stdout).toBe('');expect(fs.existsSync(f.attempts)).toBe(false);
+    }
   });
   it('writes only the explicitly selected safe SVG export',()=>{
     const f=fixture(),file=path.join(f.root,'share.svg'),result=f.run(['--overview','--export',file]);
