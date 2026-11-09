@@ -219,9 +219,9 @@ export class Engine {
       lines.push(`    t${r.n} ${rl}${r.tool ? ' ' + r.tool : ''} ${shortTs(r.ts)}: ${snippet(r.body, ts)}`);
       lines.push(`    → ${this.readCall(s.id, Math.max(1, r.n - 2), r.n + 4)}`);
     });
-    // The newest threads among all candidates (by last activity): ranking is by relevance, and the latest word on
+    // The newest threads among the 20 best candidates (by last activity): ranking is by relevance, and the latest word on
     // something is often in a later thread.
-    const newest = [...new Set(cand.map(r => r.skey))].map(k => this.sessions.get(k)!).filter(s => s && s.parent_kind !== 'subagent')
+    const newest = [...new Set(cand.slice(0, 20).map(r => r.skey))].map(k => this.sessions.get(k)!).filter(s => s && s.parent_kind !== 'subagent')
       .sort((a, b) => ((b.end ?? '') < (a.end ?? '') ? -1 : (b.end ?? '') > (a.end ?? '') ? 1 : 0)).slice(0, 3);
     if (newest.length > 1) lines.push(`Newest threads with these words: ${newest.map(s => `${s.id} (${s.harness}, last active ${(s.end ?? '?').slice(0, 10)}${(s.title ?? '').trim() ? `, "${(s.title ?? '').trim().slice(0, 50)}"` : ''})`).join('; ')}.`);
     const threadsAll = new Set(cand.map(r => r.skey)).size, shown = new Set(out.map(r => r.skey)).size;
