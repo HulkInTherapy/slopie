@@ -9391,7 +9391,7 @@ function readStatsCache(file) {
     models2.set(id, row);
   }
   const daily = /* @__PURE__ */ new Map();
-  const activeDays = /* @__PURE__ */ new Set();
+  const activeDays2 = /* @__PURE__ */ new Set();
   for (const row of Array.isArray(o.dailyModelTokens) ? o.dailyModelTokens : []) {
     if (!row || typeof row !== "object")
       continue;
@@ -9405,17 +9405,17 @@ function readStatsCache(file) {
         continue;
       const id = canonicalModel(model);
       m.set(id, (m.get(id) ?? 0) + t);
-      activeDays.add(r3.date);
+      activeDays2.add(r3.date);
     }
     daily.set(r3.date, m);
   }
   for (const row of Array.isArray(o.dailyActivity) ? o.dailyActivity : []) {
     const r3 = row;
     if (r3 && typeof r3.date === "string" && (num4(r3.messageCount) || num4(r3.sessionCount)))
-      activeDays.add(r3.date);
+      activeDays2.add(r3.date);
   }
   const firstDate = typeof o.firstSessionDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(o.firstSessionDate) ? o.firstSessionDate.slice(0, 10) : null;
-  return { file, lastDate, firstDate, models: models2, daily, activeDays };
+  return { file, lastDate, firstDate, models: models2, daily, activeDays: activeDays2 };
 }
 function recoveredSpend(caches, claudeObserved, book, dateAllowed) {
   const out = { usd: 0, unpricedTokens: 0, byMonth: /* @__PURE__ */ new Map(), byModel: /* @__PURE__ */ new Map(), coveredDays: () => false };
@@ -17290,7 +17290,7 @@ function recTurn(t, sidecar = false) {
     if (t.output) {
       let o = pyStrip(t.output);
       const total2 = t.outputLen ?? cpLen(o);
-      if (total2 > CAP.TOOL_OUT_HEAD + CAP.TOOL_OUT_TAIL) {
+      if (total2 > CAP.TOOL_OUT_WHOLE) {
         if (sidecar) {
           const n2 = cpLen(o);
           r3.full = n2 > SIDECAR_CAP ? cpSlice(o, 0, SIDECAR_CAP) + ` \u2026[+${n2 - SIDECAR_CAP} chars]` : o;
@@ -17337,7 +17337,7 @@ function render(s, h) {
   out.push(`## project: ${s.project || "?"}`);
   out.push(`## title: ${s.title || ""}`);
   out.push(`## time: ${s.start || "?"} -> ${s.end || "?"}   turns: ${s.turns.length}`);
-  out.push(`## parent: ${s.parent ? `${s.parentKind ?? "None"} of ${s.parent}` : "none"}`);
+  out.push(`## parent: ${s.parent ? relation(s.parentKind, s.parent) : "none"}`);
   out.push(`## children: ${kids || "none"}`);
   out.push(`## raw: ${h.sources.join(" | ")}` + (h.archiveOnly ? "   [deleted from harness; recovered from .potsherd archive]" : ""));
   s.turns.forEach((t, i) => {
@@ -17399,22 +17399,103 @@ function sidFile(harness, id, parent, parentKind) {
 function recordRelPath(s) {
   return `${s.harness}/${slug(s.project)}/${(s.start || "0000-00-00").slice(0, 10)}_${sidFile(s.harness, s.id, s.parent, s.parentKind)}.txt`;
 }
+function activeDays(s) {
+  const days = /* @__PURE__ */ new Set();
+  for (const t of s.turns)
+    if (t.ts && /^\d{4}-\d\d-\d\d/.test(t.ts))
+      days.add(t.ts.slice(0, 10));
+  if (!days.size) {
+    for (const x of [s.start, s.end])
+      if (x)
+        days.add(x.slice(0, 10));
+  }
+  return [...days].sort().join(" ");
+}
 function indexLine(s, rel) {
   const par = s.parent ? `${s.parentKind ?? "None"}:${s.parent}` : "";
   const title = cpSlice((s.title || "").replace(/\t/g, " ").replace(/\n/g, " "), 0, 100);
-  return [s.harness, s.id, s.project || "", s.start || "", s.end || "", String(s.turns.length), par, title, firstUser(s).replace(/\t/g, " "), rel].join("	");
+  return [s.harness, s.id, s.project || "", s.start || "", s.end || "", String(s.turns.length), par, title, firstUser(s).replace(/\t/g, " "), rel, activeDays(s)].join("	");
 }
-var CAP, SIDECAR_CAP, ARCHIVE_MARK, INDEX_HEADER, capOf, fmtTs;
+var CAP, SIDECAR_CAP, ARCHIVE_MARK, INDEX_HEADER, capOf, relation, fmtTs;
 var init_format2 = __esm({
   "packages/core/dist/records/format.js"() {
     "use strict";
     init_text();
-    CAP = { USER: 6e3, ASSISTANT: 8e3, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_HEAD: 500, TOOL_OUT_TAIL: 300 };
+    CAP = { USER: 6e3, ASSISTANT: 8e3, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_WHOLE: 4e3, TOOL_OUT_HEAD: 2e3, TOOL_OUT_TAIL: 1e3 };
     SIDECAR_CAP = 2e4;
     ARCHIVE_MARK = "/.potsherd/archive/";
-    INDEX_HEADER = "harness	id	project	start	end	turns	parent	title	first_user_msg	file";
+    INDEX_HEADER = "harness	id	project	start	end	turns	parent	title	first_user_msg	file	active";
     capOf = (role) => role === "USER" ? CAP.USER : role === "ASSISTANT" ? CAP.ASSISTANT : role === "SYSTEM" ? CAP.SYSTEM : 6e3;
+    relation = (kind3, parent) => kind3 === "delegated" ? `delegated by ${parent}` : `${kind3 ?? "None"} of ${parent}`;
     fmtTs = (ts) => ts ? ts.replace("T", " ").slice(0, 16) : "?";
+  }
+});
+
+// packages/core/dist/records/deleg.js
+import { createHash as createHash12 } from "node:crypto";
+function delegKey(task) {
+  return createHash12("sha1").update(task.replace(/\s+/g, " ").trim().slice(0, 400)).digest("hex").slice(0, 16);
+}
+function taskOf(input) {
+  try {
+    const j = JSON.parse(input);
+    if (j && typeof j === "object" && typeof j["task"] === "string")
+      return j["task"];
+  } catch {
+  }
+  const m = /"task"\s*:\s*"((?:[^"\\]|\\.)*)/.exec(input);
+  if (!m)
+    return null;
+  try {
+    return JSON.parse(`"${m[1]}"`);
+  } catch {
+    return null;
+  }
+}
+function delegOf(s) {
+  const d = {};
+  let users = 0;
+  for (const t of s.turns) {
+    if (t.role === "USER" && users < FIRST_USERS) {
+      users++;
+      if (!d.task && PREFIX.test(t.text))
+        d.task = delegKey(t.text.replace(PREFIX, ""));
+    } else if (t.role === "TOOL" && /delegate_task$/.test(t.tool ?? "")) {
+      const task = taskOf(t.text);
+      if (task)
+        (d.calls ??= []).push([delegKey(task), t.ts]);
+    }
+  }
+  return d.task || d.calls ? d : void 0;
+}
+function delegEdges(sessions) {
+  const calls = /* @__PURE__ */ new Map();
+  for (const s of sessions)
+    for (const [k, ts] of s.deleg?.calls ?? []) {
+      const l = calls.get(k) ?? [];
+      l.push({ id: s.id, ts: ts ?? s.start ?? "" });
+      calls.set(k, l);
+    }
+  const out = /* @__PURE__ */ new Map();
+  for (const s of sessions) {
+    if (s.parent || !s.deleg?.task)
+      continue;
+    const c = (calls.get(s.deleg.task) ?? []).filter((x) => x.id !== s.id);
+    if (!c.length)
+      continue;
+    const st = s.start ?? "";
+    const cmp = (a, b2) => a.ts < b2.ts ? -1 : a.ts > b2.ts ? 1 : a.id < b2.id ? -1 : a.id > b2.id ? 1 : 0;
+    const before = c.filter((x) => x.ts <= st).sort(cmp);
+    out.set(s.id, (before.length ? before[before.length - 1] : c.sort(cmp)[0]).id);
+  }
+  return out;
+}
+var PREFIX, FIRST_USERS;
+var init_deleg = __esm({
+  "packages/core/dist/records/deleg.js"() {
+    "use strict";
+    PREFIX = /^\s*Act as the [\w -]{1,40}? sub-agent for this task\.\s*/i;
+    FIRST_USERS = 3;
   }
 });
 
@@ -17428,7 +17509,7 @@ function parseJob(job) {
     const s = readSession(job.file, harness, job.sub, lim);
     if (!s || !s.id)
       return { file: job.file, status: "none" };
-    return { file: job.file, status: "ok", session: recSession(s, job.sidecar) };
+    return { file: job.file, status: "ok", session: recSession(s, job.sidecar), deleg: delegOf(s) };
   } catch (e) {
     return { file: job.file, status: "err", err: `${job.file}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 500) };
   }
@@ -17485,6 +17566,7 @@ var init_worker = __esm({
     "use strict";
     init_sessions();
     init_format2();
+    init_deleg();
   }
 });
 
@@ -17689,7 +17771,7 @@ create virtual table if not exists cards using fts5(skey unindexed, title, asks,
 // packages/core/dist/records/sync.js
 import fs23 from "node:fs";
 import path19 from "node:path";
-import { createHash as createHash12 } from "node:crypto";
+import { createHash as createHash13 } from "node:crypto";
 function stateDir(recordsDir2) {
   return path19.join(recordsDir2, ".slopie");
 }
@@ -17908,7 +17990,7 @@ function discoverSources(o, state) {
 function copySig(file, size) {
   const fd = fs23.openSync(file, "r");
   try {
-    const h = createHash12("sha1");
+    const h = createHash13("sha1");
     const n = Math.min(size, 1 << 16);
     const b2 = Buffer.allocUnsafe(n);
     fs23.readSync(fd, b2, 0, n, 0);
@@ -17959,8 +18041,10 @@ async function syncLocked(o) {
   } else if (state && (state.format !== FORMAT_VERSION || state.sidecar !== sidecar)) {
     state = { ...state, sessions: Object.fromEntries(Object.entries(state.sessions).map(([k, v]) => [k, { ...v, sig: "" }])) };
   }
+  if (state && (state.parse ?? 1) !== PARSE_VERSION)
+    state = { ...state, sources: {} };
   const prev = state ?? { v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {} };
-  const next = { v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {} };
+  const next = { v: STATE_VERSION, format: FORMAT_VERSION, parse: PARSE_VERSION, sidecar, sources: {}, sessions: {} };
   adoptRecordFiles(dir, prev);
   const { sources, historyFiles, codexHomes, codexImported } = discoverSources(o, state);
   mark("discover");
@@ -18063,6 +18147,8 @@ async function syncLocked(o) {
       if (r3.status === "ok") {
         const s = r3.session;
         Object.assign(base3, { id: s.id, parent: s.parent, parentKind: s.parentKind, nTurns: s.turns.length, start: s.start, end: s.end, project: s.project });
+        if (r3.deleg)
+          base3.deleg = r3.deleg;
       }
       next.sources[m.file] = base3;
     }
@@ -18135,6 +18221,13 @@ async function syncLocked(o) {
     b2.sources = [...new Set(b2.paths)].sort((x, y) => Number(x.includes(ARCHIVE_MARK)) - Number(y.includes(ARCHIVE_MARK)) || (x < y ? -1 : x > y ? 1 : 0));
     b2.key = keyOf(b2.harness, b2.id, b2.parent, b2.parentKind);
     sessions.push(b2);
+  }
+  for (const [child, by] of delegEdges(sessions.map((b2) => ({ id: b2.id, start: b2.start, parent: b2.parent, deleg: b2.best ? next.sources[b2.best]?.deleg : void 0 })))) {
+    const b2 = sessions.find((x) => x.id === child && !x.parent);
+    if (b2) {
+      b2.parent = by;
+      b2.parentKind = "delegated";
+    }
   }
   const present = new Set(sessions.map((s) => s.key));
   const kept = [];
@@ -18292,6 +18385,13 @@ async function syncLocked(o) {
     mkdirPrivate(path19.dirname(file), dir);
     const text = render(rec2, { children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly });
     writeAtomic2(file, text);
+    const last = Date.parse(rec2.end ?? rec2.start ?? "");
+    if (Number.isFinite(last)) {
+      try {
+        fs23.utimesSync(file, last / 1e3, last / 1e3);
+      } catch {
+      }
+    }
     const side = file.slice(0, -4) + ".out.txt";
     const sideText = sidecar ? renderSidecar(rec2, path19.basename(file)) : null;
     if (sideText)
@@ -18470,7 +18570,7 @@ async function syncLocked(o) {
   result.maxRssMb = Math.round(process.resourceUsage().maxRSS / 1024);
   return result;
 }
-var FORMAT_VERSION, STATE_VERSION, SyncBusyError, hash2, PROMPT_ONLY_TITLE, promptKey, isForgotten;
+var FORMAT_VERSION, STATE_VERSION, PARSE_VERSION, SyncBusyError, hash2, PROMPT_ONLY_TITLE, promptKey, isForgotten;
 var init_sync = __esm({
   "packages/core/dist/records/sync.js"() {
     "use strict";
@@ -18486,9 +18586,11 @@ var init_sync = __esm({
     init_audit_sqlite();
     init_format2();
     init_worker();
+    init_deleg();
     init_index_db();
-    FORMAT_VERSION = 1;
+    FORMAT_VERSION = 3;
     STATE_VERSION = 1;
+    PARSE_VERSION = 2;
     SyncBusyError = class extends Error {
       pid;
       constructor(pid) {
@@ -18496,7 +18598,7 @@ var init_sync = __esm({
         this.pid = pid;
       }
     };
-    hash2 = (v) => createHash12("sha1").update(JSON.stringify(v)).digest("hex").slice(0, 20);
+    hash2 = (v) => createHash13("sha1").update(JSON.stringify(v)).digest("hex").slice(0, 20);
     PROMPT_ONLY_TITLE = "(prompt history only; transcript not kept)";
     promptKey = (ts, text) => JSON.stringify([fmtTs(ts), text.replace(/ …\[\+\d+ chars; raw: [^\]]*\]$/, "").replace(/\s+/g, " ").trim()]);
     isForgotten = (policy, h, id, parent) => policy.forgotten.size > 0 && (policy.forgotten.has(sourceId(h, id)) || !!parent && policy.forgotten.has(sourceId(h, parent)));
@@ -18545,6 +18647,7 @@ var init_engine = __esm({
     init_paths();
     init_sync();
     init_index_db();
+    init_format2();
     STOP = new Set(`a an the and or but if then else of to in on at by for with from into about as is are was were be been being
 do does did done have has had having i me my we our you your he she it its they them their this that these those there here
 what which who whom whose when where why how all any both each few more most other some such no nor not only own same so than
@@ -18658,7 +18761,7 @@ let lets get got make made please tell show give went one ones also out up down 
         if (s.parent && this.hitParent) {
           const p = this.parentOf(s);
           const pt = p && (p.title ?? "").trim() ? ` "${(p.title ?? "").trim().slice(0, 60)}"` : "";
-          par = ` \xB7 ${s.parent_kind} of ${s.parent}${pt}` + (s.parent_kind === "subagent" ? " (the user worked in the parent thread)" : "");
+          par = ` \xB7 ${relation(s.parent_kind, s.parent)}${pt}` + (s.parent_kind === "subagent" ? " (the user worked in the parent thread)" : s.parent_kind === "delegated" ? " (that thread dispatched and tracked this task)" : "");
         }
         const arch = s.archive_only ? " \xB7 [deleted from harness; recovered from archive]" : "";
         return `${s.harness} ${s.id} \xB7 ${s.project || "?"} \xB7 ${shortTs(s.start)} \u2192 ${shortTs(s.end)} \xB7 ${s.n_turns} turns \xB7 "${(s.title ?? "").trim().slice(0, 80)}"${par}${arch}`;
@@ -18757,6 +18860,9 @@ let lets get got make made please tell show give went one ones also out up down 
           lines.push(`    t${r3.n} ${rl}${r3.tool ? " " + r3.tool : ""} ${shortTs(r3.ts)}: ${snippet(r3.body, ts)}`);
           lines.push(`    \u2192 ${this.readCall(s.id, Math.max(1, r3.n - 2), r3.n + 4)}`);
         });
+        const newest2 = [...new Set(cand.map((r3) => r3.skey))].map((k2) => this.sessions.get(k2)).filter((s) => s && s.parent_kind !== "subagent").sort((a, b2) => (b2.end ?? "") < (a.end ?? "") ? -1 : (b2.end ?? "") > (a.end ?? "") ? 1 : 0).slice(0, 3);
+        if (newest2.length > 1)
+          lines.push(`Newest threads with these words: ${newest2.map((s) => `${s.id} (${s.harness}, last active ${(s.end ?? "?").slice(0, 10)}${(s.title ?? "").trim() ? `, "${(s.title ?? "").trim().slice(0, 50)}"` : ""})`).join("; ")}.`);
         const threadsAll = new Set(cand.map((r3) => r3.skey)).size, shown = new Set(out.map((r3) => r3.skey)).size;
         const more = threadsAll - shown;
         lines.push(`(${out.length} hits shown; ${cand.length} candidates across ${threadsAll} threads${more > 0 ? `, ${more} more threads not shown` : ""}; ${Date.now() - t0} ms.) If these miss: rephrase with words the hits use, add project/since filters, or raise k. For every occurrence of an exact string in one thread use ${this.grepCall("<id>", null).replace('"<id>"', "...")}.`);
@@ -18871,7 +18977,7 @@ let lets get got make made please tell show give went one ones also out up down 
           const ch = JSON.parse(s.children || "[]");
           const extra = [];
           if (s.parent)
-            extra.push(`${s.parent_kind} of ${s.parent}`);
+            extra.push(relation(s.parent_kind, s.parent));
           if (ch.length)
             extra.push(`${ch.length} child threads`);
           if (s.archive_only)
@@ -18947,7 +19053,7 @@ let lets get got make made please tell show give went one ones also out up down 
         const offset = Math.max(0, Math.trunc(Number(o.offset ?? 0)) || 0);
         const maxHits = Math.max(1, Math.min(Math.trunc(Number(o.max_hits ?? 40)) || 40, 200));
         const page = hits.slice(offset, offset + maxHits);
-        const parent = s.parent && this.hitParent ? `, ${s.parent_kind} of ${s.parent}` : "";
+        const parent = s.parent && this.hitParent ? `, ${relation(s.parent_kind, s.parent)}` : "";
         const out = [`${hits.length} matches for ${pyRepr2(o.pattern)} in ${s.harness} ${s.id} (${s.n_turns} turns, reading order${parent}):`, ...page];
         if (offset + page.length < hits.length)
           out.push(`[more: ${this.grepCall(s.id, o.pattern, offset + page.length, !!o.regex)}]`);
@@ -18968,12 +19074,12 @@ var init_spec = __esm({
   "packages/core/dist/records/spec.js"() {
     "use strict";
     NOTE_B_TEMPLATE = `The user's agent history (Claude Code, Codex, Pi; all projects; including sessions the harness deleted) is exported as plain text records under {RECORDS}:
-- INDEX.tsv: one line per session: harness, id, project (working dir), start, end, turns, parent, title, first user message, file.
+- INDEX.tsv: one line per session: harness, id, project (working dir), start, end (last activity), turns, parent, title, first user message, file, active (every UTC date with a turn, so rg '2026-07-14' INDEX.tsv lists every thread active that day, including long threads that started earlier).
 - <harness>/<project-slug>/<start-date>_<session-id>.txt: one file per session. Header lines start with "## " (session, project, title, time, parent, children, raw source paths).
 - Every content line starts with its turn tag: "t12 USER 2026-08-20 20:26 | text", "t13 ASSISTANT ...", "t14 TOOL Bash 20:27 | command", tool output lines "t14 > ...", continuation lines "t12 | ...". SYSTEM turns are injected/harness text.
 - Tool output is shortened; "full output: <raw path>:<line>" points to the original JSONL line (Codex .zst: use zstdcat).
-- Subagent sessions have "parent: subagent of <id>"; their files are named <date>_<parent-id>__agent-*.txt.
-Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) and read ranges with sed -n 'a,bp' file. Times are UTC.`;
+- Subagent sessions have "parent: subagent of <id>"; their files are named <date>_<parent-id>__agent-*.txt. Tasks another thread dispatched have "parent: delegated by <id>" (that thread briefed, tracked and applied the work, and lists them under children).
+Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) and read ranges with sed -n 'a,bp' file. Times are UTC. A record's modification time is its last activity, so rg -l --sortr modified 'term' {RECORDS} lists the most recently active threads first: decisions often change in a later thread or the other harness.`;
     MCP_INSTRUCTIONS = "Memory of the user's past AI coding sessions (Claude Code, Codex, Pi), every project, including sessions the harness deleted. Read-only. Use it whenever the user refers to earlier work, or when you continue a session.";
     MCP_TOOLS = [
       {
@@ -20004,9 +20110,9 @@ var init_redact_elide2 = __esm({
 });
 
 // packages/core/src/redact.ts
-import { createHash as createHash13 } from "node:crypto";
+import { createHash as createHash14 } from "node:crypto";
 function secretDigest2(secret) {
-  return createHash13("sha256").update(secret, "utf8").digest("hex").slice(0, 8);
+  return createHash14("sha256").update(secret, "utf8").digest("hex").slice(0, 8);
 }
 function redact2(text) {
   if (typeof text !== "string" || text.length === 0) return { text: text ?? "", hits: [] };
@@ -20744,7 +20850,7 @@ var init_story_time2 = __esm({
 });
 
 // packages/core/src/analytics/copy-prune.ts
-import { createHash as createHash14 } from "node:crypto";
+import { createHash as createHash15 } from "node:crypto";
 var HEAD2, TAIL3, SNIFF2, CLASSIFY_MAX_BYTES2, sha12, StreamHashes2;
 var init_copy_prune2 = __esm({
   "packages/core/src/analytics/copy-prune.ts"() {
@@ -20753,7 +20859,7 @@ var init_copy_prune2 = __esm({
     TAIL3 = 4096;
     SNIFF2 = 64 * 1024;
     CLASSIFY_MAX_BYTES2 = 512 * 1024 * 1024;
-    sha12 = (b2) => createHash14("sha1").update(b2).digest("base64");
+    sha12 = (b2) => createHash15("sha1").update(b2).digest("base64");
     StreamHashes2 = class {
       headParts = [];
       headLength = 0;
@@ -20795,7 +20901,7 @@ var init_copy_prune2 = __esm({
 import fs27 from "node:fs";
 import zlib2 from "node:zlib";
 import { execFileSync as execFileSync2 } from "node:child_process";
-import { createHash as createHash15 } from "node:crypto";
+import { createHash as createHash16 } from "node:crypto";
 import path22 from "node:path";
 function time3(v) {
   let t;
@@ -21547,7 +21653,7 @@ function tailHash2(fd, offset) {
     if (!n) break;
     read3 += n;
   }
-  return createHash15("sha256").update(buffer.subarray(0, read3)).digest("hex");
+  return createHash16("sha256").update(buffer.subarray(0, read3)).digest("hex");
 }
 var FACTS_VERSION2, MAX_PROMPT_CHARS2, isRec4, str4, int3, MAX_DATE_MS2, INJECTED_PREFIXES2, SYSTEM_REMINDER2, CODEX_STRIP2, SUBAGENT_DIR2, newCodexState2, ResumeMismatch2, U_KEYS2, tuple2, CODEX_NON_MODELS2, codexModel2, TOOL_CALL2, NAME2, STAMP2, CHUNK3, MAX_LINE3, sharedBuffer2, RESUME_RECENT_MS2, ZSTD_MAGIC3, ZSTD_INPUT2, ZSTD_OUTPUT2, zstdMode2, TAIL4;
 var init_extract2 = __esm({

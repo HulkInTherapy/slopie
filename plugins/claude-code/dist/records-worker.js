@@ -1219,7 +1219,7 @@ function readSession(file, harness, subParent, lim = {}) {
 }
 
 // packages/core/src/records/format.ts
-var CAP = { USER: 6e3, ASSISTANT: 8e3, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_HEAD: 500, TOOL_OUT_TAIL: 300 };
+var CAP = { USER: 6e3, ASSISTANT: 8e3, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_WHOLE: 4e3, TOOL_OUT_HEAD: 2e3, TOOL_OUT_TAIL: 1e3 };
 var SIDECAR_CAP = 2e4;
 var capOf = (role) => role === "USER" ? CAP.USER : role === "ASSISTANT" ? CAP.ASSISTANT : role === "SYSTEM" ? CAP.SYSTEM : 6e3;
 function recTurn(t, sidecar = false) {
@@ -1231,7 +1231,7 @@ function recTurn(t, sidecar = false) {
     if (t.output) {
       let o = pyStrip(t.output);
       const total = t.outputLen ?? cpLen(o);
-      if (total > CAP.TOOL_OUT_HEAD + CAP.TOOL_OUT_TAIL) {
+      if (total > CAP.TOOL_OUT_WHOLE) {
         if (sidecar) {
           const n2 = cpLen(o);
           r.full = n2 > SIDECAR_CAP ? cpSlice(o, 0, SIDECAR_CAP) + ` \u2026[+${n2 - SIDECAR_CAP} chars]` : o;
@@ -1264,6 +1264,42 @@ function recSession(s, sidecar = false) {
   };
 }
 
+// packages/core/src/records/deleg.ts
+import { createHash } from "node:crypto";
+var PREFIX = /^\s*Act as the [\w -]{1,40}? sub-agent for this task\.\s*/i;
+var FIRST_USERS = 3;
+function delegKey(task) {
+  return createHash("sha1").update(task.replace(/\s+/g, " ").trim().slice(0, 400)).digest("hex").slice(0, 16);
+}
+function taskOf(input) {
+  try {
+    const j = JSON.parse(input);
+    if (j && typeof j === "object" && typeof j["task"] === "string") return j["task"];
+  } catch {
+  }
+  const m = /"task"\s*:\s*"((?:[^"\\]|\\.)*)/.exec(input);
+  if (!m) return null;
+  try {
+    return JSON.parse(`"${m[1]}"`);
+  } catch {
+    return null;
+  }
+}
+function delegOf(s) {
+  const d = {};
+  let users = 0;
+  for (const t of s.turns) {
+    if (t.role === "USER" && users < FIRST_USERS) {
+      users++;
+      if (!d.task && PREFIX.test(t.text)) d.task = delegKey(t.text.replace(PREFIX, ""));
+    } else if (t.role === "TOOL" && /delegate_task$/.test(t.tool ?? "")) {
+      const task = taskOf(t.text);
+      if (task) (d.calls ??= []).push([delegKey(task), t.ts]);
+    }
+  }
+  return d.task || d.calls ? d : void 0;
+}
+
 // packages/core/src/records/worker.ts
 function parseJob(job) {
   try {
@@ -1271,7 +1307,7 @@ function parseJob(job) {
     const lim = job.sidecar ? { output: 3e4 } : {};
     const s = readSession(job.file, harness, job.sub, lim);
     if (!s || !s.id) return { file: job.file, status: "none" };
-    return { file: job.file, status: "ok", session: recSession(s, job.sidecar) };
+    return { file: job.file, status: "ok", session: recSession(s, job.sidecar), deleg: delegOf(s) };
   } catch (e) {
     return { file: job.file, status: "err", err: `${job.file}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 500) };
   }
