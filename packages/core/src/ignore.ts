@@ -160,15 +160,15 @@ function sameEntry(a: string, b: string): boolean {
  * Two forms, and the difference is whether the user typed a slash.
  *
  *   `potsherd`                a **path segment**. Matches
- *                             `/Users/me/randomness/potsherd` and everything
+ *                             `/Users/me/code/potsherd` and everything
  *                             under it, including
- *                             `/Users/me/randomness/potsherd/wt/w3-ignore`.
+ *                             `/Users/me/code/potsherd/wt/w3-ignore`.
  *                             It does **not** match `potsherd-notes`: the
  *                             segment must be the whole segment, or `ignore
  *                             core` would hide `core-app` and the user would
  *                             have no way to tell it had.
  *
- *   `~/randomness/potsherd`   a **path**. Matches that directory and its
+ *   `~/code/potsherd`         a **path**. Matches that directory and its
  *                             descendants, and nothing else. This is the form
  *                             to reach for when the same directory name
  *                             appears in two places and only one of them is

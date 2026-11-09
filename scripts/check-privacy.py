@@ -254,7 +254,33 @@ def is_private_home(token: str) -> bool:
 # 0; the rest are the ones phase-4's HANDOFF recorded as still outstanding
 # ("`synthetic-project` / `synthetic-project` -- the user's own project names -- remain as
 # examples in `--help` and fixtures").
-REAL_PROJECT_NAMES = [(7, 5072231, '4875c5c4395cc16a4668085bd12ec6900d68cd1849af1904545a8cb377f5cad4'), (8, 7103864, 'a72f2d8221a89333554a68781ea11114be7e49731a2f22b30eb78bb4a34edc96'), (4, 5662073, '03069fcbcc0af3882889fda0f9cdd8096420d8be3f62d4038a9e4afbb1f4465d'), (8, 6385257, '47e5a44d612e43d1c926978cb48fea84f1583b2f9567c5f42abd7e342e39be73'), (10, 4420201, '2d1bcbf20e6d72a3651eb4209b962de613829044f604c2d6ba07004d83d385d2'), (19, 5206131, '40376d3f7c6ce03cfab14306b8c869a1572c705c838849697a362800e3ea71cb'), (7, 4617580, '047bdb93ac5552e5ac5b7c01cc4e5086424c5059bd043cef858fd5a858341644'), (9, 7169383, '33c6c62896402050e5823c63323b8c3c91594d2cd08d42754a12193121853ace'), (14, 7168372, 'f14cfdac921c595e9da576e4cd233b96d2c428f63bdc2f0bea526be022d6bf00'), (14, 7168372, 'dc82e262a0dfdcb693d04447eef0f34ad4a59ce288990ac2f037e7676d371f8d'), (24, 4812390, '113430315f9c719b38fa48972893d4f3026bcda59ebd9d2db7e441438c5b4cb7'), (9, 5272175, '37a04e316a36805a19b47d3b4dc7ebd5133ae6edc894ad88e1173d6cd428ba37'), (7, 5272175, '76709fdf234f65143b3b57f2bfb1f06e407ddf91e5b8d1bc62b13523a243a2dd'), (7, 7369327, 'b93d1d4b19afbe7d80d0d8fc433d9ca907413336978eac4c3032fcb45c0e019e')]
+REAL_PROJECT_NAMES = [(7, 5072231, '4875c5c4395cc16a4668085bd12ec6900d68cd1849af1904545a8cb377f5cad4'), (8, 7103864, 'a72f2d8221a89333554a68781ea11114be7e49731a2f22b30eb78bb4a34edc96'), (4, 5662073, '03069fcbcc0af3882889fda0f9cdd8096420d8be3f62d4038a9e4afbb1f4465d'), (8, 6385257, '47e5a44d612e43d1c926978cb48fea84f1583b2f9567c5f42abd7e342e39be73'), (10, 4420201, '2d1bcbf20e6d72a3651eb4209b962de613829044f604c2d6ba07004d83d385d2'), (19, 5206131, '40376d3f7c6ce03cfab14306b8c869a1572c705c838849697a362800e3ea71cb'), (7, 4617580, '047bdb93ac5552e5ac5b7c01cc4e5086424c5059bd043cef858fd5a858341644'), (9, 7169383, '33c6c62896402050e5823c63323b8c3c91594d2cd08d42754a12193121853ace'), (14, 7168372, 'f14cfdac921c595e9da576e4cd233b96d2c428f63bdc2f0bea526be022d6bf00'), (14, 7168372, 'dc82e262a0dfdcb693d04447eef0f34ad4a59ce288990ac2f037e7676d371f8d'), (24, 4812390, '113430315f9c719b38fa48972893d4f3026bcda59ebd9d2db7e441438c5b4cb7'), (9, 5272175, '37a04e316a36805a19b47d3b4dc7ebd5133ae6edc894ad88e1173d6cd428ba37'), (7, 5272175, '76709fdf234f65143b3b57f2bfb1f06e407ddf91e5b8d1bc62b13523a243a2dd'), (7, 7369327, 'b93d1d4b19afbe7d80d0d8fc433d9ca907413336978eac4c3032fcb45c0e019e'),
+    # 1.9.0 review: shipped in the MCP schema examples (records/spec.ts) and the pinned spec fixture.
+    (14, 6517365, '34388ffd523ef5747a7eef6c8814060a87d531c6a74967d6081cc4194be55b9b')]
+
+# ------------------------------------------------- the user's own identity
+#
+# The own-tree exemption below lets `/Users/<account>/randomness/...` through,
+# because a checkout path names no private project. It does name the account,
+# and a real account name has no business in anything this repository ships
+# (the 1.9.0 MCP schema example carried one, and the pinned fixture with it).
+# Stored hashed, for the reason family (2) explains: a guard that spells the
+# name in order to ban it publishes it.
+#
+# sha256 of the account segment of a home path (`/Users/<it>/`, `-Users-<it>-`).
+REAL_ACCOUNT_HASHES = {'676cb75018edccf10fce6f376f2124e02c3293fa3fe8f953c75386198c714514'}
+# A person's and a machine's name, anywhere, in any case (fingerprints as above).
+REAL_IDENTITY_NAMES = [(5, 6448481, 'b1cd06d171462711e7b5bb8d2681da37ad3c84c3e95e288c8b719f0fce504e58'),
+                       (7, 7169383, '9dd92b8982c5a1d6d587a44f0aa1bbce2a41134ab05867e86f6d59ed28178439')]
+
+
+def find_real_account(line: str) -> list[str]:
+    hits = []
+    for m in HOME_PATH.finditer(line):
+        parts = re.split(r'[-/]', m.group(0).lstrip('-/'))
+        if len(parts) >= 2 and hashlib.sha256(parts[1].lower().encode()).hexdigest() in REAL_ACCOUNT_HASHES:
+            hits.append('real-account:' + hashlib.sha256(parts[1].lower().encode()).hexdigest()[:12])
+    return hits
 
 # Subject matter that is in this repo only because it was in somebody's real
 # sessions. A topic is transcript prose with the words taken out.
@@ -728,6 +754,14 @@ RULES: dict[str, dict] = {
         'why': 'a project directory name off a real machine',
         'find': lambda line: fingerprint_hits(line, REAL_PROJECT_NAMES),
     },
+    'account-name': {
+        'why': 'a real account name in a home path (the own-tree exemption does not cover the account)',
+        'find': find_real_account,
+    },
+    'identity-name': {
+        'why': "the user's or their machine's name",
+        'find': lambda line: fingerprint_hits(line.lower(), REAL_IDENTITY_NAMES),
+    },
     'corpus-id': {
         'why': 'a session/thread id that indexes a live transcript',
         'find': find_corpus_id,
@@ -764,7 +798,10 @@ ALLOW: list[tuple[str, str, str]] = [
     # Generated by scripts/make-demo-corpus.mjs and make-eval-corpus.mjs from a
     # seeded PRNG. No byte of either tree came off a real machine.
     ('evals/fixture/**', '*', 'generated demo corpus, seeded PRNG, no live data'),
-    ('tests/fixtures/**', '*', 'hand-written adapter fixtures, no live data'),
+    # Not exempt from the project/account/identity names: a pinned fixture
+    # (records/r5-spec.json) once carried both, copied from shipped schema text.
+    *[('tests/fixtures/**', rule, 'hand-written adapter fixtures, no live data')
+      for rule in ('home-path', 'corpus-id', 'corpus-id-inventory', 'corpus-title', 'corpus-topic', 'transcript-record')],
     # Rendered from the demo corpus. Held to a STRICTER rule than this one by
     # scripts/make-screens.sh, which bans `/Users/` outright on a published
     # screen. Regenerating them needs a ~6-minute card pass, so they are checked
@@ -851,6 +888,14 @@ DEBT: list[tuple[str, str, int, str]] = [
     # `thinking` block for six phases and no rule here fired once. The
     # `transcript-record` rule added in phase 8 is one shape recovered from that
     # failure, not a general answer to it.
+
+    # ---- 1.9.0 review D13: the vendored bundles still carry the old schema
+    # examples until the next `pnpm vendor`, which rebuilds them from the
+    # cleaned packages/core/src/records/spec.ts. Delete these four with it.
+    ('plugins/claude-code/dist/potsherd.js', 'account-name', 1, 'stale vendored bundle; next pnpm vendor clears it'),
+    ('plugins/claude-code/dist/potsherd.js', 'project-name', 1, 'stale vendored bundle; next pnpm vendor clears it'),
+    ('plugins/codex/dist/potsherd.js', 'account-name', 1, 'stale vendored bundle; next pnpm vendor clears it'),
+    ('plugins/codex/dist/potsherd.js', 'project-name', 1, 'stale vendored bundle; next pnpm vendor clears it'),
 ]
 
 # ------------------------------------------------- the id inventory's ratchet

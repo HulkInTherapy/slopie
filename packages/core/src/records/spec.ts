@@ -27,7 +27,7 @@ export const MCP_TOOLS = [
         },
         "project": {
           "type": "string",
-          "description": "Only sessions whose working directory contains this text, e.g. 'crush-thoughts'."
+          "description": "Only sessions whose working directory contains this text, e.g. 'my-app'."
         },
         "harness": {
           "type": "string",
@@ -96,7 +96,7 @@ export const MCP_TOOLS = [
       "properties": {
         "project": {
           "type": "string",
-          "description": "Working-directory substring, e.g. 'slopie' or '/Users/zebra/randomness'."
+          "description": "Working-directory substring, e.g. 'slopie' or '/Users/me/work'."
         },
         "harness": {
           "type": "string",
