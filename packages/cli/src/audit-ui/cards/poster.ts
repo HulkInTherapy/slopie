@@ -28,7 +28,8 @@ import { factText, posterOrder, type FactPart, type FunFact } from '../story/fun
 import type { Scene } from './scene.js';
 import { meter, spark } from '../theme/charts.js';
 import { displayHeight, displayWidth, drawDisplay, fitDisplay } from '../theme/display.js';
-import { begin, footer, header, label, rule, textWidth, txt, txtRight, type K } from '../theme/kit.js';
+import { begin, chip, footer, header, heroScale, label, rule, strokeNum, textWidth, txt, txtRight, type K } from '../theme/kit.js';
+import { vbar } from '../gfx/draw.js';
 import { drawTitle, planTitle } from '../theme/title.js';
 
 export const INSTALL = 'npx slopie audit';
@@ -60,10 +61,11 @@ interface Piece { h: number; draw: (y: number) => void; rule?: boolean; /** Want
 interface Plan { label: boolean; bigTitle: boolean; tagline: boolean; bigPrice: boolean; day: boolean; diagrams: boolean; nFacts: number; factGap: boolean; awards: boolean; memory: boolean; ticker: boolean }
 
 const STEPS: ((p: Plan) => void)[] = [
-  p => { p.factGap = false; },
   p => { p.memory = false; },
-  p => { p.label = false; },
+  // The mini-bars go before the spacing between facts.
   p => { p.diagrams = false; },
+  p => { p.factGap = false; },
+  p => { p.label = false; },
   p => { p.day = false; },
   p => { p.tagline = false; },
   p => { p.awards = false; },
@@ -86,7 +88,7 @@ export function posterBody(s: Scene, d: BoardSummary): boolean {
   let pieces = build(k, d, plan);
   for (const step of STEPS) { if (height(pieces, k.L) <= avail) break; step(plan); pieces = build(k, d, plan); }
   // Then win back what still fits, most important first.
-  const RESTORE: (keyof Plan)[] = ['bigTitle', 'ticker', 'bigPrice', 'tagline', 'awards', 'day', 'diagrams', 'factGap', 'label', 'memory'];
+  const RESTORE: (keyof Plan)[] = ['bigTitle', 'ticker', 'bigPrice', 'tagline', 'awards', 'day', 'factGap', 'diagrams', 'label', 'memory'];
   for (const key of RESTORE) {
     if (plan[key] === true || (key === 'ticker' && (!d.sinceLast || s.share))) continue;
     const next = { ...plan, [key]: true } as Plan;
@@ -157,23 +159,23 @@ function identity(k: K, d: BoardSummary, p: Plan): Piece[] {
   const { tk, mx, iw } = k;
   const out: Piece[] = [];
   const title = d.archetype ?? 'Your year with agents';
-  if (p.label) out.push({ h: 1, draw: y => label(k, mx, y, 'this year you’ve been') });
-  const plan = p.bigTitle ? planTitle(k, title, iw, 1) : { lines: [title], big: false, h: 1, w: textWidth(title), face: tk.face };
+  if (p.label) out.push({ h: 1, draw: y => label(k, mx, y, 'this year you’ve been', 1, Infinity, tk.accentHi) });
+  const plan = p.bigTitle ? planTitle(k, title, iw, 1, heroScale(k)) : { lines: [title], big: false, h: 1, w: textWidth(title), face: tk.face };
   out.push({ h: plan.h, draw: y => drawTitle(k, mx, y, plan, tk.text) });
   const tag = p.tagline && d.tagline && (!k.s.share || d.taglinePublic) ? `“${d.tagline}”` : null;
   const tier = d.tier ? TIER[d.tier]! : null;
   const sub = d.subRole;
-  const lineW = (tier ? textWidth(tier) + 2 : 0) + (sub ? textWidth(sub) : 0);
+  const lineW = (tier ? textWidth(tier) + 4 : 0) + (sub ? textWidth(sub) : 0);
   const tagRight = !!tag && lineW + 4 + textWidth(tag) <= iw;
   out.push({
     air: plan.big,
     h: tag && !tagRight && textWidth(tag) <= iw ? 2 : 1,
     draw: y => {
       let x = mx;
-      if (tier) x += txt(k, x, y, tier, tk.accent, { bold: true }) + 2;
-      if (sub && x + textWidth(sub) <= mx + iw) txt(k, x, y, sub, tk.text2);
-      if (tag && tagRight) txtRight(k, mx + iw, y, tag, tk.text2, { italic: true });
-      else if (tag && textWidth(tag) <= iw) txt(k, mx, y + 1, tag, tk.text2, { italic: true });
+      if (tier) x += chip(k, x, y, tier.toUpperCase(), tk.accent) + 2;
+      if (sub && x + textWidth(sub) <= mx + iw) txt(k, x, y, sub, tk.text);
+      if (tag && tagRight) txtRight(k, mx + iw, y, tag, tk.accentHi, { italic: true });
+      else if (tag && textWidth(tag) <= iw) txt(k, mx, y + 1, tag, tk.accentHi, { italic: true });
     },
   });
   return out;
@@ -185,23 +187,30 @@ function heroBand(k: K, d: BoardSummary, p: Plan): Piece {
   const { tk, mx, iw, L } = k;
   const price = d.heroes.find(h => h.label === 'at API prices');
   const half = Math.floor(iw / 2);
-  const fit = price && k.uni ? fitDisplay(price.value, (L ? 40 : half) - 2, { face: tk.face, tall: L, currency: tk.text2 }) : null;
+  // The price doubles only when the title could not (one ×2 element per poster).
+  const titleX2 = k.s.big && planTitle(k, d.archetype ?? 'Your year with agents', iw, 1, 2).scale === 2;
+  const fit = price && k.uni ? fitDisplay(price.value, (L ? (k.s.big ? 64 : 40) : half) - 2, { face: tk.face, tall: L, currency: tk.accentHi, scale: titleX2 ? 1 : heroScale(k) }) : null;
   const opts = fit ?? { face: tk.face };
-  const leftW = L ? 40 : Math.max(30, Math.min(half, (fit ? displayWidth(price!.value, fit) : 26) + 4));
+  const leftW = L ? Math.max(40, (fit ? displayWidth(price!.value, fit) : 0) + 6) : Math.max(30, Math.min(half, (fit ? displayWidth(price!.value, fit) : 26) + 4));
   const big = p.bigPrice && !!fit;
   const priceH = big ? 1 + displayHeight(opts) : 2;
   // Small stats to the right of the price.
   const stats: { label: string; value: string; quote?: boolean }[] = [];
   for (const key of ['prompts', 'days'] as const) {
     const h = d.heroes.find(x => (key === 'days' ? x.label === 'days' || x.label === 'day' : x.label === 'prompts'));
-    if (h) stats.push({ label: key === 'days' ? 'Days' : 'Prompts', value: h.value });
+    if (h) stats.push({ label: key === 'days' ? 'DAYS' : 'PROMPTS', value: h.value });
   }
   // The share card keeps none of the user's phrases.
-  if (d.catchphrase && !k.s.share) stats.push({ label: 'Catchphrase', value: `“${d.catchphrase.phrase}” ×${count(d.catchphrase.count)}`, quote: true });
+  if (d.catchphrase && !k.s.share) stats.push({ label: 'CATCHPHRASE', value: `“${d.catchphrase.phrase}” ×${count(d.catchphrase.count)}`, quote: true });
   const rx = mx + leftW;
   const rw = iw - leftW;
   // Stats sit on their own content widths, spread across the room they have.
-  const widths = stats.map(st => Math.max(textWidth(st.value), textWidth(st.label)));
+  // The two numbers one size up, in the stroke face, when they fit.
+  const rw0 = iw - leftW;
+  const widthsOf = (stroke: boolean) => stats.map(st => Math.max(stroke && !st.quote ? displayWidth(st.value, { face: 'heavy' }) : textWidth(st.value), textWidth(st.label)));
+  // Only when every stat (the catchphrase too) still fits beside the price.
+  const strokeOk = k.uni && L && widthsOf(true).reduce((a, b) => a + b, 0) + 4 * (stats.length - 1) <= rw0;
+  const widths = widthsOf(strokeOk);
   let fits = stats;
   while (fits.length && widths.slice(0, fits.length).reduce((a, b) => a + b, 0) + 4 * (fits.length - 1) > rw) fits = fits.slice(0, -1);
   const used = widths.slice(0, fits.length).reduce((a, b) => a + b, 0);
@@ -209,12 +218,13 @@ function heroBand(k: K, d: BoardSummary, p: Plan): Piece {
   const xs = fits.map((_, i) => rx + widths.slice(0, i).reduce((a, b) => a + b, 0) + gapW * i);
   const clock = d.viz.clock;
   const dayOk = p.day && !!clock && k.uni && rw >= 30;
-  const rightH = 2 + (dayOk ? 3 : 0);
+  const statH = strokeOk ? 4 : 2;
+  const rightH = statH + (dayOk ? 5 : 0);
   return {
     h: Math.max(priceH, rightH),
     draw: y => {
       if (price) {
-        txt(k, mx, y, 'At API prices', tk.text3);
+        txt(k, mx, y, 'AT API PRICES', tk.text3);
         // Counts the last 20% up once printed (never "$0"); right-aligned so it never jitters.
         const shown = countUp(price.value, grow(k, 0));
         if (big) drawDisplay(k.c, mx + displayWidth(price.value, opts) - displayWidth(shown, opts), y + 1, shown, tk.text, tk.bg, opts);
@@ -223,20 +233,27 @@ function heroBand(k: K, d: BoardSummary, p: Plan): Piece {
       fits.forEach((st, i) => {
         const x = xs[i]!;
         txt(k, x, y, st.label, tk.text3);
-        txt(k, x, y + 1, st.value, tk.text, { bold: !st.quote, italic: st.quote });
+        if (strokeOk && !st.quote) strokeNum(k, x, y + 1, st.value, tk.text);
+        else txt(k, x, y + 1, st.value, tk.text, { bold: !st.quote, italic: st.quote });
       });
       if (dayOk && clock) {
-        const yy = y + (big ? priceH - 2 : 3);
+        const yy = y + statH + 2;
         const per = rw >= 70 ? 2 : 1;
-        txt(k, rx, yy - 1, 'Your day', tk.text3);
-        const w = spark(k, rx, yy, clock.hours, per, tk.bar, clock.angry, DIAG_AT + DIAG_STEP);
-        // The hour axis under the strip; the two hours that matter to the right.
-        for (const [h, l] of [[0, '12a'], [6, '6a'], [12, '12p'], [18, '6p']] as const) txt(k, rx + h * per, yy + 1, l, tk.text3);
+        txt(k, rx, yy - 1, 'YOUR DAY', tk.text3);
+        // A 2-row strip: hours in the low tint, the angriest in the accent, the calmest in primary.
+        const max = Math.max(1e-9, ...clock.hours);
+        const g = grow(k, 1);
+        clock.hours.forEach((v, h) => {
+          const ink = h === clock.angry ? tk.accent : h === clock.saint ? tk.text : tk.accentLo;
+          vbar(k.c, rx + h * per, yy + 1, 2, Math.max(0.12, (v / max) * g), ink, per, !k.uni);
+        });
+        const w = clock.hours.length * per;
+        for (const [h, l] of [[0, '12a'], [6, '6a'], [12, '12p'], [18, '6p']] as const) txt(k, rx + h * per, yy + 2, l, tk.text3);
         const lx = rx + w + 3;
         if (lx + 18 <= mx + iw) {
-          const aw = txt(k, lx, yy, hourLabel(clock.angry), tk.text);
+          const aw = txt(k, lx, yy, hourLabel(clock.angry), tk.accentHi, { bold: true });
           txt(k, lx + aw + 1, yy, 'angriest', tk.text2);
-          const sw = txt(k, lx, yy + 1, hourLabel(clock.saint), tk.text);
+          const sw = txt(k, lx, yy + 1, hourLabel(clock.saint), tk.text, { bold: true });
           txt(k, lx + sw + 1, yy + 1, 'calmest', tk.text2);
         }
       }
@@ -252,7 +269,7 @@ function partsFit(f: FunFact, w: number): FactPart[] | null {
 
 function drawParts(k: K, x: number, y: number, parts: readonly FactPart[]): void {
   let cx = x;
-  for (const part of parts) cx += txt(k, cx, y, part.text, part.tone ? k.tk.text : k.tk.text2, { italic: part.tone === 'quote' });
+  for (const part of parts) cx += txt(k, cx, y, part.text, k.tk.text, { bold: part.tone === 'num', italic: part.tone === 'quote' });
 }
 
 function factsPiece(k: K, d: BoardSummary, p: Plan): (Piece & { shown: FunFact[] }) | null {
@@ -274,17 +291,20 @@ function factsPiece(k: K, d: BoardSummary, p: Plan): (Piece & { shown: FunFact[]
   }
   if (!picks.length) return null;
   const rows = Math.ceil(picks.length / cols);
-  const cellH = p.diagrams ? 3 : 2;
-  const rowGap = p.factGap ? 1 : 0;
+  // Spaced: label, blank, sentence, blank, bar; two blank rows between rows of facts.
+  const air = p.factGap ? 1 : 0;
+  const cellH = 2 + air + (p.diagrams ? 1 + air : 0);
+  // A label never touches the fact above it: at least one blank row between rows of facts.
+  const rowGap = p.factGap ? 2 : 1;
   return {
     shown: picks.map(x => x.f),
     h: rows * cellH + (rows - 1) * rowGap,
     draw: y0 => picks.forEach(({ f, parts }, i) => {
       const x = mx + (i % cols) * (colW + gap);
       const y = y0 + Math.floor(i / cols) * (cellH + rowGap);
-      txt(k, x, y, f.label, k.tk.text3);
-      drawParts(k, x, y + 1, parts);
-      if (p.diagrams) diagram(k, d, f, x, y + 2, colW, 2 + i);
+      txt(k, x, y, f.label.toUpperCase(), k.tk.accentHi, { bold: true });
+      drawParts(k, x, y + 1 + air, parts);
+      if (p.diagrams) diagram(k, d, f, x, y + 2 + air * 2, colW, 2 + i);
     }),
   };
 }
@@ -304,8 +324,8 @@ function diagram(k: K, d: BoardSummary, f: FunFact, x: number, y: number, w: num
       if (bw < 6) return;
       txt(k, x, y, l, tk.text2);
       const nice = Math.max(1, Math.round((bw * m.thanks) / (m.thanks + m.rude)));
-      meter(k, x + textWidth(l) + 1, y, nice, 1, tk.text, start);
-      meter(k, x + textWidth(l) + 1 + nice, y, bw - nice, 1, tk.text3, start + 150);
+      meter(k, x + textWidth(l) + 1, y, nice, 1, tk.accentLo, start);
+      meter(k, x + textWidth(l) + 1 + nice, y, bw - nice, 1, tk.accent, start + 150);
       txt(k, x + textWidth(l) + 1 + bw + 1, y, r, tk.text2);
       return;
     }
@@ -316,7 +336,7 @@ function diagram(k: K, d: BoardSummary, f: FunFact, x: number, y: number, w: num
       if (textWidth(a.from) + textWidth(a.to) + 2 + per * a.pcts.length > w) return;
       txt(k, x, y, a.from, tk.text3);
       const max = a.pcts.indexOf(Math.max(...a.pcts));
-      const sw = spark(k, x + textWidth(a.from) + 1, y, a.pcts, per, tk.bar, max, start, tk.text2);
+      const sw = spark(k, x + textWidth(a.from) + 1, y, a.pcts, per, tk.accentLo, max, start, tk.accent);
       txt(k, x + textWidth(a.from) + 1 + sw + 1, y, a.to, tk.text3);
       return;
     }
@@ -324,7 +344,7 @@ function diagram(k: K, d: BoardSummary, f: FunFact, x: number, y: number, w: num
       const h = v.sit;
       if (!h) return;
       const bw = Math.min(w - 4, 24);
-      meter(k, x, y, bw, Math.min(1, h / 12), tk.bar, start);
+      meter(k, x, y, bw, Math.min(1, h / 12), tk.accent, start);
       txt(k, x + bw + 1, y, '12h', tk.text3);
       return;
     }
@@ -341,7 +361,7 @@ function awardsPiece(k: K, d: BoardSummary, shown: FunFact[]): Piece | null {
   const cols = iw >= 100 ? 3 : 2;
   const gap = 3;
   const colW = Math.floor((iw - gap * (cols - 1)) / cols);
-  const list = d.awards.filter(a => !a.id || !covered.has(a.id)).filter(a => textWidth(a.title) <= colW).slice(0, cols);
+  const list = d.awards.filter(a => !a.id || !covered.has(a.id)).filter(a => textWidth(a.title) + 9 <= colW).slice(0, cols);
   if (!list.length) return null;
   return {
     h: 2,
@@ -349,9 +369,12 @@ function awardsPiece(k: K, d: BoardSummary, shown: FunFact[]): Piece | null {
       const x = mx + i * (colW + gap);
       const value = k.s.share ? aw.publicValue : aw.value;
       const sub = (k.s.share ? aw.publicSub : aw.sub) ?? '';
-      txt(k, x, y, aw.title, tk.text, { bold: true });
-      const line = sub && textWidth(`${value}  ·  ${sub}`) <= colW ? `${value}  ·  ${sub}` : value;
-      if (textWidth(line) <= colW) txt(k, x, y + 1, line, tk.text2);
+      // A chip only for the rank-1 / rank-2 awards (GOLD / SILVER); others carry none.
+      const rank = d.awards.indexOf(aw);
+      const cw = rank === 0 ? chip(k, x, y, 'GOLD', tk.accent, tk.bg) + 1 : rank === 1 ? chip(k, x, y, 'SILVER', tk.bar, tk.text) + 1 : 0;
+      txt(k, x + cw, y, aw.title, tk.text, { bold: true }, colW - cw);
+      const line = sub && textWidth(`${value}  ·  ${sub}`) <= colW - cw ? `${value}  ·  ${sub}` : value;
+      if (textWidth(line) <= colW - cw) txt(k, x + cw, y + 1, line, tk.text2);
     }),
   };
 }
@@ -363,8 +386,9 @@ function tickerPiece(k: K, since: string): Piece | null {
   return {
     h: 1,
     draw: y => {
-      const w = txt(k, k.mx, y, lead, k.tk.text3);
-      txt(k, k.mx + w, y, since, k.tk.text2);
+      let x = k.mx + txt(k, k.mx, y, lead, k.tk.text3);
+      // Deltas (+41, +$117, 3.6% → 4.8%) in the light accent.
+      for (const w of since.split(/(\s+)/).filter(Boolean)) x += txt(k, x, y, w, /\d/.test(w) ? k.tk.accentHi : k.tk.text2, { bold: /\d/.test(w) });
     },
   };
 }

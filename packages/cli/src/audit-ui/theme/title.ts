@@ -4,9 +4,15 @@ import { displayHeight, displaySupported, displayWidth, drawDisplay, gapOf } fro
 import { textWidth, txt, type K } from './kit.js';
 import { fadeIn, type DisplayFace } from './tokens.js';
 
-export interface TitlePlan { lines: string[]; big: boolean; h: number; w: number; face: DisplayFace }
+export interface TitlePlan { lines: string[]; big: boolean; h: number; w: number; face: DisplayFace; scale?: number }
 
-export function planTitle(k: K, title: string, maxW: number, maxLines: number): TitlePlan {
+export function planTitle(k: K, title: string, maxW: number, maxLines: number, scale = 1): TitlePlan {
+  // Twice the size on one line when asked and it fits (big terminals).
+  if (scale > 1 && k.uni && k.tk.face === 'solid' && displaySupported(title)) {
+    const line = title.toUpperCase();
+    const o = { face: 'solid' as const, scale };
+    if (displayWidth(line, o) <= maxW) return { lines: [line], big: true, h: displayHeight(o), w: displayWidth(line, o), face: 'solid', scale };
+  }
   // One line in either face beats two lines; the solid face is wide, the heavy stroke face narrow.
   const faces: DisplayFace[] = k.tk.face === 'solid' ? ['solid', 'heavy'] : [k.tk.face];
   if (k.uni && displaySupported(title)) for (let n = 1; n <= maxLines; n++) for (const face of faces) {
@@ -47,7 +53,8 @@ export function drawTitle(k: K, x: number, y: number, plan: TitlePlan, color: Rg
   const face = plan.face;
   const fg = fadeIn(k.tk, color, a);
   if (!plan.big) { txt(k, x, y, plan.lines[0]!, color, { bold: true, a }); return; }
-  plan.lines.forEach((line, i) => drawDisplay(k.c, x, y + i * (displayHeight({ face }) + 1), line, fg, k.tk.bg, { face }));
+  const o = { face, scale: plan.scale };
+  plan.lines.forEach((line, i) => drawDisplay(k.c, x, y + i * (displayHeight(o) + 1), line, fg, k.tk.bg, o));
 }
 
 /** The locked title: one ghost bar per word, as tall as the set title. */

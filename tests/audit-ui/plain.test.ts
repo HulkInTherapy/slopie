@@ -43,11 +43,11 @@ describe('plain and share outputs', () => {
     const svg = renderAuditShareSvg(storySnapshot());
     expect(svg.startsWith('<svg')).toBe(true);
     expect(svg).toContain('2AM Deployer');
-    expect(svg).toContain('At API prices');
+    expect(svg).toContain('AT API PRICES');
     expect(svg).toContain('npx slopie audit');
     // The poster's palette: the grey ramp, the background and the one accent.
     const fills = new Set([...svg.matchAll(/fill="(#[0-9A-F]{6})"/g)].map(m => m[1]));
-    for (const fill of fills) expect(['#08090A', '#F7F8F8', '#8A8F98', '#5D6168', '#7C7CFF', '#1F2125', '#3E424A', '#25282D']).toContain(fill);
+    for (const fill of fills) expect(['#08090A', '#F7F8F8', '#B4B8C1', '#7D828C', '#7C7CFF', '#A5A5FF', '#5B5BD6', '#34347A', '#4A4E57', '#2E3138', '#565B66', '#30333A']).toContain(fill);
     // Only the catchphrase / pet name the poster already shows; no project names or other prompt text.
     for (const secret of ['lantern-api', 'tidepool', 'paper-boats', 'sync layer', 'keep going', 'leave the tests']) expect(svg).not.toContain(secret);
   });

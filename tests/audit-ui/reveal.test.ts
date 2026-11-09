@@ -26,14 +26,14 @@ describe('archetype reveal', () => {
     const early = reveal(120, 40, 900).text;
     expect(early).toContain('THE EVIDENCE');
     expect(early).toContain('41% after 10pm');
-    expect(early).not.toContain('Epic'); // the tier lands after the title
+    expect(early).not.toContain('EPIC'); // the tier lands after the title
     expect(early).toContain('███'); // the title is still the cover's redacted bars
     const title = reveal(120, 40, T.title + 900).text;
-    expect(title).not.toMatch(/█{8,}/); // resolved into the set title
+    expect(title.split('THE EVIDENCE')[0]).not.toMatch(/█{8,}/); // resolved into the set title
     const done = reveal(120, 40, T.settle);
     expect(done.busy).toBe(false);
-    expect(done.text).toMatch(/Epic {2}with a streak of The Spec Writer/);
-    expect(done.text).toContain('Also close  The Model Sommelier'); // the sub-role already names the runner-up
+    expect(done.text).toMatch(/EPIC {3}with a streak of The Spec Writer/);
+    expect(done.text).toContain('Also close:  The Model Sommelier'); // the sub-role already names the runner-up
     expect(done.text).not.toMatch(/\b0\.\d\d\b/); // words, never raw scores
     expect(done.text).toContain('YOUR CODE');
     expect(done.text).toContain('night · spec · roaming · hot-headed');
@@ -43,7 +43,7 @@ describe('archetype reveal', () => {
 
   it('with motion off draws only the final frame', () => {
     const { text, busy } = reveal(120, 40, Infinity, { motion: false });
-    expect(text).toMatch(/Epic {2}with a streak/);
+    expect(text).toMatch(/EPIC {3}with a streak/);
     expect(text).toContain('very high');
     expect(busy).toBe(false);
   });
@@ -61,7 +61,7 @@ describe('archetype reveal', () => {
   it('names the rarity in words, one accent, no frame for any tier', () => {
     for (const tier of ['common', 'rare', 'epic', 'legendary']) {
       const text = reveal(120, 40, Infinity, { tier }).text;
-      expect(text).toContain(tier[0]!.toUpperCase() + tier.slice(1));
+      expect(text).toContain(tier.toUpperCase());
       expect(text).not.toMatch(/[╔╗┌┐★]/);
     }
   });
@@ -69,7 +69,7 @@ describe('archetype reveal', () => {
   it('falls back to a bold text title in ASCII / colourless terminals', () => {
     const { text } = reveal(100, 30, Infinity, { ascii: true, color: 'none' });
     expect(text).toContain('The 2AM Deployer');
-    expect(text).toContain('Epic');
+    expect(text).toContain('EPIC');
     for (const ch of text) if (ch !== '\n') expect(ch.charCodeAt(0) < 128 || '…’“”·'.includes(ch), ch).toBe(true);
   });
 });

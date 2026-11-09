@@ -8,16 +8,16 @@ import { countUp, easeOutCubic, seg } from '../gfx/motion.js';
 import { monthLabel, type SpendView } from '../story/deck.js';
 import { dayGrid, monthBars } from '../theme/charts.js';
 import { displayHeight, displayWidth, drawDisplay, fitDisplay } from '../theme/display.js';
-import { fade, rule, textWidth, txt, txtRight, vrule, type K } from '../theme/kit.js';
+import { fade, heroScale, label, stat, textWidth, txt, vrule, type K } from '../theme/kit.js';
 import { fadeIn } from '../theme/tokens.js';
 
 export function spendBody(k: K, sp: SpendView, r: Rect): void {
   const { tk, L, s } = k;
   const bottom = r.y + r.h - 1;
   let y = r.y;
-  // Columns: the ledger, a hairline, the charts.
+  // Columns: the ledger (40%), a hairline, the charts (60%).
   const side = r.w >= 70;
-  const lw = side ? (L ? 40 : 32) : r.w;
+  const lw = side ? Math.floor(r.w * 0.4) - 3 : r.w;
   const cx = r.x + lw + (L ? 6 : 4);
   const cw = r.x + r.w - cx;
 
@@ -25,10 +25,8 @@ export function spendBody(k: K, sp: SpendView, r: Rect): void {
   const final = '$' + count(Math.round(sp.measured));
   const shown = '$' + count(Math.round(countUp(sp.measured, s.caps.motion ? s.t : Infinity, 100, 1000)));
   if (s.caps.motion && s.t < 1100) k.busy = true;
-  const fit = k.uni ? fitDisplay(final, lw, { face: tk.face, tall: L && r.h >= 20, currency: tk.text2 }) : null;
   const a0 = fade(k, 100, 400);
-  txt(k, r.x, y, 'Lifetime', tk.text3, { a: a0 });
-  y += 1;
+  const fit = k.uni ? fitDisplay(final, lw, { face: tk.face, tall: L && r.h >= 20, currency: fadeIn(tk, tk.accentHi, a0), scale: heroScale(k) }) : null;
   if (fit) {
     drawDisplay(k.c, r.x + displayWidth(final, fit) - displayWidth(shown, fit), y, shown, fadeIn(tk, tk.text, a0), tk.bg, fit);
     y += displayHeight(fit) + 1;
@@ -37,51 +35,50 @@ export function spendBody(k: K, sp: SpendView, r: Rect): void {
     y += 2;
   }
   const a1 = fade(k, 500);
-  txt(k, r.x, y, 'measured at API list prices', tk.text2, { a: a1 }, lw);
-  y += L && r.h >= 20 ? 2 : 1;
+  txt(k, r.x, y, 'lifetime at API prices', tk.text2, { a: a1 }, lw);
+  y += 2;
 
-  // The ledger: label · right-aligned figure · note. Whole lines only.
-  const valX = r.x + (L ? 26 : 24);
-  const lines: ([string, string, string] | null)[] = [];
-  if (sp.recovered) lines.push(['Recovered', money(sp.recovered), 'usage counters']);
-  if (sp.estimated) lines.push(['Older prompts', `${money(sp.estimated.low)}–${money(sp.estimated.high).slice(1)}`, 'est.']);
-  if (lines.length) lines.push(null);
-  if (sp.thisMonth !== null) lines.push(['This month', money(sp.thisMonth), '']);
-  if (sp.perDay !== null) lines.push(['Per active day', money(sp.perDay), '']);
-  if (sp.priciestDay) lines.push(['Priciest day', money(sp.priciestDay.usd), shortDate(sp.priciestDay.day)]);
+  // Label/value pairs, stacked with a blank row between them.
+  const pairs: [string, string, boolean][] = [];
+  if (sp.thisMonth !== null) pairs.push(['this month', money(sp.thisMonth), false]);
+  if (sp.perDay !== null) pairs.push(['per active day', money(sp.perDay), false]);
+  if (sp.priciestDay) pairs.push(['priciest day', `${money(sp.priciestDay.usd)}  ${shortDate(sp.priciestDay.day)}`, true]);
   const hundred = sp.days.filter(d => d.usd >= 100).length;
-  if (hundred) lines.push(['$100+ days', count(hundred), '']);
-  for (const line of lines) {
-    if (y > bottom) break;
-    if (!line) { if (L && r.h >= 20) { rule(k, r.x, y, Math.min(lw, valX - r.x + 16), tk.rule, a1); y++; } continue; }
-    const [name, value, note] = line;
-    txt(k, r.x, y, name, tk.text2, { a: a1 });
-    txtRight(k, valX, y, value, tk.text, { a: a1 });
-    if (note && valX + 2 + textWidth(note) <= r.x + lw) txt(k, valX + 2, y, note, tk.text3, { a: a1 });
-    y++;
+  if (hundred) pairs.push(['$100+ days', count(hundred), false]);
+  const notes: string[] = [];
+  if (sp.recovered) notes.push(`+${money(sp.recovered)} recovered`);
+  if (sp.estimated) notes.push(`older prompts est. ${money(sp.estimated.low)}–${money(sp.estimated.high).slice(1)}`);
+  const note = notes.join(' · ');
+  const noteRows = note && textWidth(note) <= lw ? 2 : 0;
+  const step = bottom - y - noteRows >= pairs.length * 3 ? 3 : 2;
+  for (const [name, value, hot] of pairs) {
+    if (y + 1 > bottom - noteRows) break;
+    stat(k, r.x, y, name, value, { hot, a: a1, maxW: lw });
+    y += step;
   }
+  if (noteRows) txt(k, r.x, bottom, note, tk.text3, { a: a1 });
 
   if (!side) return;
   vrule(k, cx - (L ? 3 : 2), r.y, r.h);
   let cy = r.y;
   const room = bottom - cy + 1;
+  const gridH = room >= 22 ? 8 : 5;
   const wantGrid = sp.days.length > 0 && room >= 16;
-  const barsH = Math.max(4, Math.min(L ? 13 : 10, room - (wantGrid ? 8 : 2)));
+  const barsH = Math.max(4, Math.min(L ? 16 : 10, room - (wantGrid ? gridH + 4 : 2)));
   if (sp.months.length >= 2 && room >= 7) {
-    txt(k, cx, cy, 'By month', tk.text3);
+    label(k, cx, cy, 'by month');
     if (sp.months.some(m => m.extra > 0)) {
-      const legend: [string, number][] = [[k.uni ? '■' : '#', tk.bar], [' measured   ', tk.text3], [k.uni ? '■' : ':', tk.barSoft], [' recovered, est.', tk.text3]];
+      const legend: [string, number][] = [[k.uni ? '■' : '#', tk.accentLo], [' measured   ', tk.text3], [k.uni ? '■' : ':', tk.barSoft], [' recovered, est.', tk.text3]];
       let lx = r.x + r.w - legend.reduce((a, [t]) => a + textWidth(t), 0);
-      // Only when it clears the chart label with room to spare.
-      if (lx >= cx + textWidth('By month') + 4) for (const [t, col] of legend) lx += txt(k, lx, cy, t, col);
+      if (lx >= cx + textWidth('BY MONTH') + 4) for (const [t, col] of legend) lx += txt(k, lx, cy, t, col);
     }
-    cy += 2;
+    cy += 1;
     monthBars(k, { x: cx, y: cy, w: cw, h: barsH }, sp.months);
     cy += barsH + 1;
   }
   if (wantGrid && bottom - cy >= 5) {
-    txt(k, cx, cy, 'Every day', tk.text3);
-    dayGrid(k, { x: cx, y: cy + 1, w: cw, h: 5 }, sp.days);
+    label(k, cx, cy, 'every day');
+    dayGrid(k, { x: cx, y: cy + 1, w: cw, h: Math.min(gridH, bottom - cy) }, sp.days);
   }
 }
 
@@ -91,8 +88,10 @@ export function erasBody(k: K, eras: { month: string; label: string }[], r: Rect
   if (!eras.length) return;
   const labels = [...new Set(eras.map(e => e.label))];
   const latest = eras.at(-1)!.label;
-  const inks = [tk.text2, tk.text3, tk.bar, tk.barSoft];
-  const inkOf = (lab: string) => (lab === latest ? tk.text : inks[labels.filter(l => l !== latest).indexOf(lab) % inks.length]!);
+  // Indigo tints by recency: the oldest in accentLo up to accentHi, the current model in the accent.
+  const older = labels.filter(l => l !== latest);
+  const tints = [tk.accentLo, tk.accentMid, tk.accentHi];
+  const inkOf = (lab: string) => (lab === latest ? tk.accent : tints[Math.max(0, tints.length - older.length + older.indexOf(lab))] ?? tk.accentLo);
   const colW = Math.max(2, Math.min(8, Math.floor(r.w / eras.length)));
   const y = r.y + 1;
   const g = k.s.caps.motion ? seg(k.s.t, 200, 900, easeOutCubic) : 1;

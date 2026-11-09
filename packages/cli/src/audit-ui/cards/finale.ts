@@ -1,5 +1,6 @@
 /** A generic chart card for the other detectors: columns, a line, a ranked list, stacks, a slope. */
 import { count, money } from '../format.js';
+import { mix } from '../gfx/color.js';
 import { pxLine, textWidth, vbar, type Rect } from '../gfx/draw.js';
 import { easeOutCubic, seg, spring } from '../gfx/motion.js';
 import type { DeckCard } from '../story/deck.js';
@@ -52,7 +53,7 @@ function columns(k: K, points: readonly Point[], r: Rect, highlight: string | nu
       const v = Math.max(...slice.map(p => p.y));
       const g = s.caps.motion ? seg(s.t, 100 + col * 12, 300, easeOutCubic) : 1;
       if (g < 1) k.busy = true;
-      if (v > 0) vbar(k.c, r.x + col, base - 1, h, Math.max(0.06, v / max) * g, slice.some(p => isHi(p, highlight)) ? tk.accent : tk.bar, 1, !k.uni);
+      if (v > 0) vbar(k.c, r.x + col, base - 1, h, Math.max(0.06, v / max) * g, slice.some(p => isHi(p, highlight)) ? tk.accent : tk.accentLo, 1, !k.uni);
     }
     txt(k, r.x, base + 1, axisLabel(points[0]!.x), tk.text3);
     txtRight(k, r.x + width, base + 1, axisLabel(points.at(-1)!.x), tk.text3);
@@ -71,9 +72,9 @@ function columns(k: K, points: readonly Point[], r: Rect, highlight: string | nu
     const g = s.caps.motion ? Math.max(0, Math.min(1, spring((s.t - i * 50) / 1000, 2, 0.8))) : 1;
     if (s.caps.motion && s.t < i * 50 + 900) k.busy = true;
     const x = r.x + i * colW;
-    vbar(k.c, x, base - 1, h, (p.y / max) * g, hi ? tk.accent : tk.bar, barW, !k.uni);
+    vbar(k.c, x, base - 1, h, (p.y / max) * g, hi ? tk.accent : tk.accentLo, barW, !k.uni);
     const lab = axisLabel(p.x);
-    if (colW >= 4 || i % 2 === 0) txt(k, x, base + 1, lab, hi ? tk.text : tk.text3, {}, colW);
+    if (colW >= 4 || i % 2 === 0) txt(k, x, base + 1, lab, hi ? tk.accentHi : tk.text3, { bold: hi }, colW);
     const text = valueLabel(p.y, unit);
     const vy = base - 2 - Math.ceil((p.y / max) * (h - 1));
     if (textWidth(text) <= colW) txt(k, x, Math.max(r.y, vy), text, hi ? tk.text : tk.text2, { bold: hi, a: fade(k, 500 + i * 50, 250) });
@@ -99,7 +100,7 @@ function line(k: K, points: readonly Point[], r: Rect, highlight: string | numbe
     return a + (b - a) * (t * t * (3 - 2 * t));
   };
   rule(k, x0, base, plotW + 1);
-  for (let x = 0; x <= Math.round(plotW * draw); x++) vbar(k.c, x0 + x, base - 1, plotH, Math.max(0.02, at(x) / max), tk.bar, 1, !k.uni);
+  for (let x = 0; x <= Math.round(plotW * draw); x++) vbar(k.c, x0 + x, base - 1, plotH, Math.max(0.02, at(x) / max), mix(tk.accentLo, tk.accent, x / Math.max(1, plotW)), 1, !k.uni);
   txtRight(k, x0 - 2, r.y + 1, valueLabel(max, unit), tk.text3);
   txtRight(k, x0 - 2, base - 1, unit === 'pct' ? '0%' : '0', tk.text3);
   let lastEnd = -10;
@@ -107,7 +108,7 @@ function line(k: K, points: readonly Point[], r: Rect, highlight: string | numbe
     const x = x0 + Math.round(i * step);
     const lab = axisLabel(p.x);
     if (x - lastEnd < 2 || x + textWidth(lab) > r.x + r.w) return;
-    txt(k, x, base + 1, lab, isHi(p, highlight) ? tk.text : tk.text3);
+    txt(k, x, base + 1, lab, isHi(p, highlight) ? tk.accentHi : tk.text3, { bold: isHi(p, highlight) });
     lastEnd = x + textWidth(lab);
   });
   const last = points.at(-1)!;
@@ -126,7 +127,7 @@ function list(k: K, points: readonly Point[], r: Rect, unit?: string): void {
     const y = r.y + i * step;
     const a = fade(k, i * 80, 300);
     txt(k, r.x, y, String(p.x), i === 0 ? tk.text : tk.text2, { bold: i === 0, a }, nameW - 2);
-    meter(k, r.x + nameW, y, barW, p.y / max, i === 0 ? tk.text : tk.bar, i * 80);
+    meter(k, r.x + nameW, y, barW, p.y / max, i === 0 ? tk.accent : tk.accentLo, i * 80);
     const vx = r.x + nameW + barW + 2;
     const vw = txt(k, vx, y, valueLabel(p.y, unit), tk.text, { a });
     if (p.label && vx + vw + 3 + textWidth(p.label) <= r.x + r.w) txt(k, vx + vw + 3, y, p.label, tk.text3, { a });
@@ -143,7 +144,7 @@ function stacked(k: K, series: readonly { name: string; points: readonly Point[]
   const bottom = r.y + h;
   const totals = Array.from({ length: n }, (_, i) => series.reduce((sum, sr) => sum + (sr.points[i]?.y ?? 0), 0));
   const max = Math.max(1, ...totals);
-  const inks = [tk.bar, tk.text3, tk.text2, tk.text];
+  const inks = [tk.accentLo, tk.accentMid, tk.accent, tk.accentHi];
   for (let i = 0; i < n; i++) {
     const g = s.caps.motion ? seg(s.t, i * 15, 300) : 1;
     if (g < 1) k.busy = true;
@@ -179,7 +180,7 @@ export function insightBody(k: K, data: Data<'insight'>, r: Rect): void {
     const g = s.caps.motion ? seg(s.t, 200, 900, easeOutCubic) : 1;
     if (g < 1) k.busy = true;
     ser.forEach((sr, i) => {
-      const ink = i === 0 ? tk.text : tk.text3;
+      const ink = i === 0 ? tk.accent : tk.accentLo;
       const [a, b] = [sr.points[0]?.y ?? 0, sr.points[1]?.y ?? 0];
       const ya = bottom * 2 - Math.round((a / max) * (bottom - top) * 2), yb = bottom * 2 - Math.round((b / max) * (bottom - top) * 2);
       pxLine(k.c, x0, ya, x0 + Math.round((x1 - x0) * g), Math.round(ya + (yb - ya) * g), ink);
