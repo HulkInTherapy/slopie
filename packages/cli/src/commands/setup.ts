@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { agentNote, paths } from '@potsherd/core';
-import { confirm, print, printJson, themeFrom, UserError, type GlobalOptions } from '../output.js';
+import { confirm, fold, print, printJson, themeFrom, UserError, type GlobalOptions } from '../output.js';
 import { LEGACY_WHAT, legacyChanges, type LegacyTarget } from './setup-legacy.js';
 
 /**
@@ -195,7 +195,10 @@ export async function runSetup(o: SetupOptions): Promise<number> {
       return {client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map(p => p.what)};
     });
     if (o.json) printJson({records: paths.recordsDir(), clients: rows});
-    else for (const r of rows) print(`  ${r.client.padEnd(8)}${r.installed ? 'installed' : r.detected ? `missing: ${r.missing.join(', ')}  (slopie setup --${r.client})` : 'not found on this machine'}`);
+    else for (const r of rows) {
+      const text = r.installed ? 'installed' : r.detected ? `missing: ${r.missing.join(', ')} (slopie setup --${r.client})` : 'not found on this machine';
+      fold(text, Math.max(20, t.width - 12)).forEach((row, i) => print(`  ${i ? ''.padEnd(8) : r.client.padEnd(8)}${row}`));
+    }
     return 0;
   }
   if (!clients.length) {
