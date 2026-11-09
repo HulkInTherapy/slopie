@@ -96,3 +96,38 @@ describe('D6: setup removes potsherd 1.x MCP registrations', () => {
     expect(run(f, ['setup', '--yes']).stdout).toContain('already set up');
   });
 });
+
+describe('1.9.1: stale potsherd hooks, the Codex refresh hook, and --status', () => {
+  it('removes potsherd rescue / potsherd-mcp hooks (with a backup), installs the Codex SessionStart hook, and reports refresh', () => {
+    const f = makeFixture(); made.push(f);
+    const settings = path.join(f.claudeDir, 'settings.json');
+    const mine = {type: 'command', command: 'node mine.js'};
+    fs.writeFileSync(settings, JSON.stringify({theme: 'dark', hooks: {SessionStart: [{hooks: [{type: 'command', command: 'potsherd rescue --yes --quiet --no-settings'}, mine]}], Stop: [{hooks: [{type: 'command', command: 'potsherd-mcp'}]}]}}, null, 2) + '\n');
+    const hooksJson = path.join(f.codexDir, 'hooks.json');
+    fs.writeFileSync(hooksJson, JSON.stringify({hooks: {SessionStart: [{hooks: [{type: 'command', command: 'potsherd rescue --yes --quiet --no-settings'}]}, {hooks: [mine]}]}}, null, 2) + '\n');
+    const toml = path.join(f.codexDir, 'config.toml');
+    fs.writeFileSync(toml, `model = "gpt"\n\n[[hooks.SessionStart]]\ncommand = "potsherd rescue --yes"\n\n[profiles.fast]\nmodel = "mini"\n`);
+    const plan = run(f, ['setup', '--dry-run']).stdout;
+    expect(plan).toContain('remove stale potsherd 1.x hooks');
+    expect(run(f, ['setup', '--yes']).code).toBe(0);
+    const s = fs.readFileSync(settings, 'utf8');
+    expect(s).not.toContain('potsherd');
+    expect(s).toContain('node mine.js');
+    expect(s).toContain('hook session-start --harness claude');
+    const h = fs.readFileSync(hooksJson, 'utf8');
+    expect(h).not.toContain('potsherd');
+    expect(h).toContain('node mine.js');
+    expect(h).toContain('hook session-start --harness codex');
+    const t = fs.readFileSync(toml, 'utf8');
+    expect(t).not.toContain('potsherd');
+    expect(t).toContain('[profiles.fast]');
+    expect(fs.readdirSync(f.codexDir).some(n => n.startsWith('hooks.json.slopie-bak-'))).toBe(true);
+    expect(fs.readdirSync(f.claudeDir).some(n => n.startsWith('settings.json.slopie-bak-'))).toBe(true);
+    const status = run(f, ['setup', '--status']).stdout;
+    expect(status).toMatch(/index\s+/);
+    expect(status).toMatch(/codex\s+installed · refresh hook/);
+    expect(run(f, ['setup', '--dry-run']).stdout).toContain('already set up');
+    run(f, ['setup', '--remove', '--yes']);
+    expect(fs.readFileSync(hooksJson, 'utf8')).not.toContain('slopie');
+  });
+});
