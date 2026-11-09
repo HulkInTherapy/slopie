@@ -6,7 +6,9 @@ import { Worker, parentPort } from "node:worker_threads";
 
 // packages/core/src/analytics/extract.ts
 import fs from "node:fs";
-import { createHash as createHash2 } from "node:crypto";
+import zlib from "node:zlib";
+import { execFileSync } from "node:child_process";
+import { createHash as createHash3 } from "node:crypto";
 import path from "node:path";
 
 // packages/core/src/markers.ts
@@ -1106,33 +1108,6 @@ function topicWords(text) {
   return out;
 }
 
-// packages/core/src/analytics/story-time.ts
-var WEEKDAY = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
-function localClock(timezone) {
-  const format = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    weekday: "short",
-    hourCycle: "h23"
-  });
-  const memo = /* @__PURE__ */ new Map();
-  return (at) => {
-    const slot = Math.floor(at / 9e5);
-    let hit = memo.get(slot);
-    if (hit) return { ...hit, minute: hit.minute + Math.floor((at - slot * 9e5) / 6e4) };
-    const parts = {};
-    for (const p of format.formatToParts(new Date(slot * 9e5))) parts[p.type] = p.value;
-    const hour = Number(parts.hour) % 24;
-    hit = { day: `${parts.year}-${parts.month}-${parts.day}`, month: `${parts.year}-${parts.month}`, hour, dow: WEEKDAY[parts.weekday] ?? 0, minute: Number(parts.minute) };
-    memo.set(slot, hit);
-    return { ...hit, minute: hit.minute + Math.floor((at - slot * 9e5) / 6e4) };
-  };
-}
-
 // packages/core/src/analytics/story-extract.ts
 var AGENT_TOOLS = /* @__PURE__ */ new Set(["Task", "Agent", "spawn_agent", "spawn_agents", "TaskCreate"]);
 var isAgentTool = (name) => AGENT_TOOLS.has(name) || name.startsWith("spawn");
@@ -1162,35 +1137,15 @@ function deriveStory(prompts, events, interrupts, options) {
     if (p.before) models.add(p.before);
     if (p.after) models.add(p.after);
   }
-  const vocab = options.counters ? options.previous?.vocab ?? /* @__PURE__ */ new Map() : null;
-  const topics = options.counters ? new Map((options.previous?.topics ?? []).map((t) => [t.month, t])) : null;
-  const clock = localClock(options.timezone);
   for (const p of human) {
     if (!fresh.has(p)) continue;
     p.f = featurize({ text: p.text, typed: options.typed });
     const lex = promptLex(p.text, models);
     if (lex) p.lex = lex;
-    if (vocab) for (const w of vocabularyWords(p.text)) vocab.set(w, (vocab.get(w) ?? 0) + 1);
-    if (topics) {
-      const { hour, month } = clock(p.at);
-      const slot = hour < 5 ? 0 : hour >= 9 && hour < 19 ? 1 : -1;
-      if (slot >= 0) {
-        let bag = topics.get(month);
-        if (!bag) {
-          bag = { month, night: 0, day: 0, words: /* @__PURE__ */ new Map() };
-          topics.set(month, bag);
-        }
-        if (slot === 0) bag.night++;
-        else bag.day++;
-        for (const w of topicWords(p.text)) {
-          let c = bag.words.get(w);
-          if (!c) {
-            c = [0, 0];
-            bag.words.set(w, c);
-          }
-          c[slot]++;
-        }
-      }
+    if (options.counters) {
+      const w = vocabularyWords(p.text), tw = [...topicWords(p.text)];
+      if (w.length) p.w = w;
+      if (tw.length) p.tw = tw;
     }
   }
   turnStats(human, events, interrupts);
@@ -1213,7 +1168,7 @@ function deriveStory(prompts, events, interrupts, options) {
     const q = safeQuote(p.text, 90);
     if (q) p.q = q;
   }
-  return { vocab, topics: topics ? [...topics.values()] : null };
+  return { vocab: null, topics: null };
 }
 function turnStats(human, events, interrupts) {
   const ev = events.filter((e) => Number.isFinite(e.at)).sort((a, b) => a.at - b.at);
@@ -1252,19 +1207,61 @@ function turnWeights(human, events, out) {
 var round1 = (x) => Math.round(x * 10) / 10;
 var usageWeight = (input, output, cacheRead, cacheWrite) => input + 5 * output + 1.25 * cacheWrite + 0.1 * cacheRead;
 
+// packages/core/src/analytics/copy-prune.ts
+import { createHash as createHash2 } from "node:crypto";
+var HEAD = 4096;
+var TAIL = 4096;
+var SNIFF = 64 * 1024;
+var CLASSIFY_MAX_BYTES = 512 * 1024 * 1024;
+var sha1 = (b) => createHash2("sha1").update(b).digest("base64");
+var StreamHashes = class {
+  headParts = [];
+  headLength = 0;
+  /** The last TAIL bytes seen. */
+  window = Buffer.alloc(0);
+  produced = 0;
+  offsets;
+  at = [];
+  constructor(offsets) {
+    this.offsets = [...offsets].sort((a, b) => a - b);
+  }
+  push(chunk) {
+    if (!chunk.length) return;
+    if (this.headLength < HEAD) {
+      const part = chunk.subarray(0, HEAD - this.headLength);
+      this.headParts.push(Buffer.from(part));
+      this.headLength += part.length;
+    }
+    const from = this.produced, to = from + chunk.length;
+    let joined = null;
+    while (this.offsets.length && this.offsets[0] <= to) {
+      const end = this.offsets.shift();
+      if (end <= from) continue;
+      joined ??= Buffer.concat([this.window, chunk]);
+      const stop = end - (from - this.window.length);
+      this.at.push([end, sha1(joined.subarray(Math.max(0, stop - TAIL), stop))]);
+    }
+    this.window = chunk.length >= TAIL ? Buffer.from(chunk.subarray(chunk.length - TAIL)) : Buffer.concat([this.window, chunk]).subarray(-TAIL);
+    this.produced = to;
+  }
+  result() {
+    return { head: sha1(Buffer.concat(this.headParts)), at: this.at };
+  }
+};
+
 // packages/core/src/analytics/extract.ts
-var FACTS_VERSION = 5;
+var FACTS_VERSION = 8;
 var MAX_PROMPT_CHARS = 4e3;
 var isRec = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 var str = (v) => typeof v === "string" && v.length > 0 ? v : null;
 var int = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+var MAX_DATE_MS = 864e13;
 function time(v) {
-  if (typeof v === "string") {
-    const t = Date.parse(v);
-    return Number.isFinite(t) ? t : null;
-  }
-  if (typeof v === "number" && Number.isFinite(v)) return v < 1e11 ? v * 1e3 : v;
-  return null;
+  let t;
+  if (typeof v === "string") t = Date.parse(v);
+  else if (typeof v === "number" && Number.isFinite(v)) t = v < 1e11 ? v * 1e3 : v;
+  else return null;
+  return Number.isFinite(t) && Math.abs(t) <= MAX_DATE_MS && t > 0 ? t : null;
 }
 function textOf(content) {
   if (typeof content === "string") return content;
@@ -1321,7 +1318,7 @@ function makeBuilder(file, harness, size, mtimeMs) {
       file,
       size,
       mtimeMs,
-      sessionId: path.basename(file, ".jsonl"),
+      sessionId: path.basename(file.replace(/\.zst$/, ""), ".jsonl"),
       parentId: null,
       child: false,
       project: null,
@@ -1385,7 +1382,8 @@ function addPrompt(b, key, at, project, kind2, reason, text) {
   touch(b, at);
 }
 var SUBAGENT_DIR = `${path.sep}subagents${path.sep}`;
-function claudeLine(b, line, subagent, sessions) {
+function claudeLine(b, line, subagentPath, sessions, archive = false) {
+  let subagent = subagentPath || !!b.sidechainFile;
   const assistant = line.includes('"type":"assistant"');
   if (assistant ? !line.includes('"usage"') : subagent || !line.includes('"type":"user"')) {
     if (line.length > 4096 || !line.includes('-title"') && !line.includes('"type":"summary"')) return;
@@ -1397,7 +1395,10 @@ function claudeLine(b, line, subagent, sessions) {
     b.facts.malformed++;
     return;
   }
-  if (!isRec(r)) return;
+  if (!isRec(r)) {
+    b.facts.malformed++;
+    return;
+  }
   const f = b.facts;
   if (r.type === "summary" || r.type === "custom-title" || r.type === "ai-title") {
     const title = str(r.customTitle) ?? str(r.aiTitle) ?? str(r.title) ?? str(r.summary);
@@ -1406,11 +1407,19 @@ function claudeLine(b, line, subagent, sessions) {
   }
   if (typeof r.cwd === "string" && !f.project) f.project = r.cwd;
   const sid = str(r.sessionId);
+  if (archive && !subagent && sid && r.isSidechain === true && typeof r.agentId === "string" && !sessions.size && !f.prompts.length) {
+    b.sidechainFile = subagent = true;
+    f.parentId = sid;
+    f.child = true;
+    f.sessionId = `${sid}:agent-${r.agentId}`;
+  }
   if (sid) {
     if (subagent) {
-      f.parentId = sid;
-      f.child = true;
-      f.sessionId = `${sid}:${path.basename(f.file, ".jsonl")}`;
+      if (!b.sidechainFile) {
+        f.parentId = sid;
+        f.child = true;
+        f.sessionId = `${sid}:${path.basename(f.file, ".jsonl")}`;
+      }
     } else if (!sessions.size) f.sessionId = sid;
   }
   const m = isRec(r.message) ? r.message : {};
@@ -1474,6 +1483,8 @@ var newCodexState = () => ({
   previousTotal: null,
   tier: void 0,
   imported: false,
+  inTurn: false,
+  anyTurn: false,
   records: /* @__PURE__ */ new Map(),
   compacted: /* @__PURE__ */ new Set(),
   deltas: /* @__PURE__ */ new Set(),
@@ -1491,27 +1502,13 @@ var ResumeMismatch = class extends Error {
 };
 var U_KEYS = ["input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens", "total_tokens"];
 var tuple = (u) => isRec(u) ? U_KEYS.map((k) => int(u[k])) : null;
-var AUTO_REVIEW_MODELS = [
-  ["2026-07-30", "gpt-5.6-luna"],
-  ["2026-03-05", "gpt-5.4"],
-  ["2026-02-05", "gpt-5.3-codex"],
-  ["2025-12-11", "gpt-5.2-codex"],
-  ["2025-11-13", "gpt-5.1-codex"],
-  ["2025-09-15", "gpt-5-codex"]
-];
-function codexModel(model, timestamp) {
-  if (model === "codex-auto-review") {
-    const day = timestamp.slice(0, 10);
-    return { model: AUTO_REVIEW_MODELS.find(([since]) => day >= since)?.[1] ?? "gpt-5", inferred: true };
-  }
-  return model ? { model, inferred: false } : { model: "gpt-5", inferred: true };
-}
-function codexFact(b, s, at, timestamp, d, key) {
+var CODEX_NON_MODELS = /* @__PURE__ */ new Set(["codex-auto-review"]);
+var codexModel = (model) => model && !CODEX_NON_MODELS.has(model) ? model : null;
+function codexFact(model, tier, at, d, key) {
   const input = d[0], output = d[2], reasoning = d[3], cached = Math.min(d[1], input);
-  const { model, inferred } = codexModel(b.currentModel, timestamp);
-  const fact = { key, at, model, provider: "openai", input: input - cached, output, cacheRead: cached, cacheWrite: 0, cacheWrite1h: 0, reasoning };
-  if (inferred) fact.inferredModel = true;
-  if (s.tier) fact.tier = s.tier;
+  const fact = { key, at, model: codexModel(model), provider: "openai", input: input - cached, output, cacheRead: cached, cacheWrite: 0, cacheWrite1h: 0, reasoning };
+  if (model && !fact.model) fact.identity = model;
+  if (tier) fact.tier = tier;
   return fact;
 }
 function codexWanted(head, lineNo) {
@@ -1523,11 +1520,12 @@ function codexLine(b, line, s) {
   const f = b.facts;
   const parse = () => {
     try {
-      return JSON.parse(line.toString("utf8"));
+      const v = JSON.parse(line.toString("utf8"));
+      if (isRec(v)) return v;
     } catch {
-      f.malformed++;
-      return null;
     }
+    f.malformed++;
+    return null;
   };
   if (n === 0 && head.includes("session_meta")) {
     const r = parse();
@@ -1543,6 +1541,7 @@ function codexLine(b, line, s) {
       const spawn = isRec(sub.thread_spawn) ? sub.thread_spawn : {};
       f.parentId = str(spawn.parent_thread_id) ?? str(p.parent_thread_id) ?? str(p.forked_from_id);
     }
+    if (str(p.forked_from_id)) f.forkedFrom = str(p.forked_from_id);
     if (source === "exec" || p.originator === "codex_exec" || p.originator === "codex_sdk_ts") f.automated = true;
     touch(b, time(r.timestamp));
     return;
@@ -1564,8 +1563,8 @@ function codexLine(b, line, s) {
     if (totalSig) s.previousTotal = totalSig;
     if (!d || !(d[0] || d[1] || d[2] || d[3])) return;
     s.deltas.add(d.join(","));
-    const key = totalSig ? `x:${totalSig}|${last ? last.join(",") : ""}` : null;
-    const fact = codexFact(b, s, time(r.timestamp), String(r.timestamp ?? ""), d, key);
+    const key = totalSig ? `x:${totalSig}|${last ? last.join(",") : ""}` : `y:${String(r.timestamp ?? "")}|${d.join(",")}`;
+    const fact = codexFact(b.currentModel, s.tier, time(r.timestamp), d, key);
     addUsage(b, fact);
     if (fact.at !== null) b.events.push({ at: fact.at, tools: 0, subs: 0, weight: usageWeight(fact.input, fact.output, fact.cacheRead, fact.cacheWrite) });
     return;
@@ -1590,6 +1589,10 @@ function codexLine(b, line, s) {
   if (head.includes('"task_started"')) {
     const p = parse()?.payload;
     s.imported = isRec(p) && String(p.turn_id ?? "").startsWith("external-import");
+    if (!s.imported) {
+      s.inTurn = true;
+      s.anyTurn = true;
+    }
     return;
   }
   if (head.includes('"UserMessage"') && head.includes("item_completed")) {
@@ -1602,7 +1605,8 @@ function codexLine(b, line, s) {
       at: time(r.timestamp),
       text: textOf(item.content),
       imported: s.imported || String(p.turn_id ?? "").startsWith("external-import"),
-      project: f.project
+      project: f.project,
+      inTurn: s.inTurn
     });
     return;
   }
@@ -1610,14 +1614,14 @@ function codexLine(b, line, s) {
     const r = parse();
     if (!r) return;
     const p = isRec(r.payload) ? r.payload : {};
-    s.responsePrompts.push({ key: null, at: time(r.timestamp), text: textOf(p.content), imported: s.imported, project: f.project });
+    s.responsePrompts.push({ key: null, at: time(r.timestamp), text: textOf(p.content), imported: s.imported, project: f.project, inTurn: s.inTurn });
     return;
   }
   if (head.includes('"event_msg"') && line.subarray(0, 400).includes('"type":"user_message"')) {
     const r = parse();
     if (!r) return;
     const p = isRec(r.payload) ? r.payload : {};
-    s.itemPrompts.push({ key: null, at: time(r.timestamp), text: typeof p.message === "string" ? p.message : "", imported: s.imported, project: f.project });
+    s.itemPrompts.push({ key: null, at: time(r.timestamp), text: typeof p.message === "string" ? p.message : "", imported: s.imported, project: f.project, inTurn: s.inTurn });
     return;
   }
   if (codexToolOrAbort(b, head)) return;
@@ -1625,7 +1629,7 @@ function codexLine(b, line, s) {
     const r = parse();
     const p = r && isRec(r.payload) ? r.payload : null;
     const id = p ? str(p.response_id) : null;
-    if (r && p && id && isRec(p.usage)) s.records.set(id, { at: time(r.timestamp), usage: p.usage });
+    if (r && p && id && isRec(p.usage) && !s.records.has(id)) s.records.set(id, { at: time(r.timestamp), usage: p.usage, model: b.currentModel, tier: s.tier });
     return;
   }
   if (head.includes('"type":"compacted"')) {
@@ -1661,7 +1665,7 @@ function finishCodex(b, s) {
     const d = record ? tuple(record.usage) : null;
     if (!record || !d || !(d[0] || d[1] || d[2] || d[3]) || s.deltas.has(d.join(","))) continue;
     s.compactionDone.add(id);
-    const fact = codexFact(b, s, record.at, record.at ? new Date(record.at).toISOString() : "", d, `codex-compaction:${id}`);
+    const fact = codexFact(record.model, record.tier, record.at, d, `codex-compaction:${id}`);
     fact.compaction = true;
     f.usage.push(fact);
     touch(b, record.at);
@@ -1679,12 +1683,19 @@ function finishCodex(b, s) {
       if (seen.has(p.key)) return;
       seen.add(p.key);
     }
-    const key = `codex:${f.sessionId}:${p.key ?? i}`;
+    const key = `codex:${p.key ?? `${i}@${p.at ?? ""}`}`;
     if (reason) return addPrompt(b, key, p.at, p.project, "excluded", reason, "");
     if (p.imported) return addPrompt(b, key, p.at, p.project, "excluded", "imported_from_claude_transcript", "");
     const c = classifyText(cleanCodexText(p.text));
     addPrompt(b, key, p.at, p.project, c.kind, c.reason, c.text);
+    if (!p.inTurn) f.prompts[f.prompts.length - 1].imp = 1;
   });
+  if (!s.anyTurn) {
+    const firstUsage = f.usage.reduce((m, u) => u.at !== null && u.at < m ? u.at : m, Infinity);
+    const before = f.prompts.filter((p) => (p.at ?? Infinity) < firstUsage).sort((x, y) => x.at - y.at);
+    for (const p of f.prompts) delete p.imp;
+    for (const p of before.slice(0, -1)) p.imp = 1;
+  }
   const answers = f.usage.filter((u) => u.at !== null).sort((x, y) => x.at - y.at);
   let j = 0, previous = null;
   for (const p of [...f.prompts].sort((x, y) => (x.at ?? 0) - (y.at ?? 0))) {
@@ -1703,10 +1714,19 @@ function piLine(b, line) {
     b.facts.malformed++;
     return;
   }
+  if (!isRec(r)) {
+    b.facts.malformed++;
+    return;
+  }
   const f = b.facts, at = time(r.timestamp);
   if (r.type === "session") {
     f.sessionId = str(r.id) ?? f.sessionId;
     f.project = str(r.cwd);
+    const parent = str(r.parentSession);
+    if (parent) {
+      const base = path.basename(parent.replace(/\\/g, "/")).replace(/\.jsonl$/, "");
+      f.forkedFrom = base.includes("_") ? base.slice(base.lastIndexOf("_") + 1) : base;
+    }
     touch(b, at);
     return;
   }
@@ -1720,7 +1740,7 @@ function piLine(b, line) {
   if (m.role === "assistant" && isRec(m.usage)) {
     const u = m.usage;
     const fact = {
-      key: `pi:${f.sessionId}:${String(r.id)}`,
+      key: `pi:${String(r.id)}@${String(r.timestamp ?? "")}`,
       at,
       model: str(m.model) ?? b.currentModel,
       provider: str(m.provider) ?? b.currentProvider,
@@ -1741,18 +1761,24 @@ function piLine(b, line) {
   }
   if (m.role === "user") {
     const c = classifyText(textOf(m.content));
-    addPrompt(b, `pi:${f.sessionId}:${String(r.id)}`, at, f.project, c.kind, c.reason, c.text);
+    addPrompt(b, `pi:${String(r.id)}@${String(r.timestamp ?? "")}`, at, f.project, c.kind, c.reason, c.text);
   }
 }
 var CHUNK = 4 * 1024 * 1024;
 var MAX_LINE = 256 * 1024 * 1024;
 var sharedBuffer = null;
 var RESUME_RECENT_MS = 48 * 36e5;
-function extractFile(file, harness, options = {}, previous) {
+function extractFile(file, requested, options = {}, previous) {
   const fd = fs.openSync(file, "r");
   try {
     const stat = fs.fstatSync(fd);
+    const hashes = options.checks?.length ? new StreamHashes(options.checks) : null;
+    const zst = isZstd(fd) ? zstdStream(fd, file, hashes) : null;
+    const harness = requested === "auto" ? sniffHarness(zst ? zst.peek(64 * 1024) : headBytes(fd, 64 * 1024)) : requested;
+    if (!harness) throw new Error("unrecognised_archive_source");
+    if (zst && previous) throw new ResumeMismatch();
     let b = makeBuilder(file, harness, stat.size, stat.mtimeMs);
+    if (options.archive) b.facts.archived = true;
     let codex = newCodexState();
     let position = 0, firstNew = 0;
     const subagent = file.includes(SUBAGENT_DIR), sessions = /* @__PURE__ */ new Set();
@@ -1768,7 +1794,8 @@ function extractFile(file, harness, options = {}, previous) {
       position = r.offset;
       firstNew = b.facts.prompts.length;
     }
-    const onLine = harness === "claude" ? (line) => claudeLine(b, line, subagent, sessions) : harness === "codex" ? (line) => codexLine(b, line, codex) : (line) => piLine(b, line);
+    const archive = !!options.archive;
+    const onLine = harness === "claude" ? (line) => claudeLine(b, line, subagent, sessions, archive) : harness === "codex" ? (line) => codexLine(b, line, codex) : (line) => piLine(b, line);
     let buffer = sharedBuffer ??= Buffer.allocUnsafe(CHUNK);
     let filled = 0, skipping = false, base = position, endsWithNewline = true;
     for (; ; ) {
@@ -1791,7 +1818,7 @@ function extractFile(file, harness, options = {}, previous) {
           if (bigger.length <= 4 * CHUNK) sharedBuffer = bigger;
         }
       }
-      const n = fs.readSync(fd, buffer, filled, buffer.length - filled, position);
+      const n = zst ? zst.read(buffer, filled, buffer.length - filled) : fs.readSync(fd, buffer, filled, buffer.length - filled, position);
       position += n;
       const end = filled + n;
       let start = 0;
@@ -1815,12 +1842,13 @@ function extractFile(file, harness, options = {}, previous) {
       filled = end - start;
     }
     if (harness === "codex") finishCodex(b, codex);
+    if (hashes) b.facts.copyHashes = hashes.result();
     if (harness === "claude" && !subagent && sessions.size) b.facts.sessionIds = [...sessions];
     b.facts.size = stat.size;
     b.facts.mtimeMs = stat.mtimeMs;
     finishStory(b, harness, options, firstNew);
     delete b.facts.resume;
-    if (endsWithNewline && !b.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS) {
+    if (!zst && !options.archive && endsWithNewline && !b.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS) {
       const events = new Float64Array(b.events.length * 4);
       b.events.forEach((e, i) => {
         events[i * 4] = e.at;
@@ -1847,6 +1875,144 @@ function extractFile(file, harness, options = {}, previous) {
     fs.closeSync(fd);
   }
 }
+var ZSTD_MAGIC = 4247762216;
+function headBytes(fd, max) {
+  const buffer = Buffer.alloc(max);
+  const n = fs.readSync(fd, buffer, 0, max, 0);
+  return buffer.subarray(0, n);
+}
+function isZstd(fd) {
+  const head = headBytes(fd, 4);
+  return head.length === 4 && head.readUInt32LE(0) === ZSTD_MAGIC;
+}
+var ZSTD_INPUT = 1024 * 1024;
+var ZSTD_OUTPUT = 1024 * 1024;
+function chunkedZstd() {
+  const Engine = zlib.ZstdDecompress;
+  if (zstdMode !== "node" || !Engine) return null;
+  let engine;
+  try {
+    engine = new Engine();
+  } catch {
+    return null;
+  }
+  const handle = engine._handle, state = engine._writeState;
+  if (!handle || typeof handle.writeSync !== "function" || !(state instanceof Uint32Array)) {
+    engine.close();
+    return null;
+  }
+  engine.on("error", () => {
+  });
+  const flush = zlib.constants.ZSTD_e_continue;
+  return {
+    step(input) {
+      const outs = [];
+      let inOff = 0, availIn = input.length;
+      for (; ; ) {
+        const out = Buffer.allocUnsafe(ZSTD_OUTPUT);
+        handle.writeSync(flush, input, inOff, availIn, out, 0, out.length);
+        if (engine.destroyed) throw new Error("zstd_corrupt");
+        const availOut = state[0], availInAfter = state[1];
+        if (out.length - availOut > 0) outs.push(out.subarray(0, out.length - availOut));
+        inOff += availIn - availInAfter;
+        availIn = availInAfter;
+        if (availOut !== 0) break;
+      }
+      return outs;
+    },
+    close: () => engine.close()
+  };
+}
+function zstdStream(fd, file, hashes) {
+  zstdMode ??= zstdSupport();
+  const engine = chunkedZstd();
+  let pending = [], inPos = 0, done = false;
+  const input = engine ? Buffer.allocUnsafe(ZSTD_INPUT) : null;
+  const emit = (out) => {
+    if (out.length) {
+      pending.push(out);
+      hashes?.push(out);
+    }
+  };
+  const fill = () => {
+    if (!engine) {
+      emit(decompressZstd(file));
+      done = true;
+      return;
+    }
+    const n = fs.readSync(fd, input, 0, ZSTD_INPUT, inPos);
+    inPos += n;
+    if (!n) {
+      done = true;
+      engine.close();
+      return;
+    }
+    try {
+      for (const out of engine.step(input.subarray(0, n))) emit(out);
+    } catch (error) {
+      done = true;
+      engine.close();
+      throw error;
+    }
+  };
+  return {
+    read(target, offset, length) {
+      while (!pending.length && !done) fill();
+      let written = 0;
+      while (written < length && pending.length) {
+        const head = pending[0], n = Math.min(head.length, length - written);
+        head.copy(target, offset + written, 0, n);
+        written += n;
+        if (n === head.length) pending.shift();
+        else pending[0] = head.subarray(n);
+      }
+      return written;
+    },
+    peek(max) {
+      while (pending.reduce((x, p) => x + p.length, 0) < max && !done) fill();
+      const all = Buffer.concat(pending);
+      pending = all.length ? [all] : [];
+      return all.subarray(0, max);
+    }
+  };
+}
+function zstdSupport() {
+  if (typeof zlib.zstdDecompressSync === "function") return "node";
+  try {
+    execFileSync("zstd", ["--version"], { stdio: "ignore", timeout: 5e3 });
+    return "cli";
+  } catch {
+    return null;
+  }
+}
+var zstdMode;
+function decompressZstd(file) {
+  zstdMode ??= zstdSupport();
+  if (zstdMode === "node") {
+    try {
+      return zlib.zstdDecompressSync(fs.readFileSync(file));
+    } catch {
+      throw new Error("zstd_corrupt");
+    }
+  }
+  if (zstdMode === "cli") {
+    try {
+      return execFileSync("zstd", ["-dcq", "--", file], { maxBuffer: 2 ** 32, stdio: ["ignore", "pipe", "ignore"] });
+    } catch {
+      throw new Error("zstd_corrupt");
+    }
+  }
+  throw new Error("zstd_unsupported");
+}
+function sniffHarness(head) {
+  const firstEnd = head.indexOf(10);
+  const first = head.toString("utf8", 0, Math.min(firstEnd < 0 ? head.length : firstEnd, 4096));
+  if (first.includes('"session_meta"')) return "codex";
+  if (/"type"\s*:\s*"session"/.test(first) && !first.includes('"sessionId"')) return "pi";
+  const text = head.toString("latin1");
+  if (text.includes('"sessionId"') && /"type"\s*:\s*"(?:user|assistant|summary|system)"/.test(text)) return "claude";
+  return null;
+}
 function resumeBuilder(previous, r, stat) {
   const facts = {
     ...previous,
@@ -1855,7 +2021,7 @@ function resumeBuilder(previous, r, stat) {
     usage: [...previous.usage],
     prompts: previous.prompts.map((p) => ({ ...p })),
     ...previous.sessionIds ? { sessionIds: [...previous.sessionIds] } : {},
-    ...previous.story ? { story: { vocab: previous.story.vocab ? new Map(previous.story.vocab) : null, topics: previous.story.topics ? previous.story.topics.map((t) => ({ ...t, words: new Map([...t.words].map(([w, c]) => [w, [c[0], c[1]]])) })) : null } } : {}
+    ...previous.story ? { story: { vocab: null, topics: null } } : {}
   };
   delete facts.resume;
   const b = makeBuilder(previous.file, previous.harness, stat.size, stat.mtimeMs);
@@ -1893,19 +2059,19 @@ function stripText(facts) {
   return facts;
 }
 function tailHash(fd, offset) {
-  const start = Math.max(0, offset - TAIL), buffer = Buffer.alloc(offset - start);
+  const start = Math.max(0, offset - TAIL2), buffer = Buffer.alloc(offset - start);
   let read = 0;
   while (read < buffer.length) {
     const n = fs.readSync(fd, buffer, read, buffer.length - read, start + read);
     if (!n) break;
     read += n;
   }
-  return createHash2("sha256").update(buffer.subarray(0, read)).digest("hex");
+  return createHash3("sha256").update(buffer.subarray(0, read)).digest("hex");
 }
-var TAIL = 4096;
+var TAIL2 = 4096;
 
 // packages/core/src/analytics/scan-pool.ts
-var readFacts = (job) => stripText(extractFile(job.file, job.harness, { timezone: job.timezone }));
+var readFacts = (job) => stripText(extractFile(job.file, job.harness, { timezone: job.timezone, ...job.archive ? { archive: true } : {}, ...job.checks?.length ? { checks: job.checks } : {} }));
 var errorCode = (error) => error instanceof Error && /^[a-z][a-z0-9_]{0,63}$/.test(error.message) ? error.message : "source_unreadable";
 function runScanWorker() {
   if (!parentPort) throw new Error("scan_worker_requires_parent");

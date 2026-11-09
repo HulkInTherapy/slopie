@@ -17,19 +17,24 @@ import {openDatabase} from '../sqlite-driver.js';
 import {sourceId} from '../memory/source-identity.js';
 import {NORMALIZATION_VERSION} from '../memory/privacy.js';
 import {clock, digest} from './source.js';
-import {extractFile, finishExternalFacts, parseHistory, readHistory, stripText, type HistoryData, type HistoryEntry, type NativeHarness, type SourceFacts} from './extract.js';
+import {extractFile, finishExternalFacts, parseHistory, readHistory, stripText, zstdSupport, type HistoryData, type HistoryEntry, type NativeHarness, type SourceFacts} from './extract.js';
+import {probeFile, pruneCopies, type PrefixRelation, type Probe} from './copy-prune.js';
 import {buildStoryTable} from './story-table.js';
 import {buildStory} from './story.js';
+import {buildSpend, readStatsCache} from './story-spend.js';
+import {reconcilePriciestDay} from './story-archetype.js';
 import {DictionaryLookup} from './story-dictionary.js';
 import {enrichStory} from './story-enrich.js';
 import type {AuditProgressDetail, AuditStory} from './story-contracts.js';
-import {aggregate, projectName, type Aggregate} from './aggregate.js';
+import {aggregate, dayFormatter, projectName, type Aggregate} from './aggregate.js';
 import {PriceBook} from './pricing.js';
 import {bundledModelCatalog} from './model-catalog.js';
 import {cachedPublicCatalog, refreshPublicCatalog} from './catalog-service.js';
 import {FactsCache} from './facts-cache.js';
-import {inlineScanExecutor, type ScanExecutor, type ScanJob} from './scan-pool.js';
-import {nativeAuditRoots} from './native-census.js';
+import {inlineScanExecutor, type ScanExecutor, type ScanJob, type ScanResult} from './scan-pool.js';
+import {claudeDesktopRoots, nativeAuditRoots} from './native-census.js';
+import {ADAPTER_HARNESSES, adapterKey, discoverAdapter, readAdapterSources, type AdapterHarness} from './adapter-facts.js';
+import type {SessionSource} from '../adapters/types.js';
 import {extractOpenCodeDatabase, extractOpenCodeJson} from './opencode-facts.js';
 import {DerivedCache} from './derived-cache.js';
 import {requestedProjectFocus} from './project-focus.js';
@@ -50,11 +55,16 @@ import type {
 export * from './contracts.js';
 export {composeJevJudgments} from './jev-session.js';
 
-const HARNESSES: AuditHarness[] = ['claude', 'codex', 'pi', 'opencode'];
-const LAUNCH_ORDER: AuditHarness[] = ['codex', 'claude', 'opencode', 'pi'];
+const HARNESSES: AuditHarness[] = ['claude', 'codex', 'pi', 'opencode', 'cursor', 'gemini', 'copilot'];
+const LAUNCH_ORDER: AuditHarness[] = ['codex', 'claude', 'opencode', 'pi', 'cursor', 'gemini', 'copilot'];
 /** Appended tails up to this size are parsed on the main thread; bigger ones go to the pool. */
 const RESUME_MAX_BYTES = 64 * 1024 * 1024;
-const offline = () => process.env['POTSHERD_OFFLINE'] === '1';
+/**
+ * The audit is fully local unless the user opts in with `slopie audit --online` (SLOPIE_ONLINE=1):
+ * only then may the free hosted model polish story wording or classify requested work.
+ * POTSHERD_OFFLINE=1 still forces offline.
+ */
+const offline = () => process.env['POTSHERD_OFFLINE'] === '1' || process.env['SLOPIE_ONLINE'] !== '1';
 
 const metric = (value: number | null, unit: string, basis: string, definition: string): AuditMetric =>
   ({value, numerator: value, denominator: null, unit, measurementBasis: basis, state: value === null ? 'unavailable' : 'observed', definition});
@@ -117,8 +127,19 @@ interface Discovered {
   jobs: ScanJob[];
   opencodeDatabases: string[];
   opencodeJson: string[];
-  historyFile: string | null;
+  /** Every Claude root's history.jsonl (first = primary for text rehydration). */
+  historyFiles: string[];
+  /** Codex thread ids imported from another agent. */
+  codexImported: Set<string>;
+  /** Every Claude root's stats-cache.json (Claude Code's own per-model token totals). */
+  statsFiles: string[];
   census: Map<AuditHarness, {files: number; bytes: number; roots: number}>;
+  /** Compressed sources that cannot be read on this machine (no zstd). */
+  zstdUnsupported: number;
+  /** Cursor / Gemini / Copilot sources (prompt-only, read through their adapters). */
+  adapters: Map<AdapterHarness, SessionSource[]>;
+  /** Archive files no native harness was recognised in (bounded record-header scan): an explicit gap, never silently dropped. */
+  unclassified: number;
 }
 
 function listFiles(root: string, accept: (file: string) => boolean): string[] {
@@ -129,14 +150,61 @@ function listFiles(root: string, accept: (file: string) => boolean): string[] {
   return out;
 }
 
-function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOptions, onHarness?: (harness: AuditHarness, row: {files: number; bytes: number}) => void): Discovered {
-  const result: Discovered = {jobs: [], opencodeDatabases: [], opencodeJson: [], historyFile: null, census: new Map()};
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+/**
+ * `~/.codex/external_agent_session_imports.json`: threads Codex imported from another agent (Claude Code).
+ * The exact shape is not documented, so every UUID in it is collected; only Codex sessions with that id
+ * are affected (their replayed prompts are not new human prompts).
+ */
+export function readCodexImports(file: string): Set<string> {
+  const out = new Set<string>();
+  try { for (const m of fs.readFileSync(file, 'utf8').matchAll(UUID)) out.add(m[0].toLowerCase()); } catch { /* absent */ }
+  return out;
+}
+
+/** potsherd's rescue archive: content-addressed raw copies of sessions (archive/evidence/<sha256>.jsonl). */
+export function archiveEvidenceDir(options: AuditOverviewOptions): string | null {
+  if (process.env['SLOPIE_AUDIT_ARCHIVE'] === '0') return null;
+  const dir = path.join(paths.potsherdDir(options.potsherdDir), 'archive', 'evidence');
+  return fs.existsSync(dir) ? dir : null;
+}
+
+const isZstdName = (f: string) => f.endsWith('.jsonl.zst');
+/** Probes a file (cached by path, size and mtime); `known` is the harness of a live root. */
+type ProbeOf = (file: string, size: number, mtimeMs: number, known: NativeHarness | null) => Probe | null;
+const directProbe: ProbeOf = (file, _size, _mtime, known) => probeFile(file, known);
+
+function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOptions, onHarness?: (harness: AuditHarness, row: {files: number; bytes: number}) => void, probeOf: ProbeOf = directProbe): Discovered {
+  const result: Discovered = {jobs: [], opencodeDatabases: [], opencodeJson: [], historyFiles: [], codexImported: new Set(), statsFiles: [], census: new Map(), zstdUnsupported: 0, adapters: new Map(), unclassified: 0};
   const seen = new Set<string>();
+  const zstd = zstdSupport() !== null;
+  // Archive copies are classified first so each harness row's census includes them.
+  const archive: {file: string; harness: NativeHarness | 'auto'; size: number; mtimeMs: number}[] = [];
+  const evidence = archiveEvidenceDir(options);
+  if (evidence) {
+    for (const file of listFiles(evidence, f => f.endsWith('.jsonl') || isZstdName(f))) {
+      let stat: fs.Stats;
+      try { stat = fs.statSync(file); } catch { continue; }
+      if (!stat.isFile() || stat.size === 0) continue;
+      const probe = probeOf(file, stat.size, stat.mtimeMs, null);
+      if (probe?.harness) archive.push({file, harness: probe.harness, size: stat.size, mtimeMs: stat.mtimeMs});
+      // Archived typed-prompt log lines are not transcripts (Claude's history.jsonl is read as such); anything else is a visible gap.
+      else if (!probe?.history) result.unclassified++;
+    }
+  }
   for (const harness of harnesses) {
-    const roots = nativeAuditRoots(harness, options);
-    const row = {files: 0, bytes: 0, roots: roots.length};
+    if ((ADAPTER_HARNESSES as readonly string[]).includes(harness)) {
+      const list = discoverAdapter(harness as AdapterHarness, options);
+      result.adapters.set(harness as AdapterHarness, list);
+      const row = {files: list.length, bytes: list.reduce((n, x) => n + x.bytes, 0), roots: 1};
+      result.census.set(harness, row);
+      onHarness?.(harness, row);
+      continue;
+    }
+    const desktop = harness === 'claude' ? claudeDesktopRoots(options) : [];
+    const roots = [...nativeAuditRoots(harness, options), ...desktop];
+    const row = {files: 0, bytes: 0, roots: roots.length + (evidence ? 1 : 0)};
     result.census.set(harness, row);
-    const relSeen = new Set<string>();
     for (const root of roots) {
       if (harness === 'opencode') {
         for (const file of listFiles(root, f => /\.(?:db|sqlite|sqlite3)$/i.test(f) || (f.endsWith('.json') && /[\\/]storage[\\/](?:session|message|part)[\\/]/.test(f)))) {
@@ -147,25 +215,75 @@ function discover(harnesses: readonly AuditHarness[], options: AuditOverviewOpti
         }
         continue;
       }
-      if (harness === 'claude' && !result.historyFile) {
+      if (harness === 'claude' && !desktop.includes(root)) {
+        // Every Claude root keeps its own typed-prompt log.
         const history = path.join(path.dirname(root), 'history.jsonl');
-        if (fs.existsSync(history)) result.historyFile = history;
+        if (fs.existsSync(history) && !result.historyFiles.includes(history)) result.historyFiles.push(history);
+        const stats = path.join(path.dirname(root), 'stats-cache.json');
+        if (fs.existsSync(stats) && !result.statsFiles.includes(stats)) result.statsFiles.push(stats);
       }
-      for (const file of listFiles(root, f => f.endsWith('.jsonl') && (harness !== 'codex' || path.basename(f).startsWith('rollout-')))) {
+      if (harness === 'codex') for (const f of readCodexImports(path.join(path.dirname(root), 'external_agent_session_imports.json'))) result.codexImported.add(f);
+      // Codex: sessions/ and archived_sessions/ copies (and compressed .jsonl.zst rollouts) are all read;
+      // aggregation counts each session once by its native identity, keeping the most complete copy.
+      for (const file of listFiles(root, f => harness === 'codex' ? path.basename(f).startsWith('rollout-') && (f.endsWith('.jsonl') || isZstdName(f)) : f.endsWith('.jsonl'))) {
         if (seen.has(file)) continue;
         seen.add(file);
-        // Codex: the same rollout in sessions/ and archived_sessions/ is one session.
-        if (harness === 'codex') { const rel = path.relative(root, file); if (relSeen.has(rel)) continue; relSeen.add(rel); }
         let stat: fs.Stats;
         try { stat = fs.statSync(file); } catch { continue; }
         if (!stat.isFile()) continue;
+        if (isZstdName(file) && !zstd) { result.zstdUnsupported++; continue; }
         row.files++; row.bytes += stat.size;
         result.jobs.push({file, harness: harness as NativeHarness, size: stat.size, mtimeMs: stat.mtimeMs} as ScanJob & {mtimeMs: number});
       }
     }
+    for (const a of archive) {
+      // Compressed archive copies can only be Codex rollouts; extraction verifies from the content.
+      if ((a.harness === 'auto' ? 'codex' : a.harness) !== harness || seen.has(a.file)) continue;
+      seen.add(a.file);
+      if (a.harness === 'auto' && !zstd) { result.zstdUnsupported++; continue; }
+      row.files++; row.bytes += a.size;
+      result.jobs.push({file: a.file, harness: a.harness, size: a.size, mtimeMs: a.mtimeMs, archive: true} as ScanJob & {mtimeMs: number});
+    }
     onHarness?.(harness, row);
   }
   return result;
+}
+
+/** history.jsonl of every Claude root, merged; an identical copy in two roots counts once. */
+export interface MergedHistory extends HistoryData {
+  /** Per entry: the file it came from and its index there (evidence key `history:<index>`). */
+  origins: {file: string; index: number}[];
+}
+export function mergeHistories(parts: readonly {file: string; data: HistoryData}[]): MergedHistory {
+  if (parts.length === 1) { const {file, data} = parts[0]!; return {...data, origins: data.entries.map((_, index) => ({file, index}))}; }
+  const out: MergedHistory = {entries: [], counters: new Map(), origins: []};
+  const seen = new Set<string>();
+  const perSession = new Map<string, {n: number; counters: HistoryData['counters'] extends Map<string, infer C> ? C : never}>();
+  for (const {file, data} of parts) {
+    const added = new Map<string, number>();
+    data.entries.forEach((e, index) => {
+      const key = `${e.sessionId ?? ''}|${e.at ?? ''}|${e.kind}|${e.f?.w ?? ''}|${e.q ?? ''}|${e.at === null ? `${file}:${index}` : ''}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.entries.push(e); out.origins.push({file, index});
+      added.set(e.sessionId ?? '', (added.get(e.sessionId ?? '') ?? 0) + 1);
+    });
+    // Word counters are per session: keep the copy that contributed the most entries for it.
+    for (const [session, c] of data.counters) {
+      const n = added.get(session) ?? 0, old = perSession.get(session);
+      if (!old || n > old.n) perSession.set(session, {n, counters: c});
+    }
+  }
+  for (const [session, {counters}] of perSession) out.counters.set(session, counters);
+  return out;
+}
+
+/** Local-date filter for the story's word counters, matching the audit's event range. */
+function dateScope(scope: AuditSnapshot['scope']): {dateAllowed?: (date: string) => boolean; undatedAllowed?: boolean} {
+  if (!scope.eventFrom && !scope.asOf) return {};
+  const day = dayFormatter(scope.timezone);
+  const from = scope.eventFrom ? day(Date.parse(scope.eventFrom)) : null, to = scope.asOf ? day(Date.parse(scope.asOf)) : null;
+  return {dateAllowed: d => (from === null || d >= from) && (to === null || d <= to), undatedAllowed: false};
 }
 
 /* --------------------------------------------------------------- policy --- */
@@ -329,22 +447,64 @@ class LocalAuditSession implements AuditSession {
       this.detail = {
         stage: 'discovering',
         harnesses: harnesses.map(h => ({harness: h, files: 0, bytes: 0, filesDone: 0, firstAt: null, lastAt: null, discovered: false, absent: false, chats: 0, prompts: 0})),
-        counts: {files: 0, filesDone: 0, bytes: 0, bytesDone: 0, messages: 0, chats: 0, prompts: 0}, elapsedMs: 0,
+        counts: {files: 0, filesDone: 0, bytes: 0, bytesDone: 0, messages: 0, chats: 0, prompts: 0, filesCached: 0, filesResumed: 0, automatedRuns: 0}, elapsedMs: 0,
       };
+      // The facts cache is loaded first: it already knows the harness of immutable archive copies.
+      const cache = new FactsCache(this.derived ? this.derived.directory : null);
+      cache.load();
+      this.cache = cache;
+      t = lap('cacheLoadMs', t);
       // One progress event per harness as soon as its roots are listed, so the loading story lights rows up one by one.
       const found = discover(harnesses, this.options, (harness, row) => {
         if (!this.detail) return;
         this.detail = {...this.detail, harnesses: this.detail.harnesses.map(h => h.harness === harness ? {...h, files: row.files, bytes: row.bytes, discovered: true, absent: row.files === 0} : h),
           counts: {...this.detail.counts, files: this.detail.counts.files + row.files, bytes: this.detail.counts.bytes + row.bytes}};
         this.progress('discovering', 'Finding your agents', 0, null);
-      });
+      }, (file, size, mtimeMs, known) => cache.probe(file, size, mtimeMs, () => probeFile(file, known)));
       t = lap('discoverMs', t);
+      // ---- copies: a file that is a prefix snapshot of a longer copy of the same session is not parsed.
+      let relations: PrefixRelation[] = [];
+      let deferred = new Map<string, {by: string; probe: Probe; job: ScanJob & {mtimeMs: number}}>();
+      {
+        const candidates = [];
+        for (const job of found.jobs as (ScanJob & {mtimeMs: number})[]) {
+          if (job.harness === 'auto') continue;
+          const probe = cache.probe(job.file, job.size, job.mtimeMs, () => probeFile(job.file, job.harness as NativeHarness));
+          if (probe) candidates.push({file: job.file, probe, archive: !!job.archive});
+        }
+        const pruned = pruneCopies(candidates, cache.relations);
+        relations = pruned.relations;
+        let skippedBytes = 0, archiveBytes = 0, archiveParsed = 0;
+        found.jobs = found.jobs.filter(job => {
+          const skip = pruned.skipped.has(job.file);
+          if (skip) skippedBytes += job.size;
+          if (job.archive) archiveBytes += job.size;
+          const wait = pruned.deferred.get(job.file);
+          if (wait) { deferred.set(job.file, {...wait, job: job as ScanJob & {mtimeMs: number}}); return false; }
+          if (job.archive && !skip) archiveParsed += job.size;
+          return !skip;
+        });
+        this.archiveParsedBytes = archiveParsed;
+        this.timings['copiesSkipped'] = pruned.skipped.size;
+        this.timings['copiesSkippedMB'] = Math.round(skippedBytes / 1048576);
+        this.timings['archiveMB'] = Math.round(archiveBytes / 1048576);
+        this.timings['archiveParsedMB'] = Math.round(archiveParsed / 1048576);
+        this.timings['copyVerifyReads'] = pruned.verifiedReads;
+        this.skippedCopies = pruned.skipped;
+        if (this.detail && pruned.skipped.size) {
+          // The loading screen counts what will actually be read.
+          const less = new Map<AuditHarness, {files: number; bytes: number}>();
+          for (const c of candidates) if (pruned.skipped.has(c.file)) {
+            const h = (c.probe.harness ?? 'claude') as AuditHarness, x = less.get(h) ?? {files: 0, bytes: 0};
+            x.files++; x.bytes += c.probe.size; less.set(h, x);
+          }
+          this.detail = {...this.detail, counts: {...this.detail.counts, files: this.detail.counts.files - pruned.skipped.size, bytes: this.detail.counts.bytes - skippedBytes},
+            harnesses: this.detail.harnesses.map(h => { const x = less.get(h.harness); return x ? {...h, files: h.files - x.files, bytes: h.bytes - x.bytes} : h; })};
+        }
+      }
+      t = lap('pruneMs', t);
       this.policy = loadPolicy(this.root);
       t = lap('policyMs', t);
-      const cache = new FactsCache(this.derived ? this.derived.directory : null);
-      cache.load();
-      this.cache = cache;
-      t = lap('cacheLoadMs', t);
       this.detail = {...this.detail, stage: 'reading'};
       this.publish({sources: this.current.sources.map(s => {
         const c = found.census.get(s.harness)!;
@@ -356,15 +516,37 @@ class LocalAuditSession implements AuditSession {
       const facts: SourceFacts[] = [];
       const toRead: ScanJob[] = [];
       const resumable: {job: ScanJob & {mtimeMs: number}; previous: SourceFacts}[] = [];
+      const jobsTotal = found.jobs.length + found.zstdUnsupported;
+      let checked = 0;
       for (const job of found.jobs as (ScanJob & {mtimeMs: number})[]) {
+        // Loading cached shards takes a while on big machines: keep the loading screen moving.
+        if ((++checked & 31) === 0 && performance.now() - this.lastTick >= 50) { this.tick(facts.length, jobsTotal); await new Promise(resolve => setImmediate(resolve)); }
         const hit = cache.get(job.file, job.size, job.mtimeMs, tz);
-        if (hit) { facts.push(hit); this.count(hit, job.size); continue; }
+        if (hit) { facts.push(hit); this.count(hit, job.size, true); continue; }
         const previous = cache.previous(job.file);
         if (previous?.resume && previous.tz === tz && previous.size < job.size && job.size - previous.size <= RESUME_MAX_BYTES) resumable.push({job, previous});
-        else toRead.push({file: job.file, harness: job.harness, size: job.size, timezone: tz});
+        else toRead.push({file: job.file, harness: job.harness, size: job.size, timezone: tz, ...(job.archive ? {archive: true} : {})});
       }
-      const cacheHits = facts.length, total = found.jobs.length;
+      // Copies of a compressed rollout: verified while the rollout is decompressed by its reader; if the
+      // rollout is not being read (cached), the copy is simply read (or taken from the cache) itself.
+      const pending = new Map<string, {job: ScanJob & {mtimeMs: number}; probe: Probe}[]>();
+      {
+        const reading = new Map(toRead.map(j => [j.file, j]));
+        for (const [file, d] of deferred) {
+          const rollout = reading.get(d.by);
+          if (rollout) { (rollout.checks ??= []).push(d.probe.size); const list = pending.get(d.by) ?? []; list.push({job: d.job, probe: d.probe}); pending.set(d.by, list); continue; }
+          found.jobs.push(d.job);
+          this.archiveParsedBytes += d.job.size;
+          const hit = cache.get(file, d.job.size, d.job.mtimeMs, tz);
+          if (hit) { facts.push(hit); this.count(hit, d.job.size, true); } else toRead.push({file, harness: d.job.harness, size: d.job.size, timezone: tz, archive: true});
+        }
+        deferred = new Map();
+      }
+      const hashes = new Map<string, NonNullable<SourceFacts['copyHashes']>>();
+      const cacheHits = facts.length;
+      let total = found.jobs.length + found.zstdUnsupported;
       const failures: string[] = [];
+      for (let i = 0; i < found.zstdUnsupported; i++) failures.push('zstd_unsupported');
       this.progress('parsing', 'Reading history', cacheHits, total);
       let scanning: Promise<void> = Promise.resolve();
       const readOne = (job: ScanJob) => { toRead.push(job); };
@@ -372,15 +554,34 @@ class LocalAuditSession implements AuditSession {
       let resumed = 0;
       for (const {job, previous} of resumable) {
         const merged = resumeFacts(previous, job, tz);
-        if (merged) { facts.push(merged); cache.set(merged); this.count(merged, job.size); resumed++; } else readOne({file: job.file, harness: job.harness, size: job.size, timezone: tz});
+        if (merged) { facts.push(merged); cache.set(merged); this.count(merged, job.size); resumed++; if (this.detail) (this.detail.counts as {filesResumed?: number}).filesResumed = resumed; } else readOne({file: job.file, harness: job.harness, size: job.size, timezone: tz});
       }
       this.timings['filesResumed'] = resumed;
       if (toRead.length && !this.controller.signal.aborted) {
         const executor = this.options.nativeScanExecutor ?? inlineScanExecutor;
-        scanning = executor.scan(toRead, result => {
-          if ('facts' in result) { facts.push(result.facts); cache.set(result.facts); this.count(result.facts, result.job.size); } else { failures.push(result.error); this.count(null, result.job.size); }
+        const onResult = (result: ScanResult) => {
+          if ('facts' in result) {
+            if (result.facts.copyHashes) { hashes.set(result.job.file, result.facts.copyHashes); delete result.facts.copyHashes; }
+            facts.push(result.facts); cache.set(result.facts); this.count(result.facts, result.job.size);
+          } else { failures.push(result.error); this.count(null, result.job.size); }
           this.tick(facts.length + failures.length, total);
-        }, this.controller.signal);
+        };
+        scanning = executor.scan(toRead, onResult, this.controller.signal).then(async () => {
+          // Copies whose rollout did not prove them a prefix (or failed to read) are read now.
+          const second: ScanJob[] = [];
+          for (const [rollout, copies] of pending) {
+            const h = hashes.get(rollout), at = new Map(h?.at ?? []);
+            const rolloutJob = toRead.find(j => j.file === rollout)!;
+            for (const {job, probe} of copies) {
+              if (h && h.head === probe.head && at.get(probe.size) === probe.tail) {
+                relations.push({file: job.file, size: probe.size, mtimeMs: probe.mtimeMs, by: rollout, bySize: rolloutJob.size, byMtimeMs: (found.jobs.find(j => j.file === rollout) as {mtimeMs?: number} | undefined)?.mtimeMs ?? 0});
+                this.skippedCopies.set(job.file, rollout);
+              } else { second.push({file: job.file, harness: job.harness, size: job.size, timezone: tz, archive: true}); found.jobs.push(job); this.archiveParsedBytes += job.size; total++; }
+            }
+          }
+          this.timings['copiesVerifiedInReader'] = [...pending.values()].reduce((n, l) => n + l.length, 0) - second.length;
+          if (second.length && !this.controller.signal.aborted) { toRead.push(...second); await executor.scan(second, onResult, this.controller.signal); }
+        });
       }
       // While worker threads read, this thread handles OpenCode (read in place,
       // read-only) and Claude's typed-prompt log.
@@ -391,9 +592,11 @@ class LocalAuditSession implements AuditSession {
       if (found.opencodeJson.length) {
         try { extra.push(...extractOpenCodeJson(found.opencodeJson).map(f => stripText(finishExternalFacts(f, {timezone: tz})))); } catch { failures.push('opencode_storage_unreadable'); }
       }
+      const adapterStats = {parsed: 0};
+      extra.push(...await readAdapterSources(ADAPTER_HARNESSES.filter(h => harnesses.includes(h)), found.adapters, tz, failures, cache, adapterStats));
+      this.timings['adapterSourcesParsed'] = adapterStats.parsed;
       for (const f of extra) this.count(f, 0);
-      const historyData: HistoryData = found.historyFile && harnesses.includes('claude')
-        ? cache.history(found.historyFile, tz, (file, previous) => readHistory(file, {timezone: tz}, previous)) : {entries: [], counters: new Map()};
+      const historyData = mergeHistories(harnesses.includes('claude') ? found.historyFiles.map(file => ({file, data: cache.history(file, tz, (f, previous) => readHistory(f, {timezone: tz}, previous))})) : []);
       this.historyData = historyData;
       if (this.detail && historyData.entries.length) {
         // Claude's typed-prompt log reaches back further than surviving transcripts.
@@ -412,6 +615,10 @@ class LocalAuditSession implements AuditSession {
       facts.push(...extra);
       t = lap('scanMs', t);
       this.timings['filesRead'] = toRead.length;
+      cache.setRelations(relations);
+      this.timings['copiesSkipped'] = this.skippedCopies.size;
+      this.timings['archiveParsedMB'] = Math.round(this.archiveParsedBytes / 1048576);
+      this.timings['shardsRead'] = cache.shardsRead;
       this.timings['filesCached'] = cacheHits;
 
       if (this.controller.signal.aborted) return this.finishCancelled();
@@ -420,20 +627,27 @@ class LocalAuditSession implements AuditSession {
       this.setStage('aggregating');
       const scope = this.current.scope;
       const policy = this.policy;
-      this.historyFile = found.historyFile;
+      this.historyFile = found.historyFiles[0] ?? null;
+      this.historyFiles = found.historyFiles;
+      this.statsFiles = harnesses.includes('claude') ? found.statsFiles : [];
       this.result = aggregate({
-        sources: facts, history, historyFile: found.historyFile,
+        sources: facts, history, historyFile: this.historyFile, historyOrigins: historyData.origins, codexImported: found.codexImported,
         scope: {harnesses, project: scope.project, eventFrom: scope.eventFrom ? Date.parse(scope.eventFrom) : null, asOf: scope.asOf ? Date.parse(scope.asOf) : null, timezone: scope.timezone},
         policy: {ignored: policy.ignored, forgotten: policy.forgotten},
         book: this.book, codexFastDefault: codexFastDefault(this.options), snapshotId: this.id,
       });
       t = lap('aggregateMs', t);
-      this.buildSnapshot(this.result, {cacheHits, total, failures, policyError: policy.error});
+      this.buildSnapshot(this.result, {cacheHits, total, failures, policyError: policy.error, unclassified: found.unclassified});
       t = lap('languageMs', t);
 
       // Never keep opted-out sources in the cache.
-      cache.save(f => fs.existsSync(f.file) && !policy.forgotten.has(sourceId(f.harness, f.sessionId)) && !(f.parentId && policy.forgotten.has(sourceId(f.harness, f.parentId))) && !policy.ignored(f.project),
-        h => !policy.ignored(h.project) && !(h.sessionId && policy.forgotten.has(sourceId('claude', h.sessionId))));
+      const discovered = new Set(found.jobs.map(j => j.file));
+      for (const list of found.adapters.values()) for (const source of list) discovered.add(adapterKey(source));
+      const forgotten = (h: AuditHarness, id: string) => policy.forgotten.size > 0 && policy.forgotten.has(sourceId(h, id));
+      cache.save(f => (discovered.has(f.file) || fs.existsSync(f.file)) && !forgotten(f.harness, f.sessionId) && !(f.parentId && forgotten(f.harness, f.parentId)) && !policy.ignored(f.project),
+        h => !policy.ignored(h.project) && !(h.sessionId && policy.forgotten.has(sourceId('claude', h.sessionId))),
+        // Probes of files that no longer exist are dropped; a skipped copy inherits its covering file's opt-outs.
+        file => fs.existsSync(file));
       lap('cacheWriteMs', t);
       this.timings['totalMs'] = Math.round(performance.now() - t0);
       const memory = process.memoryUsage();
@@ -459,20 +673,27 @@ class LocalAuditSession implements AuditSession {
   private detail: AuditProgressDetail | null = null;
   private lastTick = 0;
   private cache: FactsCache | null = null;
-  private historyData: HistoryData | null = null;
+  private historyData: MergedHistory | null = null;
   private historyFile: string | null = null;
+  private historyFiles: string[] = [];
+  private statsFiles: string[] = [];
   private dictionary: DictionaryLookup | null = null;
+  /** Prefix copies not parsed this run -> the file that covers them. */
+  private skippedCopies = new Map<string, string>();
+  private archiveParsedBytes = 0;
 
   /** Running counts for the loading story (cheap: a few additions per file). */
-  private count(f: SourceFacts | null, bytes: number): void {
+  private count(f: SourceFacts | null, bytes: number, cached = false): void {
     const d = this.detail;
     if (!d) return;
-    const c = d.counts as {-readonly [K in keyof AuditProgressDetail['counts']]: number};
+    const c = d.counts as {-readonly [K in keyof AuditProgressDetail['counts']]-?: number};
     c.filesDone++; c.bytesDone += bytes;
+    if (cached) c.filesCached = (c.filesCached ?? 0) + 1;
     if (!f) return;
     const row = d.harnesses.find(h => h.harness === f.harness) as {-readonly [K in keyof AuditProgressDetail['harnesses'][number]]: AuditProgressDetail['harnesses'][number][K]} | undefined;
     if (row) {
       row.filesDone++;
+      if (cached) (row as {filesCached?: number}).filesCached = ((row as {filesCached?: number}).filesCached ?? 0) + 1;
       if (f.firstAt !== null) { const iso = new Date(f.firstAt).toISOString(); if (!row.firstAt || iso < row.firstAt) row.firstAt = iso; }
       if (f.lastAt !== null) { const iso = new Date(f.lastAt).toISOString(); if (!row.lastAt || iso > row.lastAt) row.lastAt = iso; }
     }
@@ -505,7 +726,7 @@ class LocalAuditSession implements AuditSession {
   }
 
   /** Builds the full snapshot from one aggregate. */
-  private buildSnapshot(a: Aggregate, run: {cacheHits: number; total: number; failures: string[]; policyError: string | null}): void {
+  private buildSnapshot(a: Aggregate, run: {cacheHits: number; total: number; failures: string[]; policyError: string | null; unclassified: number}): void {
     const scope = this.current.scope;
     this.routes.clear();
     for (const p of a.prompts) this.routes.set(routeKey(p.route), p);
@@ -535,12 +756,14 @@ class LocalAuditSession implements AuditSession {
 
     const sources: AuditSourceCapability[] = this.current.sources.map(s => {
       const h = a.harness[s.harness];
+      const promptOnly = (ADAPTER_HARNESSES as readonly string[]).includes(s.harness);
       const hasData = h.files > 0 || h.conversations > 0;
       return {
         ...s, state: hasData ? 'available' : s.candidateFiles ? 'available' : 'absent',
-        conversations: h.conversations, humanPrompts: h.humanPrompts, humanOrigin: 'native_marker',
+        conversations: h.conversations, humanPrompts: h.humanPrompts, humanOrigin: promptOnly ? 'projection' : 'native_marker',
         evidence: hasData ? 'transient' : 'unavailable', usage: h.responses ? 'reported' : 'unavailable',
-        firstUnsupportedStep: null, gapCodes: [],
+        // Prompt-only harnesses: cost is unknown, never $0.
+        firstUnsupportedStep: promptOnly && hasData ? 'usage' : null, gapCodes: promptOnly && hasData ? ['usage_not_recorded'] : [],
         childConversations: h.childConversations, slashCommands: h.slashCommands, userMessages: h.userMessages,
         responses: h.responses, costUsd: h.costUsd, excluded: h.excluded,
       } as AuditSourceCapability;
@@ -548,17 +771,19 @@ class LocalAuditSession implements AuditSession {
 
     const failures = [...new Set(run.failures)];
     const warnings = [...failures.map(code => `unreadable_source:${code}`), ...(run.policyError ? [run.policyError] : []),
-      ...(a.estimatedCostUsd > 0 ? ['estimated_prices'] : [])];
+      ...(run.unclassified ? [`archive_unclassified:${run.unclassified}`] : []),
+      ...(a.estimatedCostUsd > 0 ? ['estimated_prices'] : []), ...(a.unpricedResponses ? [`unpriced_models:${a.unpricedResponses}`] : [])];
     const coverage: AuditCoverage = {
       state: failures.length ? 'partial' : 'complete_snapshot', knownSources: run.total, parsedSources: run.total - run.failures.length,
       unknownOriginEvents: 0, excludedEvents: Object.values(a.harness).reduce((n, h) => n + Object.values(h.excluded).reduce((x, y) => x + y, 0), 0),
-      omittedSources: run.failures.length, gapCodes: failures,
+      omittedSources: run.failures.length + run.unclassified, gapCodes: [...failures, ...(run.unclassified ? ['archive_source_unclassified'] : []), ...(a.unpricedResponses ? ['unpriced_model_usage'] : []),
+        ...(sources.some(x => x.gapCodes.includes('usage_not_recorded')) ? ['usage_not_recorded'] : [])],
     };
     const userMessages = Object.values(a.harness).reduce((n, h) => n + h.userMessages, 0);
     const facts = this.launchFacts(a);
     let story: AuditStory | undefined;
     if (this.current.launch) {
-      if (this.detail) this.detail = {...this.detail, stage: 'detecting', counts: {...this.detail.counts, messages: a.responses + userMessages, chats: a.topLevelConversations, prompts: human},
+      if (this.detail) this.detail = {...this.detail, stage: 'detecting', counts: {...this.detail.counts, messages: a.responses + userMessages, chats: a.topLevelConversations, prompts: human, automatedRuns: a.automatedRuns},
         harnesses: this.detail.harnesses.map(h => ({...h, chats: a.harness[h.harness].conversations, prompts: a.harness[h.harness].humanPrompts}))};
       const aliases = new Map(projects.map(p => [p.path ?? '(unknown)', p.alias]));
       const policy = this.policy;
@@ -566,11 +791,17 @@ class LocalAuditSession implements AuditSession {
       const table = buildStoryTable({
         aggregate: a, history: this.historyData?.entries ?? [], historyCounters: this.historyData?.counters ?? new Map(), historyFile: this.historyFile, timezone: scope.timezone,
         allowed: (project, session) => !policy?.ignored(project) && !(session && policy?.forgotten.has(sourceId('claude', session))) && (scope.project === null || project === scope.project),
+        ...dateScope(scope),
       });
       this.timings['storyTableMs'] = Math.round(performance.now() - ts);
       const dictionary = this.dictionary ?? new DictionaryLookup(this.cache?.dictionary);
-      const built = buildStory({table, timezone: scope.timezone, alias: p => aliases.get(p ?? '(unknown)') ?? 'a project', dictionary, tokens: a.tokens.input + a.tokens.output + a.tokens.cacheRead + a.tokens.cacheWrite, offline: offline()});
+      const built = buildStory({table, timezone: scope.timezone, alias: p => aliases.get(p ?? '(unknown)') ?? 'a project', dictionary, tokens: a.tokens.input + a.tokens.output + a.tokens.cacheRead + a.tokens.cacheWrite, offline: offline(), automatedRuns: a.automatedRuns});
       story = built.story;
+      const spent = buildSpend({aggregate: a, table, book: this.book, priceVersion: this.catalog.basis.sha256, timezone: scope.timezone,
+        statsCaches: this.statsFiles.map(readStatsCache).filter(c => c !== null), projectScoped: scope.project !== null, ...dateScope(scope)});
+      story.spend = spent.spend;
+      story.awards = reconcilePriciestDay(story.awards, spent.spend.priciestDay);
+      story.modelShare = spent.modelShare;
       story.timings.featuresMs = this.timings['storyTableMs'];
       this.timings['detectorsMs'] = Math.round(built.detectorsMs);
       this.timings['dictionaryLoaded'] = dictionary.loaded ? 1 : 0;
@@ -616,7 +847,7 @@ class LocalAuditSession implements AuditSession {
       funnel: {
         nativeFilesDiscovered: run.total, nativeFilesParsed: run.total - run.failures.length, retainedSources: 0,
         selectedSources: a.conversations.length, responsesObserved: a.responses, responsesDeduplicated: 0, responsesExcluded: 0,
-        responsesPriced: a.responses, excludedReasons: {forgotten_or_ignored_source: a.excludedSources}, gaps: failures,
+        responsesPriced: a.responses - a.unpricedResponses, excludedReasons: {forgotten_or_ignored_source: a.excludedSources}, gaps: failures,
       },
     });
   }
@@ -630,10 +861,10 @@ class LocalAuditSession implements AuditSession {
     return {
       records: [], recordsIncluded: false, models, favourite: favourite ? models.find(m => m.id === favourite.id)! : null,
       valueUsd: a.costUsd, referenceValueUsd: null, pricing: this.catalog.basis,
-      recordedResponses: a.responses, knownTokenResponses: a.responses, pricedResponses: a.responses,
-      referencePricedResponses: 0, equivalentPricedResponses: a.responses, referenceProviders: [],
-      unknownModelResponses: a.inferredModelResponses,
-      gaps: a.estimatedCostUsd > 0 ? ['price_estimated_from_model_family'] : [],
+      recordedResponses: a.responses, knownTokenResponses: a.responses, pricedResponses: a.responses - a.unpricedResponses,
+      referencePricedResponses: 0, equivalentPricedResponses: a.responses - a.unpricedResponses, referenceProviders: [],
+      unknownModelResponses: a.inferredModelResponses + a.unpricedResponses, unpricedResponses: a.unpricedResponses, unpricedTokens: a.unpricedTokens,
+      gaps: [...(a.estimatedCostUsd > 0 ? ['price_estimated_from_model_family'] : []), ...(a.unpricedResponses ? ['unpriced_model_usage'] : [])],
       costByHarness, estimatedValueUsd: a.estimatedCostUsd, compactionResponses: a.compactionResponses,
       cacheReadTokens: a.tokens.cacheRead, cacheWriteTokens: a.tokens.cacheWrite,
     } as LaunchFacts;
@@ -697,7 +928,7 @@ class LocalAuditSession implements AuditSession {
     for (const [file, list] of byFile) {
       try {
         const texts = new Map<string, string>();
-        if (file === this.historyFile) {
+        if (this.historyFiles.includes(file)) {
           parseHistory(fs.readFileSync(file, 'utf8'), {timezone: tz}).entries.forEach((e, i) => { if (e.kind === 'human') texts.set(`history:${i}`, e.text); });
         } else {
           const conv = this.result?.conversations.find(c => c.file === file);

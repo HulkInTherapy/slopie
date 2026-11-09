@@ -22,7 +22,7 @@ function card(id: string, kind: StoryCard['kind'], headline: string, support: st
 }
 
 function weekdayHour(): number[][] {
-  // Night-heavy weekdays, slow weekend mornings, a Tuesday 11pm peak.
+  // Night-heavy weekdays, slow weekend mornings, a Tuesday 2am peak.
   return Array.from({ length: 7 }, (_, d) => Array.from({ length: 24 }, (_, h) => {
     const night = h >= 21 || h <= 2 ? 1 : 0;
     const day = h >= 10 && h <= 17 ? 0.55 : 0;
@@ -30,7 +30,7 @@ function weekdayHour(): number[][] {
     const weekend = d >= 5 ? 0.6 : 1;
     const base = (night * 1.0 + day + dead) * weekend * 22;
     const wobble = ((d * 31 + h * 17) % 7) - 3;
-    const peak = d === 1 && h === 23 ? 18 : 0;
+    const peak = d === 1 && h === 2 ? 30 : 0;
     return Math.max(0, Math.round(base + wobble + peak));
   }));
 }
@@ -70,9 +70,9 @@ export function storyOfFixture(): AuditStory {
     version: 'story-v1', state: 'ready', timezone: 'Europe/Lisbon', generatedAt: '2026-10-08T22:00:00Z',
     totals: {
       prompts: 2904, sessions: 388, projects: 41, activeDays: 176, firstAt: '2025-12-02T21:14:00Z', lastAt: '2026-10-08T23:02:00Z', spanDays: 310,
-      costUsd: 6412.5, subagents: 266, words: 182400, longestStreakDays: 23, longestStretchHours: 7.5, tokens: 8_412_000_000, byHarness: { claude: 1900, claude_hist: 500, codex: 480, pi: 24 },
+      costUsd: 6412.5, subagents: 266, words: 182400, longestStreakDays: 23, longestStretchHours: 7.5, tokens: 8_412_000_000, byHarness: { claude: 1900, claude_hist: 500, codex: 480, pi: 24 }, automatedRuns: 37,
     },
-    rhythm: { hours, weekdayHour: grid, peakHour: 23, peakWeekday: 1, lateNightDaysPct: 38, weekendPct: 17 },
+    rhythm: { hours, weekdayHour: grid, peakHour: 2, peakWeekday: 1, lateNightDaysPct: 38, weekendPct: 17 },
     swearTimeline: months.map((month, i) => ({ month, prompts: 180 + i * 20, swearing: Math.round((180 + i * 20) * pct[i]! / 100), swearPct: pct[i]!, politePct: Math.max(1, 9 - i * 0.7) })),
     models: {
       rows: [
@@ -111,30 +111,99 @@ export function storyOfFixture(): AuditStory {
     cards,
     suppressed: [{ id: 'day_night_topics', reason: 'guard' }],
     archetype: {
-      id: 'night_shift', title: 'The Night Shift Architect', tagline: "your best ideas show up after the dishwasher's done",
-      profile: "This year you've been writing specs, not prompts, and writing them at 1am. The house is quiet; the agents are not.",
-      subRole: { id: 'architect', title: 'The Architect', label: 'with a streak of The Architect' }, rarity: 'epic',
+      // A title the engine really produces: night_shift with a peak hour ≤ 4 → "The <h>AM Deployer"
+      // (story-archetype.ts); the architect sub-role is "The Spec Writer". Tagline = the engine's first
+      // night_shift tagline with this fixture's 41% after 10pm.
+      id: 'night_shift', title: 'The 2AM Deployer', tagline: '41% after 10pm. your agent has seen you at your worst.',
+      profile: "This year you've been The 2AM Deployer: 41% of your prompts landed after 10pm, and 2am was your busiest hour.",
+      subRole: { id: 'architect', title: 'The Spec Writer', label: 'with a streak of The Spec Writer' }, rarity: 'epic',
       deciding: [
         { key: 'night', label: 'prompts after 10pm', value: 41, unit: 'pct', display: '41% after 10pm', band: 0.86 },
         { key: 'len', label: 'median prompt', value: 64, unit: 'words', display: '64-word median prompt', band: 0.72 },
         { key: 'agents', label: 'agents', value: 3, unit: 'count', display: '3 agents, 9 models', band: 0.55 },
       ],
       code: 'NSRH',
-      scores: [{ id: 'night_shift', title: 'The Night Shift', score: 0.82 }, { id: 'architect', title: 'The Architect', score: 0.71 }, { id: 'sommelier', title: 'The Model Sommelier', score: 0.55 }],
+      scores: [{ id: 'night_shift', title: 'The 2AM Deployer', score: 0.82 }, { id: 'architect', title: 'The Spec Writer', score: 0.71 }, { id: 'sommelier', title: 'The Model Sommelier', score: 0.55 }],
       confidence: 0.78, source: 'local',
     },
+    // Award ids, titles and receipts in the engine's own wording (story-archetype.ts awards()).
     awards: [
-      { id: 'most_expensive_sentence', title: 'Priciest sentence', receipt: '$412, Aug 21', publicReceipt: '$412, Aug 21' },
-      { id: 'marathon', title: 'Longest session', receipt: '7.5h without a break, Jun 3', publicReceipt: '7.5h without a break, Jun 3' },
-      { id: 'rage_day', title: 'Worst day', receipt: 'Sep 14: 44 swear words', publicReceipt: 'Sep 14: 44 swear words' },
-      { id: 'streak', title: 'Longest streak', receipt: '23 days in a row, Aug 2–24', publicReceipt: '23 days in a row, Aug 2–24' },
-      { id: 'pet_names', title: 'Pet name', receipt: '“buddy”, 37 times', publicReceipt: '37 times' },
-      { id: 'orchestrator', title: 'Middle manager', receipt: '266 subagents launched', publicReceipt: '266 subagents launched' },
+      { id: 'priciest_sentence', title: 'The $412 Sentence', receipt: 'Aug 21 · 330× your median', publicReceipt: 'Aug 21 · 330× your median' },
+      { id: 'swear_month', title: 'Potty Mouth of the Month', receipt: 'Oct: 24% of prompts', publicReceipt: 'Oct: 24% of prompts' },
+      { id: 'marathon', title: 'Iron Chair', receipt: '7.5h, no break · Jun 3', publicReceipt: '7.5h, no break · Jun 3' },
+      { id: 'catchphrase', title: 'Trademark Pending', receipt: "'real quick' ×212", publicReceipt: '×212' },
+      { id: 'streak', title: "Didn't Miss a Day", receipt: '23 days · Aug 2–Aug 24', publicReceipt: '23 days · Aug 2–Aug 24' },
+      { id: 'orchestrator', title: 'Middle Management', receipt: '266 subagents', publicReceipt: '266 subagents' },
     ],
     coldOpen: { quote: 'ok rewrite the whole sync layer but keep the api exactly the same', at: '2026-08-21T23:41:00Z', day: '2026-08-21', hour: 23, why: 'most_expensive' },
-    peakTime: { hour: 23, weekday: 1, label: 'Tuesdays around 11pm', narrative: 'Most of your best work lands late on Tuesdays, when the house is quiet.', source: 'local' },
+    peakTime: { hour: 2, weekday: 1, label: 'Tuesdays around 2am', narrative: 'Most of your best work lands deep into Monday night, when the house is quiet.', source: 'local' },
     enrichment: { state: 'offline', model: null, code: null, quotesSent: 0 },
     timings: { featuresMs: 10, detectorsMs: 5 },
+    ...(() => { const { automatedRuns, ...rest } = v19Fields(months); void automatedRuns; return rest; })(),
+  } as AuditStory;
+}
+
+/** SYNTHETIC 1.9 fields (V19-CONTRACT): spend timeline, output-token model shares, automated runs. */
+export function v19Fields(months: readonly string[]) {
+  const weight = [0.3, 0.45, 0.5, 0.6, 0.7, 0.9, 1.2, 1.6, 2.1, 1.4, 1.1];
+  const wsum = weight.reduce((a, b) => a + b, 0);
+  const measuredTotal = 6412.5;
+  const daily: { day: string; usd: number; prompts: number }[] = [];
+  const monthly = months.map((month, i) => {
+    const target = Math.round((measuredTotal * weight[i]!) / wsum * 100) / 100;
+    const [y, m] = month.split('-').map(Number) as [number, number];
+    const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const active: number[] = [];
+    for (let d = 1; d <= days; d++) if ((d * 7 + i * 13) % 10 < 6) active.push(d);
+    const raw = active.map(d => 0.3 + ((d * 37 + i * 11) % 17) / 17 + (d === 21 && month === '2026-08' ? 6 : 0));
+    const rsum = raw.reduce((a, b) => a + b, 0);
+    let used = 0;
+    active.forEach((d, k) => {
+      const usd = k === active.length - 1 ? Math.round((target - used) * 100) / 100 : Math.round((target * raw[k]!) / rsum * 100) / 100;
+      used += usd;
+      daily.push({ day: `${month}-${String(d).padStart(2, '0')}`, usd, prompts: 4 + Math.round(raw[k]! * 9) });
+    });
+    return { month, measuredUsd: target, recoveredUsd: i < 4 ? [180, 140, 95, 40][i]! : 0, estimatedUsd: i < 3 ? [260, 190, 120][i]! : 0, prompts: 180 + i * 20 };
+  });
+  const priciest = daily.reduce((a, b) => (b.usd > a.usd ? b : a));
+  const measuredUsd = Math.round(monthly.reduce((a, b) => a + b.measuredUsd, 0) * 100) / 100;
+  return {
+    spend: {
+      measuredUsd, recoveredUsd: 455, estimated: { lowUsd: 410, highUsd: 760, prompts: 500, basis: 'history-only prompts priced at your median prompt cost for that month' },
+      unpricedTokens: 1_240_000,
+      byHarness: [
+        { harness: 'claude', usd: 4100.4, prompts: 2400, tokens: 6_100_000_000, sharePct: 82.6 },
+        { harness: 'codex', usd: 2290.1, prompts: 480, tokens: 2_300_000_000, sharePct: 16.5 },
+        { harness: 'pi', usd: 21.9, prompts: 24, tokens: 12_000_000, sharePct: 0.8 },
+        { harness: 'opencode', usd: 0.1, prompts: 3, tokens: 90_000, sharePct: 0.1 },
+      ],
+      monthly, daily, thisMonthUsd: monthly.at(-1)!.measuredUsd,
+      perActiveDayUsd: Math.round((measuredUsd / daily.length) * 100) / 100,
+      priciestDay: { day: priciest.day, usd: priciest.usd }, priceVersion: 'models.dev 2026-10-07',
+    },
+    modelShare: {
+      basis: 'output_tokens' as const,
+      rows: [
+        { model: 'anthropic/claude-opus-5', label: 'Claude Opus 5', harness: 'claude', outputTokens: 41_000_000, tokenSharePct: 47.1, prompts: 1240, promptSharePct: 51.2, usd: 3076.4, spendSharePct: 48.0 },
+        { model: 'openai/gpt-6-sol', label: 'GPT-6 Sol', harness: 'codex', outputTokens: 19_600_000, tokenSharePct: 22.5, prompts: 410, promptSharePct: 16.9, usd: 1340.2, spendSharePct: 20.9 },
+        { model: 'anthropic/claude-fable-5', label: 'Claude Fable 5', harness: 'claude', outputTokens: 14_200_000, tokenSharePct: 16.3, prompts: 480, promptSharePct: 19.8, usd: 1182.6, spendSharePct: 18.4 },
+        { model: 'openai/gpt-6.1-sol', label: 'GPT-6.1 Sol', harness: 'codex', outputTokens: 9_900_000, tokenSharePct: 11.4, prompts: 260, promptSharePct: 10.7, usd: 701.3, spendSharePct: 10.9 },
+        { model: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5', harness: 'claude', outputTokens: 2_300_000, tokenSharePct: 2.6, prompts: 31, promptSharePct: 1.3, usd: 104.0, spendSharePct: 1.6 },
+        { model: 'pi/qwen-coder-3', label: 'Qwen Coder 3', harness: 'pi', outputTokens: 90_000, tokenSharePct: 0.1, prompts: 3, promptSharePct: 0.1, usd: 8.0, spendSharePct: 0.2 },
+      ],
+      unknownModelPrompts: 480,
+      last30d: [
+        { model: 'anthropic/claude-opus-5', label: 'Claude Opus 5', promptSharePct: 58 },
+        { model: 'openai/gpt-6.1-sol', label: 'GPT-6.1 Sol', promptSharePct: 30 },
+        { model: 'anthropic/claude-fable-5', label: 'Claude Fable 5', promptSharePct: 12 },
+      ],
+      timeline: months.map((month, i) => {
+        const label = i < 3 ? 'Claude Fable 5' : i < 6 ? 'GPT-6 Sol' : 'Claude Opus 5';
+        const model = i < 3 ? 'anthropic/claude-fable-5' : i < 6 ? 'openai/gpt-6-sol' : 'anthropic/claude-opus-5';
+        return { month, model, label, tokenSharePct: 55 + ((i * 7) % 30) };
+      }),
+    },
+    automatedRuns: 37,
   };
 }
 
@@ -145,7 +214,7 @@ export function storySnapshot(): AuditSnapshot {
   story.models.best = story.models.rows[2]!;
   return {
     ...base,
-    status: 'complete' as AuditSnapshot['status'],
+    status: 'ready' as AuditSnapshot['status'],
     launch: { ...base.launch!, facts: { ...base.launch!.facts!, costByHarness: { claude: 4100.4, codex: 2290.1, pi: 21.9 } }, story } as AuditSnapshot['launch'],
   };
 }

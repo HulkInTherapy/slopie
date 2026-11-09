@@ -131,8 +131,10 @@ describe('usage and cost', () => {
     const models = Object.fromEntries(snapshot.launch!.facts!.models.map(m => [m.model, m]));
     // gpt-6-sol on the default tier: 600 uncached * 2 + 400 cached * 0.2 + 100 out * 10, plus the compaction request.
     expect(models['gpt-6-sol']!.valueUsd).toBeCloseTo((600 * 2 + 400 * 0.2 + 100 * 10 + 5000 * 2 + 50 * 10) / 1e6, 6);
-    // auto-review maps to gpt-5.6-luna and bills priority (fast) by default.
-    expect(models['gpt-5.6-luna']!.valueUsd).toBeCloseTo(2 * (2000 * 0.2 + 10 * 1.2) / 1e6, 8);
+    // v19: codex-auto-review has no published price, so it stays unpriced (never guessed as another model).
+    expect(models['gpt-5.6-luna']).toBeUndefined();
+    expect(snapshot.launch!.facts!.unpricedResponses).toBe(1);
+    expect(snapshot.launch!.facts!.unpricedTokens).toBe(2000 + 10);
     expect(snapshot.usage.inputTokens).toBe(600 + 5000 + 2000);
   });
 });
@@ -167,8 +169,10 @@ describe('conversations, history and opt-outs', () => {
     const snapshot = await run(options);
     expect(snapshot.metrics.humanPrompts.value).toBe(1);
     expect(snapshot.launch!.facts!.recordedResponses).toBe(1);
-    const cache = fs.readdirSync(path.join(dirs.potsherd, 'audit-derived')).filter(f => f.startsWith('facts-'));
-    const bytes = fs.readFileSync(path.join(dirs.potsherd, 'audit-derived', cache[0]!)).toString('latin1');
+    // Sharded cache: every file under facts-v*/ (index, shards, history).
+    const root = path.join(dirs.potsherd, 'audit-derived', fs.readdirSync(path.join(dirs.potsherd, 'audit-derived')).find(f => f.startsWith('facts-'))!);
+    const bytes = fs.readdirSync(root).map(f => fs.readFileSync(path.join(root, f)).toString('latin1')).join('');
+    expect(bytes.length).toBeGreaterThan(0);
     expect(bytes).not.toContain('IGNORED-PROJECT-TEXT');
     expect(bytes).not.toContain('FORGOTTEN-TEXT');
   });

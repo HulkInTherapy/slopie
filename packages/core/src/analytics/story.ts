@@ -2,11 +2,11 @@
  * Builds `launch.story` from the feature table: detectors, rhythm, model
  * moods, projects, highlights, awards, cold open, archetype and peak time.
  */
-import type {AuditStory, StoryAward, StoryHarness, StoryHighlights, StoryModelMood, StoryPeakTime, StoryProject} from './story-contracts.js';
+import type {AuditStory, StoryModelShare, StorySpend, StoryAward, StoryHarness, StoryHighlights, StoryModelMood, StoryPeakTime, StoryProject} from './story-contracts.js';
 import {STORY_VERSION} from './story-contracts.js';
 import type {StoryRow, StoryTable} from './story-table.js';
 import {runDetectors, modelComparison, modelLabel, base, median, pct, defectionOf, lateNight, longestStreak, longestStretch, homeDir, type Draft} from './story-detectors.js';
-import {assignArchetype} from './story-archetype.js';
+import {assignArchetype, storyAwards} from './story-archetype.js';
 import {TICS, maskLine} from './story-lexicon.js';
 import {HOUR_NAME, WEEKDAY_NAMES, dayName, daysBetween, localClock, monthName} from './story-time.js';
 import type {WordSet} from './story-typos.js';
@@ -21,6 +21,8 @@ export interface StoryInput {
   tokens: number;
   offline: boolean;
   now?: Date;
+  /** Non-interactive runs (codex exec / SDK): cost counted, not chats. */
+  automatedRuns?: number;
 }
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -37,19 +39,23 @@ export function buildStory(input: StoryInput): {story: AuditStory; detectorsMs: 
     version: STORY_VERSION,
     state: rows.length === 0 ? 'empty' : rows.length < 200 ? 'thin' : 'ready',
     timezone: input.timezone, generatedAt: (input.now ?? new Date()).toISOString(),
-    totals: totals(rows, input.tokens),
+    totals: {...totals(rows, input.tokens),
+      // Headline counts include prompts without a timestamp; time charts use dated rows only.
+      prompts: input.table.headline?.prompts ?? rows.length, sessions: input.table.headline?.sessions ?? new Set(rows.map(r => r.conv)).size,
+      undatedPrompts: input.table.headline?.undated ?? 0, automatedRuns: input.automatedRuns ?? 0},
     rhythm: rhythm(rows, shifted),
     swearTimeline: swearTimeline(rows),
     models: models(rows),
     projects: projects(rows, input.alias),
     highlights: highlights(rows, drafts),
     cards, suppressed,
-    archetype: rows.length ? assignArchetype(rows, 0) : null,
+    archetype: rows.length ? assignArchetype(rows) : null,
     awards: awards(rows, drafts),
     coldOpen: coldOpen(rows),
     peakTime: peakTime(rows),
     enrichment: {state: input.offline ? 'offline' : 'not_run', model: null, code: null, quotesSent: 0},
     timings: {featuresMs: 0, detectorsMs: 0, byDetector: ms},
+    spend: emptySpend(), modelShare: emptyModelShare(),
   };
   const detectorsMs = Math.round((performance.now() - t0) * 10) / 10;
   story.timings.detectorsMs = detectorsMs;
@@ -68,7 +74,7 @@ function totals(rows: readonly StoryRow[], tokens: number): AuditStory['totals']
     spanDays: first && last ? daysBetween(first.day, last.day) : 0,
     costUsd: r2(rows.reduce((n, r) => n + (r.costTotalUsd ?? 0), 0)),
     subagents: rows.reduce((n, r) => n + (r.subs ?? 0), 0), words: rows.reduce((n, r) => n + r.f.w, 0),
-    longestStreakDays: longestStreak(rows)?.days ?? 0, longestStretchHours: stretch ? r1(stretch.ms / 3_600_000) : 0, tokens, byHarness,
+    longestStreakDays: longestStreak(rows)?.days ?? 0, longestStretchHours: stretch ? r1(stretch.ms / 3_600_000) : 0, tokens, byHarness, automatedRuns: 0,
   };
 }
 
@@ -175,25 +181,8 @@ function highlights(rows: readonly StoryRow[], drafts: Map<string, Draft>): Stor
 }
 
 function awards(rows: readonly StoryRow[], drafts: Map<string, Draft>): StoryAward[] {
-  const out: StoryAward[] = [];
-  const add = (id: string, title: string, receipt: string, publicReceipt = receipt) => { if (out.length < 6) out.push({id, title, receipt, publicReceipt}); };
-  const exp = drafts.get('most_expensive_sentence');
-  if (exp) add('priciest_sentence', 'Most expensive sentence', `$${Math.round(num(exp, 'cost_usd') as number).toLocaleString('en-US')}, ${dayName(num(exp, 'day') as string)}`);
-  const stretch = longestStretch(rows);
-  if (stretch && stretch.ms >= 3 * 3_600_000) add('marathon', 'Marathon', `${(stretch.ms / 3_600_000).toFixed(1)}h without a break, ${dayName(stretch.start.day)}`);
-  const s = longestStreak(rows);
-  if (s && s.days >= 5) add('streak', 'Streak', `${s.days} days in a row, ${dayName(s.start)}–${dayName(s.end)}`);
-  const night = drafts.get('night_owl');
-  if (night && (num(night, 'days_ending_after_1am_pct') as number) >= 20) add('night_owl', 'Night Owl', `${Math.round(num(night, 'days_ending_after_1am_pct') as number)}% of days end after 1am`);
-  const months = swearTimeline(rows).filter(m => m.prompts >= 40 && m.swearing >= 5);
-  if (rows.length >= 200 && months.length) { const m = months.reduce((a, b) => (b.swearPct > a.swearPct ? b : a)); add('swear_month', 'Swear of the month', `${monthName(m.month)}: ${m.swearPct.toFixed(0)}% of prompts swore`); }
-  const subs = rows.reduce((n, r) => n + (r.subs ?? 0), 0);
-  if (subs >= 30) add('orchestrator', 'Orchestrator', `${subs.toLocaleString('en-US')} subagents launched`);
-  const agents = new Set(rows.map(r => (r.harness.startsWith('claude') ? 'claude' : r.harness))).size;
-  if (agents >= 2) add('polyglot', 'Polyglot', `${agents} coding agents`);
-  const longest = rows.reduce<StoryRow | null>((a, r) => (!a || r.f.w > a.f.w ? r : a), null);
-  if (longest && longest.f.w >= 200) add('longest_prompt', 'Longest prompt', `${longest.f.w.toLocaleString('en-US')} words, ${dayName(longest.day)}`);
-  return out;
+  // Ranked shelf (24 candidates, top six; gold/silver tiers): see story-archetype.ts.
+  return storyAwards(rows, drafts);
 }
 
 function coldOpen(rows: readonly StoryRow[]): AuditStory['coldOpen'] {
@@ -231,3 +220,10 @@ export function peakNarratives(label: string, hour: number, hourShare: number, d
 }
 
 export {median};
+
+export function emptySpend(): StorySpend {
+  return {measuredUsd: 0, recoveredUsd: 0, estimated: null, unpricedTokens: 0, byHarness: [], monthly: [], daily: [], thisMonthUsd: 0, perActiveDayUsd: 0, priciestDay: null, priceVersion: ''};
+}
+export function emptyModelShare(): StoryModelShare {
+  return {basis: 'output_tokens', rows: [], unknownModelPrompts: 0, last30d: [], timeline: []};
+}

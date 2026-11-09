@@ -73,7 +73,7 @@ describe('interactive wallboard', () => {
     expect(visible(stdout.text)).toContain('Claude Code');
     finish({ ...storySnapshot(), sequence: 20 });
     await tick();
-    expect(visible(stdout.text)).toContain('BEFORE WE START');
+    expect(visible(stdout.text)).toContain('YOUR YEAR WITH AGENTS');
     stdin.emit('data', 'q');
     const outcome = await result;
     expect(outcome.reason).toBe('quit');
@@ -116,17 +116,19 @@ describe('interactive wallboard', () => {
     // Jump to the quiz and guess.
     const quiz = deck.findIndex(card => card.kind === 'guess');
     for (let i = 0; i < quiz; i++) stdin.emit('data', 'l');
-    expect(stdout.screen).toContain('Which model did you talk to most?');
+    expect(stdout.screen).toContain('Which model did the most work?');
     stdin.emit('data', '1');
     expect(stdout.screen).toMatch(/Nailed it|Not quite/);
     // Method notes open and close.
     stdin.emit('data', '?');
     expect(stdout.screen).toContain('HOW WE KNOW');
+    // A lone Esc is held briefly in case it starts a split escape sequence.
     stdin.emit('data', '\x1b');
+    await tick(80);
     expect(stdout.screen).not.toContain('HOW WE KNOW');
     // b jumps to the board.
     stdin.emit('data', 'b');
-    expect(stdout.screen).toContain(`${deck.length}/${deck.length}`);
+    expect(stdout.screen).toContain('npx slopie audit');
     // A repaint with nothing changed writes nothing.
     const count = stdout.chunks.length;
     stdin.emit('data', 'x');
@@ -150,7 +152,7 @@ describe('interactive wallboard', () => {
     stdout.rows = 24;
     stdout.emit('resize');
     await tick();
-    expect(stdout.screen).toContain('BEFORE WE START');
+    expect(stdout.screen).toContain('YOUR YEAR WITH AGENTS');
     stdin.emit('data', 'q');
     await result;
   });

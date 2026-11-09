@@ -13,6 +13,8 @@
  * `classifyText` and next to each harness below.
  */
 import fs from 'node:fs';
+import zlib from 'node:zlib';
+import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {hasExclusionMarker} from '../markers.js';
@@ -21,11 +23,15 @@ import type {AuditHarness, AuditPromptLex} from './contracts.js';
 import {deriveStory, promptLex, isAgentTool, usageWeight, type StoryTextFacts, type TurnEvent, type TurnStats} from './story-extract.js';
 import {featurize, safeQuote, topicWords, vocabularyWords, type PromptFeatures} from './story-lexicon.js';
 import {localClock} from './story-time.js';
+import {StreamHashes} from './copy-prune.js';
 
-/** 5: story features; prompt text is no longer kept in the cache. */
-export const FACTS_VERSION = 5;
+/**
+ * 8: deferred Codex compactions keep their request-time model/tier; unknown Codex identities stay unknown;
+ *    per-prompt word lists replace per-file word counters; archive sources carry their native identity.
+ */
+export const FACTS_VERSION = 8;
 
-export type NativeHarness = Exclude<AuditHarness, 'opencode'>;
+export type NativeHarness = Exclude<AuditHarness, 'opencode' | 'cursor' | 'gemini' | 'copilot'>;
 
 export interface UsageFact {
   /** De-duplication key (see `aggregate.ts`); null when the record has no stable identity. */
@@ -44,6 +50,8 @@ export interface UsageFact {
   reasoning: number;
   /** True when the model was not recorded and had to be inferred. */
   inferredModel?: boolean;
+  /** Raw identity recorded in the model slot that is not a model (e.g. Codex `codex-auto-review`); `model` is null. */
+  identity?: string;
   /** Claude: written by a subagent / sidechain. */
   sidechain?: boolean;
   /** Claude: the record had no requestId. */
@@ -81,6 +89,11 @@ export interface PromptFact {
   q?: string;
   /** Story: stats of the turn this prompt started, from this file. */
   t?: TurnStats;
+  /** Codex: not inside a real (non-import) turn; replayed history when the thread was imported from another agent. */
+  imp?: 1;
+  /** Story: vocabulary words (typo fingerprint) and distinct topic words of a human prompt (non-Claude harnesses). */
+  w?: string[];
+  tw?: string[];
 }
 
 export interface SourceFacts {
@@ -102,6 +115,10 @@ export interface SourceFacts {
   excluded: boolean;
   /** Codex: session_meta timestamp, used to order parents before children. */
   startedAt: string | null;
+  /** Session this one was forked/branched from (Codex `forked_from_id`, pi `parentSession`): copied events count once. */
+  forkedFrom?: string | null;
+  /** Read from potsherd's rescue archive (a copy of a session a harness may have deleted). */
+  archived?: boolean;
   firstAt: number | null;
   lastAt: number | null;
   usage: UsageFact[];
@@ -113,11 +130,17 @@ export interface SourceFacts {
   story?: StoryTextFacts;
   /** Append-only resume state (recent files only). */
   resume?: ResumeState;
+  /** Compressed rollouts asked to (`ExtractOptions.checks`): hashes of the decompressed bytes, to prove archive copies are prefixes. Never cached. */
+  copyHashes?: {head: string; at: [number, string][]};
 }
 
 export interface ExtractOptions {
   /** Time zone for story counters (default: the system zone). */
   timezone?: string;
+  /** potsherd archive copy: harness is sniffed from the content and subagent files are recognised by their records. */
+  archive?: boolean;
+  /** Compressed source: also hash the decompressed head and the TAIL bytes before each of these offsets (copy-prune.ts). */
+  checks?: readonly number[];
 }
 
 const MAX_PROMPT_CHARS = 4000;
@@ -126,13 +149,15 @@ type Rec = Record<string, unknown>;
 const isRec = (v: unknown): v is Rec => v !== null && typeof v === 'object' && !Array.isArray(v);
 const str = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null);
 const int = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
-function time(v: unknown): number | null {
-  if (typeof v === 'string') {
-    const t = Date.parse(v);
-    return Number.isFinite(t) ? t : null;
-  }
-  if (typeof v === 'number' && Number.isFinite(v)) return v < 1e11 ? v * 1000 : v;
-  return null;
+/** Largest epoch ms a Date can hold; anything outside is not a timestamp. */
+const MAX_DATE_MS = 8.64e15;
+export function time(v: unknown): number | null {
+  let t: number;
+  if (typeof v === 'string') t = Date.parse(v);
+  else if (typeof v === 'number' && Number.isFinite(v)) t = v < 1e11 ? v * 1000 : v;
+  else return null;
+  // Out-of-range values become "unknown time" rather than crashing later in toISOString.
+  return Number.isFinite(t) && Math.abs(t) <= MAX_DATE_MS && t > 0 ? t : null;
 }
 
 function textOf(content: unknown): string {
@@ -198,13 +223,15 @@ interface Builder {
   /** Assistant events and interrupts for per-turn stats. */
   events: TurnEvent[];
   interrupts: number[];
+  /** Claude archive copy recognised as a subagent transcript from its records. */
+  sidechainFile?: boolean;
 }
 
 function makeBuilder(file: string, harness: NativeHarness, size: number, mtimeMs: number): Builder {
   return {
     facts: {
       v: FACTS_VERSION, harness, file, size, mtimeMs,
-      sessionId: path.basename(file, '.jsonl'), parentId: null, child: false, project: null, title: null,
+      sessionId: path.basename(file.replace(/\.zst$/, ''), '.jsonl'), parentId: null, child: false, project: null, title: null,
       automated: false, excluded: false, startedAt: null, firstAt: null, lastAt: null, usage: [], prompts: [], malformed: 0,
     },
     currentModel: null, currentProvider: null, pending: [], seenPrompts: new Set(), events: [], interrupts: [],
@@ -250,7 +277,8 @@ function addPrompt(b: Builder, key: string, at: number | null, project: string |
 
 const SUBAGENT_DIR = `${path.sep}subagents${path.sep}`;
 
-function claudeLine(b: Builder, line: Buffer, subagent: boolean, sessions: Set<string>): void {
+function claudeLine(b: Builder, line: Buffer, subagentPath: boolean, sessions: Set<string>, archive = false): void {
+  let subagent = subagentPath || !!b.sidechainFile;
   const assistant = line.includes('"type":"assistant"');
   if (assistant ? !line.includes('"usage"') : (subagent || !line.includes('"type":"user"'))) {
     // Titles are tiny records; everything else here is irrelevant.
@@ -258,7 +286,7 @@ function claudeLine(b: Builder, line: Buffer, subagent: boolean, sessions: Set<s
   }
   let r: Rec;
   try { r = JSON.parse(line.toString('utf8')) as Rec; } catch { b.facts.malformed++; return; }
-  if (!isRec(r)) return;
+  if (!isRec(r)) { b.facts.malformed++; return; }
   const f = b.facts;
   if (r.type === 'summary' || r.type === 'custom-title' || r.type === 'ai-title') {
     const title = str(r.customTitle) ?? str(r.aiTitle) ?? str(r.title) ?? str(r.summary);
@@ -267,8 +295,13 @@ function claudeLine(b: Builder, line: Buffer, subagent: boolean, sessions: Set<s
   }
   if (typeof r.cwd === 'string' && !f.project) f.project = r.cwd;
   const sid = str(r.sessionId);
+  // An archived subagent transcript lost its subagents/ path: its records are sidechains with an agent id.
+  if (archive && !subagent && sid && r.isSidechain === true && typeof r.agentId === 'string' && !sessions.size && !f.prompts.length) {
+    b.sidechainFile = subagent = true;
+    f.parentId = sid; f.child = true; f.sessionId = `${sid}:agent-${r.agentId}`;
+  }
   if (sid) {
-    if (subagent) { f.parentId = sid; f.child = true; f.sessionId = `${sid}:${path.basename(f.file, '.jsonl')}`; }
+    if (subagent) { if (!b.sidechainFile) { f.parentId = sid; f.child = true; f.sessionId = `${sid}:${path.basename(f.file, '.jsonl')}`; } }
     else if (!sessions.size) f.sessionId = sid;
   }
   const m = isRec(r.message) ? r.message : {};
@@ -320,13 +353,17 @@ function claudeLine(b: Builder, line: Buffer, subagent: boolean, sessions: Set<s
 
 /* ------------------------------------------------------------- Codex --- */
 
-interface PendingCodexPrompt {key: string | null; at: number | null; text: string; imported: boolean; project: string | null}
+interface PendingCodexPrompt {key: string | null; at: number | null; text: string; imported: boolean; project: string | null; inTurn: boolean}
 interface CodexState {
   lineNo: number;
   previousTotal: string | null;
   tier: 'fast' | 'standard' | undefined;
   imported: boolean;
-  records: Map<string, {at: number | null; usage: Rec}>;
+  /** A non-import task_started has been seen (prompts before it are replayed history). */
+  inTurn: boolean;
+  anyTurn: boolean;
+  /** token_usage_record by response id, with the model and tier in force when it was written (immutable). */
+  records: Map<string, {at: number | null; usage: Rec; model: string | null; tier: 'fast' | 'standard' | undefined}>;
   compacted: Set<string>;
   deltas: Set<string>;
   itemPrompts: PendingCodexPrompt[];
@@ -337,7 +374,7 @@ interface CodexState {
   seen: Set<string>;
   compactionDone: Set<string>;
 }
-const newCodexState = (): CodexState => ({lineNo: 0, previousTotal: null, tier: undefined, imported: false, records: new Map(), compacted: new Set(),
+const newCodexState = (): CodexState => ({lineNo: 0, previousTotal: null, tier: undefined, imported: false, inTurn: false, anyTurn: false, records: new Map(), compacted: new Set(),
   deltas: new Set(), itemPrompts: [], responsePrompts: [], mode: null, converted: 0, seen: new Set(), compactionDone: new Set()});
 
 /** Thrown when an appended file cannot be resumed; the caller reads it in full. */
@@ -346,25 +383,19 @@ export class ResumeMismatch extends Error { constructor() { super('resume_mismat
 const U_KEYS = ['input_tokens', 'cached_input_tokens', 'output_tokens', 'reasoning_output_tokens', 'total_tokens'] as const;
 const tuple = (u: unknown): number[] | null => (isRec(u) ? U_KEYS.map(k => int(u[k])) : null);
 
-/** Codex records its review helper as `codex-auto-review`; bill it as the helper model of that date. */
-const AUTO_REVIEW_MODELS: readonly [string, string][] = [
-  ['2026-07-30', 'gpt-5.6-luna'], ['2026-03-05', 'gpt-5.4'], ['2026-02-05', 'gpt-5.3-codex'],
-  ['2025-12-11', 'gpt-5.2-codex'], ['2025-11-13', 'gpt-5.1-codex'], ['2025-09-15', 'gpt-5-codex'],
-];
-function codexModel(model: string | null, timestamp: string): {model: string; inferred: boolean} {
-  if (model === 'codex-auto-review') {
-    const day = timestamp.slice(0, 10);
-    return {model: AUTO_REVIEW_MODELS.find(([since]) => day >= since)?.[1] ?? 'gpt-5', inferred: true};
-  }
-  return model ? {model, inferred: false} : {model: 'gpt-5', inferred: true};
-}
+/**
+ * Identities Codex records in the model slot that are not models (its review helper). Which model
+ * served them is not recorded: they stay unknown (unpriced), never billed as a guessed model.
+ */
+const CODEX_NON_MODELS = new Set(['codex-auto-review']);
+const codexModel = (model: string | null): string | null => (model && !CODEX_NON_MODELS.has(model) ? model : null);
 
-function codexFact(b: Builder, s: CodexState, at: number | null, timestamp: string, d: readonly number[], key: string | null): UsageFact {
+/** A Codex usage fact; model and tier are the ones in force when the request was recorded. */
+function codexFact(model: string | null, tier: 'fast' | 'standard' | undefined, at: number | null, d: readonly number[], key: string | null): UsageFact {
   const input = d[0]!, output = d[2]!, reasoning = d[3]!, cached = Math.min(d[1]!, input);
-  const {model, inferred} = codexModel(b.currentModel, timestamp);
-  const fact: UsageFact = {key, at, model, provider: 'openai', input: input - cached, output, cacheRead: cached, cacheWrite: 0, cacheWrite1h: 0, reasoning};
-  if (inferred) fact.inferredModel = true;
-  if (s.tier) fact.tier = s.tier;
+  const fact: UsageFact = {key, at, model: codexModel(model), provider: 'openai', input: input - cached, output, cacheRead: cached, cacheWrite: 0, cacheWrite1h: 0, reasoning};
+  if (model && !fact.model) fact.identity = model;
+  if (tier) fact.tier = tier;
   return fact;
 }
 
@@ -381,7 +412,8 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
   const head = line.toString("latin1", 0, Math.min(line.length, 260));
   const f = b.facts;
   const parse = (): Rec | null => {
-    try { return JSON.parse(line.toString('utf8')) as Rec; } catch { f.malformed++; return null; }
+    try { const v: unknown = JSON.parse(line.toString('utf8')); if (isRec(v)) return v; } catch { /* below */ }
+    f.malformed++; return null;
   };
   if (n === 0 && head.includes('session_meta')) {
     const r = parse();
@@ -397,6 +429,8 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
       const spawn = isRec(sub.thread_spawn) ? sub.thread_spawn : {};
       f.parentId = str(spawn.parent_thread_id) ?? str(p.parent_thread_id) ?? str(p.forked_from_id);
     }
+    // A fork (also a forked subagent) starts from a copy of its parent's history: replayed counters count once.
+    if (str(p.forked_from_id)) f.forkedFrom = str(p.forked_from_id);
     if (source === 'exec' || p.originator === 'codex_exec' || p.originator === 'codex_sdk_ts') f.automated = true;
     touch(b, time(r.timestamp));
     return;
@@ -418,9 +452,10 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
     if (totalSig) s.previousTotal = totalSig;
     if (!d || !(d[0]! || d[1]! || d[2]! || d[3]!)) return;
     s.deltas.add(d.join(','));
-    // Counters replayed into another file repeat exactly; count each fingerprint once.
-    const key = totalSig ? `x:${totalSig}|${last ? last.join(',') : ''}` : null;
-    const fact = codexFact(b, s, time(r.timestamp), String(r.timestamp ?? ''), d, key);
+    // A fingerprint, not an identity: aggregation scopes it to the session's fork lineage, so copies and
+    // fork replays of one request count once while independent sessions with equal counters both count.
+    const key = totalSig ? `x:${totalSig}|${last ? last.join(',') : ''}` : `y:${String(r.timestamp ?? '')}|${d.join(',')}`;
+    const fact = codexFact(b.currentModel, s.tier, time(r.timestamp), d, key);
     addUsage(b, fact);
     if (fact.at !== null) b.events.push({at: fact.at, tools: 0, subs: 0, weight: usageWeight(fact.input, fact.output, fact.cacheRead, fact.cacheWrite)});
     return;
@@ -442,6 +477,7 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
   if (head.includes('"task_started"')) {
     const p = parse()?.payload;
     s.imported = isRec(p) && String(p.turn_id ?? '').startsWith('external-import');
+    if (!s.imported) { s.inTurn = true; s.anyTurn = true; }
     return;
   }
   if (head.includes('"UserMessage"') && head.includes('item_completed')) {
@@ -450,21 +486,21 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
     if (!r || !p) return;
     const item = isRec(p.item) ? p.item : {};
     s.itemPrompts.push({key: str(item.id), at: time(r.timestamp), text: textOf(item.content),
-      imported: s.imported || String(p.turn_id ?? '').startsWith('external-import'), project: f.project});
+      imported: s.imported || String(p.turn_id ?? '').startsWith('external-import'), project: f.project, inTurn: s.inTurn});
     return;
   }
   if (head.includes('"role":"user"') && head.includes('"response_item"')) {
     const r = parse();
     if (!r) return;
     const p = isRec(r.payload) ? r.payload : {};
-    s.responsePrompts.push({key: null, at: time(r.timestamp), text: textOf(p.content), imported: s.imported, project: f.project});
+    s.responsePrompts.push({key: null, at: time(r.timestamp), text: textOf(p.content), imported: s.imported, project: f.project, inTurn: s.inTurn});
     return;
   }
   if (head.includes('"event_msg"') && line.subarray(0, 400).includes('"type":"user_message"')) {
     const r = parse();
     if (!r) return;
     const p = isRec(r.payload) ? r.payload : {};
-    s.itemPrompts.push({key: null, at: time(r.timestamp), text: typeof p.message === 'string' ? p.message : '', imported: s.imported, project: f.project});
+    s.itemPrompts.push({key: null, at: time(r.timestamp), text: typeof p.message === 'string' ? p.message : '', imported: s.imported, project: f.project, inTurn: s.inTurn});
     return;
   }
   if (codexToolOrAbort(b, head)) return;
@@ -472,7 +508,8 @@ function codexLine(b: Builder, line: Buffer, s: CodexState): void {
     const r = parse();
     const p = r && isRec(r.payload) ? r.payload : null;
     const id = p ? str(p.response_id) : null;
-    if (r && p && id && isRec(p.usage)) s.records.set(id, {at: time(r.timestamp), usage: p.usage});
+    // The compaction is only priced at the end of the file: capture the request-time model and tier now.
+    if (r && p && id && isRec(p.usage) && !s.records.has(id)) s.records.set(id, {at: time(r.timestamp), usage: p.usage, model: b.currentModel, tier: s.tier});
     return;
   }
   if (head.includes('"type":"compacted"')) {
@@ -513,7 +550,7 @@ function finishCodex(b: Builder, s: CodexState): void {
     const d = record ? tuple(record.usage) : null;
     if (!record || !d || !(d[0]! || d[1]! || d[2]! || d[3]!) || s.deltas.has(d.join(','))) continue;
     s.compactionDone.add(id);
-    const fact = codexFact(b, s, record.at, record.at ? new Date(record.at).toISOString() : '', d, `codex-compaction:${id}`);
+    const fact = codexFact(record.model, record.tier, record.at, d, `codex-compaction:${id}`);
     fact.compaction = true;
     f.usage.push(fact);
     touch(b, record.at);
@@ -530,12 +567,22 @@ function finishCodex(b: Builder, s: CodexState): void {
   list.forEach((p, n) => {
     const i = base + n;
     if (p.key) { if (seen.has(p.key)) return; seen.add(p.key); }
-    const key = `codex:${f.sessionId}:${p.key ?? i}`;
+    // Lineage-scoped in aggregation (see usage keys); index@time keeps fork tails apart.
+    const key = `codex:${p.key ?? `${i}@${p.at ?? ''}`}`;
     if (reason) return addPrompt(b, key, p.at, p.project, 'excluded', reason, '');
     if (p.imported) return addPrompt(b, key, p.at, p.project, 'excluded', 'imported_from_claude_transcript', '');
     const c = classifyText(cleanCodexText(p.text));
     addPrompt(b, key, p.at, p.project, c.kind, c.reason, c.text);
+    if (!p.inTurn) f.prompts[f.prompts.length - 1]!.imp = 1;
   });
+  // Older rollouts have no task_started at all: replayed history is what precedes the first request,
+  // except the prompt that triggered it.
+  if (!s.anyTurn) {
+    const firstUsage = f.usage.reduce((m, u) => (u.at !== null && u.at < m ? u.at : m), Infinity);
+    const before = f.prompts.filter(p => (p.at ?? Infinity) < firstUsage).sort((x, y) => x.at! - y.at!);
+    for (const p of f.prompts) delete p.imp;
+    for (const p of before.slice(0, -1)) p.imp = 1;
+  }
   // Attribute prompts to the models around them, by time.
   const answers = f.usage.filter(u => u.at !== null).sort((x, y) => x.at! - y.at!);
   let j = 0, previous: string | null = null;
@@ -551,10 +598,14 @@ function finishCodex(b: Builder, s: CodexState): void {
 function piLine(b: Builder, line: Buffer): void {
   let r: Rec;
   try { r = JSON.parse(line.toString('utf8')) as Rec; } catch { b.facts.malformed++; return; }
+  if (!isRec(r)) { b.facts.malformed++; return; }
   const f = b.facts, at = time(r.timestamp);
   if (r.type === 'session') {
     f.sessionId = str(r.id) ?? f.sessionId;
     f.project = str(r.cwd);
+    // createBranchedSession() copies path entries (same ids and timestamps) under a new header.
+    const parent = str(r.parentSession);
+    if (parent) { const base = path.basename(parent.replace(/\\/g, '/')).replace(/\.jsonl$/, ''); f.forkedFrom = base.includes('_') ? base.slice(base.lastIndexOf('_') + 1) : base; }
     touch(b, at);
     return;
   }
@@ -568,7 +619,7 @@ function piLine(b: Builder, line: Buffer): void {
   if (m.role === 'assistant' && isRec(m.usage)) {
     const u = m.usage;
     const fact: UsageFact = {
-      key: `pi:${f.sessionId}:${String(r.id)}`, at, model: str(m.model) ?? b.currentModel, provider: str(m.provider) ?? b.currentProvider,
+      key: `pi:${String(r.id)}@${String(r.timestamp ?? '')}`, at, model: str(m.model) ?? b.currentModel, provider: str(m.provider) ?? b.currentProvider,
       input: int(u.input), output: int(u.output), cacheRead: int(u.cacheRead), cacheWrite: int(u.cacheWrite), cacheWrite1h: 0, reasoning: 0,
     };
     if (fact.input + fact.output + fact.cacheRead + fact.cacheWrite > 0) addUsage(b, fact);
@@ -581,7 +632,7 @@ function piLine(b: Builder, line: Buffer): void {
   }
   if (m.role === 'user') {
     const c = classifyText(textOf(m.content));
-    addPrompt(b, `pi:${f.sessionId}:${String(r.id)}`, at, f.project, c.kind, c.reason, c.text);
+    addPrompt(b, `pi:${String(r.id)}@${String(r.timestamp ?? '')}`, at, f.project, c.kind, c.reason, c.text);
   }
 }
 
@@ -619,11 +670,19 @@ export interface ResumeState {
  * appended since are parsed; ResumeMismatch is thrown when the file is not
  * the same append-only file any more.
  */
-export function extractFile(file: string, harness: NativeHarness, options: ExtractOptions = {}, previous?: SourceFacts): SourceFacts {
+export function extractFile(file: string, requested: NativeHarness | 'auto', options: ExtractOptions = {}, previous?: SourceFacts): SourceFacts {
   const fd = fs.openSync(file, 'r');
   try {
     const stat = fs.fstatSync(fd);
+    // Compressed rollouts (Codex `.jsonl.zst`) are decompressed as a stream, chunk by chunk (never whole:
+    // they reach hundreds of MB); they are final, never resumed.
+    const hashes = options.checks?.length ? new StreamHashes(options.checks) : null;
+    const zst = isZstd(fd) ? zstdStream(fd, file, hashes) : null;
+    const harness = requested === 'auto' ? sniffHarness(zst ? zst.peek(64 * 1024) : headBytes(fd, 64 * 1024)) : requested;
+    if (!harness) throw new Error('unrecognised_archive_source');
+    if (zst && previous) throw new ResumeMismatch();
     let b = makeBuilder(file, harness, stat.size, stat.mtimeMs);
+    if (options.archive) b.facts.archived = true;
     let codex = newCodexState();
     let position = 0, firstNew = 0;
     const subagent = file.includes(SUBAGENT_DIR), sessions = new Set<string>();
@@ -639,7 +698,8 @@ export function extractFile(file: string, harness: NativeHarness, options: Extra
       position = r.offset;
       firstNew = b.facts.prompts.length;
     }
-    const onLine = harness === 'claude' ? (line: Buffer) => claudeLine(b, line, subagent, sessions)
+    const archive = !!options.archive;
+    const onLine = harness === 'claude' ? (line: Buffer) => claudeLine(b, line, subagent, sessions, archive)
       : harness === 'codex' ? (line: Buffer) => codexLine(b, line, codex)
       : (line: Buffer) => piLine(b, line);
     // One read buffer per thread, reused across files (it only grows for very long lines).
@@ -652,7 +712,7 @@ export function extractFile(file: string, harness: NativeHarness, options: Extra
         else if (buffer.length >= MAX_LINE) { skipping = true; base += filled; filled = 0; b.facts.malformed++; }
         else { const bigger = Buffer.allocUnsafe(buffer.length * 2); buffer.copy(bigger, 0, 0, filled); buffer = bigger; if (bigger.length <= 4 * CHUNK) sharedBuffer = bigger; }
       }
-      const n = fs.readSync(fd, buffer, filled, buffer.length - filled, position);
+      const n = zst ? zst.read(buffer, filled, buffer.length - filled) : fs.readSync(fd, buffer, filled, buffer.length - filled, position);
       position += n;
       const end = filled + n;
       let start = 0;
@@ -673,12 +733,13 @@ export function extractFile(file: string, harness: NativeHarness, options: Extra
       filled = end - start;
     }
     if (harness === 'codex') finishCodex(b, codex);
+    if (hashes) b.facts.copyHashes = hashes.result();
     if (harness === 'claude' && !subagent && sessions.size) b.facts.sessionIds = [...sessions];
     b.facts.size = stat.size;
     b.facts.mtimeMs = stat.mtimeMs;
     finishStory(b, harness, options, firstNew);
     delete b.facts.resume;
-    if (endsWithNewline && !b.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS) {
+    if (!zst && !options.archive && endsWithNewline && !b.facts.excluded && Date.now() - stat.mtimeMs < RESUME_RECENT_MS) {
       const events = new Float64Array(b.events.length * 4);
       b.events.forEach((e, i) => { events[i * 4] = e.at; events[i * 4 + 1] = e.tools; events[i * 4 + 2] = e.subs; events[i * 4 + 3] = e.weight; });
       const {itemPrompts: _items, responsePrompts: _responses, ...codexState} = codex;
@@ -691,11 +752,140 @@ export function extractFile(file: string, harness: NativeHarness, options: Extra
   }
 }
 
+const ZSTD_MAGIC = 0xfd2fb528;
+function headBytes(fd: number, max: number): Buffer {
+  const buffer = Buffer.alloc(max);
+  const n = fs.readSync(fd, buffer, 0, max, 0);
+  return buffer.subarray(0, n);
+}
+function isZstd(fd: number): boolean {
+  const head = headBytes(fd, 4);
+  return head.length === 4 && head.readUInt32LE(0) === ZSTD_MAGIC;
+}
+type ZlibWithZstd = typeof zlib & {zstdDecompressSync?: (buffer: Buffer) => Buffer; ZstdDecompress?: new () => ZstdEngine};
+/**
+ * The native handle of a zlib engine, driven synchronously the way zlib's own *Sync helpers drive it
+ * (lib/zlib.js processChunkSync), but kept open across input chunks. Feature-detected: without it,
+ * the file is decompressed whole.
+ */
+interface ZstdEngine {
+  _handle?: {writeSync?: (flush: number, input: Buffer, inOff: number, inLen: number, out: Buffer, outOff: number, outLen: number) => void} | null;
+  _writeState?: Uint32Array;
+  destroyed: boolean;
+  on(event: 'error', listener: () => void): unknown;
+  close(): void;
+}
+const ZSTD_INPUT = 1024 * 1024;
+const ZSTD_OUTPUT = 1024 * 1024;
+
+/** Sequential reader over the decompressed bytes of a zstd file. */
+interface ZstdStream {
+  read(target: Buffer, offset: number, length: number): number;
+  /** Up to `max` leading decompressed bytes, without consuming them. */
+  peek(max: number): Buffer;
+}
+
+/** Chunked decompressor (input chunk -> output buffers), or null when this Node cannot do it. */
+function chunkedZstd(): {step: (input: Buffer) => Buffer[]; close: () => void} | null {
+  const Engine = (zlib as ZlibWithZstd).ZstdDecompress;
+  if (zstdMode !== 'node' || !Engine) return null;
+  let engine: ZstdEngine;
+  try { engine = new Engine(); } catch { return null; }
+  const handle = engine._handle, state = engine._writeState;
+  if (!handle || typeof handle.writeSync !== 'function' || !(state instanceof Uint32Array)) { engine.close(); return null; }
+  engine.on('error', () => { /* reported through `destroyed` below */ });
+  const flush = zlib.constants.ZSTD_e_continue;
+  return {
+    step(input) {
+      const outs: Buffer[] = [];
+      let inOff = 0, availIn = input.length;
+      for (;;) {
+        const out = Buffer.allocUnsafe(ZSTD_OUTPUT);
+        handle.writeSync!(flush, input, inOff, availIn, out, 0, out.length);
+        if (engine.destroyed) throw new Error('zstd_corrupt');
+        const availOut = state[0]!, availInAfter = state[1]!;
+        if (out.length - availOut > 0) outs.push(out.subarray(0, out.length - availOut));
+        inOff += availIn - availInAfter;
+        availIn = availInAfter;
+        // A full output buffer means there is more to drain from this input.
+        if (availOut !== 0) break;
+      }
+      return outs;
+    },
+    close: () => engine.close(),
+  };
+}
+
+/**
+ * Streams a zstd file's decompressed bytes with bounded memory (1 MB of input per step). Falls back
+ * to whole-file decompression (zstd CLI, or a Node without the chunked engine).
+ */
+function zstdStream(fd: number, file: string, hashes: StreamHashes | null): ZstdStream {
+  zstdMode ??= zstdSupport();
+  const engine = chunkedZstd();
+  let pending: Buffer[] = [], inPos = 0, done = false;
+  const input = engine ? Buffer.allocUnsafe(ZSTD_INPUT) : null;
+  const emit = (out: Buffer) => { if (out.length) { pending.push(out); hashes?.push(out); } };
+  const fill = (): void => {
+    if (!engine) { emit(decompressZstd(file)); done = true; return; }
+    const n = fs.readSync(fd, input!, 0, ZSTD_INPUT, inPos);
+    inPos += n;
+    // Like zstdDecompressSync, a truncated final frame keeps what was decoded.
+    if (!n) { done = true; engine.close(); return; }
+    try { for (const out of engine.step(input!.subarray(0, n))) emit(out); } catch (error) { done = true; engine.close(); throw error; }
+  };
+  return {
+    read(target, offset, length) {
+      while (!pending.length && !done) fill();
+      let written = 0;
+      while (written < length && pending.length) {
+        const head = pending[0]!, n = Math.min(head.length, length - written);
+        head.copy(target, offset + written, 0, n);
+        written += n;
+        if (n === head.length) pending.shift(); else pending[0] = head.subarray(n);
+      }
+      return written;
+    },
+    peek(max) {
+      while (pending.reduce((x, p) => x + p.length, 0) < max && !done) fill();
+      const all = Buffer.concat(pending);
+      pending = all.length ? [all] : [];
+      return all.subarray(0, max);
+    },
+  };
+}
+/** Node ≥22.15 has zstd built in; otherwise the `zstd` CLI; otherwise a visible gap code. */
+export function zstdSupport(): 'node' | 'cli' | null {
+  if (typeof (zlib as ZlibWithZstd).zstdDecompressSync === 'function') return 'node';
+  try { execFileSync('zstd', ['--version'], {stdio: 'ignore', timeout: 5000}); return 'cli'; } catch { return null; }
+}
+let zstdMode: ReturnType<typeof zstdSupport> | undefined;
+export function decompressZstd(file: string): Buffer {
+  zstdMode ??= zstdSupport();
+  if (zstdMode === 'node') {
+    try { return (zlib as ZlibWithZstd).zstdDecompressSync!(fs.readFileSync(file)); } catch { throw new Error('zstd_corrupt'); }
+  }
+  if (zstdMode === 'cli') {
+    try { return execFileSync('zstd', ['-dcq', '--', file], {maxBuffer: 2 ** 32, stdio: ['ignore', 'pipe', 'ignore']}); } catch { throw new Error('zstd_corrupt'); }
+  }
+  throw new Error('zstd_unsupported');
+}
+/** Harness of an archived copy from its first records; null when unrecognised. */
+export function sniffHarness(head: Buffer): NativeHarness | null {
+  const firstEnd = head.indexOf(10);
+  const first = head.toString('utf8', 0, Math.min(firstEnd < 0 ? head.length : firstEnd, 4096));
+  if (first.includes('"session_meta"')) return 'codex';
+  if (/"type"\s*:\s*"session"/.test(first) && !first.includes('"sessionId"')) return 'pi';
+  const text = head.toString('latin1');
+  if (text.includes('"sessionId"') && /"type"\s*:\s*"(?:user|assistant|summary|system)"/.test(text)) return 'claude';
+  return null;
+}
+
 /** A builder positioned where `previous` stopped: copies of its lists, pending prompts and events. */
 function resumeBuilder(previous: SourceFacts, r: ResumeState, stat: fs.Stats): Builder {
   const facts: SourceFacts = {...previous, size: stat.size, mtimeMs: stat.mtimeMs, usage: [...previous.usage], prompts: previous.prompts.map(p => ({...p})),
     ...(previous.sessionIds ? {sessionIds: [...previous.sessionIds]} : {}),
-    ...(previous.story ? {story: {vocab: previous.story.vocab ? new Map(previous.story.vocab) : null, topics: previous.story.topics ? previous.story.topics.map(t => ({...t, words: new Map([...t.words].map(([w, c]) => [w, [c[0], c[1]] as [number, number]]))})) : null}} : {})};
+    ...(previous.story ? {story: {vocab: null, topics: null}} : {})};
   delete facts.resume;
   const b = makeBuilder(previous.file, previous.harness as NativeHarness, stat.size, stat.mtimeMs);
   b.facts = facts;
@@ -747,8 +937,8 @@ export interface HistoryEntry {
   q?: string;
 }
 
-/** Story word counters of history.jsonl, per Claude session. */
-export interface HistoryCounters {project: string | null; vocab: Map<string, number>; topics: Map<string, {night: number; day: number; words: Map<string, [number, number]>}>}
+/** Story word counters of history.jsonl, per Claude session, keyed by local date ('' = undated). */
+export interface HistoryCounters {project: string | null; vocab: Map<string, Map<string, number>>; topics: Map<string, {night: number; day: number; words: Map<string, [number, number]>}>}
 
 export interface HistoryData {
   entries: HistoryEntry[];
@@ -828,6 +1018,7 @@ export function parseHistory(raw: string, options: ExtractOptions = {}, into: Hi
     if (!line) continue;
     let r: Rec;
     try { r = JSON.parse(line) as Rec; } catch { continue; }
+    if (!isRec(r)) continue;
     const display = typeof r.display === 'string' ? r.display.trim() : '';
     if (!display) continue;
     const command = display.startsWith('/');
@@ -844,13 +1035,17 @@ export function parseHistory(raw: string, options: ExtractOptions = {}, into: Hi
       const key = entry.sessionId ?? '';
       let c = into.counters.get(key);
       if (!c) { c = {project: entry.project, vocab: new Map(), topics: new Map()}; into.counters.set(key, c); }
-      for (const w of vocabularyWords(text)) c.vocab.set(w, (c.vocab.get(w) ?? 0) + 1);
-      if (entry.at !== null) {
-        const {hour, month} = clock(entry.at);
+      const local = entry.at !== null ? clock(entry.at) : null;
+      const date = local?.day ?? '';
+      let v = c.vocab.get(date);
+      if (!v) { v = new Map(); c.vocab.set(date, v); }
+      for (const w of vocabularyWords(text)) v.set(w, (v.get(w) ?? 0) + 1);
+      if (local) {
+        const {hour} = local;
         const slot = hour < 5 ? 0 : hour >= 9 && hour < 19 ? 1 : -1;
         if (slot >= 0) {
-          let bag = c.topics.get(month);
-          if (!bag) { bag = {night: 0, day: 0, words: new Map()}; c.topics.set(month, bag); }
+          let bag = c.topics.get(date);
+          if (!bag) { bag = {night: 0, day: 0, words: new Map()}; c.topics.set(date, bag); }
           if (slot === 0) bag.night++; else bag.day++;
           for (const w of topicWords(text)) { let n = bag.words.get(w); if (!n) { n = [0, 0]; bag.words.set(w, n); } n[slot as 0 | 1]++; }
         }

@@ -166,14 +166,15 @@ function main(rawArgv: string[]): void {
   const audit = addGlobals(
     program
       .command('audit')
-      .description('count what Claude Code has already deleted, and what it deletes next')
+      .description('your year with coding agents: a Wrapped computed from local history')
       .option('--overview', 'open the terminal audit (the default)')
       .option('--tone <tone>', 'voice override: elegant,witty,chaotic,roast')
+      .option('--online', 'opt in: let a free hosted model (OpenCode Zen / TypeSafe Jev) polish story wording; sends aggregates and a few filtered quotes')
       .option('--legacy', 'use the existing retention audit')
       .option('--plain', 'print the new overview without interactive controls')
       .option('--no-motion', 'keep the new terminal view still')
       .option('--private', 'show project names in the new private explorer')
-      .option('--harness <list>', 'scope the overview to claude,codex,pi,opencode')
+      .option('--harness <list>', 'scope the overview to claude,codex,pi,opencode,cursor,gemini,copilot')
       .option('--project <path>', 'scope the overview to this project')
       .option('--since <when>', 'overview events on or after this date')
       .option('--until <when>', 'overview events on or before this date')

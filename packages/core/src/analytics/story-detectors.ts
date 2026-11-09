@@ -16,6 +16,7 @@ import type {StoryRow, StoryTable} from './story-table.js';
 import {ADDRESS, FLAG, TICS, TIC_PRIOR, has, isFWord, isSwearWord, maskLine} from './story-lexicon.js';
 import {HOUR_NAME, dayName, daysBetween, isoWeek, monthName} from './story-time.js';
 import {typoPairs, type WordSet} from './story-typos.js';
+import {modelLabel} from './model-names.js';
 
 export interface DetectorContext {
   table: StoryTable;
@@ -59,16 +60,7 @@ const clears = (value: number, guard: number) => (guard > 0 ? clamp(0.5 + 0.5 * 
 
 export const base = (p: string | null) => (p ? path.basename(p.replace(/\/+$/, '')) || p : '(unknown)');
 /** 'claude-opus-4-5-20251101' -> 'Opus 4.5'; 'gpt-6-sol' -> 'GPT-6 Sol'. */
-export function modelLabel(model: string | null): string {
-  if (!model) return '?';
-  const parts = model.replace(/^claude-/, '').replace(/-\d{8}$/, '').replace(/\[[^\]]*\]$/, '').split(/[-_]/).filter(Boolean);
-  const out: string[] = [];
-  for (const p of parts) {
-    if (/^\d+$/.test(p) && out.length && /\d$/.test(out[out.length - 1]!)) out[out.length - 1] += `.${p}`;
-    else out.push(p === 'gpt' ? 'GPT' : /^\d/.test(p) ? p : p[0]!.toUpperCase() + p.slice(1));
-  }
-  return out.join(' ').replace(/^GPT (\d)/, 'GPT-$1');
-}
+export {modelLabel} from './model-names.js';
 function shorten(q: string | null, max: number): string | null {
   if (!q) return null;
   if (q.length <= max) return q;

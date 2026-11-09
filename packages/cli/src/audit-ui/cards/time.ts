@@ -11,16 +11,16 @@ type Data<K extends DeckCard['kind']> = Extract<DeckCard, { kind: K }>['data'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 /** The 7×24 grid. Returns the drawn width. Also used (static, small) by the board. */
-export function drawHeatmap(s: Scene, grid: number[][], x: number, y: number, cellW: number, options: { t: number; labels?: boolean; peak?: [number, number] | null; axis?: boolean; tall?: boolean }): { w: number; busy: boolean } {
+export function drawHeatmap(s: Scene, grid: number[][], x: number, y: number, cellW: number, options: { t: number; labels?: boolean; peak?: [number, number] | null; axis?: boolean; tall?: boolean; short?: boolean }): { w: number; busy: boolean } {
   const { c } = s;
   const max = Math.max(1, ...grid.flat());
-  const labelW = options.labels === false ? 0 : 4;
+  const labelW = options.labels === false ? 0 : options.short ? 2 : 4;
   const t = options.t;
   let busy = false;
   const rowStep = options.tall ? 2 : 1;
   for (let d = 0; d < 7; d++) {
     const ry = y + d * rowStep;
-    if (options.labels !== false) c.text(x, ry, DAYS[d]!, { fg: d >= 5 ? C.slate : C.gray });
+    if (options.labels !== false) c.text(x, ry, options.short ? DAYS[d]![0]! : DAYS[d]!, { fg: d >= 5 ? C.slate : C.gray });
     for (let h = 0; h < 24; h++) {
       const a = seg(t, 120 + h * 38, 260);
       busy ||= a < 1;

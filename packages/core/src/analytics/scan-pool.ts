@@ -10,15 +10,20 @@ import {extractFile, stripText, type NativeHarness, type SourceFacts} from './ex
 
 export interface ScanJob {
   file: string;
-  harness: NativeHarness;
+  /** 'auto': a compressed archive copy whose harness is read from its content. */
+  harness: NativeHarness | 'auto';
+  /** A potsherd archive copy. */
+  archive?: boolean;
   /** Bytes, used to schedule the largest files first. */
   size: number;
   /** Time zone for story counters. */
   timezone?: string;
+  /** Compressed rollout: offsets to hash in the decompressed bytes (copy verification). */
+  checks?: number[];
 }
 
 /** Facts as they leave a reader: story fields kept, prompt text dropped. */
-export const readFacts = (job: ScanJob): SourceFacts => stripText(extractFile(job.file, job.harness, {timezone: job.timezone}));
+export const readFacts = (job: ScanJob): SourceFacts => stripText(extractFile(job.file, job.harness, {timezone: job.timezone, ...(job.archive ? {archive: true} : {}), ...(job.checks?.length ? {checks: job.checks} : {})}));
 
 export type ScanResult = {job: ScanJob; facts: SourceFacts} | {job: ScanJob; error: string};
 
@@ -62,7 +67,9 @@ export function createScanPool(entry: URL | string, threads = defaultThreads()):
   return {
     async scan(jobs, onResult, signal) {
       if (closed) throw new Error('scan_pool_closed');
-      const queue = [...jobs].sort((a, b) => b.size - a.size);
+      // Largest first, so the slowest files never start last; a compressed rollout decompresses to ~2x its size.
+      const cost = (j: ScanJob) => (j.file.endsWith('.zst') ? 2 * j.size : j.size);
+      const queue = [...jobs].sort((a, b) => cost(b) - cost(a));
       if (!queue.length) return;
       start(Math.min(threads, queue.length));
       await new Promise<void>(resolve => {
