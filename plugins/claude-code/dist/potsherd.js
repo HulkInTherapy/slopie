@@ -18860,7 +18860,7 @@ let lets get got make made please tell show give went one ones also out up down 
           lines.push(`    t${r3.n} ${rl}${r3.tool ? " " + r3.tool : ""} ${shortTs(r3.ts)}: ${snippet(r3.body, ts)}`);
           lines.push(`    \u2192 ${this.readCall(s.id, Math.max(1, r3.n - 2), r3.n + 4)}`);
         });
-        const newest2 = [...new Set(cand.map((r3) => r3.skey))].map((k2) => this.sessions.get(k2)).filter((s) => s && s.parent_kind !== "subagent").sort((a, b2) => (b2.end ?? "") < (a.end ?? "") ? -1 : (b2.end ?? "") > (a.end ?? "") ? 1 : 0).slice(0, 3);
+        const newest2 = [...new Set(cand.slice(0, 20).map((r3) => r3.skey))].map((k2) => this.sessions.get(k2)).filter((s) => s && s.parent_kind !== "subagent").sort((a, b2) => (b2.end ?? "") < (a.end ?? "") ? -1 : (b2.end ?? "") > (a.end ?? "") ? 1 : 0).slice(0, 3);
         if (newest2.length > 1)
           lines.push(`Newest threads with these words: ${newest2.map((s) => `${s.id} (${s.harness}, last active ${(s.end ?? "?").slice(0, 10)}${(s.title ?? "").trim() ? `, "${(s.title ?? "").trim().slice(0, 50)}"` : ""})`).join("; ")}.`);
         const threadsAll = new Set(cand.map((r3) => r3.skey)).size, shown = new Set(out.map((r3) => r3.skey)).size;
