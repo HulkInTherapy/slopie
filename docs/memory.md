@@ -63,6 +63,8 @@ The Claude Code and Codex plugins carry the same skill and hook. Two more comman
 
 After a resume or compaction, the session-start hook prints at most 10 lines: this session's id, its record path, and the exact `slopie read <id> --from -30` and `slopie search … --session <id>` commands. It is a pointer, not a summary. The hook never waits on a sync: it points at the records as they are and refreshes them in a detached process (if this session has no record yet, it waits up to 3 seconds for one, `SLOPIE_HOOK_WAIT_MS`).
 
+The note ends with a one-line answer protocol (R8): cite the thread where a fact was produced, not one that pasted, relayed or re-read it; for a current or final value, read past the first hit and check later threads; for which-threads questions, list and check every candidate, counting dispatchers and long threads. In R8 it was worth +1.2 pp for Haiku (97.9% vs 96.7% over 522 development attempts; with the CLI 97.7% vs 95.0%) and was neutral for Sonnet.
+
 ## CLI and MCP
 
 | command | MCP tool | what it does |
@@ -76,6 +78,8 @@ After a resume or compaction, the session-start hook prints at most 10 lines: th
 - **Subagent hits.** Every hit on a subagent prints `subagent of <parent-id>`.
 - **Delegated threads.** A thread another thread dispatched through a `delegate_task` tool (T3 Code orchestration) has `parent: delegated by <id>`, and the dispatcher lists it under `children`. Both sides are linked by the dispatched task text. Hits on such threads print `delegated by <id>`.
 - **Backlinks.** When a later session's user or assistant names a session by id (full or its first 8 hex characters), that session's record carries `## mentioned later in: <id> (<harness>, <date>)` as its second-last header line and its last line, so an agent reading where a thread ended sees where the work went next.
+- **Relayed results.** When a dispatcher receives a delegated thread's result ("Delegated task … (<title>) [completed]: …"), that turn in its record ends its first line with `[from delegated thread <id> (<harness>)]`, so an agent that finds a finding there can cite the thread that produced it.
+- **INDEX `later` column.** The backlinks (later threads that name this one) also sit on the session's INDEX.tsv row, where agents look first.
 - **Activity dates.** INDEX.tsv's last column, `active`, lists every UTC date with a turn, so `rg 2026-07-14 INDEX.tsv` finds threads active that day, including long threads that started earlier. Each record's modification time is its session's last activity, so `rg -l --sortr modified <term>` lists the most recently active threads first. `slopie search` ends with the newest threads among its best candidates.
 - **MCP.** `slopie mcp` serves the four tools over stdio for harnesses without a shell. Their names, descriptions and schemas are the evaluated ones, verbatim.
 
