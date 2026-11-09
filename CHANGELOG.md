@@ -2,6 +2,16 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
+## 1.8.7 — Readable
+
+- **Bigger type.** Every card has one hero number in the display face, secondary numbers in the thinner stroke face, and labels set as small uppercase captions above bold values. On big terminals (170×50 and up) the hero doubles in size.
+- **More colour.** The indigo accent now comes in tints: eyebrows, key figures, chart fills, heatmaps and chips use it, so every card has a clear focal point. Body text is a lighter grey; the dim grey is kept for labels and footnotes.
+- **Less text.** Each card has one short headline and at most one line under it. Detail moved into label/value rows.
+- **Charts in the accent.** Bars, heatmaps and meters are drawn in indigo tints with the one point that matters in the full accent. Meters are solid one-row bars.
+- **Layouts that fill large terminals.** Cards lay out in a content box that grows with the terminal (up to 176×52) and is centred, with taller charts and more air.
+- **A new awards podium.** Gold, silver and bronze stand on a podium with their rank in the display face; ranks 4–6 sit in one row beneath. The board's facts grid gets proper spacing.
+- Same numbers, same data: this release changes only how they look.
+
 ## 1.8.6 — New look
 
 - **A new look for `slopie audit`.**

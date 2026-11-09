@@ -147,7 +147,8 @@ export function awardsBody(k: K, data: Data<'awards'>, r: Rect): void {
     const gold = rank === 0;
     const y = y0 - (gold ? lift : 0);
     const a = fade(k, 150 + rank * 220, 400);
-    const metal = metalOf(award.tier, rank);
+    // The chip follows the displayed rank: 1 gold, 2 silver, 3 bronze.
+    const metal: Metal = rank === 0 ? 'gold' : rank === 1 ? 'silver' : 'bronze';
     if (gold) rule(k, x, y - 1, colW, tk.accent, a);
     let cy = y + 1;
     const n = String(rank + 1);
@@ -171,7 +172,8 @@ export function awardsBody(k: K, data: Data<'awards'>, r: Rect): void {
     const rw = Math.floor((r.w - gap * 2) / 3);
     rest.forEach((award, i) => {
       const x = r.x + i * (rw + gap);
-      const cw = metalChip(k, x, ry + 1, metalOf(award.tier, i + 3), ra);
+      // Ranks 4–6: a small numeral, no tier chip.
+      const cw = txt(k, x, ry + 1, String(i + 4), tk.text3, { bold: true, a: ra }) + 1;
       txt(k, x + cw + 1, ry + 1, award.title, tk.text, { bold: true, a: ra }, rw - cw - 1);
       const value = s.share && award.publicValue ? award.publicValue : award.value;
       txt(k, x + cw + 1, ry + 2, value, tk.text2, { a: ra }, rw - cw - 1);

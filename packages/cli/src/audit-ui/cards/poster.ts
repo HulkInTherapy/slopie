@@ -61,10 +61,11 @@ interface Piece { h: number; draw: (y: number) => void; rule?: boolean; /** Want
 interface Plan { label: boolean; bigTitle: boolean; tagline: boolean; bigPrice: boolean; day: boolean; diagrams: boolean; nFacts: number; factGap: boolean; awards: boolean; memory: boolean; ticker: boolean }
 
 const STEPS: ((p: Plan) => void)[] = [
-  p => { p.factGap = false; },
   p => { p.memory = false; },
-  p => { p.label = false; },
+  // The mini-bars go before the spacing between facts.
   p => { p.diagrams = false; },
+  p => { p.factGap = false; },
+  p => { p.label = false; },
   p => { p.day = false; },
   p => { p.tagline = false; },
   p => { p.awards = false; },
@@ -87,7 +88,7 @@ export function posterBody(s: Scene, d: BoardSummary): boolean {
   let pieces = build(k, d, plan);
   for (const step of STEPS) { if (height(pieces, k.L) <= avail) break; step(plan); pieces = build(k, d, plan); }
   // Then win back what still fits, most important first.
-  const RESTORE: (keyof Plan)[] = ['bigTitle', 'ticker', 'bigPrice', 'tagline', 'awards', 'day', 'diagrams', 'factGap', 'label', 'memory'];
+  const RESTORE: (keyof Plan)[] = ['bigTitle', 'ticker', 'bigPrice', 'tagline', 'awards', 'day', 'factGap', 'diagrams', 'label', 'memory'];
   for (const key of RESTORE) {
     if (plan[key] === true || (key === 'ticker' && (!d.sinceLast || s.share))) continue;
     const next = { ...plan, [key]: true } as Plan;
@@ -159,7 +160,7 @@ function identity(k: K, d: BoardSummary, p: Plan): Piece[] {
   const out: Piece[] = [];
   const title = d.archetype ?? 'Your year with agents';
   if (p.label) out.push({ h: 1, draw: y => label(k, mx, y, 'this year you’ve been', 1, Infinity, tk.accentHi) });
-  const plan = p.bigTitle ? planTitle(k, title, iw, 1) : { lines: [title], big: false, h: 1, w: textWidth(title), face: tk.face };
+  const plan = p.bigTitle ? planTitle(k, title, iw, 1, heroScale(k)) : { lines: [title], big: false, h: 1, w: textWidth(title), face: tk.face };
   out.push({ h: plan.h, draw: y => drawTitle(k, mx, y, plan, tk.text) });
   const tag = p.tagline && d.tagline && (!k.s.share || d.taglinePublic) ? `“${d.tagline}”` : null;
   const tier = d.tier ? TIER[d.tier]! : null;
@@ -186,7 +187,9 @@ function heroBand(k: K, d: BoardSummary, p: Plan): Piece {
   const { tk, mx, iw, L } = k;
   const price = d.heroes.find(h => h.label === 'at API prices');
   const half = Math.floor(iw / 2);
-  const fit = price && k.uni ? fitDisplay(price.value, (L ? (k.s.big ? 60 : 40) : half) - 2, { face: tk.face, tall: L, currency: tk.accentHi, scale: heroScale(k) }) : null;
+  // The price doubles only when the title could not (one ×2 element per poster).
+  const titleX2 = k.s.big && planTitle(k, d.archetype ?? 'Your year with agents', iw, 1, 2).scale === 2;
+  const fit = price && k.uni ? fitDisplay(price.value, (L ? (k.s.big ? 64 : 40) : half) - 2, { face: tk.face, tall: L, currency: tk.accentHi, scale: titleX2 ? 1 : heroScale(k) }) : null;
   const opts = fit ?? { face: tk.face };
   const leftW = L ? Math.max(40, (fit ? displayWidth(price!.value, fit) : 0) + 6) : Math.max(30, Math.min(half, (fit ? displayWidth(price!.value, fit) : 26) + 4));
   const big = p.bigPrice && !!fit;
@@ -291,7 +294,8 @@ function factsPiece(k: K, d: BoardSummary, p: Plan): (Piece & { shown: FunFact[]
   // Spaced: label, blank, sentence, blank, bar; two blank rows between rows of facts.
   const air = p.factGap ? 1 : 0;
   const cellH = 2 + air + (p.diagrams ? 1 + air : 0);
-  const rowGap = p.factGap ? 2 : 0;
+  // A label never touches the fact above it: at least one blank row between rows of facts.
+  const rowGap = p.factGap ? 2 : 1;
   return {
     shown: picks.map(x => x.f),
     h: rows * cellH + (rows - 1) * rowGap,
@@ -357,7 +361,7 @@ function awardsPiece(k: K, d: BoardSummary, shown: FunFact[]): Piece | null {
   const cols = iw >= 100 ? 3 : 2;
   const gap = 3;
   const colW = Math.floor((iw - gap * (cols - 1)) / cols);
-  const list = d.awards.filter(a => !a.id || !covered.has(a.id)).filter(a => textWidth(a.title) + textWidth(a.tier) + 3 <= colW).slice(0, cols);
+  const list = d.awards.filter(a => !a.id || !covered.has(a.id)).filter(a => textWidth(a.title) + 9 <= colW).slice(0, cols);
   if (!list.length) return null;
   return {
     h: 2,
@@ -365,7 +369,9 @@ function awardsPiece(k: K, d: BoardSummary, shown: FunFact[]): Piece | null {
       const x = mx + i * (colW + gap);
       const value = k.s.share ? aw.publicValue : aw.value;
       const sub = (k.s.share ? aw.publicSub : aw.sub) ?? '';
-      const cw = chip(k, x, y, aw.tier.toUpperCase(), aw.tier === 'gold' ? tk.accent : aw.tier === 'silver' ? tk.bar : tk.barSoft, aw.tier === 'gold' ? tk.bg : tk.text) + 1;
+      // A chip only for the rank-1 / rank-2 awards (GOLD / SILVER); others carry none.
+      const rank = d.awards.indexOf(aw);
+      const cw = rank === 0 ? chip(k, x, y, 'GOLD', tk.accent, tk.bg) + 1 : rank === 1 ? chip(k, x, y, 'SILVER', tk.bar, tk.text) + 1 : 0;
       txt(k, x + cw, y, aw.title, tk.text, { bold: true }, colW - cw);
       const line = sub && textWidth(`${value}  ·  ${sub}`) <= colW - cw ? `${value}  ·  ${sub}` : value;
       if (textWidth(line) <= colW - cw) txt(k, x + cw, y + 1, line, tk.text2);

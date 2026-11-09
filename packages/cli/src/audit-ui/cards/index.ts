@@ -15,11 +15,15 @@ import { erasBody, spendBody } from './spend.js';
 import { clockBody, fuseBody, moodBody } from './time.js';
 import { coldOpenBody, mannersBody, talkBody, thenNowBody } from './words.js';
 
-/** The content box: cards are laid out in at most 132×44 cells, centred on bigger terminals. */
-export const BOX_W = 132, BOX_H = 44;
+/** The content box: up to 132×44 the terminal itself; bigger terminals get min(cols−8, 176) × min(rows−4, 52), centred. */
+export const BOX_W = 132, BOX_H = 44, BIG_W = 176, BIG_H = 52;
+
+export function boxFor(w: number, h: number): [number, number] {
+  return [Math.max(Math.min(w, BOX_W), Math.min(w - 8, BIG_W)), Math.max(Math.min(h, BOX_H), Math.min(h - 4, BIG_H))];
+}
 
 export function renderCard(s: Scene, card: DeckCard): boolean {
-  const bw = Math.min(s.w, BOX_W), bh = Math.min(s.h, BOX_H);
+  const [bw, bh] = boxFor(s.w, s.h);
   if (bw === s.w && bh === s.h) return drawCard(s, card);
   const sub = new Canvas(bw, bh, s.c.base);
   const busy = drawCard({ ...s, c: sub, w: bw, h: bh, tier: tierFor(bw, bh) ?? s.tier, big: s.w >= 170 && s.h >= 50 }, card);

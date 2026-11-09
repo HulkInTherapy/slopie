@@ -65,9 +65,15 @@ describe('final board (personality poster)', () => {
     // Each fact under its own small label, on one grid; no tiles, no boxes.
     for (const label of CORE_LABELS) expect(text).toContain(label);
     expect(text).not.toMatch(/[╭╮╰╯┌┐└┘]/);
-    // Diagrams: the manners split, the arc sparkline, the 24h strip with its axis.
-    expect(text).toMatch(/22 [█▌]+ 131/);
-    expect(text).toMatch(/Dec [▁▂▃▄▅▆▇█]{11,22} Oct/);
+    // At 120×40 the mini-bars go before the spacing: a blank row between each fact and the next label.
+    expect(text).not.toMatch(/22 [█▌]+ 131/);
+    const lines = text.split('\n');
+    const sit = lines.findIndex(l => l.includes('LONGEST SIT'));
+    expect(lines[sit - 1]!.trim()).toBe('');
+    // With room (the 176×52 box of a 200×55 terminal) the diagrams come back.
+    const roomy = boardText(storySnapshot(), 200, 55);
+    expect(roomy).toMatch(/22 [█▌]+ 131/);
+    expect(roomy).toMatch(/Dec [▁▂▃▄▅▆▇█]{11,22} Oct/);
     expect(text).toContain('11 PM angriest');
     expect(text).toContain('9 AM calmest');
     // The hour axis sits under the strip, each label under its own hour column.
