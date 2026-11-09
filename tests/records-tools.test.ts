@@ -201,7 +201,10 @@ describe('the agent note', () => {
     const R5_END = "Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) and read ranges with sed -n 'a,bp' file. Times are UTC.";
     const R7_END = R5_END + " A record's modification time is its last activity, so rg -l --sortr modified 'term' {RECORDS} lists the most recently active threads first: decisions often change in a later thread or the other harness.";
     expect(NOTE_B_TEMPLATE).toContain(R7_END);
-    const r5Now = NOTE_B_TEMPLATE.split(R7_INDEX).join(R5_INDEX).split(R7_SUB).join(R5_SUB).split(R7_END).join(R5_END);
+    const R5_HDR = 'Header lines start with "## " (session, project, title, time, parent, children, raw source paths).';
+    const R7_HDR = 'Header lines start with "## " (session, project, title, time, parent, children, later threads that mention it, raw source paths).';
+    expect(NOTE_B_TEMPLATE).toContain(R7_HDR);
+    const r5Now = NOTE_B_TEMPLATE.split(R7_INDEX).join(R5_INDEX).split(R7_SUB).join(R5_SUB).split(R7_END).join(R5_END).split(R7_HDR).join(R5_HDR);
     expect(r5Now.split('{RECORDS}').join('{DATA}/records')).toBe(r5.NOTE_B_template);
     const note = agentNote('/records-root');
     expect(note).toBe(NOTE_B_TEMPLATE.split('{RECORDS}').join('/records-root') + '\n' + CLI_LINE);

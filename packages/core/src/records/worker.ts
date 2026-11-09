@@ -6,6 +6,7 @@ import {Worker, parentPort} from 'node:worker_threads';
 import {readSession, type Harness} from '../sources/sessions.js';
 import {recSession, type RecSession} from './format.js';
 import {delegOf, type Deleg} from './deleg.js';
+import {refsOf} from './refs.js';
 
 export interface ParseJob {
   file: string;
@@ -17,7 +18,7 @@ export interface ParseJob {
   sidecar: boolean;
 }
 
-export type ParseResult = {file: string; status: 'ok'; session: RecSession; deleg?: Deleg} | {file: string; status: 'none'} | {file: string; status: 'err'; err: string};
+export type ParseResult = {file: string; status: 'ok'; session: RecSession; deleg?: Deleg; refs?: string[]} | {file: string; status: 'none'} | {file: string; status: 'err'; err: string};
 
 export function parseJob(job: ParseJob): ParseResult {
   try {
@@ -25,7 +26,7 @@ export function parseJob(job: ParseJob): ParseResult {
     const lim = job.sidecar ? {output: 30000} : {};
     const s = readSession(job.file, harness, job.sub, lim);
     if (!s || !s.id) return {file: job.file, status: 'none'};
-    return {file: job.file, status: 'ok', session: recSession(s, job.sidecar), deleg: delegOf(s)};
+    return {file: job.file, status: 'ok', session: recSession(s, job.sidecar), deleg: delegOf(s), refs: refsOf(s)};
   } catch (e) {
     return {file: job.file, status: 'err', err: `${job.file}: ${e instanceof Error ? e.message : String(e)}`.slice(0, 500)};
   }

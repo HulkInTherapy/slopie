@@ -25,13 +25,14 @@ import type {AuditOverviewOptions} from '../analytics/contracts.js';
 import {ARCHIVE_MARK, INDEX_HEADER, fmtTs, indexLine, recTurn, lastAssistant, firstUser, recordRelPath, render, renderSidecar, sidFile, type RecSession, type RecTurn} from './format.js';
 import {runJobs, type ParseJob, type ParseResult} from './worker.js';
 import {delegEdges, type Deleg} from './deleg.js';
+import {backlinks, type Later} from './refs.js';
 import {RecordIndex, parseRecordText} from './index-db.js';
 
 /** Bump when the rendered format changes: every record is rewritten once. */
 export const FORMAT_VERSION = 3;
 const STATE_VERSION = 1;
 /** Bumped when parsing extracts new metadata (2: delegation hashes): every source is parsed again, kept records stay. */
-const PARSE_VERSION = 2;
+const PARSE_VERSION = 3;
 /** Turns this long after a Codex import are new work, not the replayed copy. */
 const IMPORT_SLACK_MS = 10 * 60 * 1000;
 
@@ -92,6 +93,8 @@ interface SourceState {
   project?: string | null;
   /** Delegation hashes (R7, records/deleg.ts). */
   deleg?: Deleg;
+  /** Session-id prefixes named in USER/ASSISTANT text (R7, records/refs.ts). */
+  refs?: string[];
 }
 
 interface SessionState {
@@ -148,6 +151,8 @@ interface Merged {
   codexTitle?: string | null;
   /** Continued Codex import: only turns after this time are its own. */
   importCut?: string;
+  /** Later sessions that name this one (records/refs.ts). */
+  later?: Later[];
   /** Prompt-only turns; `rec` is a turn carried over from the previous record as written. */
   history?: {ts: string | null; text: string; ref: string; rec?: RecTurn}[];
   sources: string[];
@@ -462,6 +467,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
         const s = r.session;
         Object.assign(base, {id: s.id, parent: s.parent, parentKind: s.parentKind, nTurns: s.turns.length, start: s.start, end: s.end, project: s.project});
         if (r.deleg) base.deleg = r.deleg;
+        if (r.refs) base.refs = r.refs;
       }
       next.sources[m.file] = base;
     }
@@ -528,6 +534,10 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   for (const [child, by] of delegEdges(sessions.map(b => ({id: b.id, start: b.start, parent: b.parent, deleg: b.best ? next.sources[b.best]?.deleg : undefined})))) {
     const b = sessions.find(x => x.id === child && !x.parent);
     if (b) { b.parent = by; b.parentKind = 'delegated'; }
+  }
+  // Backlinks: later sessions that name this one by id.
+  for (const [id, l] of backlinks(sessions.map(b => ({id: b.id, harness: b.harness, start: b.start, parentKind: b.parentKind, refs: b.best ? next.sources[b.best]?.refs : undefined})))) {
+    for (const b of sessions) if (b.id === id) b.later = l;
   }
   // Sessions whose sources have all gone keep their records (unless forgotten / ignored).
   const present = new Set(sessions.map(s => s.key));
@@ -621,7 +631,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const indexed = index ? index.keys() : new Map<string, string>();
   const needParse: {s: Merged; sig: string}[] = [];
   const sigOf = (s: Merged) => hash([FORMAT_VERSION, sidecar, s.best, s.best ? next.sources[s.best]?.size : 0, s.best ? next.sources[s.best]?.mtimeMs : 0, s.nTurns, s.sources, s.codexTitle ?? null,
-    s.parent, s.parentKind, (kids.get(s.id) ?? []).map(c => [c.id, c.kind]), s.archiveOnly, s.history ? s.history.length : -1, s.importCut ?? null]);
+    s.parent, s.parentKind, (kids.get(s.id) ?? []).map(c => [c.id, c.kind]), s.archiveOnly, s.history ? s.history.length : -1, s.importCut ?? null, (s.later ?? []).map(x => x.id)]);
   const writeOne = (s: Merged, rec: RecSession, sig: string) => {
     rec.parent = s.parent; rec.parentKind = s.parentKind;
     if (s.importCut) {
@@ -633,7 +643,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     const rel = canonicalRel(recordRelPath(rec));
     const file = path.join(dir, rel);
     mkdirPrivate(path.dirname(file), dir);
-    const text = render(rec, {children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly});
+    const text = render(rec, {children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly, later: s.later});
     writeAtomic(file, text);
     // The record's mtime is the session's last activity, so `ls -t` / `rg --sortr modified` list threads newest first.
     const last = Date.parse(rec.end ?? rec.start ?? '');

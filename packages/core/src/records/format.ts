@@ -96,6 +96,8 @@ export function turnBody(t: RecTurn): string {
 
 export interface Header {
   children: readonly {id: string; kind: string}[];
+  /** Later sessions that name this one (records/refs.ts). */
+  later?: readonly {id: string; harness: string; start: string}[];
   sources: readonly string[];
   archiveOnly: boolean;
 }
@@ -111,6 +113,8 @@ export function render(s: RecSession, h: Header): string {
   out.push(`## time: ${s.start || '?'} -> ${s.end || '?'}   turns: ${s.turns.length}`);
   out.push(`## parent: ${s.parent ? relation(s.parentKind, s.parent) : 'none'}`);
   out.push(`## children: ${kids || 'none'}`);
+  const later = h.later?.length ? `## mentioned later in: ${h.later.map(x => `${x.id} (${x.harness}, ${x.start.slice(0, 10)})`).join(', ')}` : null;
+  if (later) out.push(later);
   out.push(`## raw: ${h.sources.join(' | ')}` + (h.archiveOnly ? '   [deleted from harness; recovered from .potsherd archive]' : ''));
   s.turns.forEach((t, i) => {
     const tag = `t${i + 1}`;
@@ -127,6 +131,7 @@ export function render(s: RecSession, h: Header): string {
     out.push(`${tag} ${t.role} ${fmtTs(t.ts)} | ${lines[0]}`);
     for (const l of lines.slice(1)) out.push(`${tag} | ${l}`);
   });
+  if (later) out.push(later);
   return out.join('\n') + '\n';
 }
 

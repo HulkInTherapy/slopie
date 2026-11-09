@@ -9,6 +9,8 @@ import { parseRecordText } from '../packages/core/src/records/index-db.js';
 import { Engine } from '../packages/core/src/records/engine.js';
 import { activeDays } from '../packages/core/src/records/format.js';
 import { delegEdges, delegKey, delegOf } from '../packages/core/src/records/deleg.js';
+import { backlinks, refsOf } from '../packages/core/src/records/refs.js';
+import { render } from '../packages/core/src/records/format.js';
 import { claudeSession, IDS, makeFixture, NEEDLE, PROJECT, syncOptions, type Fixture } from './records-fixture.js';
 
 const made: Fixture[] = [];
@@ -305,5 +307,34 @@ describe('Codex imports of Claude sessions (R7)', () => {
     expect(text).toContain(`## parent: import of ${IDS.claude}`);
     expect(text).toContain('Use: missing sock found');
     expect(text).not.toContain('copied claude answer');
+  });
+});
+
+describe('backlinks (R7)', () => {
+  it('links an earlier session to later sessions whose user or assistant names it', () => {
+    const refs = refsOf({turns: [
+      {role: 'USER', ts: null, text: 'continue Codex thread aaaa1111 and also bbbb2222-2222-2222-2222-222222222222', ref: 'x:1'},
+      {role: 'TOOL', ts: null, tool: 'Bash', text: 'cat dddddddd.log', output: 'eeeeeeee', ref: 'x:2'},
+    ]});
+    expect(refs).toEqual(['aaaa1111', 'bbbb2222']);
+    const l = backlinks([
+      {id: 'aaaa1111-1111-1111-1111-111111111111', harness: 'codex', start: '2026-10-07T00:00:00Z', parentKind: null},
+      {id: 'bbbb2222-2222-2222-2222-222222222222', harness: 'claude', start: '2026-11-09T00:00:00Z', parentKind: null},
+      {id: 'cccc3333-3333-3333-3333-333333333333', harness: 'claude', start: '2026-10-08T19:00:00Z', parentKind: null, refs},
+    ]);
+    expect([...l.keys()]).toEqual(['aaaa1111-1111-1111-1111-111111111111']);  // bbbb2222 started later: not a backlink
+    expect(l.get('aaaa1111-1111-1111-1111-111111111111')).toEqual([{id: 'cccc3333-3333-3333-3333-333333333333', harness: 'claude', start: '2026-10-08T19:00:00Z'}]);
+  });
+
+  it('renders the backlink at the top and the end, and the parser reads every relation form back', () => {
+    for (const [kind, label] of [['delegated', 'delegated by p-1'], ['import', 'import of p-1'], ['subagent', 'subagent of p-1'], ['fork', 'fork of p-1']] as const) {
+      const text = render({harness: 'codex', id: 'c-1', project: '/w', title: 't', start: '2026-10-07T00:00:00Z', end: '2026-10-07T01:00:00Z', parent: 'p-1', parentKind: kind,
+        turns: [{role: 'USER', ts: '2026-10-07T00:00:00Z', text: 'hi'}]}, {children: [], sources: ['/raw'], archiveOnly: false, later: [{id: 'l-1', harness: 'claude', start: '2026-10-08T19:00:00Z'}]});
+      expect(text).toContain(`## parent: ${label}`);
+      expect(text.trimEnd().split('\n').at(-1)).toBe('## mentioned later in: l-1 (claude, 2026-10-08)');
+      const back = parseRecordText(text)!;
+      expect([back.session.parent, back.session.parentKind]).toEqual(['p-1', kind]);
+      expect(back.session.turns.length).toBe(1);
+    }
   });
 });

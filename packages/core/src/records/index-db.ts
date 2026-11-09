@@ -160,7 +160,10 @@ export function parseRecordText(text: string): {session: RecSession; header: {ch
   if (!sess) return null;
   const [harness, ...idParts] = sess.split(':');
   const time = /^(.*?) -> (.*?)\s+turns: \d+$/.exec(h['time'] ?? '');
-  const parentM = /^(.*) of (.*)$/.exec(h['parent'] ?? '');
+  // "subagent of <id>", "fork of <id>", "delegated by <id>", "import of <id> (…)" (format.ts relation()).
+  const pr = h['parent'] ?? '';
+  const dm = /^delegated by (\S+)/.exec(pr), km = /^(\S+) of (\S+)/.exec(pr);
+  const parentM: [string, string, string] | null = dm ? ['', 'delegated', dm[1]!] : km && pr !== 'none' ? ['', km[1]!, km[2]!] : null;
   const turns: (RecTurn & {lines: string[]; outs: string[]})[] = [];
   let lastDate = '';
   for (; i < lines.length; i++) {
