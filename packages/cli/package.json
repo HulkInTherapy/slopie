@@ -1,6 +1,6 @@
 {
   "name": "slopie",
-  "version": "1.8.5",
+  "version": "1.9.0",
   "description": "Slopie: audit your coding-agent history, and keep every session as plain-text records your agents can search.",
   "type": "module",
   "license": "MIT",
