@@ -16,6 +16,9 @@ import zlib from "node:zlib";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
+// packages/core/src/redact.ts
+import { createHash } from "node:crypto";
+
 // packages/core/src/theme.ts
 var ANSI_RE = new RegExp("\\u001b\\[[0-9;]*m", "g");
 
@@ -34,6 +37,12 @@ function shannonEntropy(s) {
 }
 var ENTROPY_MIN_LENGTH = 20;
 var ENTROPY_THRESHOLD = 4.5;
+var ALLOW_SPANS = [
+  // data: URIs — `data:image/png;base64,iVBORw0KGgo…`
+  /\bdata:[a-zA-Z0-9!#$&^_.+-]*(?:\/[a-zA-Z0-9!#$&^_.+-]*)?(?:;[a-zA-Z0-9-]+=[^;,\s]*)*;base64,[A-Za-z0-9+/=]{20,}(?:\s+[A-Za-z0-9+/=]{20,})*/g,
+  // Subresource Integrity — `integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9…"`
+  /\bsha(?:256|384|512)-[A-Za-z0-9+/]{20,}={0,3}/g
+];
 var UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 var HEX_RE = /^[0-9a-fA-F]+$/;
 var NUMERIC_RE = /^[0-9_+-]+$/;
@@ -298,6 +307,21 @@ var RULES = [
     { group: 1 }
   ),
   regexRule(
+    // Tavily search API keys (`tvly-` / `tvly-dev-`). Explicit, not left to the
+    // entropy rule: a 30-character key measured 4.39 bits and slipped under 4.5.
+    "tavily-api-key",
+    "tavily",
+    "slopie 1.9.1, in the shape of gitleaks vendor rules (MIT)",
+    /\btvly-(?:dev-)?[A-Za-z0-9_-]{16,}/g
+  ),
+  regexRule(
+    // Telegram bot tokens: `<bot id>:AA<base64url>`.
+    "telegram-bot-token",
+    "telegram",
+    "gitleaks telegram-bot-api-token (MIT)",
+    /\b\d{8,12}:AA[A-Za-z0-9_-]{30,50}\b/g
+  ),
+  regexRule(
     // gitleaks `gcp-api-key`; secretlint-rule-gcp `GCPApiKey`.
     "gcp-api-key",
     "gcp",
@@ -413,6 +437,10 @@ var RULES = [
 ];
 
 // packages/core/src/redact-elide.ts
+function emptyElisions() {
+  return { binaryParts: 0, charsElided: 0 };
+}
+var MIN_PAYLOAD = 512;
 var BASE64_MAGIC = [
   ["iVBORw0KGgo", "image/png", "89 50 4E 47 0D 0A 1A 0A"],
   ["/9j/", "image/jpeg", "FF D8 FF (JFIF/Exif SOI)"],
@@ -443,16 +471,142 @@ var CONTENT_BLOCK = new RegExp(
   `"(?:data|image_data|b64_json|base64)"\\s*:\\s*"(${B64_BODY})"`,
   "g"
 );
+var MEDIA_HINT = /"(?:media_?type|mime_?type|mimeType)"\s*:\s*"([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)"|"type"\s*:\s*"base64"/gi;
+var HINT_WINDOW = 200;
 var MAGIC_PREFIXES = BASE64_MAGIC.map(([p]) => p.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).join("|");
 var BARE_RUN = new RegExp(
   `(?<![A-Za-z0-9+/=])(?:${MAGIC_PREFIXES})${B64_BODY}`,
   "g"
 );
+function magicOf(payload) {
+  const head = payload.slice(0, 32).replace(/\\\//g, "/").replace(/\s+/g, "");
+  for (const [prefix, mime] of BASE64_MAGIC) if (head.startsWith(prefix)) return mime;
+  return void 0;
+}
+function mimeNear(text, start, end) {
+  const from = Math.max(0, start - HINT_WINDOW);
+  const window = text.slice(from, start) + text.slice(end, Math.min(text.length, end + HINT_WINDOW));
+  const rx = new RegExp(MEDIA_HINT.source, MEDIA_HINT.flags);
+  let m;
+  let sawBase64 = false;
+  while ((m = rx.exec(window)) !== null) {
+    if (m[1]) return m[1];
+    sawBase64 = true;
+  }
+  return sawBase64 ? "application/octet-stream" : void 0;
+}
+function collect(re, text, group, decide, out) {
+  const rx = new RegExp(re.source, re.flags);
+  let m;
+  while ((m = rx.exec(text)) !== null) {
+    const payload = group === 0 ? m[0] : m[group];
+    if (payload === void 0 || payload.length === 0) {
+      rx.lastIndex += 1;
+      continue;
+    }
+    const start = m.index + (group === 0 ? 0 : m[0].indexOf(payload));
+    const end = start + payload.length;
+    const mime = decide(payload, start, end);
+    if (mime === void 0) continue;
+    out.push({ start, end, mime });
+  }
+}
+function elideBinary(text, tally = emptyElisions()) {
+  if (typeof text !== "string" || text.length < MIN_PAYLOAD) return text ?? "";
+  if (!/[A-Za-z0-9+/]{64}/.test(text)) return text;
+  const spans = [];
+  const big = (payload) => payload.length >= MIN_PAYLOAD;
+  collect(DATA_URI, text, 0, (payload) => {
+    if (!big(payload)) return void 0;
+    const m = /^data:([a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+)?/.exec(payload);
+    return m?.[1] ?? "application/octet-stream";
+  }, spans);
+  collect(CONTENT_BLOCK, text, 1, (payload, start, end) => {
+    if (!big(payload)) return void 0;
+    const hint = mimeNear(text, start, end);
+    if (hint === void 0) return void 0;
+    return magicOf(payload) ?? hint;
+  }, spans);
+  collect(BARE_RUN, text, 0, (payload) => big(payload) ? magicOf(payload) : void 0, spans);
+  if (spans.length === 0) return text;
+  spans.sort((a, b) => a.start - b.start || b.end - a.end);
+  const out = [];
+  let cursor = 0;
+  for (const s of spans) {
+    if (s.start < cursor) continue;
+    out.push(text.slice(cursor, s.start));
+    const n = s.end - s.start;
+    out.push(`\u2039elided:${s.mime}:${n} bytes\u203A`);
+    tally.binaryParts += 1;
+    tally.charsElided += n;
+    cursor = s.end;
+  }
+  out.push(text.slice(cursor));
+  return out.join("");
+}
 
 // packages/core/src/redact.ts
 var OPEN = "\u2039";
 var CLOSE = "\u203A";
 var MASK_RE = new RegExp(`${OPEN}redacted:[a-z-]+:[0-9a-f]{8}${CLOSE}`, "g");
+function secretDigest(secret) {
+  return createHash("sha256").update(secret, "utf8").digest("hex").slice(0, 8);
+}
+function redact(text) {
+  if (typeof text !== "string" || text.length === 0) return { text: text ?? "", hits: [] };
+  const claimed = new Uint8Array(text.length);
+  const spans = [];
+  for (const span of protectedSpans(text)) claim(claimed, span);
+  for (const rule of RULES) {
+    for (const m of rule.scan(text)) {
+      if (m.start < 0 || m.end > text.length || m.end <= m.start) continue;
+      if (isClaimed(claimed, m)) continue;
+      claim(claimed, m);
+      spans.push({ start: m.start, end: m.end, rule, value: m.value });
+    }
+  }
+  if (spans.length === 0) return { text, hits: [] };
+  spans.sort((a, b) => a.start - b.start);
+  const out = [];
+  const hits = [];
+  let cursor = 0;
+  for (const s of spans) {
+    out.push(text.slice(cursor, s.start));
+    const sha8 = secretDigest(s.value);
+    out.push(`${OPEN}redacted:${s.rule.type}:${sha8}${CLOSE}`);
+    hits.push({ type: s.rule.type, rule: s.rule.id, sha8, start: s.start, length: s.end - s.start });
+    cursor = s.end;
+  }
+  out.push(text.slice(cursor));
+  return { text: out.join(""), hits };
+}
+function redactText(text) {
+  return redact(text).text;
+}
+function protectedSpans(text) {
+  const spans = [];
+  const patterns = [MASK_RE, ...ALLOW_SPANS];
+  for (const p of patterns) {
+    const rx = new RegExp(p.source, p.flags.includes("g") ? p.flags : p.flags + "g");
+    let m;
+    while ((m = rx.exec(text)) !== null) {
+      if (m[0].length === 0) {
+        rx.lastIndex++;
+        continue;
+      }
+      spans.push({ start: m.index, end: m.index + m[0].length });
+    }
+  }
+  return spans;
+}
+function isClaimed(claimed, s) {
+  for (let i = s.start; i < s.end; i++) if (claimed[i]) return true;
+  return false;
+}
+function claim(claimed, s) {
+  const end = Math.min(s.end, claimed.length);
+  for (let i = Math.max(0, s.start); i < end; i++) claimed[i] = 1;
+}
 
 // packages/core/src/analytics/profanity.ts
 var ENGLISH_EXPLICIT_LEXICON = Object.freeze(["fuck", "fucked", "fucking", "shit", "shitty", "bullshit", "asshole", "bastard"]);
@@ -1218,19 +1372,35 @@ function readSession(file, harness, subParent, lim = {}) {
   return shrink(parsePi(file), lim);
 }
 
+// packages/core/src/records/scrub.ts
+var REC_MASK = /\[REDACTED:([a-z-]+)\]/g;
+var MOD_MASK = /‹redacted:([a-z-]+):[0-9a-f]{8}›/g;
+function scrub(s) {
+  if (!s) return s;
+  const pre = s.includes("[REDACTED:") ? s.replace(REC_MASK, "\u2039redacted:$1:00000000\u203A") : s;
+  const out = redactText(elideBinary(pre));
+  return out.includes("\u2039redacted:") ? out.replace(MOD_MASK, "[REDACTED:$1]") : out;
+}
+
 // packages/core/src/records/format.ts
+function scrubbed(raw, len) {
+  const v = scrub(raw);
+  const n = len ?? cpLen(raw);
+  return { v, len: v === raw ? n : n - cpLen(raw) + cpLen(v) };
+}
 var CAP = { USER: 6e3, ASSISTANT: 8e3, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_WHOLE: 4e3, TOOL_OUT_HEAD: 2e3, TOOL_OUT_TAIL: 1e3 };
 var SIDECAR_CAP = 2e4;
 var capOf = (role) => role === "USER" ? CAP.USER : role === "ASSISTANT" ? CAP.ASSISTANT : role === "SYSTEM" ? CAP.SYSTEM : 6e3;
 function recTurn(t, sidecar = false) {
   if (t.role === "TOOL") {
-    let inp = pyStrip(t.text || "");
+    let inp = pyStrip(scrub(t.text || ""));
     const inLen = cpLen(inp);
     if (inLen > CAP.TOOL_IN) inp = cpSlice(inp, 0, CAP.TOOL_IN) + ` \u2026[+${inLen - CAP.TOOL_IN} chars]`;
     const r = { role: "TOOL", ts: t.ts, tool: t.tool ?? "", text: inp, out: null };
     if (t.output) {
-      let o = pyStrip(t.output);
-      const total = t.outputLen ?? cpLen(o);
+      const sc2 = scrubbed(t.output, t.outputLen);
+      let o = pyStrip(sc2.v);
+      const total = sc2.len;
       if (total > CAP.TOOL_OUT_WHOLE) {
         if (sidecar) {
           const n2 = cpLen(o);
@@ -1244,10 +1414,11 @@ function recTurn(t, sidecar = false) {
     }
     return r;
   }
-  let text = pyStrip(t.text || "");
+  const sc = scrubbed(t.text || "", t.textLen);
+  let text = pyStrip(sc.v);
   const cap = capOf(t.role);
   const n = cpLen(text);
-  if (n > cap) text = cpSlice(text, 0, cap) + ` \u2026[+${(t.textLen ?? n) - cap} chars; raw: ${t.ref}]`;
+  if (n > cap) text = cpSlice(text, 0, cap) + ` \u2026[+${(t.textLen === void 0 ? n : sc.len) - cap} chars; raw: ${t.ref}]`;
   return { role: t.role, ts: t.ts, text };
 }
 function recSession(s, sidecar = false) {
@@ -1255,7 +1426,7 @@ function recSession(s, sidecar = false) {
     harness: s.harness,
     id: s.id,
     project: s.project,
-    title: s.title,
+    title: scrub(s.title),
     start: s.start,
     end: s.end,
     parent: s.parent,
@@ -1265,11 +1436,11 @@ function recSession(s, sidecar = false) {
 }
 
 // packages/core/src/records/deleg.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 var PREFIX = /^\s*Act as the [\w -]{1,40}? sub-agent for this task\.\s*/i;
 var FIRST_USERS = 3;
 function delegKey(task) {
-  return createHash("sha1").update(task.replace(/\s+/g, " ").trim().slice(0, 400)).digest("hex").slice(0, 16);
+  return createHash2("sha1").update(task.replace(/\s+/g, " ").trim().slice(0, 400)).digest("hex").slice(0, 16);
 }
 function field(input, name) {
   try {

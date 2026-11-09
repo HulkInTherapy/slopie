@@ -4060,6 +4060,21 @@ var init_redact_rules = __esm({
         { group: 1 }
       ),
       regexRule(
+        // Tavily search API keys (`tvly-` / `tvly-dev-`). Explicit, not left to the
+        // entropy rule: a 30-character key measured 4.39 bits and slipped under 4.5.
+        "tavily-api-key",
+        "tavily",
+        "slopie 1.9.1, in the shape of gitleaks vendor rules (MIT)",
+        /\btvly-(?:dev-)?[A-Za-z0-9_-]{16,}/g
+      ),
+      regexRule(
+        // Telegram bot tokens: `<bot id>:AA<base64url>`.
+        "telegram-bot-token",
+        "telegram",
+        "gitleaks telegram-bot-api-token (MIT)",
+        /\b\d{8,12}:AA[A-Za-z0-9_-]{30,50}\b/g
+      ),
+      regexRule(
         // gitleaks `gcp-api-key`; secretlint-rule-gcp `GCPApiKey`.
         "gcp-api-key",
         "gcp",
@@ -4334,6 +4349,9 @@ function redact(text) {
   }
   out.push(text.slice(cursor));
   return { text: out.join(""), hits };
+}
+function redactText(text) {
+  return redact(text).text;
 }
 function protectedSpans(text) {
   const spans = [];
@@ -7093,11 +7111,11 @@ function known(w, dict) {
   for (const [suf, adds] of SUFFIXES) {
     if (!w.endsWith(suf))
       continue;
-    const stem = w.slice(0, -suf.length);
+    const stem2 = w.slice(0, -suf.length);
     for (const a of adds) {
-      if (dict.has(stem + a))
+      if (dict.has(stem2 + a))
         return true;
-      if (w.length > suf.length + 2 && stem[stem.length - 1] === stem[stem.length - 2] && dict.has(stem.slice(0, -1)))
+      if (w.length > suf.length + 2 && stem2[stem2.length - 1] === stem2[stem2.length - 2] && dict.has(stem2.slice(0, -1)))
         return true;
     }
   }
@@ -17279,17 +17297,56 @@ var init_sessions = __esm({
   }
 });
 
+// packages/core/dist/records/scrub.js
+function scrub(s) {
+  if (!s)
+    return s;
+  const pre = s.includes("[REDACTED:") ? s.replace(REC_MASK, "\u2039redacted:$1:00000000\u203A") : s;
+  const out = redactText(elideBinary(pre));
+  return out.includes("\u2039redacted:") ? out.replace(MOD_MASK, "[REDACTED:$1]") : out;
+}
+function scrubTurn(t) {
+  const r3 = { ...t, text: scrub(t.text) };
+  if (t.out)
+    r3.out = scrub(t.out);
+  if (t.full)
+    r3.full = scrub(t.full);
+  if (t.output)
+    r3.output = scrub(t.output);
+  return r3;
+}
+function scrubRec(s) {
+  return { ...s, title: scrub(s.title), project: s.project, turns: s.turns.map((t) => scrubTurn(t)) };
+}
+var REDACT_VERSION, REC_MASK, MOD_MASK;
+var init_scrub = __esm({
+  "packages/core/dist/records/scrub.js"() {
+    "use strict";
+    init_redact_elide();
+    init_redact();
+    REDACT_VERSION = 1;
+    REC_MASK = /\[REDACTED:([a-z-]+)\]/g;
+    MOD_MASK = /‹redacted:([a-z-]+):[0-9a-f]{8}›/g;
+  }
+});
+
 // packages/core/dist/records/format.js
+function scrubbed(raw, len) {
+  const v = scrub(raw);
+  const n = len ?? cpLen(raw);
+  return { v, len: v === raw ? n : n - cpLen(raw) + cpLen(v) };
+}
 function recTurn(t, sidecar = false) {
   if (t.role === "TOOL") {
-    let inp = pyStrip(t.text || "");
+    let inp = pyStrip(scrub(t.text || ""));
     const inLen = cpLen(inp);
     if (inLen > CAP.TOOL_IN)
       inp = cpSlice(inp, 0, CAP.TOOL_IN) + ` \u2026[+${inLen - CAP.TOOL_IN} chars]`;
     const r3 = { role: "TOOL", ts: t.ts, tool: t.tool ?? "", text: inp, out: null };
     if (t.output) {
-      let o = pyStrip(t.output);
-      const total2 = t.outputLen ?? cpLen(o);
+      const sc3 = scrubbed(t.output, t.outputLen);
+      let o = pyStrip(sc3.v);
+      const total2 = sc3.len;
       if (total2 > CAP.TOOL_OUT_WHOLE) {
         if (sidecar) {
           const n2 = cpLen(o);
@@ -17303,11 +17360,12 @@ function recTurn(t, sidecar = false) {
     }
     return r3;
   }
-  let text = pyStrip(t.text || "");
+  const sc2 = scrubbed(t.text || "", t.textLen);
+  let text = pyStrip(sc2.v);
   const cap = capOf(t.role);
   const n = cpLen(text);
   if (n > cap)
-    text = cpSlice(text, 0, cap) + ` \u2026[+${(t.textLen ?? n) - cap} chars; raw: ${t.ref}]`;
+    text = cpSlice(text, 0, cap) + ` \u2026[+${(t.textLen === void 0 ? n : sc2.len) - cap} chars; raw: ${t.ref}]`;
   return { role: t.role, ts: t.ts, text };
 }
 function recSession(s, sidecar = false) {
@@ -17315,7 +17373,7 @@ function recSession(s, sidecar = false) {
     harness: s.harness,
     id: s.id,
     project: s.project,
-    title: s.title,
+    title: scrub(s.title),
     start: s.start,
     end: s.end,
     parent: s.parent,
@@ -17426,6 +17484,7 @@ var init_format2 = __esm({
   "packages/core/dist/records/format.js"() {
     "use strict";
     init_text();
+    init_scrub();
     CAP = { USER: 6e3, ASSISTANT: 8e3, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_WHOLE: 4e3, TOOL_OUT_HEAD: 2e3, TOOL_OUT_TAIL: 1e3 };
     SIDECAR_CAP = 2e4;
     ARCHIVE_MARK = "/.potsherd/archive/";
@@ -17769,7 +17828,7 @@ create virtual table if not exists cards using fts5(skey unindexed, title, asks,
           fs22.chmodSync(file, 384);
         } catch {
         }
-        db.exec("pragma journal_mode=delete; pragma synchronous=normal;");
+        db.exec("pragma journal_mode=delete; pragma synchronous=normal; pragma secure_delete=on;");
         db.exec(SCHEMA);
         db.exec("begin");
         return new _RecordIndex(db, file);
@@ -17836,12 +17895,17 @@ create virtual table if not exists cards using fts5(skey unindexed, title, asks,
         this.db.prepare("insert into cards(skey, title, asks) values(?,?,?)").run(key3, `${s.title ?? ""} ${base2(s.project)}`, asks.join("\n"));
       }
       /** Commits. `optimize` merges the FTS segments: worth it after a large rebuild, too slow for every small sync. */
-      finish(optimize = false) {
+      finish(optimize = false, vacuum = false) {
         this.db.prepare(`insert or replace into meta values('built', ?)`).run((/* @__PURE__ */ new Date()).toISOString());
         this.db.exec("commit");
         if (optimize)
           try {
             this.db.exec(`insert into ctx(ctx) values('optimize')`);
+          } catch {
+          }
+        if (vacuum)
+          try {
+            this.db.exec("pragma wal_checkpoint(TRUNCATE); vacuum;");
           } catch {
           }
         this.db.close();
@@ -17980,6 +18044,30 @@ function adoptRecordFiles(dir, prev) {
       known3.add(id);
     }
   }
+}
+function scrubRecordFiles(dir) {
+  let changed = 0;
+  for (const h of ["claude", "codex", "pi"]) {
+    for (const f of listFiles(path19.join(dir, h), (x) => x.endsWith(".txt"))) {
+      let text, st;
+      try {
+        st = fs23.statSync(f);
+        text = fs23.readFileSync(f, "utf8");
+      } catch {
+        continue;
+      }
+      const clean3 = scrub(text);
+      if (clean3 === text)
+        continue;
+      writeAtomic2(f, clean3);
+      try {
+        fs23.utimesSync(f, st.atime, st.mtime);
+      } catch {
+      }
+      changed++;
+    }
+  }
+  return changed;
 }
 function codexMeta(homes, imports) {
   const importInfo = /* @__PURE__ */ new Map();
@@ -18143,8 +18231,12 @@ async function syncLocked(o) {
   }
   if (state && (state.parse ?? 1) !== PARSE_VERSION)
     state = { ...state, sources: {} };
+  const migrating = (state?.redact ?? 0) !== REDACT_VERSION;
+  const migrate = migrating ? scrubRecordFiles(dir) : 0;
+  if (state && migrating)
+    state = { ...state, sessions: Object.fromEntries(Object.entries(state.sessions).map(([k, v]) => [k, { ...v, sig: "", line: scrubLine(v.line) }])) };
   const prev = state ?? { v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {} };
-  const next = { v: STATE_VERSION, format: FORMAT_VERSION, parse: PARSE_VERSION, sidecar, sources: {}, sessions: {} };
+  const next = { v: STATE_VERSION, format: FORMAT_VERSION, parse: PARSE_VERSION, redact: REDACT_VERSION, sidecar, sources: {}, sessions: {} };
   adoptRecordFiles(dir, prev);
   const { sources, historyFiles, codexHomes, codexImported } = discoverSources(o, state);
   mark("discover");
@@ -18478,12 +18570,13 @@ async function syncLocked(o) {
     return `${real}/${path19.basename(rel)}`;
   };
   const index = o.index === false ? null : RecordIndex.open(stateDir(dir));
-  if (index && o.full)
+  if (index && (o.full || migrating))
     index.clear();
   const indexed = index ? index.keys() : /* @__PURE__ */ new Map();
   const needParse = [];
   const sigOf = (s) => hash2([
     FORMAT_VERSION,
+    REDACT_VERSION,
     sidecar,
     s.best,
     s.best ? next.sources[s.best]?.size : 0,
@@ -18515,6 +18608,12 @@ async function syncLocked(o) {
     }
     if (s.harness === "codex")
       rec2.title = s.codexTitle || rec2.title;
+    rec2.title = scrub(rec2.title);
+    if (s.relays?.length) {
+      for (const t of rec2.turns)
+        if (t.role === "USER" && t.text.startsWith("Delegated task "))
+          t.text = scrub(t.text);
+    }
     const rel = canonicalRel(recordRelPath(rec2));
     const file = path19.join(dir, rel);
     mkdirPrivate(path19.dirname(file), dir);
@@ -18575,14 +18674,14 @@ async function syncLocked(o) {
       if (index && !indexed.has(s.key)) {
         const rec2 = parseRecordText(fs23.readFileSync(path19.join(dir, old.rel), "utf8"));
         if (rec2)
-          index.put(s.key, rec2.session, { ...rec2.header, rel: old.rel, best: null, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, old.sig);
+          index.put(s.key, scrubRec(rec2.session), { ...rec2.header, rel: old.rel, best: null, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, old.sig);
       }
       continue;
     }
     if (old && old.sig === sig && fileOk && index) {
       const rec2 = parseRecordText(fs23.readFileSync(path19.join(dir, old.rel), "utf8"));
       if (rec2) {
-        index.put(s.key, rec2.session, { ...rec2.header, rel: old.rel, best: s.best, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, sig);
+        index.put(s.key, scrubRec(rec2.session), { ...rec2.header, rel: old.rel, best: s.best, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, sig);
         next.sessions[s.key] = old;
         continue;
       }
@@ -18629,7 +18728,7 @@ async function syncLocked(o) {
     if (index && !indexed.has(key3)) {
       const rec2 = parseRecordText(fs23.readFileSync(path19.join(dir, ss.rel), "utf8"));
       if (rec2)
-        index.put(key3, rec2.session, { ...rec2.header, rel: ss.rel, best: null, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, ss.sig);
+        index.put(key3, scrubRec(rec2.session), { ...rec2.header, rel: ss.rel, best: null, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, ss.sig);
     }
   }
   live.clear();
@@ -18677,11 +18776,13 @@ async function syncLocked(o) {
     for (const key3 of indexed.keys())
       if (!next.sessions[key3])
         index.remove(key3);
-    index.finish(!!o.full || result.written > 200);
+    index.finish(!!o.full || migrating || result.written > 200, migrating);
   }
   const rows = Object.entries(next.sessions).sort(([ka, a], [kb, b2]) => a.start < b2.start ? -1 : a.start > b2.start ? 1 : ka < kb ? -1 : 1);
-  writeAtomic2(path19.join(dir, "INDEX.tsv"), INDEX_HEADER + "\n" + rows.map(([, s]) => s.line).join("\n") + "\n");
+  writeAtomic2(path19.join(dir, "INDEX.tsv"), INDEX_HEADER + "\n" + rows.map(([, s]) => s.line = scrubLine(s.line)).join("\n") + "\n");
   writeAtomic2(path19.join(stateDir(dir), "state.json"), JSON.stringify(next));
+  if (migrate)
+    result.redacted = migrate;
   mark("index");
   for (const [, s] of rows) {
     result.byHarness[s.harness] = (result.byHarness[s.harness] ?? 0) + 1;
@@ -18705,7 +18806,7 @@ async function syncLocked(o) {
   result.maxRssMb = Math.round(process.resourceUsage().maxRSS / 1024);
   return result;
 }
-var FORMAT_VERSION, STATE_VERSION, PARSE_VERSION, IMPORT_SLACK_MS, SyncBusyError, hash2, PROMPT_ONLY_TITLE, promptKey, isForgotten;
+var FORMAT_VERSION, STATE_VERSION, PARSE_VERSION, IMPORT_SLACK_MS, SyncBusyError, hash2, scrubLine, PROMPT_ONLY_TITLE, promptKey, isForgotten;
 var init_sync = __esm({
   "packages/core/dist/records/sync.js"() {
     "use strict";
@@ -18724,6 +18825,7 @@ var init_sync = __esm({
     init_deleg();
     init_refs();
     init_index_db();
+    init_scrub();
     FORMAT_VERSION = 4;
     STATE_VERSION = 1;
     PARSE_VERSION = 4;
@@ -18736,6 +18838,7 @@ var init_sync = __esm({
       }
     };
     hash2 = (v) => createHash13("sha1").update(JSON.stringify(v)).digest("hex").slice(0, 20);
+    scrubLine = (line2) => line2.split("	").map((f) => scrub(f)).join("	");
     PROMPT_ONLY_TITLE = "(prompt history only; transcript not kept)";
     promptKey = (ts, text) => JSON.stringify([fmtTs(ts), text.replace(/ …\[\+\d+ chars; raw: [^\]]*\]$/, "").replace(/\s+/g, " ").trim()]);
     isForgotten = (policy, h, id, parent) => policy.forgotten.size > 0 && (policy.forgotten.has(sourceId(h, id)) || !!parent && policy.forgotten.has(sourceId(h, parent)));
@@ -18756,6 +18859,34 @@ function ftsQuery(q2, mode = "or") {
       toks.push(tok);
   }
   return toks.length ? toks.join(mode === "or" ? " OR " : " AND ") : null;
+}
+function lev(a, b2) {
+  if (Math.abs(a.length - b2.length) > 3)
+    return 99;
+  let prev = Array.from({ length: b2.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b2.length; j++)
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b2[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b2.length];
+}
+function scopeSql(keys2, since, until) {
+  const where = [], args = [];
+  if (keys2) {
+    where.push("t.skey in (select value from json_each(?))");
+    args.push(JSON.stringify([...keys2]));
+  }
+  if (since) {
+    where.push(`coalesce(t.ts, '') >= ?`);
+    args.push(since);
+  }
+  if (until) {
+    where.push(`coalesce(t.ts, '') <= ?`);
+    args.push(until);
+  }
+  return { where: where.join(" and "), args };
 }
 function snippet(body, ts, width = 360) {
   const low = body.toLowerCase();
@@ -18784,7 +18915,16 @@ function parseTurns(t) {
   const from = Number(m[2]) * (m[1] ? -1 : 1);
   return { from, to: m[4] !== void 0 && !m[1] ? Number(m[4]) : null, char: m[3] !== void 0 ? Number(m[3]) : null };
 }
-var STOP, WORD2, terms, shortTs, ws, NoIndexError, q, shq, Engine;
+function projectMatches(project, p) {
+  const lp = (project ?? "").toLowerCase();
+  if (!p)
+    return true;
+  if (lp.includes(p))
+    return true;
+  const segs = lp.split("/").filter(Boolean);
+  return p.split("/").filter(Boolean).every((x) => segs.includes(x));
+}
+var STOP, WORD2, terms, shortTs, ws, uniq2, stem, ttl, NoIndexError, q, shq, Engine;
 var init_engine = __esm({
   "packages/core/dist/records/engine.js"() {
     "use strict";
@@ -18794,6 +18934,7 @@ var init_engine = __esm({
     init_sync();
     init_index_db();
     init_format2();
+    init_scrub();
     STOP = new Set(`a an the and or but if then else of to in on at by for with from into about as is are was were be been being
 do does did done have has had having i me my we our you your he she it its they them their this that these those there here
 what which who whom whose when where why how all any both each few more most other some such no nor not only own same so than
@@ -18803,6 +18944,9 @@ let lets get got make made please tell show give went one ones also out up down 
     terms = (q2) => (q2.match(WORD2) ?? []).filter((w) => !STOP.has(w.toLowerCase()));
     shortTs = (ts) => (ts ?? "?").replace("T", " ").slice(0, 16);
     ws = (s) => s.replace(/\s+/g, " ");
+    uniq2 = (xs) => [...new Set(xs)];
+    stem = (t) => t.length > 5 ? t.replace(/(ings?|ed|es|s)$/, "") : t;
+    ttl = (s) => ws((s.title ?? "").trim()).slice(0, 70);
     NoIndexError = class extends Error {
       file;
       constructor(file) {
@@ -18821,6 +18965,12 @@ let lets get got make made please tell show give went one ones also out up down 
       recordsDir;
       /** Print "subagent of <parent>" on every hit (on by default; SLOPIE_HIT_PARENT=0 turns it off, for ablation only). */
       hitParent = process.env["SLOPIE_HIT_PARENT"] !== "0";
+      /** When the index was last built (meta 'built'), for the age line every reply starts with. */
+      indexedAt;
+      /** Lines the caller adds under the age line (e.g. "refresh did not finish in 1.5 s"). */
+      notes = [];
+      /** The structured form of the last find() (`--json`, MCP structuredContent). */
+      result = { mode: "search", partial: false, hits: [], next: [] };
       constructor(recordsDir2, style = "cli") {
         this.style = style;
         this.recordsDir = recordsDir(recordsDir2);
@@ -18830,6 +18980,12 @@ let lets get got make made please tell show give went one ones also out up down 
         this.db = openDatabase(file, { readonly: true, fileMustExist: true });
         for (const r3 of this.db.prepare("select * from sessions").all())
           this.sessions.set(r3.key, r3);
+        let built = null;
+        try {
+          built = this.db.prepare(`select v from meta where k='built'`).get()?.v ?? null;
+        } catch {
+        }
+        this.indexedAt = built;
       }
       close() {
         this.db.close();
@@ -18837,7 +18993,7 @@ let lets get got make made please tell show give went one ones also out up down 
       // ------------------------------------------------------------ call syntax (one tool: search)
       call(a) {
         if (this.style === "mcp") {
-          const parts2 = Object.entries(a).filter(([, v]) => v !== void 0).map(([k, v]) => `${k}=${q(v)}`);
+          const parts2 = Object.entries(a).filter(([, v]) => v !== void 0 && v !== false).map(([k, v]) => `${k}=${v === true ? "true" : q(String(v))}`);
           return `search(${parts2.join(", ")})`;
         }
         const parts = ["slopie search"];
@@ -18851,6 +19007,10 @@ let lets get got make made please tell show give went one ones also out up down 
           parts.push("--project", shq(a.project));
         if (a.since !== void 0)
           parts.push("--since", a.since);
+        if (a.latest)
+          parts.push("--latest");
+        if (a.parent !== void 0)
+          parts.push("--parent", a.parent);
         return parts.join(" ");
       }
       readCall(id, from, to, fromChar) {
@@ -18898,9 +19058,9 @@ let lets get got make made please tell show give went one ones also out up down 
         const inc = o.includeSubagents ?? true;
         if (o.project || o.harness || !inc) {
           keys2 = /* @__PURE__ */ new Set();
-          const p = (o.project ?? "").toLowerCase().replace(/\/+$/, "");
+          const p = (o.project === "." ? process.cwd() : o.project ?? "").toLowerCase().replace(/\/+$/, "");
           for (const s of this.sessions.values()) {
-            if (p && !(s.project ?? "").toLowerCase().includes(p))
+            if (p && !projectMatches(s.project, p))
               continue;
             if (o.harness && s.harness !== o.harness)
               continue;
@@ -18939,8 +19099,10 @@ let lets get got make made please tell show give went one ones also out up down 
         if (later) {
           const items = [...later.matchAll(/(\S+) \(([^,)]+), ([^)]+)\)/g)].map((m) => ({ id: m[1], text: m[0] }));
           if (items.length) {
-            const next = (items.find((x) => !x.id.startsWith("agent-")) ?? items[0]).id;
-            return ` Mentioned later in: ${items.slice(0, 6).map((x) => x.text).join(", ")}${items.length > 6 ? ` \u2026 +${items.length - 6}` : ""}; the work or a decision often continued there. Next: ${this.call({ session: next, turns: "-30" })}`;
+            const act = (id) => [...this.sessions.values()].find((x) => x.id === id)?.end ?? "";
+            const mains = items.filter((x) => !x.id.startsWith("agent-"));
+            const next = [...mains.length ? mains : items].sort((a, b2) => act(b2.id) < act(a.id) ? -1 : act(b2.id) > act(a.id) ? 1 : 0)[0].id;
+            return ` Referenced later in: ${items.slice(0, 6).map((x) => x.text).join(", ")}${items.length > 6 ? ` \u2026 +${items.length - 6}` : ""} (threads that mention this one; not necessarily where it continued). Read one: ${this.call({ session: next, turns: "-30" })}`;
           }
         }
         return s.project ? ` Later threads in this project: ${this.call({ project: s.project, since: (s.end ?? "").slice(0, 10) || void 0 })}` : "";
@@ -18962,37 +19124,42 @@ let lets get got make made please tell show give went one ones also out up down 
         return `${s.harness} ${s.id} \xB7 ${s.project || "?"} \xB7 ${shortTs(s.start)} \u2192 ${shortTs(s.end)} \xB7 ${s.n_turns} turns \xB7 "${(s.title ?? "").trim().slice(0, 80)}"${par}${arch}`;
       }
       // ------------------------------------------------------------ search
+      /** Candidate turn ids for an FTS expression, scope predicates applied inside the SQL (before ORDER/LIMIT). */
+      ctxRids(fq, keys2, since, until, limit) {
+        try {
+          if (!keys2 && !since && !until)
+            return this.db.prepare("select rowid as r from ctx where ctx match ? order by rank limit ?").all(fq, limit).map((r3) => r3.r);
+          const { where, args } = scopeSql(keys2, since, until);
+          return this.db.prepare(`select ctx.rowid as r from ctx join turns t on t.rid = ctx.rowid where ctx match ? and ${where} order by bm25(ctx) limit ?`).all(fq, ...args, limit).map((r3) => r3.r);
+        } catch {
+          return [];
+        }
+      }
+      /** Sessions with at least one turn matching `fq`, scope applied in SQL. */
+      sessionsMatching(fq, keys2, since, until) {
+        try {
+          const { where, args } = scopeSql(keys2, since, until);
+          return new Set(this.db.prepare(`select distinct t.skey as k from ctx join turns t on t.rid = ctx.rowid where ctx match ?${where ? ` and ${where}` : ""}`).all(fq, ...args).map((r3) => r3.k));
+        } catch {
+          return /* @__PURE__ */ new Set();
+        }
+      }
       rank(query, keys2, since, until, session) {
         const fq = ftsQuery(query);
         const score = /* @__PURE__ */ new Map();
+        const lane = (rids) => rids.slice(0, 300).forEach((rid, i) => score.set(rid, (score.get(rid) ?? 0) + 1 / (60 + i)));
         if (fq) {
-          let rids = [];
-          try {
-            rids = this.db.prepare("select rowid as r from ctx where ctx match ? order by rank limit 400").all(fq).map((r3) => r3.r);
-          } catch {
-            rids = [];
-          }
-          if (rids.length && (keys2 || since || until)) {
-            const ok = /* @__PURE__ */ new Set();
-            for (const r3 of this.db.prepare(`select rid, skey, ts from turns where rid in (${rids.join(",")})`).all()) {
-              if (keys2 && !keys2.has(r3.skey))
-                continue;
-              if (since && (r3.ts ?? "") < since || until && (r3.ts ?? "") > until)
-                continue;
-              ok.add(r3.rid);
-            }
-            rids = rids.filter((r3) => ok.has(r3));
-          }
-          rids.slice(0, 300).forEach((rid, i) => score.set(rid, (score.get(rid) ?? 0) + 1 / (60 + i)));
+          lane(this.ctxRids(fq, keys2, since, until, 400));
+          const fa = ftsQuery(query, "and");
+          if (fa && fa !== fq)
+            lane(this.ctxRids(fa, keys2, since, until, 200));
           if (!session) {
             let cards = [];
             try {
-              cards = this.db.prepare("select skey from cards where cards match ? order by bm25(cards, 0, 3.0, 1.0) limit 60").all(fq).map((r3) => r3.skey);
+              cards = keys2 ? this.db.prepare("select skey from cards where cards match ? and skey in (select value from json_each(?)) order by bm25(cards, 0, 3.0, 1.0) limit 60").all(fq, JSON.stringify([...keys2])).map((r3) => r3.skey) : this.db.prepare("select skey from cards where cards match ? order by bm25(cards, 0, 3.0, 1.0) limit 60").all(fq).map((r3) => r3.skey);
             } catch {
               cards = [];
             }
-            if (keys2)
-              cards = cards.filter((k) => keys2.has(k));
             const best = /* @__PURE__ */ new Map();
             if (score.size) {
               for (const r3 of this.db.prepare(`select rid, skey from turns where rid in (${[...score.keys()].join(",")})`).all()) {
@@ -19014,11 +19181,79 @@ let lets get got make made please tell show give went one ones also out up down 
             });
           }
         }
-        const ranked = [...score.keys()].sort((a, b2) => score.get(b2) - score.get(a)).slice(0, 300);
+        const ranked = [...score.keys()].sort((a, b2) => score.get(b2) - score.get(a)).slice(0, 400);
         if (!ranked.length)
           return [];
         const rows = new Map(this.db.prepare(`select rid, skey, n, role, ts, tool, body from turns where rid in (${ranked.join(",")})`).all().map((r3) => [r3.rid, r3]));
-        return ranked.map((r3) => rows.get(r3)).filter((r3) => !!r3);
+        return ranked.map((r3) => rows.get(r3)).filter((r3) => !!r3).map((r3) => ({ ...r3, score: score.get(r3.rid) }));
+      }
+      /** Main-thread prior: native subagents ×0.6, delegated ×0.85, ≤3 turns ×0.7, main threads a mild length prior (≤ ×1.3). */
+      prior(s) {
+        let m = s.parent_kind === "subagent" ? 0.6 : s.parent_kind === "delegated" ? 0.85 : Math.min(1.3, 1 + 0.1 * Math.log10(Math.max(1, s.n_turns)));
+        if (s.n_turns <= 3)
+          m *= 0.7;
+        return m;
+      }
+      /** The family root: the main thread a subagent / delegated chain hangs from (itself for a main thread). */
+      rootOf(s) {
+        let cur = s;
+        for (let i = 0; i < 8 && cur.parent; i++) {
+          const p = this.parentOf(cur) ?? [...this.sessions.values()].find((x) => x.id === cur.parent) ?? null;
+          if (!p || p === cur)
+            break;
+          cur = p;
+        }
+        return cur;
+      }
+      ageText() {
+        const built = this.indexedAt ? Date.parse(this.indexedAt) : NaN;
+        if (!Number.isFinite(built))
+          return "index: age unknown";
+        const s = Math.max(0, Math.round((Date.now() - built) / 1e3));
+        return `index: ${s < 60 ? `${s} s` : s < 3600 ? `${Math.round(s / 60)} min` : s < 172800 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 86400)} days`} old`;
+      }
+      hitOf(s, r3, snip, read3) {
+        const root = this.rootOf(s);
+        return { session: s.id, harness: s.harness, project: s.project, parent: s.parent, root: root.key !== s.key ? root.id : null, role: r3.role, turn: r3.n, at: r3.ts, snippet: snip, read_cmd: read3 };
+      }
+      /** Project basenames closest to the words (for the no-match footer). */
+      nearProjects(words7, n = 3) {
+        const bases = /* @__PURE__ */ new Map();
+        for (const s of this.sessions.values()) {
+          const b2 = (s.project ?? "").split("/").filter(Boolean).pop();
+          if (b2)
+            bases.set(b2, (bases.get(b2) ?? 0) + 1);
+        }
+        const ws2 = words7.map((w) => w.toLowerCase()).filter((w) => w.length >= 3);
+        const scored = [...bases.entries()].map(([b2, c]) => {
+          const lb = b2.toLowerCase();
+          let d = Infinity;
+          for (const w of ws2)
+            d = Math.min(d, lb.includes(w) || w.includes(lb) ? 0 : lev(lb, w));
+          return { b: b2, d, c };
+        }).filter((x) => x.d <= 3).sort((a, b2) => a.d - b2.d || b2.c - a.c);
+        return scored.slice(0, n).map((x) => x.b);
+      }
+      noMatch(o) {
+        const ts = terms(o.query);
+        const lines = ["No passages matched."];
+        const nexts = [];
+        if (ts.length > 1) {
+          nexts.push(this.call({ query: ts.slice(0, -1).join(" "), project: o.project, since: o.since }));
+          const longest = [...ts].sort((a, b2) => b2.length - a.length)[0];
+          if (ts.length > 2)
+            nexts.push(this.call({ query: longest, project: o.project, since: o.since }));
+        }
+        if (o.project || o.since)
+          nexts.push(this.call({ query: o.query }));
+        for (const p of this.nearProjects([...ts, ...o.project ? [o.project] : []]))
+          if (p !== o.project)
+            nexts.push(this.call({ query: o.query, project: p }));
+        if (!nexts.length)
+          nexts.push(this.call({ project: "..." }));
+        this.result.next = nexts;
+        lines.push(`Next: ${nexts.join("   or   ")}`);
+        return lines.join("\n");
       }
       search(o) {
         const t0 = Date.now();
@@ -19027,43 +19262,199 @@ let lets get got make made please tell show give went one ones also out up down 
           return "query is required.";
         let keys2;
         try {
-          keys2 = this.filters(o);
+          keys2 = this.filters({ ...o, includeSubagents: true });
         } catch (e) {
           return e.message;
         }
         if (keys2 && !keys2.size)
-          return `No threads match those filters (project/harness/time). See what exists: ${this.name("threads")}`;
+          return this.noScope(o);
+        if (o.latest)
+          return this.latest({ ...o, k }, keys2, t0);
+        this.result.mode = "search";
         const cand = this.rank(o.query, keys2, o.since, o.until, o.session);
         if (!cand.length)
-          return `No passages matched. Try other words (the ones the user or agent would have typed), drop filters, or browse threads by project and date: ${this.name("threads")}`;
-        const out = [];
-        const per = /* @__PURE__ */ new Map();
+          return this.noMatch(o);
+        const ts = uniq2(terms(o.query).map((t) => t.toLowerCase()));
+        const bySess = /* @__PURE__ */ new Map();
         for (const r3 of cand) {
-          if ((per.get(r3.skey) ?? 0) >= 2)
-            continue;
-          per.set(r3.skey, (per.get(r3.skey) ?? 0) + 1);
-          out.push(r3);
-          if (out.length >= k)
-            break;
+          const l = bySess.get(r3.skey);
+          if (l)
+            l.push(r3);
+          else
+            bySess.set(r3.skey, [r3]);
         }
-        const ts = terms(o.query);
+        const sk = new Set(bySess.keys());
+        const covered = /* @__PURE__ */ new Map();
+        if (ts.length > 1) {
+          for (const t of ts)
+            for (const key3 of this.sessionsMatching(`"${t.replace(/"/g, "")}"`, sk, o.since, o.until))
+              covered.set(key3, (covered.get(key3) ?? 0) + 1);
+        }
+        const full = (key3) => ts.length <= 1 || (covered.get(key3) ?? 0) >= ts.length;
+        const rowCov = (r3) => {
+          const low = r3.body.toLowerCase();
+          return ts.filter((t) => low.includes(stem(t))).length;
+        };
+        const entries = [];
+        for (const [key3, rows] of bySess) {
+          const s = this.sessions.get(key3);
+          if (!s)
+            continue;
+          const top = Math.max(...rows.map((r3) => r3.score));
+          const row = [...rows].sort((a, b2) => rowCov(b2) - rowCov(a) || Number(a.role === "TOOL") - Number(b2.role === "TOOL") || b2.score - a.score)[0];
+          entries.push({ s, score: top * this.prior(s), tier: full(key3) ? 0 : 1, row, more: rows.length - 1 });
+        }
+        entries.sort((a, b2) => a.tier - b2.tier || b2.score - a.score);
         const lines = [];
-        out.forEach((r3, i) => {
-          const s = this.sessions.get(r3.skey);
-          lines.push(`[${i + 1}] ${this.head(s)}`);
+        const hits = [];
+        let shown = 0, idx = 0;
+        const emit = (e, indent) => {
+          const s = e.s, r3 = e.row;
           const rl = r3.role === "USER" && s.parent_kind === "subagent" ? "PROMPT-FROM-PARENT-AGENT" : r3.role;
-          lines.push(`    t${r3.n} ${rl}${r3.tool ? " " + r3.tool : ""} ${shortTs(r3.ts)}: ${snippet(r3.body, ts)}`);
-          lines.push(`    \u2192 ${this.readCall(s.id, Math.max(1, r3.n - 2), r3.n + 4)}`);
-        });
-        const newest2 = [...new Set(cand.slice(0, 20).map((r3) => r3.skey))].map((k2) => this.sessions.get(k2)).filter((s) => s && s.parent_kind !== "subagent").sort((a, b2) => (b2.end ?? "") < (a.end ?? "") ? -1 : (b2.end ?? "") > (a.end ?? "") ? 1 : 0).slice(0, 3);
-        if (newest2.length > 1)
-          lines.push(`Newest threads with these words: ${newest2.map((s) => `${s.id} (${s.harness}, last active ${(s.end ?? "?").slice(0, 10)}${(s.title ?? "").trim() ? `, "${(s.title ?? "").trim().slice(0, 50)}"` : ""})`).join("; ")}.`);
-        const threadsAll = new Set(cand.map((r3) => r3.skey)).size, shown = new Set(out.map((r3) => r3.skey)).size;
-        const more = threadsAll - shown;
-        lines.push(`(${out.length} hits shown; ${cand.length} candidates across ${threadsAll} threads${more > 0 ? `, ${more} more threads not shown` : ""}; ${Date.now() - t0} ms.) If these miss: rephrase with words the hits use, or add project/since filters.`);
-        const top = this.sessions.get(out[0].skey);
-        lines.push(`Next: ${this.readCall(top.id, Math.max(1, out[0].n - 2), out[0].n + 4)} reads around hit 1; ${this.grepCall(top.id, o.query.trim())} lists every match inside that thread.`);
+          const snip = snippet(r3.body, ts);
+          const read3 = this.readCall(s.id, Math.max(1, r3.n - 2), r3.n + 4);
+          lines.push(`${indent}    t${r3.n} ${rl}${r3.tool ? " " + r3.tool : ""} ${shortTs(r3.ts)}: ${snip}`);
+          lines.push(`${indent}    \u2192 ${read3}`);
+          if (e.more > 0)
+            lines.push(`${indent}    +${e.more} more in this thread: ${this.grepCall(s.id, o.query.trim())}`);
+          hits.push(this.hitOf(s, r3, snip, read3));
+          shown++;
+        };
+        const tag = (e) => e.tier ? " (partial match)" : "";
+        if (o.includeSubagents || o.session) {
+          for (const e of entries) {
+            if (shown >= k)
+              break;
+            lines.push(`[${++idx}]${tag(e)} ${this.head(e.s)}`);
+            emit(e, "");
+          }
+        } else {
+          const fams = /* @__PURE__ */ new Map();
+          for (const e of entries) {
+            const rk = this.rootOf(e.s).key;
+            const l = fams.get(rk);
+            if (l)
+              l.push(e);
+            else
+              fams.set(rk, [e]);
+          }
+          const done = /* @__PURE__ */ new Set();
+          for (const e of entries) {
+            if (shown >= k)
+              break;
+            const rk = this.rootOf(e.s).key;
+            if (done.has(rk))
+              continue;
+            done.add(rk);
+            const fam = fams.get(rk);
+            let parent = fam.find((x) => x.s.key === rk) ?? null;
+            if (!parent && rk !== e.s.key) {
+              const root = this.sessions.get(rk);
+              const fq = ftsQuery(o.query);
+              if (root && fq && (!keys2 || keys2.has(rk))) {
+                const rid = this.ctxRids(fq, /* @__PURE__ */ new Set([rk]), o.since, o.until, 1)[0];
+                const row = rid === void 0 ? void 0 : this.db.prepare("select rid, skey, n, role, ts, tool, body from turns where rid=?").get(rid);
+                if (row)
+                  parent = { s: root, score: e.score, tier: e.tier, row, more: 0 };
+              }
+            }
+            const kids = fam.filter((x) => x !== parent);
+            if (parent) {
+              lines.push(`[${++idx}]${fam.every((x) => x.tier) ? tag(parent) : ""} ${this.head(parent.s)}`);
+              emit(parent, "");
+              const c = kids[0];
+              if (c && shown < k) {
+                lines.push(`    \u21B3 ${c.s.parent_kind === "delegated" ? "delegated" : "subagent"}: ${ttl(c.s) || c.s.id} (t${c.row.n}) \xB7 ${c.s.harness} ${c.s.id} \xB7 ${c.s.n_turns} turns${tag(c)}`);
+                emit(c, "    ");
+              }
+              if (kids.length > 1)
+                lines.push(`    +${kids.length - 1} more child threads matched: ${this.call({ parent: parent.s.id })}`);
+            } else {
+              lines.push(`[${++idx}]${tag(e)} ${this.head(e.s)}`);
+              emit(e, "");
+              if (kids.length > 1)
+                lines.push(`    +${kids.length - 1} more threads of the same parent matched: ${this.call({ parent: e.s.parent ?? e.s.id })}`);
+            }
+          }
+        }
+        this.result.hits = hits;
+        this.result.partial = entries.length > 0 && entries[0].tier > 0;
+        const threadsAll = bySess.size;
+        lines.push(`(${hits.length} passages from ${idx} result groups; ${cand.length} candidates across ${threadsAll} threads; ${Date.now() - t0} ms.) If these miss: rephrase with words the hits use, or add project/since filters.`);
+        const first = hits[0];
+        const nexts = [first.read_cmd, this.grepCall(first.session, o.query.trim()), this.call({ query: o.query.trim(), project: o.project, since: o.since, latest: true })];
+        this.result.next = nexts;
+        lines.push(`Next: ${nexts[0]} reads around hit 1; ${nexts[1]} lists every match inside that thread; ${nexts[2]} lists the threads with these words newest first.`);
         return lines.join("\n");
+      }
+      /** `--latest`: every eligible matching thread, newest last activity first, each with its LAST matching USER/ASSISTANT passage. */
+      latest(o, keys2, t0) {
+        this.result.mode = "latest";
+        const ts = uniq2(terms(o.query).map((t) => t.toLowerCase()));
+        const fq = ftsQuery(o.query);
+        if (!fq)
+          return this.noMatch(o);
+        let pool = null;
+        for (const t of ts) {
+          const m = this.sessionsMatching(`"${t.replace(/"/g, "")}"`, keys2, o.since, o.until);
+          const prev = pool;
+          pool = prev ? new Set([...prev].filter((x) => m.has(x))) : m;
+        }
+        let partial = false;
+        if (!pool || !pool.size) {
+          pool = this.sessionsMatching(fq, keys2, o.since, o.until);
+          partial = ts.length > 1;
+        }
+        if (!pool.size)
+          return this.noMatch(o);
+        const ss = [...pool].map((k) => this.sessions.get(k)).filter((s) => s && (o.includeSubagents || s.parent_kind !== "subagent")).sort((a, b2) => (b2.end ?? "") < (a.end ?? "") ? -1 : (b2.end ?? "") > (a.end ?? "") ? 1 : 0);
+        const lastRow = (key3, expr, chat) => {
+          const { where, args } = scopeSql(null, o.since, o.until);
+          try {
+            return this.db.prepare(`select t.rid, t.skey, t.n, t.role, t.ts, t.tool, t.body from ctx join turns t on t.rid = ctx.rowid where ctx match ? and t.skey = ?${chat ? ` and t.role in ('USER','ASSISTANT')` : ""}${where ? ` and ${where}` : ""} order by t.n desc limit 1`).get(expr, key3, ...args);
+          } catch {
+            return void 0;
+          }
+        };
+        const fa = ftsQuery(o.query, "and") ?? fq;
+        const lines = [`${ss.length} threads with ${partial ? "some of" : "all of"} these words, newest last activity first${partial ? " (partial match)" : ""}:`];
+        const hits = [];
+        ss.slice(0, o.k).forEach((s, i) => {
+          const r3 = lastRow(s.key, fa, true) ?? lastRow(s.key, fq, true) ?? lastRow(s.key, fq, false);
+          lines.push(`[${i + 1}] ${this.head(s)}`);
+          if (!r3)
+            return;
+          const snip = snippet(r3.body, ts);
+          const read3 = this.readCall(s.id, Math.max(1, r3.n - 2), r3.n + 4);
+          lines.push(`    last match t${r3.n} ${r3.role}${r3.tool ? " " + r3.tool : ""} ${shortTs(r3.ts)}: ${snip}`);
+          lines.push(`    \u2192 ${read3}`);
+          hits.push(this.hitOf(s, r3, snip, read3));
+        });
+        if (ss.length > o.k)
+          lines.push(`(${ss.length - o.k} older threads not shown: add since/until or project.)`);
+        lines.push(`(${Date.now() - t0} ms.)`);
+        this.result.hits = hits;
+        this.result.partial = partial;
+        const nexts = hits.length ? [hits[0].read_cmd, this.call({ session: hits[0].session, turns: "-30" })] : [];
+        this.result.next = nexts;
+        if (nexts.length)
+          lines.push(`Next: ${nexts[0]} reads around the newest match; ${nexts[1]} reads that thread's end.`);
+        return lines.join("\n");
+      }
+      /** Filters that leave no thread: say so, with the closest projects and the cwd's basename. */
+      noScope(o) {
+        const nexts = [];
+        if (o.project) {
+          for (const p of this.nearProjects([o.project, ...terms(o.query ?? "")]))
+            if (p !== o.project)
+              nexts.push(this.call({ query: o.query, project: p, since: o.since }));
+          const cwd = path20.basename(process.cwd());
+          if (cwd && cwd !== o.project && [...this.sessions.values()].some((s) => (s.project ?? "").toLowerCase().includes(cwd.toLowerCase())))
+            nexts.push(this.call({ query: o.query, project: cwd, since: o.since }));
+        }
+        nexts.push(o.query ? this.call({ query: o.query }) : this.call({ since: o.since }).replace(/\(\)$/, "(project=...)"));
+        this.result.next = uniq2(nexts);
+        return `No threads match those filters (project/harness/time)${o.project ? `: no thread's working directory contains ${pyRepr2(o.project)}` : ""}. Next: ${uniq2(nexts).join("   or   ")}`;
       }
       // ------------------------------------------------------------ the one tool
       /**
@@ -19074,11 +19465,32 @@ let lets get got make made please tell show give went one ones also out up down 
        *   neither               list threads, newest first (project/harness/since/until filter them)
        */
       find(o) {
+        return this.findResult(o).text;
+      }
+      /** find() with its structured form. Every reply starts with the index age; the whole text is scrubbed once more. */
+      findResult(o) {
+        this.result = { mode: "search", partial: false, hits: [], next: [] };
+        let body;
+        try {
+          body = this.find0(o);
+        } catch (e) {
+          this.result.mode = "error";
+          body = `error: ${e.message}`;
+        }
+        const text = scrub([`(${this.ageText()})`, ...this.notes, body].join("\n"));
+        return { ...this.result, hits: this.result.hits.map((h) => ({ ...h, snippet: scrub(h.snippet) })), indexed_at: this.indexedAt, text };
+      }
+      find0(o) {
         const text = (o.query ?? "").trim();
         const turns = o.turns === void 0 || o.turns === null || o.turns === "" ? null : String(o.turns).trim();
+        if (o.parent && !o.session) {
+          this.result.mode = "list";
+          return this.threads({ parent: o.parent, include_subagents: true, text: text || void 0, limit: 60 });
+        }
         if (o.session) {
           if (text)
             return this.inside(o.session, text);
+          this.result.mode = "read";
           const r3 = parseTurns(turns);
           if (!r3)
             return `turns must look like "120-160", "-30" (the last 30) or "120" (from turn 120). Example: ${this.call({ session: o.session, turns: "-30" })}`;
@@ -19087,25 +19499,34 @@ let lets get got make made please tell show give went one ones also out up down 
         if (turns)
           return `turns needs a session. Example: ${this.call({ session: "<id>", turns: "-30" })}`;
         if (text)
-          return this.search({ query: text, k: o.k, project: o.project, harness: o.harness, since: o.since, until: o.until });
-        return this.list({ project: o.project, harness: o.harness, since: o.since, until: o.until });
+          return this.search({ query: text, k: o.k, project: o.project, harness: o.harness, since: o.since, until: o.until, latest: !!o.latest, includeSubagents: !!o.includeSubagents });
+        this.result.mode = "list";
+        return this.list({ project: o.project, harness: o.harness, since: o.since, until: o.until, includeSubagents: !!o.includeSubagents });
       }
       /** Threads newest first (up to 60), each with its opening ask; ends with the call that reads the newest one's end. */
       list(o) {
-        const out = this.threads({ ...o, limit: 60 }).split("\n").filter((l) => !l.startsWith("[more: ") && !l.startsWith("    last: "));
+        const out = this.threads({ ...o, include_subagents: !!o.includeSubagents, limit: 60 }).split("\n").filter((l) => !l.startsWith("[more: ") && !l.startsWith("    last: "));
         const m = /^(\d+) threads/.exec(out[0] ?? "");
         const total2 = m ? Number(m[1]) : 0;
         if (!total2)
-          return `No threads match those filters. Drop one, or search by words: ${this.name("search")}`;
+          return this.noScope(o);
         if (total2 > 60)
           out.push(`(${total2 - 60} older threads not shown: narrow with since/until, or add a query.)`);
         const first = /^- (\S+) \|/.exec(out[1] ?? "");
-        if (first)
-          out.push(`Next: ${this.call({ session: first[1], turns: "-30" })} reads the end of the newest thread.`);
+        for (const l of out) {
+          const m2 = /^- (\S+) \| (\S+) \| (.*?) \| (\S+ \S+) → (\S+ \S+) \|/.exec(l);
+          if (m2)
+            this.result.hits.push({ session: m2[1], harness: m2[2], project: m2[3], parent: null, root: null, role: "", turn: 0, at: m2[5], snippet: "", read_cmd: this.call({ session: m2[1], turns: "-30" }) });
+        }
+        if (first) {
+          this.result.next = [this.call({ session: first[1], turns: "-30" })];
+          out.push(`Next: ${this.result.next[0]} reads the end of the newest thread.`);
+        }
         return out.join("\n");
       }
       /** query + session: every exact (case-insensitive) match in reading order, then the best passages with the words. */
       inside(session, text) {
+        this.result.mode = "inside";
         const { s, err } = this.resolve(session);
         if (err || !s)
           return err;
@@ -19114,6 +19535,7 @@ let lets get got make made please tell show give went one ones also out up down 
         const MAX = 60;
         const parent = s.parent && this.hitParent ? `, ${relation(s.parent_kind, s.parent)}` : "";
         const out = [`${hits.length} exact matches for ${pyRepr2(text)} in ${s.harness} ${s.id} (${s.n_turns} turns, reading order${parent}):`, ...hits.slice(0, MAX).map((h) => h.line)];
+        this.result.hits = hits.slice(0, MAX).map((h) => this.hitOf(s, { n: h.n, role: h.role, ts: h.ts, body: "" }, h.line, this.readCall(s.id, Math.max(1, h.n - 2), Math.min(s.n_turns, h.n + 4))));
         if (hits.length > MAX)
           out.push(`[${hits.length - MAX} more matches from t${hits[MAX].n} on: ${this.readCall(s.id, hits[MAX].n, Math.min(s.n_turns, hits[MAX].n + 39))}, or use more specific text]`);
         if (partial)
@@ -19291,9 +19713,13 @@ let lets get got make made please tell show give went one ones also out up down 
         const { turns, partial } = this.fullTurns(s);
         turns.slice(0, s.n_turns).forEach((t, i) => {
           for (const field2 of ["text", "output"]) {
-            const v = (field2 === "text" ? t.text : t.output) ?? "";
-            if (!v)
+            const raw = (field2 === "text" ? t.text : t.output) ?? "";
+            if (!raw)
               continue;
+            rx.lastIndex = 0;
+            if (!rx.test(raw))
+              continue;
+            const v = scrub(raw);
             rx.lastIndex = 0;
             let m;
             while (m = rx.exec(v)) {
@@ -19302,7 +19728,7 @@ let lets get got make made please tell show give went one ones also out up down 
                 continue;
               }
               const a = Math.max(0, m.index - 140), b2 = Math.min(v.length, m.index + m[0].length + 140);
-              hits.push({ n: i + 1, line: `t${i + 1} ${t.role}${t.role === "TOOL" ? " " + (t.tool ?? "") : ""}${field2 === "output" ? " (output)" : ""} ${shortTs(t.ts)}: ` + (a ? "\u2026" : "") + ws(v.slice(a, b2)) + (b2 < v.length ? "\u2026" : "") });
+              hits.push({ n: i + 1, role: t.role, ts: t.ts, line: `t${i + 1} ${t.role}${t.role === "TOOL" ? " " + (t.tool ?? "") : ""}${field2 === "output" ? " (output)" : ""} ${shortTs(t.ts)}: ` + (a ? "\u2026" : "") + ws(v.slice(a, b2)) + (b2 < v.length ? "\u2026" : "") });
             }
           }
         });
@@ -19356,7 +19782,7 @@ Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) a
     MCP_TOOLS = [
       {
         name: "search",
-        description: "Search everything the user and their agents did in past coding sessions (Claude Code, Codex, pi). query finds passages; session + turns reads a thread; query + session searches inside one thread; project or since alone lists threads. Every reply ends with the exact next call.",
+        description: "Search the user's past coding-agent sessions (Claude Code, Codex, pi). query finds passages; session + turns reads a thread; query + session searches inside one thread; project or since alone lists threads. Every reply ends with the exact next call.",
         inputSchema: {
           type: "object",
           properties: {
@@ -19365,7 +19791,10 @@ Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) a
             turns: { type: "string", description: 'With session: the turns to read, e.g. "120-160", or "-30" for the last 30.' },
             project: { type: "string", description: 'Only threads whose working directory contains this, e.g. "my-app".' },
             since: { type: "string", description: 'Only activity on or after this date, e.g. "2026-11-01".' },
-            until: { type: "string", description: 'Only activity on or before this date, e.g. "2026-11-07".' }
+            until: { type: "string", description: 'Only activity on or before this date, e.g. "2026-11-07".' },
+            latest: { type: "boolean", description: 'With query: the threads with these words, newest last activity first, each with its last matching passage, e.g. "true".' },
+            include_subagents: { type: "boolean", description: 'List subagent threads as their own results (default: grouped under their parent), e.g. "true".' },
+            parent: { type: "string", description: `A session id: list that thread's child threads (subagents, delegated tasks), e.g. "9c4d2f18".` }
           }
         }
       }
@@ -19376,6 +19805,7 @@ Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) a
 // packages/core/dist/records/note.js
 function agentNote(recordsDir2, o = {}) {
   let note = NOTE_B_TEMPLATE.split("{RECORDS}").join(recordsDir2);
+  const cli = o.cli ?? true;
   if (o.sidecar) {
     const lines = note.split("\n");
     lines.splice(lines.length - 1, 0, SIDECAR_LINE);
@@ -19385,16 +19815,14 @@ function agentNote(recordsDir2, o = {}) {
     note += "\n" + PROTOCOL;
   if (o.guidance)
     note += "\n" + GUIDANCE;
-  if (o.cli ?? true)
-    note += "\n" + CLI_LINE;
-  return note;
+  return cli ? CLI_LINE + "\n\n" + note : note;
 }
 var CLI_LINE, GUIDANCE, PROTOCOL, SIDECAR_LINE;
 var init_note = __esm({
   "packages/core/dist/records/note.js"() {
     "use strict";
     init_spec();
-    CLI_LINE = "If the slopie command is on PATH, start with it rather than rg: it searches these same records faster and more cheaply. slopie search <words> [--project P --since D] finds passages; slopie search <words> --session ID searches inside one thread; slopie search --session ID --turns 120-160 reads turns (--turns -30 reads the end); slopie search --project P --since D lists threads. Each reply ends with the exact next command. Use rg/sed on the files for anything else.";
+    CLI_LINE = "Your past coding-agent sessions with the user (Claude Code, Codex, pi) are searchable. If the slopie command is on PATH, start with it rather than rg:\n- find: slopie search <words> [--project P --since D]  (add --session ID to search inside one thread)\n- read a session's end: slopie search --session ID --turns -30  (--turns 120-160 reads a range)\n- latest: slopie search <words> --latest  (threads with these words, newest activity first)\nEach reply starts with the index age and ends with the exact next command. Use rg/sed on the files below for anything else.";
     GUIDANCE = "For 'which threads' questions, include threads that dispatched, coordinated or tracked the work, and long threads that started before the window but were active in it. For 'latest decision' questions, after the first hit check later threads in every harness and read the turns after an announced plan before answering. Do not answer NOT FOUND after reading only part of a session.";
     PROTOCOL = 'Before you answer: cite the thread where the fact was produced, not one that pasted it, re-read it from a file, or received it as a relay ("Delegated task \u2026 [from delegated thread <id>]" names the thread that did the work). For a current, final or latest value, or the result of a step, read on past the first hit to the end of that step and check later threads ("## mentioned later in", rg -l --sortr modified) for a change. For which-threads questions, list every candidate thread in scope (no head), check each, and count the thread that dispatched the work ("parent: delegated by <id>") and long threads active in the window.';
     SIDECAR_LINE = "- Full tool outputs (up to 20 kB each) are also in <record>.out.txt beside each record, tagged the same way, so rg reaches text the record cut.";
@@ -19403,7 +19831,7 @@ var init_note = __esm({
 
 // packages/core/dist/records/mcp.js
 import { createInterface } from "node:readline";
-function callTool(name, args, recordsDir2) {
+function callTool(name, args, recordsDir2, notes = []) {
   if (name !== "search" && !HIDDEN.has(name))
     return { text: `unknown tool ${name}; the one tool is search`, isError: true };
   let engine2;
@@ -19416,13 +19844,28 @@ function callTool(name, args, recordsDir2) {
     const s = (k) => typeof args[k] === "string" && args[k] !== "" ? args[k] : typeof args[k] === "number" ? String(args[k]) : void 0;
     const n = (k) => args[k] === void 0 || args[k] === null || args[k] === "" ? void 0 : Number(args[k]);
     if (name === "search") {
-      return { text: engine2.find({ query: s("query"), session: s("session"), turns: s("turns"), project: s("project"), harness: s("harness"), since: s("since"), until: s("until"), k: n("k") }), isError: false };
+      engine2.notes.push(...notes);
+      const b2 = (k) => args[k] === true || args[k] === "true";
+      const r3 = engine2.findResult({
+        query: s("query"),
+        session: s("session"),
+        turns: s("turns"),
+        project: s("project"),
+        harness: s("harness"),
+        since: s("since"),
+        until: s("until"),
+        k: n("k"),
+        latest: b2("latest"),
+        includeSubagents: b2("include_subagents"),
+        parent: s("parent")
+      });
+      return { text: r3.text, isError: r3.mode === "error", structured: r3 };
     }
     if (name === "read")
-      return { text: engine2.read({ session: s("session") ?? "", from_turn: n("from_turn") ?? null, to_turn: n("to_turn") ?? null, max_chars: n("max_chars") ?? null, from_char: n("from_char") ?? null }), isError: false };
+      return { text: scrub(engine2.read({ session: s("session") ?? "", from_turn: n("from_turn") ?? null, to_turn: n("to_turn") ?? null, max_chars: n("max_chars") ?? null, from_char: n("from_char") ?? null })), isError: false };
     if (name === "threads")
-      return { text: engine2.threads({ project: s("project"), harness: s("harness"), since: s("since"), until: s("until"), text: s("text"), include_subagents: args["include_subagents"] === true, parent: s("parent"), limit: n("limit"), offset: n("offset") }), isError: false };
-    return { text: engine2.grep({ session: s("session") ?? "", pattern: s("pattern") ?? "", regex: args["regex"] === true, offset: n("offset") }), isError: false };
+      return { text: scrub(engine2.threads({ project: s("project"), harness: s("harness"), since: s("since"), until: s("until"), text: s("text"), include_subagents: args["include_subagents"] === true, parent: s("parent"), limit: n("limit"), offset: n("offset") })), isError: false };
+    return { text: scrub(engine2.grep({ session: s("session") ?? "", pattern: s("pattern") ?? "", regex: args["regex"] === true, offset: n("offset") })), isError: false };
   } catch (e) {
     return { text: `error: ${e.message}`, isError: true };
   } finally {
@@ -19458,8 +19901,13 @@ function serveMcp(o) {
       } else if (m.method === "tools/list") {
         reply(m.id, { tools: MCP_TOOLS });
       } else if (m.method === "tools/call") {
-        const r3 = callTool(String(p["name"] ?? ""), p["arguments"] ?? {}, o.recordsDir);
-        reply(m.id, { content: [{ type: "text", text: r3.text }], isError: r3.isError });
+        const name = String(p["name"] ?? "");
+        const id = m.id;
+        void (async () => {
+          const note = name === "search" && o.refresh ? await o.refresh().catch(() => null) : null;
+          const r3 = callTool(name, p["arguments"] ?? {}, o.recordsDir, note ? [note] : []);
+          reply(id, { content: [{ type: "text", text: r3.text }], ...r3.structured ? { structuredContent: r3.structured } : {}, isError: r3.isError });
+        })();
       } else if (m.method === "ping") {
         reply(m.id, {});
       } else {
@@ -19474,6 +19922,7 @@ var init_mcp = __esm({
   "packages/core/dist/records/mcp.js"() {
     "use strict";
     init_engine();
+    init_scrub();
     init_spec();
     HIDDEN = /* @__PURE__ */ new Set(["read", "threads", "grep"]);
   }
@@ -19535,7 +19984,7 @@ var VERSION;
 var init_version = __esm({
   "packages/core/dist/version.js"() {
     "use strict";
-    VERSION = "1.9.0";
+    VERSION = "1.9.1";
   }
 });
 
@@ -19574,6 +20023,7 @@ var init_dist = __esm({
     init_worker();
     init_index_db();
     init_engine();
+    init_scrub();
     init_spec();
     init_note();
     init_mcp();
@@ -20008,6 +20458,21 @@ var init_redact_rules2 = __esm({
         "secretlint-rule-aws AWSSecretAccessKey (MIT)",
         /aws[_.-]?(?:secret|access)[_.-]?(?:access[_.-]?)?key(?:[_.-]?id)?["'\s]{0,4}[:=]["'\s]{0,4}([A-Za-z0-9/+=]{40})(?![A-Za-z0-9/+=])/gi,
         { group: 1 }
+      ),
+      regexRule2(
+        // Tavily search API keys (`tvly-` / `tvly-dev-`). Explicit, not left to the
+        // entropy rule: a 30-character key measured 4.39 bits and slipped under 4.5.
+        "tavily-api-key",
+        "tavily",
+        "slopie 1.9.1, in the shape of gitleaks vendor rules (MIT)",
+        /\btvly-(?:dev-)?[A-Za-z0-9_-]{16,}/g
+      ),
+      regexRule2(
+        // Telegram bot tokens: `<bot id>:AA<base64url>`.
+        "telegram-bot-token",
+        "telegram",
+        "gitleaks telegram-bot-api-token (MIT)",
+        /\b\d{8,12}:AA[A-Za-z0-9_-]{30,50}\b/g
       ),
       regexRule2(
         // gitleaks `gcp-api-key`; secretlint-rule-gcp `GCPApiKey`.
@@ -29391,7 +29856,7 @@ function engine(o) {
 function withEngine(o, fn) {
   const e = engine(o);
   try {
-    const text = fn(e);
+    const text = scrub(fn(e));
     if (o.json) printJson({ text });
     else print(text);
     return 0;
@@ -29400,8 +29865,56 @@ function withEngine(o, fn) {
   }
 }
 var num5 = (v) => v === void 0 || v === null || v === "" ? void 0 : Number(v);
-function runSearch(o) {
-  return withEngine(o, (e) => e.find({ query: o.query, k: num5(o.k), project: o.project, harness: o.harness, since: o.since, until: o.until, session: o.session, turns: o.turns }));
+async function refreshIndex(o, budgetMs = 1500) {
+  if (process5.env["SLOPIE_NO_REFRESH"] === "1" || process5.env["SLOPIE_NO_SYNC"] === "1") return null;
+  const dir = paths_exports.recordsDir(o.recordsDir);
+  const idx = `${dir}/.slopie/index.sqlite`;
+  try {
+    if (Date.now() - fs26.statSync(idx).mtimeMs < 6e4) return null;
+  } catch {
+    return null;
+  }
+  const child = spawnBackgroundSync(o);
+  if (!child) return null;
+  const finished = await new Promise((resolve) => {
+    const t = setTimeout(() => resolve(false), budgetMs);
+    child.once("exit", () => {
+      clearTimeout(t);
+      resolve(true);
+    });
+    child.once("error", () => {
+      clearTimeout(t);
+      resolve(true);
+    });
+  });
+  if (finished) return null;
+  child.removeAllListeners();
+  return `(refresh did not finish in ${(budgetMs / 1e3).toFixed(1)} s; searched the existing index. It keeps running in the background.)`;
+}
+async function runSearch(o) {
+  const note = await refreshIndex(o);
+  const e = engine(o);
+  try {
+    if (note) e.notes.push(note);
+    const r3 = e.findResult({
+      query: o.query,
+      k: num5(o.k),
+      project: o.project,
+      harness: o.harness,
+      since: o.since,
+      until: o.until,
+      session: o.session,
+      turns: o.turns,
+      latest: o.latest,
+      includeSubagents: o.includeSubagents,
+      parent: o.parent
+    });
+    if (o.json) printJson(r3);
+    else print(r3.text);
+    return 0;
+  } finally {
+    e.close();
+  }
 }
 function runRead(o) {
   return withEngine(o, (e) => e.read({ session: o.session, from_turn: num5(o.from) ?? null, to_turn: num5(o.to) ?? null, max_chars: num5(o.maxChars) ?? null, from_char: num5(o.fromChar) ?? null }));
@@ -29413,20 +29926,22 @@ function runGrep(o) {
   return withEngine(o, (e) => e.grep({ session: o.session, pattern: o.pattern, regex: !!o.regex, offset: num5(o.offset) }));
 }
 async function runMcp(o) {
-  await serveMcp({ version: VERSION, ...o.recordsDir ? { recordsDir: o.recordsDir } : {} });
+  await serveMcp({ version: VERSION, ...o.recordsDir ? { recordsDir: o.recordsDir } : {}, refresh: () => refreshIndex(o) });
   return 0;
 }
 function spawnBackgroundSync(o = {}) {
-  if (process5.env["SLOPIE_NO_SYNC"] === "1") return;
+  if (process5.env["SLOPIE_NO_SYNC"] === "1") return null;
   const entry = process5.argv[1];
-  if (!entry) return;
+  if (!entry) return null;
   const args = [entry, "sync", "--quiet", "--if-idle"];
   for (const [flag, v] of [["--claude-dir", o.claudeDir], ["--codex-dir", o.codexDir], ["--pi-dir", o.piDir], ["--potsherd-dir", o.potsherdDir], ["--records-dir", o.recordsDir]]) if (v) args.push(flag, v);
   try {
     const child = spawn(process5.execPath, args, { detached: true, stdio: "ignore", env: { ...process5.env, POTSHERD_CLI_PUBLIC_NAME: "slopie" } });
     child.unref();
+    return child;
   } catch {
   }
+  return null;
 }
 async function readStdin(timeoutMs = 2e3) {
   if (process5.stdin.isTTY) return "";
@@ -29554,6 +30069,25 @@ var NAME3 = "potsherd";
 var PI_MARK = "// potsherd-pi-entry: ";
 var PI_STUB = "export default function() {}\n";
 var SCRIPT = /(?:^|[\\/])(?:packages[\\/]mcp[\\/]dist[\\/]index\.js|@potsherd[\\/]mcp[\\/]dist[\\/]index\.js|dist[\\/]mcp\.js)$/;
+var LEGACY_HOOK_CMD = /\bpotsherd(?:\.js)?["']?\s+rescue\b|\bpotsherd-mcp\b/;
+var LEGACY_HOOK_WHAT = "remove stale potsherd 1.x hooks (their program is gone)";
+function tomlHookBlocks(text) {
+  const lines = text.split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^[ \t]*\[\[?[ \t]*hooks\b/.test(lines[i]) || /^[ \t]*\[[ \t]*hooks[ \t]*\.[ \t]*state\b/.test(lines[i])) continue;
+    let j = i + 1;
+    while (j < lines.length && !/^[ \t]*\[/.test(lines[j])) j++;
+    if (lines.slice(i + 1, j).some((l) => /^[ \t]*command[ \t]*=/.test(l) && LEGACY_HOOK_CMD.test(l))) out.push({ start: i, end: j });
+    i = j - 1;
+  }
+  return out;
+}
+function tomlHookTransform(text) {
+  const lines = text.split("\n");
+  for (const b2 of tomlHookBlocks(text).reverse()) lines.splice(b2.start, b2.end - b2.start);
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n");
+}
 function ownArgv(argv) {
   if (!argv.every((a) => typeof a === "string")) return false;
   const [cmd, ...args] = argv;
@@ -29660,6 +30194,7 @@ function legacyChanges(targets, o = {}) {
       const file = path27.join(paths_exports.codexDir(o.codexDir), "config.toml");
       const text = read(file);
       if (text !== null && tomlOwnTable(text)) out.push({ client: t, file, transform: tomlTransform });
+      if (text !== null && tomlHookBlocks(text).length) out.push({ client: t, file, transform: tomlHookTransform, what: LEGACY_HOOK_WHAT });
     } else if (t === "pi") {
       const file = path27.join(paths_exports.piDir(o.piDir), "agent", "extensions", "potsherd.ts");
       const text = read(file);
@@ -29676,7 +30211,7 @@ var END = "<!-- slopie:end -->";
 var OLD_MARKERS = ["<!-- slopie:memory:begin -->", "<!-- slopie:memory:end -->"];
 var SKILL = "slopie";
 var OLD_SKILL = "slopie-memory";
-var SKILL_DESCRIPTION = "Search everything you and the user did in past coding sessions (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session.";
+var SKILL_DESCRIPTION = "Search your past coding-agent sessions with the user (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session.";
 function skillText(recordsDir2) {
   return `---
 name: ${SKILL}
@@ -29721,24 +30256,42 @@ ${block}
 ${END}
 `;
 }
-function claudeSettings(text, command) {
+var LEGACY_HOOK = /\bpotsherd(?:\.js)?["']?\s+rescue\b|\bpotsherd-mcp\b/;
+function hasLegacyHook(text) {
+  if (!text) return false;
+  try {
+    const hooks = JSON.parse(text).hooks ?? {};
+    return Object.values(hooks).some((l) => Array.isArray(l) && l.some((g2) => (g2.hooks ?? []).some((h) => typeof h.command === "string" && LEGACY_HOOK.test(h.command))));
+  } catch {
+    return false;
+  }
+}
+function withHooks(text, file, harness, command, matcher) {
   let obj = {};
   if (text && text.trim()) {
     try {
       obj = JSON.parse(text);
     } catch {
-      throw new UserError(`${paths_exports.claudePaths().settings} is not plain JSON; add the hook by hand: ${command}`);
+      throw new UserError(`${file} is not plain JSON; add the hook by hand: ${command}`);
     }
   }
-  const hooks = obj["hooks"] && typeof obj["hooks"] === "object" ? obj["hooks"] : {};
+  const hooks = { ...obj["hooks"] && typeof obj["hooks"] === "object" ? obj["hooks"] : {} };
+  for (const [ev, l] of Object.entries(hooks)) {
+    if (!Array.isArray(l)) continue;
+    const kept2 = l.map((g2) => Array.isArray(g2.hooks) && g2.hooks.some((h) => typeof h.command === "string" && LEGACY_HOOK.test(h.command)) ? { ...g2, hooks: g2.hooks.filter((h) => !(typeof h.command === "string" && LEGACY_HOOK.test(h.command))) } : g2).filter((g2) => !Array.isArray(g2.hooks) || g2.hooks.length);
+    if (kept2.length) hooks[ev] = kept2;
+    else delete hooks[ev];
+  }
   const list3 = Array.isArray(hooks["SessionStart"]) ? hooks["SessionStart"] : [];
-  const kept = list3.filter((e) => !(e.hooks ?? []).some((h) => typeof h.command === "string" && h.command.includes("hook session-start --harness claude")));
-  if (command) kept.push({ matcher: "startup|resume|compact", hooks: [{ type: "command", command, timeout: 20 }] });
-  const next = { ...obj, hooks: { ...hooks, SessionStart: kept } };
-  if (!kept.length) delete next.hooks["SessionStart"];
-  if (!Object.keys(next.hooks).length) delete next["hooks"];
+  const kept = list3.filter((e) => !(e.hooks ?? []).some((h) => typeof h.command === "string" && h.command.includes(`hook session-start --harness ${harness}`)));
+  if (command) kept.push({ ...matcher ? { matcher } : {}, hooks: [{ type: "command", command, timeout: 20 }] });
+  hooks["SessionStart"] = kept;
+  if (!kept.length) delete hooks["SessionStart"];
+  const next = { ...obj, hooks };
+  if (!Object.keys(hooks).length) delete next["hooks"];
   return JSON.stringify(next, null, 2) + "\n";
 }
+var claudeSettings = (text, command) => withHooks(text, paths_exports.claudePaths().settings, "claude", command, "startup|resume|compact");
 function piExtension() {
   const [cmd, ...args] = slopieArgv();
   return `// slopie (installed by \`slopie setup\`): keep the session records current when a pi session starts, and after
@@ -29794,11 +30347,14 @@ name: ${OLD_SKILL}
       add(c, path28.join(dir, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
       oldSkill(c, path28.join(dir, "skills"));
       const settings = path28.join(dir, "settings.json");
-      add(c, settings, "SessionStart hook", claudeSettings(read2(settings), o.remove ? null : hookCommand("claude")));
+      add(c, settings, "SessionStart hook" + (hasLegacyHook(read2(settings)) ? "; remove stale potsherd 1.x hooks" : ""), claudeSettings(read2(settings), o.remove ? null : hookCommand("claude")));
     } else if (c === "codex") {
       const home2 = paths_exports.codexDir(o.codexDir);
       const file = path28.join(home2, "AGENTS.md");
       add(c, file, "AGENTS.md slopie block", withBlock(read2(file), o.remove ? null : agentsBlock(records)));
+      const hooksFile = path28.join(home2, "hooks.json");
+      const ht = read2(hooksFile);
+      if (ht !== null && isHooksJson(ht)) add(c, hooksFile, "SessionStart hook" + (hasLegacyHook(ht) ? "; remove stale potsherd 1.x hooks" : ""), withHooks(ht, hooksFile, "codex", o.remove ? null : hookCommand("codex")));
     } else {
       const root = path28.join(paths_exports.piDir(o.piDir), "agent");
       add(c, path28.join(root, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
@@ -29811,9 +30367,30 @@ name: ${OLD_SKILL}
     const before = read2(l.file);
     if (before === null) continue;
     const after = l.transform(before);
-    if (after !== before) out.push({ client: l.client, file: l.file, what: LEGACY_WHAT, before, after, transform: l.transform });
+    if (after !== before) out.push({ client: l.client, file: l.file, what: l.what ?? LEGACY_WHAT, before, after, transform: l.transform });
   }
   return out;
+}
+function isHooksJson(text) {
+  try {
+    const o = JSON.parse(text);
+    return !!o && typeof o === "object" && !Array.isArray(o) && (o["hooks"] === void 0 || typeof o["hooks"] === "object" && !Array.isArray(o["hooks"]));
+  } catch {
+    return false;
+  }
+}
+function refreshOf(o, c) {
+  if (c === "claude") return (read2(path28.join(paths_exports.claudeDir(o.claudeDir), "settings.json")) ?? "").includes("hook session-start --harness claude") ? "refresh hook" : "note only";
+  if (c === "codex") return (read2(path28.join(paths_exports.codexDir(o.codexDir), "hooks.json")) ?? "").includes("hook session-start --harness codex") ? "refresh hook" : "note only";
+  return fs34.existsSync(path28.join(paths_exports.piDir(o.piDir), "agent", "extensions", "slopie.ts")) ? "refresh hook" : "note only";
+}
+function indexAge() {
+  try {
+    const s = Math.round((Date.now() - fs34.statSync(path28.join(paths_exports.recordsDir(), ".slopie", "index.sqlite")).mtimeMs) / 1e3);
+    return s < 60 ? `${s} s old` : s < 3600 ? `${Math.round(s / 60)} min old` : s < 172800 ? `${Math.round(s / 3600)} h old` : `${Math.round(s / 86400)} days old`;
+  } catch {
+    return "not built yet (slopie sync)";
+  }
 }
 function detected(o) {
   const found = [];
@@ -29839,11 +30416,14 @@ async function runSetup(o) {
   if (o.status) {
     const rows = SETUP_CLIENTS.map((c) => {
       const pending = plan({ ...o, remove: false }, [c]);
-      return { client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map((p) => p.what) };
+      return { client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map((p) => p.what), refresh: refreshOf(o, c) };
     });
-    if (o.json) printJson({ records: paths_exports.recordsDir(), clients: rows });
-    else for (const r3 of rows) {
-      const text = r3.installed ? "installed" : r3.detected ? `missing: ${r3.missing.join(", ")} (slopie setup --${r3.client})` : "not found on this machine";
+    if (o.json) printJson({ records: paths_exports.recordsDir(), index: indexAge(), clients: rows });
+    else {
+      print(`  index   ${indexAge()}`);
+    }
+    if (!o.json) for (const r3 of rows) {
+      const text = (r3.installed ? "installed" : r3.detected ? `missing: ${r3.missing.join(", ")} (slopie setup --${r3.client})` : "not found on this machine") + (r3.detected ? ` \xB7 ${r3.refresh}` : "");
       fold2(text, Math.max(20, t.width - 12)).forEach((row, i) => print(`  ${i ? "".padEnd(8) : r3.client.padEnd(8)}${row}`));
     }
     return 0;
@@ -30096,10 +30676,11 @@ forget and ignore remove them.`);
     }), o);
   });
   const search = addGlobals(records(
-    program2.command("search").description("search your past coding-agent sessions; every reply ends with the exact next command").argument("[query...]", "words or exact text to find").option("--session <id>", "one thread (id or 8+ char prefix): with a query, search inside it; without, read it").option("--turns <range>", "with --session: turns to read, e.g. 120-160, or -30 for the last 30").option("--project <text>", "only threads whose working directory contains this").option("--since <date>", "only activity on or after this date").option("--until <date>", "only activity on or before this date").addOption(new Option("--harness <name>", "only this harness").choices(["claude", "codex", "pi"])).addOption(new Option("-k <n>", "passages to return (default 8, max 30)"))
+    program2.command("search").description("search your past coding-agent sessions; every reply ends with the exact next command").argument("[query...]", "words or exact text to find").option("--session <id>", "one thread (id or 8+ char prefix): with a query, search inside it; without, read it").option("--turns <range>", "with --session: turns to read, e.g. 120-160, or -30 for the last 30").option("--project <text>", "only threads whose working directory contains this").option("--since <date>", "only activity on or after this date").option("--until <date>", "only activity on or before this date").addOption(new Option("--harness <name>", "only this harness").choices(["claude", "codex", "pi"])).option("--latest", "threads with these words, newest last activity first (each with its last matching passage)").option("--include-subagents", "list subagent threads as their own rows (default: under their parent)").option("--parent <id>", "list a thread's child threads (subagents, delegated tasks)").addOption(new Option("-k <n>", "passages to return (default 8, max 30)"))
   )).addHelpText("after", `
 example:
   potsherd search "pgbouncer pool size"                      # passages, every thread
+  potsherd search "slopie release" --latest                  # newest threads with these words first
   potsherd search "ECONNREFUSED" --session 9c4d2f18          # inside one thread
   potsherd search --session 9c4d2f18 --turns -30             # read its last 30 turns
   potsherd search --project api --since 2026-11-01           # list threads`);
@@ -30115,7 +30696,10 @@ example:
       since: str6(opts["since"]),
       until: str6(opts["until"]),
       session: str6(opts["session"]),
-      turns: str6(opts["turns"])
+      turns: str6(opts["turns"]),
+      latest: Boolean(opts["latest"]),
+      includeSubagents: Boolean(opts["includeSubagents"]),
+      parent: str6(opts["parent"])
     }), o);
   });
   const read3 = addGlobals(records(
