@@ -81,10 +81,12 @@ describe('story deck', () => {
     expect(T.settle / 1.5).toBeLessThan(4000);
   });
 
-  it('keeps 16-colour and colourless output free of pixel-art mascots', () => {
+  it('draws no mascot and no decorative glyphs on any card, at any size or colour depth', () => {
     const deck = buildDeck(storySnapshot());
-    const { c } = render(deck[1]!, 80, 24, Infinity, deck.length, 'none');
-    expect(c.toText()).toContain('(•ᴗ•)');
+    for (const color of ['truecolor', '16', 'none'] as const) for (const [w, h] of [[120, 40], [100, 30], [80, 24]] as const) for (const card of deck) {
+      const text = render(card, w, h, Infinity, deck.length, color).c.toText();
+      expect(text, `${card.id} ${w}×${h} ${color}`).not.toMatch(/[♥☠✿★☆✧✦✸◥◆▸•ᴗ]/u);
+    }
   });
 });
 

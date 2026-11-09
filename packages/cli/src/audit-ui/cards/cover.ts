@@ -1,63 +1,63 @@
-/** The teaser cover: the archetype as a locked silhouette with a rarity glow, plus three headline numbers. */
-import { C, fade, hx, mix } from '../gfx/color.js';
-import { box, spaced, textCenter, textWidth, type Rect } from '../gfx/draw.js';
-import { bigSupported, bigWidth, drawBig } from '../gfx/font.js';
-import { easeOutBack, easeOutCubic, seg } from '../gfx/motion.js';
+/**
+ * The cover: the archetype as a redacted shape (its real word lengths, at the display face's
+ * footprint, unlocked at the end) and three hero numbers on a column grid divided by hairlines.
+ */
 import type { CoverData } from '../story/deck.js';
-import type { Scene } from './scene.js';
+import type { Rect } from '../gfx/draw.js';
+import { displayHeight, drawDisplay, fitDisplay, type DisplayOptions } from '../theme/display.js';
+import { fade, txt, vrule, type K } from '../theme/kit.js';
+import { fadeIn } from '../theme/tokens.js';
 
-const GOLD = hx('ffd27a');
+const TIER: Record<string, string> = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
 
-export function coverBody(s: Scene, data: CoverData, r: Rect): boolean {
-  const { c, t } = s;
-  let busy = t < 1600;
-  const glowColor = data.tier === 'legendary' ? GOLD : data.tier === 'epic' ? C.orange : data.tier === 'rare' ? C.peach : C.slate;
-  // Silhouette: one ▓ block per letter (3 cells wide in the block font), word gaps kept.
-  const big = s.tier.id !== 'S' && s.caps.unicode;
-  const letterW = big ? 4 : 1;
-  const silW = data.words.reduce((a, n) => a + n * letterW, 0) + (data.words.length - 1) * (big ? 2 : 1);
-  const width = Math.min(r.w, silW + 8);
-  const h = big ? 7 : 3;
-  const x0 = r.x + Math.max(0, Math.floor((r.w - width) / 2));
-  const total = h + 3 + (big ? 5 : 2);
-  const y0 = r.y + Math.max(0, Math.floor((r.h - total) / 2) - 1);
-  const pulse = s.caps.motion ? 0.55 + 0.45 * Math.sin(Math.min(t, 1600) / 1600 * Math.PI * 2.5) : 1;
-  const a = seg(t, 100, 400, easeOutCubic);
-  box(c, { x: x0, y: y0, w: width, h }, fade(mix(C.coal, glowColor, pulse), a), { rounded: false, ascii: !s.caps.unicode });
-  let x = x0 + 4;
-  const rows = big ? 3 : 1;
-  const sy = y0 + Math.floor((h - rows) / 2);
+export function coverBody(k: K, data: CoverData, r: Rect): void {
+  const { tk, L } = k;
+  // Hero numbers: one setting for all three, the richest that fits every column.
+  const nums = data.numbers;
+  const cols = Math.max(1, nums.length);
+  const colW = Math.floor((r.w + 3) / cols);
+  const base: DisplayOptions = { face: tk.face, tall: L && r.h >= 20, currency: tk.text2 };
+  const widest = nums.reduce((a, n) => (n.value.length > a.length ? n.value : a), '');
+  const fit = k.uni && nums.length ? fitDisplay(widest, colW - 4, base) : null;
+  const opts = fit && nums.every(n => fitDisplay(n.value, colW - 4, fit)) ? fit : null;
+  const numH = opts ? displayHeight(opts) + 2 : 2;
+
+  // The locked title: one ghost bar per word, as long as the word in the display face.
+  const letter = 7;
+  const silW = data.words.reduce((a, n) => a + n * letter, 0) + (data.words.length - 1) * 3;
+  const silBig = k.uni && silW <= r.w && r.h >= numH + 9;
+  const silH = silBig ? 3 : 1;
+
+  const block = 2 + silH + (L ? 4 : 2) + numH;
+  let y = r.y + Math.max(0, Math.floor((r.h - block) / 2));
+
+  const a1 = fade(k, 300, 500);
+  let x = r.x + txt(k, r.x, y, 'Archetype', tk.text3, { a: a1 }) + 2;
+  if (data.tier) {
+    x += txt(k, x, y, TIER[data.tier]!, tk.accent, { bold: true, a: a1 });
+    txt(k, x, y, ' · unlocks at the end', tk.text3, { a: a1 });
+  } else txt(k, x, y, 'unlocks at the end', tk.text3, { a: a1 });
+  y += 2;
+  x = r.x;
   data.words.forEach((n, wi) => {
-    for (let i = 0; i < n; i++) {
-      const k = seg(t, 200 + (wi * 4 + i) * 35, 200);
-      for (let yy = 0; yy < rows; yy++) for (let xx = 0; xx < letterW - (big ? 1 : 0); xx++) c.put(x + xx, sy + yy, s.caps.unicode ? '▓' : '#', fade(mix(C.coal, glowColor, 0.25), k));
-      x += letterW;
-    }
-    x += big ? 2 : 1;
+    const w = silBig ? n * letter - 2 : n;
+    const la = fade(k, 380 + wi * 120, 420);
+    for (let yy = 0; yy < silH; yy++) for (let xx = 0; xx < w; xx++) k.c.put(x + xx, y + yy, k.uni ? '█' : '#', fadeIn(tk, tk.ghost, la), tk.bg, 0);
+    x += w + (silBig ? 3 : 1);
   });
-  const label = data.tier ? `${data.tier.toUpperCase()} · LOCKED` : 'LOCKED';
-  const la = seg(t, 700, 300);
-  textCenter(c, x0 + width / 2, y0 + h, ` ${s.caps.unicode ? '◆' : '*'} ${label} `, { fg: glowColor, bold: true, alpha: la });
-  // Three headline numbers.
-  const ny = y0 + h + 3;
-  if (ny + 4 <= r.y + r.h && data.numbers.length) {
-    const n = data.numbers.length;
-    const colW = Math.floor(r.w / n);
-    data.numbers.forEach((num, i) => {
-      const k = seg(t, 600 + i * 180, 450, easeOutBack);
-      busy ||= k < 1;
-      const cx = r.x + colW * i + colW / 2;
-      const pixel = s.caps.color !== 'none' && s.caps.unicode && bigSupported(num.value) && bigWidth(num.value) <= colW - 2 && s.tier.id !== 'S';
-      if (pixel) {
-        const w = bigWidth(num.value);
-        drawBig(c, Math.round(cx - w / 2), ny, num.value, { color: (_x, py) => fade(mix(C.cream, C.orange, py / 4), Math.min(1, k)), dy: () => Math.round((1 - Math.min(1, k)) * 2) });
-        textCenter(c, cx, ny + 4, s.tier.id === 'L' ? spaced(num.label) : num.label.toUpperCase(), { fg: C.gray, alpha: Math.min(1, k) });
-      } else {
-        textCenter(c, cx, ny, num.value, { fg: C.orange, bold: true, alpha: Math.min(1, k) });
-        textCenter(c, cx, ny + 1, num.label, { fg: C.gray, alpha: Math.min(1, k) });
-      }
-    });
-  }
-  void textWidth;
-  return busy;
+  y += silH + (L ? 4 : 2);
+
+  nums.forEach((n, i) => {
+    const cx = r.x + i * colW;
+    const a = fade(k, 700 + i * 140, 420);
+    if (i) vrule(k, cx - 3, y, numH, a);
+    if (opts) {
+      drawDisplay(k.c, cx, y, n.value, fadeIn(tk, tk.text, a), tk.bg, opts);
+      txt(k, cx, y + displayHeight(opts) + 1, cap(n.label), tk.text2, { a });
+    } else {
+      txt(k, cx, y, n.value, tk.text, { bold: true, a });
+      txt(k, cx, y + 1, cap(n.label), tk.text2, { a });
+    }
+  });
 }

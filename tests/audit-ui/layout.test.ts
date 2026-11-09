@@ -32,9 +32,9 @@ describe('wallboard layout', () => {
     expect(pageText(buildBoard(data, { columns: 120, rows: 40 }).pages[0]!)).not.toContain('1/');
   });
 
-  it('shows the hero in block digits, the key stats and a personality line', () => {
+  it('shows the hero in the display face, the key stats and a personality line', () => {
     const text = pageText(buildBoard(boardData(readySnapshot()), { columns: 120, rows: 40 }).pages[0]!);
-    expect(text).toContain('█▀█'); // block digits
+    expect(text).toContain('┏━┓'); // the display face's heavy strokes
     expect(text).toContain('10.1B tokens');
     expect(text).toContain('975 prompts');
     expect(text).toContain('490 chats');

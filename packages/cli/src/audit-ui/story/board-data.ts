@@ -158,7 +158,7 @@ function modelsPanel(story: AuditStory | null, board: BoardData): BoardSummary['
     const rows = share.rows.map((r, i) => ({ label: sanitize(r.label), pct: pcts[i]!, value: shareText(pcts[i]!), tags: tag(r.label, priciestLabel, share.rows[0]!.label), note: r.usd > 0 ? money(r.usd) : undefined }));
     const facts: string[] = [];
     if (priciest) facts.push(`$ priciest: ${sanitize(priciest.label)}, ${money(priciest.usd / priciest.prompts)}/prompt`);
-    if (worst) facts.push(`☠ nemesis: ${sanitize(worst.label)}, ${(worst.swearRatio ?? 1).toFixed(1)}× swears`);
+    if (worst) facts.push(`nemesis: ${sanitize(worst.label)}, ${(worst.swearRatio ?? 1).toFixed(1)}× swears`);
     const era = eras(share.timeline);
     if (era) facts.push(`eras ${era}`);
     const now = share.last30d[0];
@@ -168,7 +168,7 @@ function modelsPanel(story: AuditStory | null, board: BoardData): BoardSummary['
   const top = story?.models.top ?? [];
   if (top.length) {
     const pcts = tenths(top.map(t => t.prompts));
-    return { basis: 'by prompts', rows: top.map((t, i) => ({ label: sanitize(t.label), pct: pcts[i]!, value: shareText(pcts[i]!), tags: tag(t.label, null, top[0]!.label) })), more: 0, unknown: null, facts: worst ? [`☠ nemesis: ${sanitize(worst.label)}`] : [] };
+    return { basis: 'by prompts', rows: top.map((t, i) => ({ label: sanitize(t.label), pct: pcts[i]!, value: shareText(pcts[i]!), tags: tag(t.label, null, top[0]!.label) })), more: 0, unknown: null, facts: worst ? [`nemesis: ${sanitize(worst.label)}`] : [] };
   }
   const rows = board.models.rows.filter(r => r.value !== null && r.value > 0);
   if (!rows.length) return null;
@@ -210,13 +210,13 @@ function posterHeroes(story: AuditStory | null, board: BoardData, spend: Spend |
   return out.slice(0, 3);
 }
 
-/** "Fable 5 ▸ GPT-6 Sol ▸ Opus 5": consecutive months collapsed. */
+/** "Fable 5 → GPT-6 Sol → Opus 5": consecutive months collapsed. */
 function eras(timeline: readonly { month: string; label: string }[]): string | null {
   const seq: string[] = [];
   for (const row of timeline) if (seq.at(-1) !== row.label) seq.push(row.label);
   if (seq.length < 2) return null;
   const short = (label: string) => sanitize(label).replace(/^Claude\s+/, '');
-  return seq.slice(-4).map(short).join(' ▸ ');
+  return seq.slice(-4).map(short).join(' → ');
 }
 
 function agentsPanel(story: AuditStory | null, board: BoardData, spend: Spend | null): BoardSummary['agents'] {

@@ -2,6 +2,22 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
+## 1.8.6 — New look
+
+- **A new look for `slopie audit`.**
+  - **Palette.** Near-black and four greys, with one indigo accent used sparingly: the rarity tier, the one peak a chart is about, and the "all local" dot.
+  - **Layout.** Hairlines instead of boxes, small uppercase labels, and two-tone headlines (the statement in white, the context in grey) on one column grid.
+  - **Display type.** Hero numbers and your archetype are set in a clean single-tone display face, not gradient pixel type.
+- **No mascot, no ornaments.** The pixel mascot, trophies, sparkles, hearts, skulls, stars and the torn receipt edge are gone. Charts are precise and quiet: eighth-block bars on a baseline, thin meters, a single-hue heat grid.
+- **Every card redrawn**: the loading screen, the 16 story cards, the final board and the `s` share card. `--plain` prints the hero number in the same face, with words instead of symbols. Nothing is cut at 120×40, 100×30 or 80×24, and the board keeps all six core facts at every size.
+- **Calmer motion.**
+  - **What stays.** Elements fade in, counters settle, and bars grow once.
+  - **The reveal.** The archetype's redacted bars from the cover now resolve into your title in place, with no slot roll, shimmer or sparkles.
+  - **The board.** It prints in top to bottom.
+  - **When still, no timers.** Nothing repaints until you press a key, resize the window or new data arrives.
+- **Better fallbacks.** In 256 colours every tone is pinned to the neutral grey ramp. In 16 colours the accent becomes bright blue. With `--no-color` labels and hints turn dim, and with `--ascii` the display type falls back to bold text.
+- Same numbers, same data: this release changes only how they look.
+
 ## 1.8.5 — Every session counted, much faster
 
 - **Local by default.** `slopie audit` now makes no network requests. The free hosted model that polishes story wording is opt-in with `--online` (it never received prompts, only aggregates and a few filtered quotes).

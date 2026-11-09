@@ -24,9 +24,9 @@ var __export = (target, all) => {
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
-    for (let key2 of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key2) && key2 !== except)
-        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc = __getOwnPropDesc(from, key2)) || desc.enumerable });
+    for (let key4 of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key4) && key4 !== except)
+        __defProp(to, key4, { get: () => from[key4], enumerable: !(desc = __getOwnPropDesc(from, key4)) || desc.enumerable });
   }
   return to;
 };
@@ -413,23 +413,23 @@ function wrap(s, width) {
       out.push("");
       continue;
     }
-    let line = "";
+    let line2 = "";
     for (const word of paragraph.split(/[ \t]+/).filter(Boolean)) {
-      if (!line) {
-        line = word;
-      } else if (line.length + 1 + word.length <= max2) {
-        line += " " + word;
+      if (!line2) {
+        line2 = word;
+      } else if (line2.length + 1 + word.length <= max2) {
+        line2 += " " + word;
       } else {
-        out.push(line);
-        line = word;
+        out.push(line2);
+        line2 = word;
       }
-      while (line.length > max2) {
-        out.push(line.slice(0, max2));
-        line = line.slice(max2);
+      while (line2.length > max2) {
+        out.push(line2.slice(0, max2));
+        line2 = line2.slice(max2);
       }
     }
-    if (line)
-      out.push(line);
+    if (line2)
+      out.push(line2);
   }
   return out;
 }
@@ -588,10 +588,10 @@ function wrap2(db) {
       }
     },
     transaction(fn) {
-      const make = (begin) => (...args) => {
+      const make = (begin2) => (...args) => {
         const parentDepth = depth;
         const name = `potsherd_sp_${parentDepth}`;
-        db.exec(parentDepth === 0 ? begin : `SAVEPOINT ${name}`);
+        db.exec(parentDepth === 0 ? begin2 : `SAVEPOINT ${name}`);
         depth = parentDepth + 1;
         try {
           const out = fn(...args);
@@ -801,8 +801,8 @@ function isEmbeddingReady(cacheDir = modelsDir()) {
   return acquisitionPlan(cacheDir).complete;
 }
 function offline() {
-  for (const key2 of ["POTSHERD_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"]) {
-    const v = process3.env[key2];
+  for (const key4 of ["POTSHERD_OFFLINE", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE"]) {
+    const v = process3.env[key4];
     if (v && v !== "0")
       return true;
   }
@@ -1701,17 +1701,17 @@ function decline(db, reason) {
   return false;
 }
 function copyVectorsAcross(db, table2) {
-  const key2 = table2 === "vec_cards" ? "session_id" : "id";
+  const key4 = table2 === "vec_cards" ? "session_id" : "id";
   const blob = `vec_blob_${table2.slice("vec_".length)}`;
-  db.exec(`CREATE TABLE IF NOT EXISTS ${blob} (${key2} TEXT PRIMARY KEY, embedding BLOB NOT NULL);`);
+  db.exec(`CREATE TABLE IF NOT EXISTS ${blob} (${key4} TEXT PRIMARY KEY, embedding BLOB NOT NULL);`);
   let rows;
   try {
-    rows = db.prepare(`SELECT ${key2} AS k, embedding AS e FROM ${table2}`).all();
+    rows = db.prepare(`SELECT ${key4} AS k, embedding AS e FROM ${table2}`).all();
   } catch {
     return false;
   }
   try {
-    const insert = db.prepare(`INSERT OR REPLACE INTO ${blob} (${key2}, embedding) VALUES (?, ?)`);
+    const insert = db.prepare(`INSERT OR REPLACE INTO ${blob} (${key4}, embedding) VALUES (?, ?)`);
     for (const row2 of rows)
       insert.run(row2.k, row2.e);
     db.exec(`DROP TABLE ${table2};`);
@@ -1801,13 +1801,13 @@ function forgetStrandedStamps(db, stranded) {
   if (stranded.includes("vec_ghost_prompts"))
     clear("ghost_prompts");
 }
-function legacyVectorCount(db, legacy, rows, key2) {
+function legacyVectorCount(db, legacy, rows, key4) {
   if (!legacyVecTable(db, legacy))
     return 0;
   if (!loadVec(db).available)
     return 0;
   try {
-    return db.prepare(`SELECT COUNT(*) AS n FROM ${legacy} v JOIN ${rows} r ON r.${key2} = v.${key2}`).get().n;
+    return db.prepare(`SELECT COUNT(*) AS n FROM ${legacy} v JOIN ${rows} r ON r.${key4} = v.${key4}`).get().n;
   } catch {
     try {
       const n2 = db.prepare(`SELECT COUNT(*) AS n FROM ${legacy}`).get().n;
@@ -2054,7 +2054,7 @@ async function embedPending(db, options = {}) {
   };
 }
 function pendingRows(db, limit) {
-  const cap2 = limit && limit > 0 ? limit : 1e6;
+  const cap4 = limit && limit > 0 ? limit : 1e6;
   const sql = `
 SELECT kind, id, a, b FROM (
   SELECT 'exchange' AS kind, id, user_text AS a, assistant_text AS b, ts
@@ -2069,7 +2069,7 @@ ORDER BY ts IS NULL, ts DESC
 LIMIT ?`;
   let raw;
   try {
-    raw = db.prepare(sql).all(EMBEDDING_VERSION, EMBEDDING_VERSION, Math.min(cap2, 1e6));
+    raw = db.prepare(sql).all(EMBEDDING_VERSION, EMBEDDING_VERSION, Math.min(cap4, 1e6));
   } catch (err) {
     return { rows: [], error: firstLine2(err?.message ?? String(err)) };
   }
@@ -3009,10 +3009,10 @@ function writeSettingsWithBackup(p, json4, now = /* @__PURE__ */ new Date()) {
   fs6.writeFileSync(p, stringifySettings(json4), { mode: 384 });
   return { backup };
 }
-function unifiedDiff(before, after, label4) {
+function unifiedDiff(before, after, label5) {
   const a = before.split("\n");
   const b2 = after.split("\n");
-  const out = [`--- ${label4}`, `+++ ${label4}`];
+  const out = [`--- ${label5}`, `+++ ${label5}`];
   let start = 0;
   while (start < a.length && start < b2.length && a[start] === b2[start])
     start++;
@@ -3442,23 +3442,23 @@ function table(t, rows, opts = {}) {
   const widths = [];
   for (let c = 0; c < cols; c++) {
     const content = Math.max(...rows.map((r3) => Theme.len(cellText(r3[c]))));
-    const cap2 = opts.max?.[c];
-    widths[c] = cap2 !== void 0 ? Math.min(content, cap2) : content;
+    const cap4 = opts.max?.[c];
+    widths[c] = cap4 !== void 0 ? Math.min(content, cap4) : content;
   }
-  const grow = Math.min(Math.max(opts.grow ?? cols - 1, 0), cols - 1);
+  const grow3 = Math.min(Math.max(opts.grow ?? cols - 1, 0), cols - 1);
   const budget2 = t.width - indent.length - gap2 * (cols - 1);
-  const fixed = widths.reduce((a, b2, i) => i === grow ? a : a + b2, 0);
+  const fixed = widths.reduce((a, b2, i) => i === grow3 ? a : a + b2, 0);
   const growMax = Math.max(8, budget2 - fixed);
-  widths[grow] = Math.min(widths[grow] ?? 0, growMax);
+  widths[grow3] = Math.min(widths[grow3] ?? 0, growMax);
   const total2 = () => widths.reduce((a, b2) => a + b2, 0);
   for (let c = cols - 1; c >= 0 && total2() > budget2; c--) {
-    if (c === grow)
+    if (c === grow3)
       continue;
     const over = total2() - budget2;
     widths[c] = Math.max(3, (widths[c] ?? 0) - over);
   }
   if (total2() > budget2) {
-    widths[grow] = Math.max(3, (widths[grow] ?? 0) - (total2() - budget2));
+    widths[grow3] = Math.max(3, (widths[grow3] ?? 0) - (total2() - budget2));
   }
   return rows.map((r3) => t.asciiLine((indent + r3.map((cell, c) => {
     const w = widths[c] ?? 0;
@@ -3488,8 +3488,8 @@ var init_render = __esm({
        * caller. The fold is width-preserving (see {@link Theme.asciiLine}), so it
        * runs after the line has already been fitted.
        */
-      push(line) {
-        this.lines.push(this.t.asciiLine(line));
+      push(line2) {
+        this.lines.push(this.t.asciiLine(line2));
       }
       /**
        * `potsherd audit · ~/.claude · 21 aug 2026`. Middle parts are paths, so
@@ -3514,8 +3514,8 @@ var init_render = __esm({
         this.lines.push("");
         return this;
       }
-      raw(line = "") {
-        this.push(line);
+      raw(line2 = "") {
+        this.push(line2);
         return this;
       }
       /** An indented prose line, clipped (never wrapped) to the terminal width. */
@@ -3527,13 +3527,13 @@ var init_render = __esm({
       row(r3) {
         const labelW = this.labelWidth();
         const noteW = Math.max(0, this.t.width - INDENT.length - labelW - VALUE_W - GAP);
-        const label4 = (r3.label.length > labelW ? elide(r3.label, labelW, this.t) : r3.label).padEnd(labelW);
+        const label5 = (r3.label.length > labelW ? elide(r3.label, labelW, this.t) : r3.label).padEnd(labelW);
         const rawValue = r3.value ?? "";
         const value = rawValue.length > VALUE_W ? rawValue : rawValue.padStart(VALUE_W);
         const note = r3.note ? clip(r3.note, noteW, this.t) : "";
         const coloured = this.tone(value, r3.tone);
-        const line = `${INDENT}${label4}${coloured}${note ? "   " + this.noteTone(note, r3.tone) : ""}`;
-        this.push(line.trimEnd());
+        const line2 = `${INDENT}${label5}${coloured}${note ? "   " + this.noteTone(note, r3.tone) : ""}`;
+        this.push(line2.trimEnd());
         return this;
       }
       rows(rs) {
@@ -4062,8 +4062,8 @@ function splitLines(text2, o) {
   return lines;
 }
 function applyRecords(rec, lines) {
-  for (const line of lines) {
-    const s = line.trim();
+  for (const line2 of lines) {
+    const s = line2.trim();
     if (!s || s[0] !== "{")
       continue;
     let r3;
@@ -4156,8 +4156,8 @@ async function readHistory(dir, opts = {}) {
     input: fs11.createReadStream(p, { encoding: "utf8" }),
     crlfDelay: Infinity
   });
-  for await (const line of rl) {
-    const s = line.trim();
+  for await (const line2 of rl) {
+    const s = line2.trim();
     if (!s)
       continue;
     scan2.lines++;
@@ -4367,8 +4367,8 @@ function identity(...parts) {
   return h.digest("hex");
 }
 function spanEmbeddingText(text2, embeddingContextJson) {
-  const context2 = JSON.parse(embeddingContextJson).context;
-  return context2 ? `${context2}
+  const context = JSON.parse(embeddingContextJson).context;
+  return context ? `${context}
 
 ${text2}` : text2;
 }
@@ -4377,11 +4377,11 @@ function spanWindows(text2, tokenizer2, recordContext = "") {
     return [];
   const out = [];
   const contextOffsets = tokenizer2 ? tokenizer2.boundaries(recordContext) : [0];
-  const context2 = tokenizer2 ? recordContext.slice(0, contextOffsets[Math.min(64, contextOffsets.length - 1)] ?? 0) : "";
-  const contextTokens = tokenizer2?.count ? tokenizer2.count(context2) : Math.max(0, contextOffsets.length - 1 > 64 ? 64 : contextOffsets.length - 1);
+  const context = tokenizer2 ? recordContext.slice(0, contextOffsets[Math.min(64, contextOffsets.length - 1)] ?? 0) : "";
+  const contextTokens = tokenizer2?.count ? tokenizer2.count(context) : Math.max(0, contextOffsets.length - 1 > 64 ? 64 : contextOffsets.length - 1);
   const payloadTokens = 382 - contextTokens;
   const count5 = tokenizer2?.count ?? ((value) => tokenizer2 ? tokenizer2.boundaries(value).length - 1 : Buffer.byteLength(value));
-  const inputText = (value) => context2 ? `${context2}
+  const inputText = (value) => context ? `${context}
 
 ${value}` : value;
   const policy = tokenizer2 ? `span-v1:${tokenizer2.assetHash}:record-context-v1` : "span-conservative-utf8-v1";
@@ -4411,7 +4411,7 @@ ${value}` : value;
     if (isSplit(text2, start) || isSplit(text2, end))
       throw new Error("surrogate split");
     const value = text2.slice(start, end);
-    out.push({ startUtf16: start, endUtf16: end, text: value, chunkPolicy: policy, embeddingInputHash: hash(inputText(value)), embeddingContextJson: JSON.stringify({ partition: [start, end], tokenizerId: tokenizer2?.id ?? null, tokenizerHash: tokenizer2?.assetHash ?? null, context: context2, contextTokens, recipe: "record-context-v1" }), isPartition: true });
+    out.push({ startUtf16: start, endUtf16: end, text: value, chunkPolicy: policy, embeddingInputHash: hash(inputText(value)), embeddingContextJson: JSON.stringify({ partition: [start, end], tokenizerId: tokenizer2?.id ?? null, tokenizerHash: tokenizer2?.assetHash ?? null, context, contextTokens, recipe: "record-context-v1" }), isPartition: true });
     if (tokenizer2 && i > 0) {
       const overlapStart = offsets[Math.max(0, i - 32)];
       let overlapIndex = Math.min(j, i + payloadTokens - 32);
@@ -4419,7 +4419,7 @@ ${value}` : value;
         overlapIndex--;
       const overlapEnd = offsets[overlapIndex];
       const overlapText = text2.slice(overlapStart, overlapEnd);
-      out.push({ startUtf16: overlapStart, endUtf16: overlapEnd, text: overlapText, chunkPolicy: policy, embeddingInputHash: hash(inputText(overlapText)), embeddingContextJson: JSON.stringify({ partition: null, neighborOverlap: 32, tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context: context2, contextTokens, recipe: "record-context-v1" }), isPartition: false });
+      out.push({ startUtf16: overlapStart, endUtf16: overlapEnd, text: overlapText, chunkPolicy: policy, embeddingInputHash: hash(inputText(overlapText)), embeddingContextJson: JSON.stringify({ partition: null, neighborOverlap: 32, tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context, contextTokens, recipe: "record-context-v1" }), isPartition: false });
     }
     i = j;
   }
@@ -4443,15 +4443,15 @@ function buildSpanManifest(text2, tokenizer2, recordContext = "") {
   if (!tokenizer2.count || !tokenizer2.sourceBoundaries)
     throw new Error("verified v2 source token coordinates required");
   const count5 = tokenizer2.count, contextBounds = tokenizer2.sourceBoundaries(recordContext);
-  let context2 = "";
+  let context = "";
   for (const b2 of contextBounds) {
     if (b2.tokenEndOrdinal > 64)
       break;
     const candidate = recordContext.slice(0, b2.offsetUtf16);
     if (count5(candidate) <= 64)
-      context2 = candidate;
+      context = candidate;
   }
-  const contextTokens = count5(context2), input = (value) => context2 ? `${context2}
+  const contextTokens = count5(context), input = (value) => context ? `${context}
 
 ${value}` : value;
   const offsets = tokenizer2.sourceBoundaries(text2);
@@ -4483,7 +4483,7 @@ ${value}` : value;
     const value = text2.slice(start.offsetUtf16, end.offsetUtf16);
     if (count5(input(value)) > 382)
       throw new Error("v2 wordpiece window exceeds384 including specials");
-    windows2.push({ startUtf16: start.offsetUtf16, endUtf16: end.offsetUtf16, text: value, chunkPolicy: policy, embeddingInputHash: hash(input(value)), embeddingContextJson: JSON.stringify({ tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context: context2, contextTokens, recipe: SPAN_CONTEXT_RECIPE, targetSourceOverlap: 32, actualSourceOverlap: actualOverlap, sourceOverlapRounding: Math.max(0, actualOverlap - 32), sourceTokenStart: start.tokenEndOrdinal, sourceTokenEnd: end.tokenEndOrdinal }), isPartition: false });
+    windows2.push({ startUtf16: start.offsetUtf16, endUtf16: end.offsetUtf16, text: value, chunkPolicy: policy, embeddingInputHash: hash(input(value)), embeddingContextJson: JSON.stringify({ tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context, contextTokens, recipe: SPAN_CONTEXT_RECIPE, targetSourceOverlap: 32, actualSourceOverlap: actualOverlap, sourceOverlapRounding: Math.max(0, actualOverlap - 32), sourceTokenStart: start.tokenEndOrdinal, sourceTokenEnd: end.tokenEndOrdinal }), isPartition: false });
     previousEnd = end.offsetUtf16;
     if (endIndex === offsets.length - 1)
       break;
@@ -4765,20 +4765,20 @@ function validateCapturePayload(value) {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("invalid_capture_request");
   const allowed = /* @__PURE__ */ new Set(["claudeDir", "codexHome", "piDir", "opencodeDir", "enrollHarnesses", "removeHarnesses", "harnesses", "full", "sessionId"]);
-  for (const key2 of Object.keys(value))
-    if (!allowed.has(key2))
+  for (const key4 of Object.keys(value))
+    if (!allowed.has(key4))
       throw new Error("invalid_capture_request");
   const r3 = value;
-  for (const key2 of ["claudeDir", "codexHome", "piDir", "opencodeDir", "sessionId"])
-    if (r3[key2] !== void 0 && (typeof r3[key2] !== "string" || !r3[key2] || r3[key2].length > 8192))
+  for (const key4 of ["claudeDir", "codexHome", "piDir", "opencodeDir", "sessionId"])
+    if (r3[key4] !== void 0 && (typeof r3[key4] !== "string" || !r3[key4] || r3[key4].length > 8192))
       throw new Error("invalid_capture_request");
-  for (const key2 of ["claudeDir", "codexHome", "piDir", "opencodeDir"])
-    if (r3[key2] !== void 0 && !path11.isAbsolute(r3[key2]))
+  for (const key4 of ["claudeDir", "codexHome", "piDir", "opencodeDir"])
+    if (r3[key4] !== void 0 && !path11.isAbsolute(r3[key4]))
       throw new Error("invalid_capture_request");
   if (r3.full !== void 0 && typeof r3.full !== "boolean")
     throw new Error("invalid_capture_request");
-  for (const key2 of ["harnesses", "enrollHarnesses", "removeHarnesses"])
-    if (r3[key2] !== void 0 && (!Array.isArray(r3[key2]) || r3[key2].some((h) => !["claude", "codex", "cursor", "pi", "gemini", "opencode", "copilot"].includes(h))))
+  for (const key4 of ["harnesses", "enrollHarnesses", "removeHarnesses"])
+    if (r3[key4] !== void 0 && (!Array.isArray(r3[key4]) || r3[key4].some((h) => !["claude", "codex", "cursor", "pi", "gemini", "opencode", "copilot"].includes(h))))
       throw new Error("invalid_capture_request");
   return { ...r3, ...r3.harnesses ? { harnesses: [...r3.harnesses] } : {} };
 }
@@ -4993,8 +4993,8 @@ function filesFromToolInput(input) {
   if (!isRecord(input))
     return [];
   const out = [];
-  for (const key2 of FILE_KEYS) {
-    const value = input[key2];
+  for (const key4 of FILE_KEYS) {
+    const value = input[key4];
     if (typeof value === "string" && value.trim())
       out.push(value);
   }
@@ -5095,11 +5095,11 @@ async function collectEvidence(file, harness, start = 0, options = {}) {
   let last2 = null;
   let project;
   let branch;
-  for await (const line of readJsonlLines(file, { start, snapshot: before })) {
-    if (!line.terminated)
+  for await (const line2 of readJsonlLines(file, { start, snapshot: before })) {
+    if (!line2.terminated)
       break;
-    consumed = line.end;
-    const r3 = parseJsonLine(line.text);
+    consumed = line2.end;
+    const r3 = parseJsonLine(line2.text);
     if (!isRecord(r3))
       continue;
     const p = isRecord(r3.payload) ? r3.payload : r3;
@@ -5114,13 +5114,13 @@ async function collectEvidence(file, harness, start = 0, options = {}) {
       branch = p.git.branch;
     const timestamp = typeof r3.timestamp === "string" && Number.isFinite(Date.parse(r3.timestamp)) ? new Date(r3.timestamp).toISOString() : null;
     const uuid = typeof r3.uuid === "string" ? r3.uuid : typeof p.id === "string" ? p.id : null;
-    const key2 = uuid ?? `record:${line.lineNumber}`;
-    last2 = key2;
-    const locator = { recordKey: key2, rawStart: line.start, rawEnd: line.end, mapping: "record_container", ...typeof r3.session_id === "string" ? { parentNativeSessionId: r3.session_id } : {} };
+    const key4 = uuid ?? `record:${line2.lineNumber}`;
+    last2 = key4;
+    const locator = { recordKey: key4, rawStart: line2.start, rawEnd: line2.end, mapping: "record_container", ...typeof r3.session_id === "string" ? { parentNativeSessionId: r3.session_id } : {} };
     const add = (role, text2, suffix, extra = {}) => {
       if (!text2)
         return;
-      records.push({ unitKey: `${role}:${key2}:${suffix}`, role, text: text2, eventAt: timestamp, timeBasis: timestamp ? "record" : "unknown", locator: { recordKey: key2, rawStart: line.start, rawEnd: line.end, mapping: "record_container", ...typeof r3.session_id === "string" ? { parentNativeSessionId: r3.session_id } : {} }, locatorFidelity: uuid ? "record_id" : "record_ordinal", ...project ? { project } : {}, ...branch ? { branch } : {}, recordType: `${type}/${String(p.type ?? "")}`, ...options.legacyByOffset?.get(line.start), ...extra });
+      records.push({ unitKey: `${role}:${key4}:${suffix}`, role, text: text2, eventAt: timestamp, timeBasis: timestamp ? "record" : "unknown", locator: { recordKey: key4, rawStart: line2.start, rawEnd: line2.end, mapping: "record_container", ...typeof r3.session_id === "string" ? { parentNativeSessionId: r3.session_id } : {} }, locatorFidelity: uuid ? "record_id" : "record_ordinal", ...project ? { project } : {}, ...branch ? { branch } : {}, recordType: `${type}/${String(p.type ?? "")}`, ...options.legacyByOffset?.get(line2.start), ...extra });
     };
     if (harness === "claude") {
       if (!isRecord(r3.message)) {
@@ -5137,7 +5137,7 @@ async function collectEvidence(file, harness, start = 0, options = {}) {
         const text2 = extractTypedText(content);
         if (text2) {
           add("user", text2, "text");
-          reopen = line.start;
+          reopen = line2.start;
         }
       } else if (m.role === "assistant")
         add("assistant", extractTypedText(content), "text");
@@ -5166,7 +5166,7 @@ async function collectEvidence(file, harness, start = 0, options = {}) {
       if (subtype === "message" && (p.role === "user" || p.role === "assistant")) {
         add(p.role, extractTextFromContent(p.content), "text");
         if (p.role === "user")
-          reopen = line.start;
+          reopen = line2.start;
       }
       if (["function_call", "custom_tool_call", "tool_search_call", "local_shell_call"].includes(subtype))
         add("tool_input", stringifyToolInput(p.arguments ?? p.input ?? p.action), "call", { ...typeof p.name === "string" && p.name ? { toolName: p.name } : {}, ...call ? { toolCallId: call } : {}, locator: { ...locator, nativeKind: `codex:${subtype}` } });
@@ -5174,7 +5174,7 @@ async function collectEvidence(file, harness, start = 0, options = {}) {
         const output = stringifyToolOutput(p.output) ?? "";
         const outcome = structuredToolOutcome(p);
         if (subtype === "function_call_output" && typeof p.output === "string")
-          nativeWrapperPayloads.set(`tool_result:${key2}:output`, p);
+          nativeWrapperPayloads.set(`tool_result:${key4}:output`, p);
         add("tool_result", output, "output", { ...call ? { toolCallId: call } : {}, outcome, locator: { ...locator, nativeKind: `codex:${subtype}` } });
       }
     }
@@ -5354,13 +5354,13 @@ async function parseClaudeTranscript(filePath, options = {}) {
     });
   };
   const sessionIdSoFar = () => resolveSessionId(absolute2, options, recordSessionId, sidechainFlag);
-  for await (const line of readJsonlLines(absolute2, { start: fromOffset, snapshot: snapshot2 })) {
-    if (!line.terminated)
+  for await (const line2 of readJsonlLines(absolute2, { start: fromOffset, snapshot: snapshot2 })) {
+    if (!line2.terminated)
       break;
-    endOffset = line.end;
-    const parsed = parseJsonLine(line.text);
+    endOffset = line2.end;
+    const parsed = parseJsonLine(line2.text);
     if (parsed === void 0) {
-      if (line.text.trim())
+      if (line2.text.trim())
         malformedLines += 1;
       continue;
     }
@@ -5422,11 +5422,11 @@ async function parseClaudeTranscript(filePath, options = {}) {
           files: [],
           ...typeof parsed.parentUuid === "string" ? { parentUuid: parsed.parentUuid } : {}
         };
-        seqByOffset.set(line.start, seq);
+        seqByOffset.set(line2.start, seq);
         continue;
       }
       if (current) {
-        seqByOffset.set(line.start, current.seq);
+        seqByOffset.set(line2.start, current.seq);
         for (const block2 of results) {
           const id = typeof block2.tool_use_id === "string" ? block2.tool_use_id : void 0;
           if (!id)
@@ -5452,7 +5452,7 @@ ${text3}` : text3;
     }
     if (role !== "assistant" || !current)
       continue;
-    seqByOffset.set(line.start, current.seq);
+    seqByOffset.set(line2.start, current.seq);
     if (typeof message2.model === "string")
       model = message2.model;
     const text2 = extractTypedText(content);
@@ -5889,8 +5889,8 @@ async function parse(source, options = {}) {
     const { exchanges, contentBytes, firstTs, lastTs, model: turnModel } = buildExchanges(messageRows, sessionId, counts2, unknownTypes, () => {
       malformedLines += 1;
     });
-    const str6 = (key2) => {
-      const v = sessionRow?.[key2];
+    const str6 = (key4) => {
+      const v = sessionRow?.[key4];
       return typeof v === "string" && v.trim() ? v : void 0;
     };
     const directory = str6("directory");
@@ -5984,8 +5984,8 @@ function buildExchanges(rows, sessionId, counts2, unknownTypes, onMalformed) {
     if (ASSISTANT_ROLES.has(role)) {
       counts2.assistantTurns += 1;
     } else {
-      const key2 = `role:${role || "(no role)"}`;
-      unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+      const key4 = `role:${role || "(no role)"}`;
+      unknownTypes[key4] = (unknownTypes[key4] ?? 0) + 1;
     }
     if (parsed.text)
       b2.assistantTexts.push(parsed.text);
@@ -6060,8 +6060,8 @@ function parseContent(raw, unknownTypes, onMalformed) {
       out.toolCalls.push({ call, files: filesFromToolInput(input) });
       continue;
     }
-    const key2 = `part:${type || "(no type)"}`;
-    unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+    const key4 = `part:${type || "(no type)"}`;
+    unknownTypes[key4] = (unknownTypes[key4] ?? 0) + 1;
   }
   out.text = texts.join("\n\n");
   return out;
@@ -6320,8 +6320,8 @@ async function parse2(source, options = {}) {
   const str6 = (...keys5) => {
     if (!meta)
       return void 0;
-    for (const key2 of keys5) {
-      const v = meta[key2];
+    for (const key4 of keys5) {
+      const v = meta[key4];
       if (typeof v === "string" && v.trim())
         return v;
     }
@@ -6375,10 +6375,10 @@ function readDocument(file, raw) {
     const turns = [];
     let meta;
     let malformed = 0;
-    for (const line of raw.split("\n")) {
-      if (!line.trim())
+    for (const line2 of raw.split("\n")) {
+      if (!line2.trim())
         continue;
-      const parsed = safeParseJson(line.trim());
+      const parsed = safeParseJson(line2.trim());
       if (typeof parsed === "string") {
         malformed += 1;
         continue;
@@ -6402,11 +6402,11 @@ function readDocument(file, raw) {
     return { turns: doc, malformed: 0 };
   if (!isRecord(doc))
     return { turns: [], malformed: 1 };
-  for (const key2 of HISTORY_KEYS) {
-    const v = doc[key2];
+  for (const key4 of HISTORY_KEYS) {
+    const v = doc[key4];
     if (Array.isArray(v))
       return { turns: v, meta: doc, malformed: 0 };
-    if (key2 === "state" && isRecord(v)) {
+    if (key4 === "state" && isRecord(v)) {
       for (const inner of HISTORY_KEYS) {
         const iv = v[inner];
         if (Array.isArray(iv))
@@ -6489,8 +6489,8 @@ function buildExchanges2(turns, sessionId, fileTime, counts2, unknownTypes) {
     if (ASSISTANT_ROLES2.has(role)) {
       counts2.assistantTurns += 1;
     } else if (!USER_ROLES2.has(role) && !TOOL_ROLES.has(role)) {
-      const key2 = `role:${role || "(no role)"}`;
-      unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+      const key4 = `role:${role || "(no role)"}`;
+      unknownTypes[key4] = (unknownTypes[key4] ?? 0) + 1;
     }
     absorb(
       b2,
@@ -6543,8 +6543,8 @@ function absorb(b2, blocks, counts2, unknownTypes, asUser) {
       const id = block2["tool_call_id"] ?? block2["toolCallId"] ?? block2["id"];
       const result = stringifyToolOutput(block2["content"] ?? block2["output"] ?? block2["result"] ?? block2["response"]);
       const isError = block2["is_error"] === true || block2["isError"] === true || void 0;
-      const key3 = typeof id === "string" && id ? id : `name:${name}`;
-      const at = b2.byId.get(key3);
+      const key5 = typeof id === "string" && id ? id : `name:${name}`;
+      const at = b2.byId.get(key5);
       if (at !== void 0) {
         const call = b2.toolCalls[at];
         if (call) {
@@ -6553,7 +6553,7 @@ function absorb(b2, blocks, counts2, unknownTypes, asUser) {
           if (isError)
             call.isError = true;
         }
-        b2.byId.delete(key3);
+        b2.byId.delete(key5);
         continue;
       }
       b2.toolCalls.push({
@@ -6565,8 +6565,8 @@ function absorb(b2, blocks, counts2, unknownTypes, asUser) {
       counts2.toolCalls += 1;
       continue;
     }
-    const key2 = `block:${type || "(no type)"}`;
-    unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+    const key4 = `block:${type || "(no type)"}`;
+    unknownTypes[key4] = (unknownTypes[key4] ?? 0) + 1;
   }
 }
 function blocksOf(turn) {
@@ -7460,14 +7460,14 @@ function redact(text2) {
   const spans = [];
   for (const span3 of protectedSpans(text2))
     claim(claimed, span3);
-  for (const rule of RULES) {
-    for (const m of rule.scan(text2)) {
+  for (const rule2 of RULES) {
+    for (const m of rule2.scan(text2)) {
       if (m.start < 0 || m.end > text2.length || m.end <= m.start)
         continue;
       if (isClaimed(claimed, m))
         continue;
       claim(claimed, m);
-      spans.push({ start: m.start, end: m.end, rule, value: m.value });
+      spans.push({ start: m.start, end: m.end, rule: rule2, value: m.value });
     }
   }
   if (spans.length === 0)
@@ -7584,9 +7584,9 @@ function redactLegacyProjection(value) {
     if (input && typeof input === "object" && Object.getPrototypeOf(input) === Object.prototype) {
       const output = {};
       let changed = false;
-      for (const [key2, child] of Object.entries(input)) {
+      for (const [key4, child] of Object.entries(input)) {
         const result = visit(child);
-        output[key2] = result.value;
+        output[key4] = result.value;
         changed ||= result.changed;
       }
       if (changed) {
@@ -7622,13 +7622,13 @@ import { createHash as createHash6 } from "node:crypto";
 function inspect2(text2, normalizationVersion) {
   if (normalizationVersion === NORMALIZATION_VERSION)
     return { unsafe: false, ranges: [] };
-  const key2 = createHash6("sha256").update(text2).digest("hex");
-  const known3 = checks.get(key2);
+  const key4 = createHash6("sha256").update(text2).digest("hex");
+  const known3 = checks.get(key4);
   if (known3)
     return known3;
   const redacted = redact(text2);
   const result = { unsafe: redacted.text !== text2, ranges: redacted.hits.map((hit2) => ({ start: hit2.start, end: hit2.start + hit2.length })) };
-  checks.set(key2, result);
+  checks.set(key4, result);
   if (checks.size > 2048)
     checks.delete(checks.keys().next().value);
   return result;
@@ -7656,9 +7656,9 @@ var init_privacy = __esm({
 
 // packages/core/dist/memory/scope.js
 function validateScope(scope2) {
-  for (const key2 of ["eventFrom", "asOf", "learnedBy"])
-    if (scope2[key2] && !Number.isFinite(Date.parse(scope2[key2])))
-      throw new Error(`invalid ${key2}`);
+  for (const key4 of ["eventFrom", "asOf", "learnedBy"])
+    if (scope2[key4] && !Number.isFinite(Date.parse(scope2[key4])))
+      throw new Error(`invalid ${key4}`);
   if (scope2.eventFrom && scope2.asOf && Date.parse(scope2.eventFrom) > Date.parse(scope2.asOf))
     throw new Error("invalid event range");
   if (scope2.sourceIds?.some((x) => !x))
@@ -7755,7 +7755,7 @@ function utc(value) {
 }
 function writeMemoryNotes(db, input, origin = input.origin) {
   validateScope(input.scope);
-  if (["eventFrom", "asOf", "learnedBy", "includeHistory"].some((key2) => input.scope[key2] !== void 0))
+  if (["eventFrom", "asOf", "learnedBy", "includeHistory"].some((key4) => input.scope[key4] !== void 0))
     throw new Error("write scope contains read-only boundaries; use entry eventAt/validity dates");
   if (input.scope.sourceIds) {
     const anchors = [input.originSourceId, input.lineageAnchorSourceId].filter((value) => value !== void 0);
@@ -7936,9 +7936,9 @@ function backfillLegacyNotes(db, limit = 100) {
   let count5 = 0;
   for (const row2 of rows) {
     const entries = [];
-    for (const [kind3, key2] of [["decision", "decided"], ["open", "open"], ["next", "next_step"]])
-      if (String(row2[key2] ?? "").trim())
-        entries.push({ kind: kind3, text: String(row2[key2]) });
+    for (const [kind3, key4] of [["decision", "decided"], ["open", "open"], ["next", "next_step"]])
+      if (String(row2[key4] ?? "").trim())
+        entries.push({ kind: kind3, text: String(row2[key4]) });
     if (!entries.length)
       continue;
     const sid3 = row2.harness ? sourceId(String(row2.harness), String(row2.session_id)) : void 0;
@@ -7985,9 +7985,9 @@ function compatibilityRecords(parsed) {
   const records = [];
   for (const e of parsed.exchanges) {
     const base3 = { exchangeId: e.id, seq: e.seq, eventAt: e.ts || null, timeBasis: "exchange", locatorFidelity: "exchange_ordinal", project: parsed.session.project, branch: parsed.session.gitBranch, recordType: "legacy_exchange" };
-    const add = (role, text2, key2, extra = {}) => {
+    const add = (role, text2, key4, extra = {}) => {
       if (text2)
-        records.push({ ...base3, unitKey: `${role}:${key2}`, role, text: text2, locator: { recordKey: key2, mapping: "unavailable" }, ...extra });
+        records.push({ ...base3, unitKey: `${role}:${key4}`, role, text: text2, locator: { recordKey: key4, mapping: "unavailable" }, ...extra });
     };
     add("user", e.userText, `${e.seq}:user`);
     add("assistant", e.assistantText, `${e.seq}:assistant`);
@@ -8015,11 +8015,11 @@ function publishSource(db, input) {
     const branch = r3.branch ?? null;
     const locator = JSON.stringify(r3.locator);
     const id = identity(sid3, r3.unitKey, hash(r3.text), normalizationVersion, r3.role, locator, r3.eventAt ?? "", r3.timeBasis, project ?? "", branch ?? "", r3.toolName ?? "", r3.toolCallId ?? "", r3.outcome ?? "", r3.locatorFidelity);
-    const context2 = redact(`[project:${project ?? "unknown"}]
+    const context = redact(`[project:${project ?? "unknown"}]
 [role:${r3.role}]
 [tool:${r3.toolName ?? "none"}]
 [outcome:${r3.outcome ?? "unknown"}]`).text;
-    const manifest = buildSpanManifest(r3.text, input.tokenizer, context2);
+    const manifest = buildSpanManifest(r3.text, input.tokenizer, context);
     return { r: r3, project, branch, locator, id, windows: manifest.windows, manifest };
   });
   if (retained) {
@@ -9210,7 +9210,7 @@ function effectiveConcurrency(n2, profile) {
 function estimate(input) {
   const model = input.model ?? CARD_MODEL;
   const cls = modelClass(model);
-  const price2 = PRICES[cls];
+  const price = PRICES[cls];
   const profile = callProfile(input.backend);
   const chunk = Math.max(1e3, input.chunkChars ?? CHUNK_CHARS);
   const outChars = input.outputCharsPerCall ?? OUTPUT_CHARS_PER_CALL;
@@ -9218,7 +9218,7 @@ function estimate(input) {
   const concurrency = Math.max(1, Math.floor(input.concurrency ?? 1));
   const hostSeam = input.hostSeam === true;
   const chargeable = input.chargeable ?? (hostSeam ? false : input.backend ? input.backend === "api" : true);
-  const priceScale = price2.inputPerMTok / PRICES[CARD_MODEL].inputPerMTok;
+  const priceScale = price.inputPerMTok / PRICES[CARD_MODEL].inputPerMTok;
   const perSession = [];
   let calls = 0;
   let inputTokens = 0;
@@ -9236,7 +9236,7 @@ function estimate(input) {
     const inTok = tokensForChars(chars);
     const outTok = profile.outputTokensPerCall !== null ? n2 * profile.outputTokensPerCall : tokensForChars(n2 * outChars);
     const derived = s.calls === void 0;
-    const bare = callUsd(n2, chars, inTok, outTok, profile, price2, priceScale);
+    const bare = callUsd(n2, chars, inTok, outTok, profile, price, priceScale);
     perSession.push({
       id: s.id,
       calls: n2,
@@ -9258,8 +9258,8 @@ function estimate(input) {
   const cal = input.calibration;
   const usdRatio = cal && cal.samples > 0 ? cal.usdRatio : 1;
   const timeRatio = cal && cal.samples > 0 ? cal.timeRatio : 1;
-  const rawUsd = calls === 0 ? 0 : callUsd(calls, promptChars, inputTokens, outputTokens, profile, price2, priceScale);
-  const unquoted = derivedCalls === 0 ? 0 : (PIPELINE_COST_FACTOR - 1) * callUsd(derivedCalls, derivedChars, derivedInputTokens, derivedOutputTokens, profile, price2, priceScale);
+  const rawUsd = calls === 0 ? 0 : callUsd(calls, promptChars, inputTokens, outputTokens, profile, price, priceScale);
+  const unquoted = derivedCalls === 0 ? 0 : (PIPELINE_COST_FACTOR - 1) * callUsd(derivedCalls, derivedChars, derivedInputTokens, derivedOutputTokens, profile, price, priceScale);
   const usd3 = hostSeam ? 0 : (rawUsd + unquoted) * usdRatio;
   const serialMs = calls * profile.baseMs + promptChars / 1e3 * profile.msPerKChar;
   const eff = effectiveConcurrency(concurrency, profile);
@@ -9287,9 +9287,9 @@ function estimate(input) {
     perSession
   };
 }
-function callUsd(calls, chars, inputTokens, outputTokens, profile, price2, priceScale) {
+function callUsd(calls, chars, inputTokens, outputTokens, profile, price, priceScale) {
   if (profile.usdPerMChar === null) {
-    return inputTokens / 1e6 * price2.inputPerMTok + outputTokens / 1e6 * price2.outputPerMTok + calls * profile.baseUsd * priceScale;
+    return inputTokens / 1e6 * price.inputPerMTok + outputTokens / 1e6 * price.outputPerMTok + calls * profile.baseUsd * priceScale;
   }
   return (calls * profile.baseUsd + chars / 1e6 * profile.usdPerMChar) * priceScale;
 }
@@ -9343,13 +9343,13 @@ function resolvable(specifier) {
 function availability(o = {}) {
   const env = o.env ?? process8.env;
   const which2 = o.which ?? ((n2) => onPath(n2, env));
-  const key2 = env["ANTHROPIC_API_KEY"];
+  const key4 = env["ANTHROPIC_API_KEY"];
   const canResolve = o.resolvable ?? resolvable;
   const host = hostAgent(env);
   return {
     claude: which2("claude"),
     codex: which2("codex"),
-    apiKey: typeof key2 === "string" && key2.trim().length > 0,
+    apiKey: typeof key4 === "string" && key4.trim().length > 0,
     codexHarness: host === "codex",
     agentSdk: canResolve("@anthropic-ai/claude-agent-sdk"),
     apiSdk: canResolve("@anthropic-ai/sdk"),
@@ -9453,13 +9453,13 @@ function lastAgentMessage(stdout) {
   const lines = stdout.split("\n").filter((l) => l.trim().length > 0);
   const events = [];
   let allJson = lines.length > 0;
-  for (const line of lines) {
-    if (!line.trimStart().startsWith("{")) {
+  for (const line2 of lines) {
+    if (!line2.trimStart().startsWith("{")) {
       allJson = false;
       break;
     }
     try {
-      const ev = JSON.parse(line);
+      const ev = JSON.parse(line2);
       const text2 = pickText(ev);
       if (text2)
         events.push(text2);
@@ -9473,13 +9473,13 @@ function lastAgentMessage(stdout) {
   return stdout.trim();
 }
 function pickText(ev) {
-  for (const key2 of ["text", "message", "last_agent_message"]) {
-    const v = ev[key2];
+  for (const key4 of ["text", "message", "last_agent_message"]) {
+    const v = ev[key4];
     if (typeof v === "string" && v.trim())
       return v;
   }
-  for (const key2 of ["msg", "item", "payload"]) {
-    const v = ev[key2];
+  for (const key4 of ["msg", "item", "payload"]) {
+    const v = ev[key4];
     if (v && typeof v === "object") {
       const inner = pickText(v);
       if (inner)
@@ -9925,8 +9925,8 @@ var init_llm = __esm({
           return `no model backend on this machine \u2014 and none is needed: potsherd is running inside ${a.host}, which is already a model on your own subscription.
         Run the seam: potsherd emits the prompts, you answer them, potsherd filters the citations in code.`;
         }
-        const key2 = a.apiKey ? "\n        ANTHROPIC_API_KEY is set but the Anthropic SDK is not installed." : "";
-        return "no way to reach a model: no `claude` binary on PATH, no `codex`, and no coding agent around this process." + key2 + "\n        potsherd runs on the Claude Code subscription you already have \u2014 installing Claude Code is enough.";
+        const key4 = a.apiKey ? "\n        ANTHROPIC_API_KEY is set but the Anthropic SDK is not installed." : "";
+        return "no way to reach a model: no `claude` binary on PATH, no `codex`, and no coding agent around this process." + key4 + "\n        potsherd runs on the Claude Code subscription you already have \u2014 installing Claude Code is enough.";
       }
       static fixFor(a) {
         if (a.hostSeam) {
@@ -10212,7 +10212,7 @@ ${req.prompt}` : req.prompt,
           const long = req.prompt.length > 4e4 || req.maxOutputTokens > 8192;
           const message2 = long ? await client.messages.stream(params, req.signal ? { signal: req.signal } : {}).finalMessage() : await client.messages.create(params, req.signal ? { signal: req.signal } : {});
           const text2 = message2.content.map((b2) => b2.type === "text" ? b2.text : "").join("");
-          const price2 = PRICES[modelClass(message2.model ?? req.model)];
+          const price = PRICES[modelClass(message2.model ?? req.model)];
           const inputTokens = message2.usage.input_tokens;
           const outputTokens = message2.usage.output_tokens;
           return {
@@ -10220,7 +10220,7 @@ ${req.prompt}` : req.prompt,
             model: message2.model,
             inputTokens,
             outputTokens,
-            usd: inputTokens / 1e6 * price2.inputPerMTok + outputTokens / 1e6 * price2.outputPerMTok
+            usd: inputTokens / 1e6 * price.inputPerMTok + outputTokens / 1e6 * price.outputPerMTok
           };
         } catch (err) {
           throw new LlmError(`the Anthropic API call failed: ${errMessage(err)}`, "check ANTHROPIC_API_KEY and the network, then retry", err);
@@ -10312,9 +10312,9 @@ ${req.prompt}` : req.prompt,
 ${prompt.text}`;
         const maxOutputTokens = req.maxOutputTokens ?? this.opts.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
         const inTokens = tokensForText(outgoing) + (system ? tokensForText(system.text) : 0);
-        const price2 = PRICES[modelClass(this.model)];
+        const price = PRICES[modelClass(this.model)];
         const reservation = this.budget.admit({
-          usd: inTokens / 1e6 * price2.inputPerMTok + maxOutputTokens / 1e6 * price2.outputPerMTok,
+          usd: inTokens / 1e6 * price.inputPerMTok + maxOutputTokens / 1e6 * price.outputPerMTok,
           tokens: inTokens + maxOutputTokens
         });
         try {
@@ -10323,7 +10323,7 @@ ${prompt.text}`;
             ...system ? { system: system.text } : {},
             maxOutputTokens,
             inTokens,
-            price: price2,
+            price,
             redactions,
             reservation
           });
@@ -10333,7 +10333,7 @@ ${prompt.text}`;
       }
       /** The body of {@link text}, split out so the reservation can be released in one place. */
       async call(req, ctx) {
-        const { outgoing, system, maxOutputTokens, inTokens, price: price2, redactions } = ctx;
+        const { outgoing, system, maxOutputTokens, inTokens, price, redactions } = ctx;
         const started = Date.now();
         const sent = await this.send({
           prompt: outgoing,
@@ -10349,7 +10349,7 @@ ${prompt.text}`;
         const reportedIn = sent.inputTokens;
         const inputTokensEstimated = typeof reportedIn !== "number" || reportedIn <= 0 || reportedIn * IMPLAUSIBLE_TOKEN_FACTOR < inTokens;
         const inputTokens = inputTokensEstimated ? inTokens : reportedIn;
-        const usd3 = sent.usd ?? inputTokens / 1e6 * price2.inputPerMTok + outputTokens / 1e6 * price2.outputPerMTok;
+        const usd3 = sent.usd ?? inputTokens / 1e6 * price.inputPerMTok + outputTokens / 1e6 * price.outputPerMTok;
         const result = {
           text: sent.text,
           backend: this.backend,
@@ -11068,11 +11068,11 @@ async function recallLegacyRaw(db, query, requested = {}, options = {}) {
   if (filters.until)
     validateISODate(filters.until, "--until");
   const fts = ftsQuery(query);
-  let key2 = NO_KEYPHRASE;
+  let key4 = NO_KEYPHRASE;
   try {
-    key2 = keyphrase(db, fts.tokens, QUOTE_STOPWORDS);
+    key4 = keyphrase(db, fts.tokens, QUOTE_STOPWORDS);
   } catch {
-    key2 = NO_KEYPHRASE;
+    key4 = NO_KEYPHRASE;
   }
   const listReports = [];
   const empty = (vectors2) => ({
@@ -11091,7 +11091,7 @@ async function recallLegacyRaw(db, query, requested = {}, options = {}) {
     confidence: "none",
     minConfidence: minConfidence2,
     belowFloor: 0,
-    keyphrase: key2,
+    keyphrase: key4,
     keyphraseLists: [],
     ms: Date.now() - started
   });
@@ -11148,7 +11148,7 @@ async function recallLegacyRaw(db, query, requested = {}, options = {}) {
   const keyphraseLists = /* @__PURE__ */ new Set();
   const quoteTerm = (t) => `"${t.replace(/"/g, '""')}"`;
   const distinctMeaningful = new Set(fts.tokens.filter((t) => !STOPWORDS.has(t))).size;
-  const keyOr = key2.terms.length > 0 && key2.terms.length < distinctMeaningful ? key2.terms.map((t) => t.length >= PREFIX_MIN ? `${quoteTerm(t)}*` : quoteTerm(t)).join(" OR ") : "";
+  const keyOr = key4.terms.length > 0 && key4.terms.length < distinctMeaningful ? key4.terms.map((t) => t.length >= PREFIX_MIN ? `${quoteTerm(t)}*` : quoteTerm(t)).join(" OR ") : "";
   const textList = (list3, fn) => {
     if (!wanted.has(list3))
       return [];
@@ -11240,7 +11240,7 @@ async function recallLegacyRaw(db, query, requested = {}, options = {}) {
   const quotable = fts.tokens.filter((t) => !QUOTE_STOPWORDS.has(t));
   const meaningfulTokens = fts.tokens.filter((t) => !STOPWORDS.has(t));
   const quotableTokens = quotable.length > 0 ? quotable : meaningfulTokens.length > 0 ? meaningfulTokens : fts.tokens;
-  const requiredTerms = key2.terms.slice(0, KEY_TERMS_REQUIRED);
+  const requiredTerms = key4.terms.slice(0, KEY_TERMS_REQUIRED);
   const fused = /* @__PURE__ */ new Map();
   const effectiveWeights = {};
   for (const [name, hits] of Object.entries(lists)) {
@@ -11378,12 +11378,12 @@ async function recallLegacyRaw(db, query, requested = {}, options = {}) {
       continue;
     const seenText = /* @__PURE__ */ new Set();
     const hits = grouped.get(conversation).filter((h) => {
-      const key3 = h.snippet.text.trim();
-      if (!key3)
+      const key5 = h.snippet.text.trim();
+      if (!key5)
         return true;
-      if (seenText.has(key3))
+      if (seenText.has(key5))
         return false;
-      seenText.add(key3);
+      seenText.add(key5);
       return true;
     });
     const lane = laneOfSession(hits);
@@ -11452,7 +11452,7 @@ async function recallLegacyRaw(db, query, requested = {}, options = {}) {
     confidence,
     minConfidence: minConfidence2,
     belowFloor,
-    keyphrase: key2,
+    keyphrase: key4,
     keyphraseLists: [...keyphraseLists],
     ms: Date.now() - started
   };
@@ -11577,13 +11577,13 @@ function firstPromptTitle(text2) {
     return null;
   return clean3.length > 120 ? clean3.slice(0, 120) : clean3;
 }
-function sessionScore(hits, cap2 = CORROBORATION) {
+function sessionScore(hits, cap4 = CORROBORATION) {
   if (hits.length === 0)
     return 0;
   const sorted = [...hits].sort((a, b2) => b2.score - a.score);
   const best = sorted[0].score;
   const rest = sorted.slice(1).reduce((n2, h) => n2 + h.score, 0);
-  return best + Math.min(rest / 2, best * cap2);
+  return best + Math.min(rest / 2, best * cap4);
 }
 function titled(db, tokens2, filters, depth, reports) {
   const t0 = Date.now();
@@ -12655,34 +12655,34 @@ function labels(text2) {
 function computeLabels(text2) {
   const map = new Uint8Array(text2.length);
   let ambiguous2 = false, offset = 0, fence = null;
-  for (const line of text2.split(/(?<=\n)/u)) {
-    const marker2 = line.match(/^ {0,3}(`{3,}|~{3,})/u);
+  for (const line2 of text2.split(/(?<=\n)/u)) {
+    const marker2 = line2.match(/^ {0,3}(`{3,}|~{3,})/u);
     if (fence) {
-      if (marker2 && marker2[1][0] === fence.char && marker2[1].length >= fence.length && line.slice(marker2[0].length).trim() === "") {
-        map.fill(CODE, fence.start, offset + line.length);
+      if (marker2 && marker2[1][0] === fence.char && marker2[1].length >= fence.length && line2.slice(marker2[0].length).trim() === "") {
+        map.fill(CODE, fence.start, offset + line2.length);
         fence = null;
       }
     } else if (marker2)
       fence = { char: marker2[1][0], length: marker2[1].length, start: offset };
-    else if (/^ {0,3}>/u.test(line))
-      map.fill(QUOTE, offset, offset + line.length);
-    else if (/^(?: {4}|\t)\S/u.test(line)) {
-      map.fill(UNKNOWN, offset, offset + line.length);
+    else if (/^ {0,3}>/u.test(line2))
+      map.fill(QUOTE, offset, offset + line2.length);
+    else if (/^(?: {4}|\t)\S/u.test(line2)) {
+      map.fill(UNKNOWN, offset, offset + line2.length);
       ambiguous2 = true;
     }
-    offset += line.length;
+    offset += line2.length;
   }
   if (fence) {
     map.fill(UNKNOWN, fence.start);
     ambiguous2 = true;
   }
   const sourceRows = text2.split(/(?<=\n)/u), timestamp = /^\s*(?:(?:[-*#]+|\*\*)\s*)?\[?\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?\]?/u;
-  if (/(?:transcript|captions|youtube|youtu\.be|video transcription)/iu.test(text2) && sourceRows.filter((line) => timestamp.test(line)).length >= 3) {
+  if (/(?:transcript|captions|youtube|youtu\.be|video transcription)/iu.test(text2) && sourceRows.filter((line2) => timestamp.test(line2)).length >= 3) {
     let at = 0;
-    for (const line of sourceRows) {
-      if (timestamp.test(line))
-        map.fill(QUOTE, at, at + line.length);
-      at += line.length;
+    for (const line2 of sourceRows) {
+      if (timestamp.test(line2))
+        map.fill(QUOTE, at, at + line2.length);
+      at += line2.length;
     }
   }
   for (let i = 0; i < text2.length; i++) {
@@ -12757,19 +12757,19 @@ function auditProfanity(prompts, partial = false) {
     if (!found)
       continue;
     ambiguous2 ||= found.ambiguous;
-    for (const [raw, label4, start, end] of found.hits) {
-      const bucket = kind(label4), counter2 = bucketCounts.get(bucket);
+    for (const [raw, label5, start, end] of found.hits) {
+      const bucket = kind(label5), counter2 = bucketCounts.get(bucket);
       occurrences++;
       containing.add(prompt.id);
       counter2.occurrences++;
       counter2.prompts.add(prompt.id);
-      const normalized = raw.toLowerCase(), key2 = normalized + "\0" + bucket;
-      const term = terms.get(key2) ?? { term: normalized, kind: bucket, occurrences: 0, ids: /* @__PURE__ */ new Set(), samples: [] };
+      const normalized = raw.toLowerCase(), key4 = normalized + "\0" + bucket;
+      const term = terms.get(key4) ?? { term: normalized, kind: bucket, occurrences: 0, ids: /* @__PURE__ */ new Set(), samples: [] };
       term.occurrences++;
       term.ids.add(prompt.id);
       if (term.samples.length < 3)
         term.samples.push({ promptId: prompt.id, conversationId: prompt.conversationId, startUtf16: start, endUtf16: end, route: prompt.route });
-      terms.set(key2, term);
+      terms.set(key4, term);
       if (matches.length < 8)
         matches.push({ term: raw, kind: bucket, promptId: prompt.id, conversationId: prompt.conversationId, startUtf16: start, endUtf16: end, route: prompt.route });
     }
@@ -12788,7 +12788,7 @@ var init_profanity = __esm({
     CODE = 2;
     QUOTE = 1;
     UNKNOWN = 3;
-    kind = (label4) => label4 === CODE ? "code" : label4 === QUOTE ? "quoted" : label4 === UNKNOWN ? "unknown" : "direct_prose";
+    kind = (label5) => label5 === CODE ? "code" : label5 === QUOTE ? "quoted" : label5 === UNKNOWN ? "unknown" : "direct_prose";
     escaped = (text2, index) => {
       let count5 = 0;
       for (let i = index - 1; i >= 0 && text2[i] === "\\"; i--)
@@ -12824,21 +12824,21 @@ function languageLines(text2) {
   let labelCache = null;
   const L = (i) => (labelCache ??= proseLabels(text2))[i];
   let offset = 0;
-  for (const line of text2.split("\n")) {
+  for (const line2 of text2.split("\n")) {
     const start = offset;
-    offset += line.length + 1;
-    const trimmed = line.trim();
+    offset += line2.length + 1;
+    const trimmed = line2.trim();
     if (!trimmed)
       continue;
-    const at = start + line.indexOf(trimmed), end = at + trimmed.length;
+    const at = start + line2.indexOf(trimmed), end = at + trimmed.length;
     if (!LEXICON_HINT.test(trimmed) && !POSITIVE_HINT.test(trimmed))
       continue;
     const probe2 = { id: "line", conversationId: "", role: "user", originBasis: "claude_prompt_id", identityBasis: "", eligibleHuman: true, excludedReason: null, eventAt: null, route: { basis: "canonical", refs: [], scope: {} } };
-    const local = auditProfanity([{ ...probe2, text: line }]);
+    const local = auditProfanity([{ ...probe2, text: line2 }]);
     const direct = local.terms?.some((t) => t.kind === "direct_prose" && t.samples.some((sample) => L(start + sample.startUtf16) === 0)) ?? false;
     const nonprose = local.terms?.some((t) => t.kind !== "direct_prose") ?? false;
     const positiveMatch = trimmed.match(POSITIVE), positive2 = !!positiveMatch && L(at + (positiveMatch.index ?? 0)) === 0, negated = NEGATED.test(trimmed);
-    const quoted = L(at) !== 0 || /^\s*(?:>|[`~]{3}|["“'])/u.test(line) || /^ {4}|^\t/u.test(line);
+    const quoted = L(at) !== 0 || /^\s*(?:>|[`~]{3}|["“'])/u.test(line2) || /^ {4}|^\t/u.test(line2);
     const row2 = {};
     if (direct)
       row2.d = 1;
@@ -12856,8 +12856,8 @@ function languageLines(text2) {
       row2.n = 1;
     if (direct && !quoted && words2(trimmed) >= 2) {
       const spans = trimmed.length <= 160 ? [{ text: trimmed, start: at, end }] : [...trimmed.matchAll(/[^.!?;\n]+[.!?;]?/gu)].map((match) => {
-        const value = match[0].trim(), begin = at + match.index + match[0].indexOf(value);
-        return { text: value, start: begin, end: begin + value.length };
+        const value = match[0].trim(), begin2 = at + match.index + match[0].indexOf(value);
+        return { text: value, start: begin2, end: begin2 + value.length };
       }).filter((span3) => span3.text.length <= 160 && words2(span3.text) >= 2 && auditProfanity([{ ...probe2, text: span3.text }]).terms?.some((t) => t.kind === "direct_prose" && L(span3.start + t.samples[0].startUtf16) === 0));
       if (spans.length)
         row2.sp = spans.map((s) => [s.text, s.start, s.end]);
@@ -12882,10 +12882,10 @@ function summarizeDirectedLanguage(prompts, records) {
       names.set(r3.model, providers);
       conversationModels.set(r3.conversationId, names);
     }
-    const key2 = `${r3.conversationId}\0${r3.project}`;
-    const rows = groups.get(key2) ?? [];
+    const key4 = `${r3.conversationId}\0${r3.project}`;
+    const rows = groups.get(key4) ?? [];
     rows.push(r3);
-    groups.set(key2, rows);
+    groups.set(key4, rows);
   }
   for (const rows of groups.values()) {
     let models2 = /* @__PURE__ */ new Map();
@@ -12899,11 +12899,11 @@ function summarizeDirectedLanguage(prompts, records) {
   }
   const lines = /* @__PURE__ */ new Map(), feedback = /* @__PURE__ */ new Map(), gaps = /* @__PURE__ */ new Set(["lexical_directed_feedback_only", "unknown_authorship_not_universally_attested"]);
   const rowFor = (owner) => {
-    const key2 = JSON.stringify(owner);
-    let row2 = feedback.get(key2);
+    const key4 = JSON.stringify(owner);
+    let row2 = feedback.get(key4);
     if (!row2) {
       row2 = { ...owner, negative: /* @__PURE__ */ new Set(), praise: /* @__PURE__ */ new Set(), associated: /* @__PURE__ */ new Set(), ids: /* @__PURE__ */ new Set() };
-      feedback.set(key2, row2);
+      feedback.set(key4, row2);
     }
     return row2;
   };
@@ -12923,26 +12923,26 @@ function summarizeDirectedLanguage(prompts, records) {
     if (owner.model)
       rowFor(owner).associated.add(prompt.id);
     let negative = false, praise = false;
-    for (const line of lex.ll ?? []) {
-      const explicitNegative = (named2.length === 1 || !!line.y) && !!line.d && !line.p && !!line.n;
-      if (!line.q && !line.np) {
+    for (const line2 of lex.ll ?? []) {
+      const explicitNegative = (named2.length === 1 || !!line2.y) && !!line2.d && !line2.p && !!line2.n;
+      if (!line2.q && !line2.np) {
         negative ||= explicitNegative;
-        praise ||= !!line.p && !line.ng;
+        praise ||= !!line2.p && !line2.ng;
       }
-      if (line.ns)
+      if (line2.ns)
         gaps.add("long_profane_lines_not_displayed");
-      for (const [text2, start, end] of line.sp ?? []) {
-        const key2 = text2.toLocaleLowerCase("en").replace(/\s+/gu, " ").replace(/[\p{P}]+$/gu, "").trim(), item = lines.get(key2) ?? { text: text2, count: 0, ids: /* @__PURE__ */ new Set(), models: /* @__PURE__ */ new Map(), samples: [] };
+      for (const [text2, start, end] of line2.sp ?? []) {
+        const key4 = text2.toLocaleLowerCase("en").replace(/\s+/gu, " ").replace(/[\p{P}]+$/gu, "").trim(), item = lines.get(key4) ?? { text: text2, count: 0, ids: /* @__PURE__ */ new Set(), models: /* @__PURE__ */ new Map(), samples: [] };
         item.count++;
         item.ids.add(prompt.id);
         if (item.samples.length < 3)
           item.samples.push({ promptId: prompt.id, conversationId: prompt.conversationId, startUtf16: start, endUtf16: end, route: prompt.route });
-        if (explicitNegative && !line.q && !line.np && owner.model) {
+        if (explicitNegative && !line2.q && !line2.np && owner.model) {
           const k = JSON.stringify(owner), row2 = item.models.get(k) ?? { ...owner, occurrences: 0 };
           row2.occurrences++;
           item.models.set(k, row2);
         }
-        lines.set(key2, item);
+        lines.set(key4, item);
       }
     }
     if ((negative || praise) && owner.model) {
@@ -12955,7 +12955,7 @@ function summarizeDirectedLanguage(prompts, records) {
     } else if (negative || praise)
       gaps.add("feedback_model_unattributed");
   }
-  return { languageLines: [...lines.entries()].map(([key2, row2]) => ({ id: createHash9("sha256").update(key2).digest("hex").slice(0, 20), text: row2.text, occurrences: row2.count, containingInputs: row2.ids.size, models: [...row2.models.values()].sort((a, b2) => b2.occurrences - a.occurrences), samples: row2.samples })).sort((a, b2) => b2.occurrences - a.occurrences || a.text.localeCompare(b2.text)).slice(0, 6), modelFeedback: [...feedback.values()].map((row2) => ({ provider: row2.provider, model: row2.model, associatedInputs: row2.associated.size, directedNegativeInputs: row2.negative.size, praiseInputs: row2.praise.size, promptIds: [...row2.ids].slice(0, 12) })).sort((a, b2) => b2.directedNegativeInputs - a.directedNegativeInputs || b2.praiseInputs - a.praiseInputs || (a.model ?? "").localeCompare(b2.model ?? "")), languageGaps: [...gaps] };
+  return { languageLines: [...lines.entries()].map(([key4, row2]) => ({ id: createHash9("sha256").update(key4).digest("hex").slice(0, 20), text: row2.text, occurrences: row2.count, containingInputs: row2.ids.size, models: [...row2.models.values()].sort((a, b2) => b2.occurrences - a.occurrences), samples: row2.samples })).sort((a, b2) => b2.occurrences - a.occurrences || a.text.localeCompare(b2.text)).slice(0, 6), modelFeedback: [...feedback.values()].map((row2) => ({ provider: row2.provider, model: row2.model, associatedInputs: row2.associated.size, directedNegativeInputs: row2.negative.size, praiseInputs: row2.praise.size, promptIds: [...row2.ids].slice(0, 12) })).sort((a, b2) => b2.directedNegativeInputs - a.directedNegativeInputs || b2.praiseInputs - a.praiseInputs || (a.model ?? "").localeCompare(b2.model ?? "")), languageGaps: [...gaps] };
 }
 var POSITIVE_HINT, POSITIVE, NEGATED, NEGATIVE, YOU, words2;
 var init_language_feedback = __esm({
@@ -12976,22 +12976,22 @@ function focusLabels(raw) {
   if (!VERBS.test(raw) || !categories.some(([, pattern]) => pattern.test(raw)))
     return [];
   const labels3 = proseLabels(raw), text2 = Array.from({ length: raw.length }, (_, i) => labels3[i] === 0 ? raw[i] : " ").join("");
-  return categories.filter(([, pattern]) => pattern.test(text2)).map(([label4]) => label4);
+  return categories.filter(([, pattern]) => pattern.test(text2)).map(([label5]) => label5);
 }
 function requestedProjectFocus(prompts) {
   const groups = /* @__PURE__ */ new Map();
   for (const prompt of prompts) {
     if (prompt.languageEligible === false || !(prompt.eligibleNativeInput ?? prompt.eligibleHuman))
       continue;
-    for (const label4 of prompt.lex ? prompt.lex.fc ?? [] : focusLabels(prompt.text)) {
-      const rows = groups.get(label4) ?? [];
+    for (const label5 of prompt.lex ? prompt.lex.fc ?? [] : focusLabels(prompt.text)) {
+      const rows = groups.get(label5) ?? [];
       if (!rows.some((p) => p.id === prompt.id))
         rows.push(prompt);
-      groups.set(label4, rows);
+      groups.set(label5, rows);
     }
   }
   const minimum = Math.max(5, Math.ceil(prompts.length * 0.1));
-  return [...groups].filter(([, rows]) => rows.length >= minimum).map(([label4, rows]) => ({ label: label4, inputs: rows.length, promptIds: rows.slice(0, 3).map((p) => p.id), evidenceRoutes: rows.slice(0, 3).map((p) => p.route), basis: "lexical_requested_work_v1" })).sort((a, b2) => b2.inputs - a.inputs || a.label.localeCompare(b2.label)).slice(0, 2);
+  return [...groups].filter(([, rows]) => rows.length >= minimum).map(([label5, rows]) => ({ label: label5, inputs: rows.length, promptIds: rows.slice(0, 3).map((p) => p.id), evidenceRoutes: rows.slice(0, 3).map((p) => p.route), basis: "lexical_requested_work_v1" })).sort((a, b2) => b2.inputs - a.inputs || a.label.localeCompare(b2.label)).slice(0, 2);
 }
 var categories, VERBS;
 var init_project_focus = __esm({
@@ -13029,11 +13029,11 @@ function duration2(ms) {
 function deterministicFindings(conversations, prompts, timezone, partial, scopeHash) {
   const inputs = prompts.filter(eligible), byConversation = /* @__PURE__ */ new Map(), wordings = /* @__PURE__ */ new Map();
   for (const prompt of inputs) {
-    const key2 = prompt.lex ? prompt.lex.nl ?? null : normalizedLine(prompt.text);
-    if (key2 !== null) {
-      const group = wordings.get(key2) ?? [];
+    const key4 = prompt.lex ? prompt.lex.nl ?? null : normalizedLine(prompt.text);
+    if (key4 !== null) {
+      const group = wordings.get(key4) ?? [];
       group.push(prompt);
-      wordings.set(key2, group);
+      wordings.set(key4, group);
     }
     const conversation = byConversation.get(prompt.conversationId) ?? [];
     conversation.push(prompt);
@@ -13802,12 +13802,12 @@ function pruneCopies(candidates2, cached4) {
     const p = c.probe;
     if (!p.harness || p.harness === "auto" || p.size <= HEAD + TAIL)
       continue;
-    const key2 = `${p.harness}\0${p.head}`;
-    const list3 = groups.get(key2);
+    const key4 = `${p.harness}\0${p.head}`;
+    const list3 = groups.get(key4);
     if (list3)
       list3.push(c);
     else
-      groups.set(key2, [c]);
+      groups.set(key4, [c]);
   }
   const skipped2 = /* @__PURE__ */ new Map(), relations = [], deferred = /* @__PURE__ */ new Map();
   let verifiedReads = 0;
@@ -14013,16 +14013,16 @@ function addUsage(b2, u) {
   touch(b2, u.at);
   answered(b2, u.model, u.provider);
 }
-function addPrompt(b2, key2, at, project, kind3, reason, text2) {
-  if (b2.seenPrompts.has(key2))
+function addPrompt(b2, key4, at, project, kind3, reason, text2) {
+  if (b2.seenPrompts.has(key4))
     return;
-  b2.seenPrompts.add(key2);
+  b2.seenPrompts.add(key4);
   if (kind3 === "human" && hasExclusionMarker(text2))
     b2.facts.excluded = true;
   if (reason === "interrupt_marker" && at !== null)
     b2.interrupts.push(at);
   const prompt = {
-    key: key2,
+    key: key4,
     at,
     project,
     kind: kind3,
@@ -14038,16 +14038,16 @@ function addPrompt(b2, key2, at, project, kind3, reason, text2) {
     b2.pending.push(prompt);
   touch(b2, at);
 }
-function claudeLine(b2, line, subagentPath, sessions, archive = false) {
+function claudeLine(b2, line2, subagentPath, sessions, archive = false) {
   let subagent = subagentPath || !!b2.sidechainFile;
-  const assistant = line.includes('"type":"assistant"');
-  if (assistant ? !line.includes('"usage"') : subagent || !line.includes('"type":"user"')) {
-    if (line.length > 4096 || !line.includes('-title"') && !line.includes('"type":"summary"'))
+  const assistant = line2.includes('"type":"assistant"');
+  if (assistant ? !line2.includes('"usage"') : subagent || !line2.includes('"type":"user"')) {
+    if (line2.length > 4096 || !line2.includes('-title"') && !line2.includes('"type":"summary"'))
       return;
   }
   let r3;
   try {
-    r3 = JSON.parse(line.toString("utf8"));
+    r3 = JSON.parse(line2.toString("utf8"));
   } catch {
     b2.facts.malformed++;
     return;
@@ -14149,9 +14149,9 @@ function claudeLine(b2, line, subagentPath, sessions, archive = false) {
   }
   addPrompt(b2, str2(r3.uuid) ?? `${f.sessionId}:${String(r3.timestamp)}`, at, str2(r3.cwd) ?? f.project, kind3, reason, text2);
 }
-function codexFact(model, tier, at, d, key2) {
+function codexFact(model, tier, at, d, key4) {
   const input = d[0], output = d[2], reasoning = d[3], cached4 = Math.min(d[1], input);
-  const fact = { key: key2, at, model: codexModel(model), provider: "openai", input: input - cached4, output, cacheRead: cached4, cacheWrite: 0, cacheWrite1h: 0, reasoning };
+  const fact = { key: key4, at, model: codexModel(model), provider: "openai", input: input - cached4, output, cacheRead: cached4, cacheWrite: 0, cacheWrite1h: 0, reasoning };
   if (model && !fact.model)
     fact.identity = model;
   if (tier)
@@ -14161,13 +14161,13 @@ function codexFact(model, tier, at, d, key2) {
 function codexWanted(head, lineNo) {
   return lineNo === 0 && head.includes("session_meta") || head.includes('"token_count"') || head.includes('"turn_context"') || head.includes("thread_settings_applied") || head.includes('"task_started"') || head.includes('"token_usage_record"') || head.includes('"type":"compacted"') || head.includes('"UserMessage"') && head.includes("item_completed") || head.includes('"role":"user"') && head.includes('"response_item"') || head.includes('"event_msg"') && head.includes('"type":"user_message"');
 }
-function codexLine(b2, line, s) {
+function codexLine(b2, line2, s) {
   const n2 = s.lineNo++;
-  const head = line.toString("latin1", 0, Math.min(line.length, 260));
+  const head = line2.toString("latin1", 0, Math.min(line2.length, 260));
   const f = b2.facts;
-  const parse8 = () => {
+  const parse9 = () => {
     try {
-      const v = JSON.parse(line.toString("utf8"));
+      const v = JSON.parse(line2.toString("utf8"));
       if (isRec(v))
         return v;
     } catch {
@@ -14176,7 +14176,7 @@ function codexLine(b2, line, s) {
     return null;
   };
   if (n2 === 0 && head.includes("session_meta")) {
-    const r3 = parse8();
+    const r3 = parse9();
     if (!r3)
       return;
     const p = isRec(r3.payload) ? r3.payload : {};
@@ -14198,7 +14198,7 @@ function codexLine(b2, line, s) {
     return;
   }
   if (head.includes('"token_count"')) {
-    const r3 = parse8();
+    const r3 = parse9();
     const p = r3 && isRec(r3.payload) ? r3.payload : null;
     const info = p && isRec(p.info) ? p.info : null;
     if (!r3 || !info)
@@ -14218,15 +14218,15 @@ function codexLine(b2, line, s) {
     if (!d || !(d[0] || d[1] || d[2] || d[3]))
       return;
     s.deltas.add(d.join(","));
-    const key2 = totalSig ? `x:${totalSig}|${last2 ? last2.join(",") : ""}` : `y:${String(r3.timestamp ?? "")}|${d.join(",")}`;
-    const fact = codexFact(b2.currentModel, s.tier, time(r3.timestamp), d, key2);
+    const key4 = totalSig ? `x:${totalSig}|${last2 ? last2.join(",") : ""}` : `y:${String(r3.timestamp ?? "")}|${d.join(",")}`;
+    const fact = codexFact(b2.currentModel, s.tier, time(r3.timestamp), d, key4);
     addUsage(b2, fact);
     if (fact.at !== null)
       b2.events.push({ at: fact.at, tools: 0, subs: 0, weight: usageWeight(fact.input, fact.output, fact.cacheRead, fact.cacheWrite) });
     return;
   }
   if (head.includes('"turn_context"')) {
-    const p = parse8()?.payload;
+    const p = parse9()?.payload;
     if (isRec(p)) {
       b2.currentModel = str2(p.model) ?? b2.currentModel;
       if (typeof p.cwd === "string")
@@ -14235,7 +14235,7 @@ function codexLine(b2, line, s) {
     return;
   }
   if (head.includes("thread_settings_applied")) {
-    const p = parse8()?.payload;
+    const p = parse9()?.payload;
     const settings = isRec(p) && isRec(p.thread_settings) ? p.thread_settings : null;
     if (settings && "service_tier" in settings) {
       const v = settings.service_tier;
@@ -14244,7 +14244,7 @@ function codexLine(b2, line, s) {
     return;
   }
   if (head.includes('"task_started"')) {
-    const p = parse8()?.payload;
+    const p = parse9()?.payload;
     s.imported = isRec(p) && String(p.turn_id ?? "").startsWith("external-import");
     if (!s.imported) {
       s.inTurn = true;
@@ -14253,7 +14253,7 @@ function codexLine(b2, line, s) {
     return;
   }
   if (head.includes('"UserMessage"') && head.includes("item_completed")) {
-    const r3 = parse8();
+    const r3 = parse9();
     const p = r3 && isRec(r3.payload) ? r3.payload : null;
     if (!r3 || !p)
       return;
@@ -14269,15 +14269,15 @@ function codexLine(b2, line, s) {
     return;
   }
   if (head.includes('"role":"user"') && head.includes('"response_item"')) {
-    const r3 = parse8();
+    const r3 = parse9();
     if (!r3)
       return;
     const p = isRec(r3.payload) ? r3.payload : {};
     s.responsePrompts.push({ key: null, at: time(r3.timestamp), text: textOf(p.content), imported: s.imported, project: f.project, inTurn: s.inTurn });
     return;
   }
-  if (head.includes('"event_msg"') && line.subarray(0, 400).includes('"type":"user_message"')) {
-    const r3 = parse8();
+  if (head.includes('"event_msg"') && line2.subarray(0, 400).includes('"type":"user_message"')) {
+    const r3 = parse9();
     if (!r3)
       return;
     const p = isRec(r3.payload) ? r3.payload : {};
@@ -14287,7 +14287,7 @@ function codexLine(b2, line, s) {
   if (codexToolOrAbort(b2, head))
     return;
   if (head.includes('"token_usage_record"')) {
-    const r3 = parse8();
+    const r3 = parse9();
     const p = r3 && isRec(r3.payload) ? r3.payload : null;
     const id = p ? str2(p.response_id) : null;
     if (r3 && p && id && isRec(p.usage) && !s.records.has(id))
@@ -14295,11 +14295,11 @@ function codexLine(b2, line, s) {
     return;
   }
   if (head.includes('"type":"compacted"')) {
-    const at = line.lastIndexOf('"compaction_response_id":"');
+    const at = line2.lastIndexOf('"compaction_response_id":"');
     if (at >= 0) {
-      const start = at + 26, end = line.indexOf(34, start);
+      const start = at + 26, end = line2.indexOf(34, start);
       if (end > start)
-        s.compacted.add(line.toString("latin1", start, end));
+        s.compacted.add(line2.toString("latin1", start, end));
     }
   }
 }
@@ -14349,13 +14349,13 @@ function finishCodex(b2, s) {
         return;
       seen.add(p.key);
     }
-    const key2 = `codex:${p.key ?? `${i}@${p.at ?? ""}`}`;
+    const key4 = `codex:${p.key ?? `${i}@${p.at ?? ""}`}`;
     if (reason)
-      return addPrompt(b2, key2, p.at, p.project, "excluded", reason, "");
+      return addPrompt(b2, key4, p.at, p.project, "excluded", reason, "");
     if (p.imported)
-      return addPrompt(b2, key2, p.at, p.project, "excluded", "imported_from_claude_transcript", "");
+      return addPrompt(b2, key4, p.at, p.project, "excluded", "imported_from_claude_transcript", "");
     const c = classifyText(cleanCodexText(p.text));
-    addPrompt(b2, key2, p.at, p.project, c.kind, c.reason, c.text);
+    addPrompt(b2, key4, p.at, p.project, c.kind, c.reason, c.text);
     if (!p.inTurn)
       f.prompts[f.prompts.length - 1].imp = 1;
   });
@@ -14378,10 +14378,10 @@ function finishCodex(b2, s) {
     p.afterProvider = p.after ? "openai" : null;
   }
 }
-function piLine(b2, line) {
+function piLine(b2, line2) {
   let r3;
   try {
-    r3 = JSON.parse(line.toString("utf8"));
+    r3 = JSON.parse(line2.toString("utf8"));
   } catch {
     b2.facts.malformed++;
     return;
@@ -14473,7 +14473,7 @@ function extractFile(file, requested, options = {}, previous) {
       firstNew = b2.facts.prompts.length;
     }
     const archive = !!options.archive;
-    const onLine = harness === "claude" ? (line) => claudeLine(b2, line, subagent, sessions, archive) : harness === "codex" ? (line) => codexLine(b2, line, codex) : (line) => piLine(b2, line);
+    const onLine = harness === "claude" ? (line2) => claudeLine(b2, line2, subagent, sessions, archive) : harness === "codex" ? (line2) => codexLine(b2, line2, codex) : (line2) => piLine(b2, line2);
     let buffer = sharedBuffer ??= Buffer.allocUnsafe(CHUNK);
     let filled = 0, skipping = false, base3 = position, endsWithNewline = true;
     for (; ; ) {
@@ -14823,12 +14823,12 @@ function readHistory2(file, options, previous) {
 }
 function parseHistory(raw, options = {}, into = { entries: [], counters: /* @__PURE__ */ new Map() }) {
   const clock3 = localClock(options.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone);
-  for (const line of raw.split("\n")) {
-    if (!line)
+  for (const line2 of raw.split("\n")) {
+    if (!line2)
       continue;
     let r3;
     try {
-      r3 = JSON.parse(line);
+      r3 = JSON.parse(line2);
     } catch {
       continue;
     }
@@ -14851,11 +14851,11 @@ function parseHistory(raw, options = {}, into = { entries: [], counters: /* @__P
       const q2 = safeQuote(text2, 90);
       if (q2)
         entry.q = q2;
-      const key2 = entry.sessionId ?? "";
-      let c = into.counters.get(key2);
+      const key4 = entry.sessionId ?? "";
+      let c = into.counters.get(key4);
       if (!c) {
         c = { project: entry.project, vocab: /* @__PURE__ */ new Map(), topics: /* @__PURE__ */ new Map() };
-        into.counters.set(key2, c);
+        into.counters.set(key4, c);
       }
       const local = entry.at !== null ? clock3(entry.at) : null;
       const date3 = local?.day ?? "";
@@ -15399,10 +15399,10 @@ function shorten(q2, max2) {
   const cut2 = q2.slice(0, max2 - 1), space = cut2.lastIndexOf(" ");
   return (space > 0 ? cut2.slice(0, space) : cut2) + "\u2026";
 }
-function groupBy(xs, key2) {
+function groupBy(xs, key4) {
   const m = /* @__PURE__ */ new Map();
   for (const x of xs) {
-    const k = key2(x);
+    const k = key4(x);
     const l = m.get(k);
     if (l)
       l.push(x);
@@ -15436,7 +15436,7 @@ function mostExpensiveSentence(c) {
   const cost = top.costTotalUsd;
   if (cost < Math.max(20 * med, 5))
     return null;
-  const times3 = cost / med, share = pct2(cost, total2);
+  const times2 = cost / med, share = pct2(cost, total2);
   const edges = [0.01, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100, 300, 1e3, 3e3];
   const bucket = (x) => {
     let i = 0;
@@ -15444,11 +15444,11 @@ function mostExpensiveSentence(c) {
       i++;
     return i;
   };
-  const label4 = (i) => i === 0 ? `<$${edges[0]}` : i === edges.length ? `$${edges[i - 1]}+` : `$${edges[i - 1]}\u2013${edges[i]}`;
+  const label5 = (i) => i === 0 ? `<$${edges[0]}` : i === edges.length ? `$${edges[i - 1]}+` : `$${edges[i - 1]}\u2013${edges[i]}`;
   const hist = new Array(edges.length + 1).fill(0);
   for (const x of costs)
     hist[bucket(x)]++;
-  const support = `One prompt, ${modelLabel(top.model)}, ${dayName(top.day)}. That's ${f0(times3)}\xD7 your median prompt (${usd2(med)}) and ${share.toFixed(0)}% of all your spend.`;
+  const support = `One prompt, ${modelLabel(top.model)}, ${dayName(top.day)}. That's ${f0(times2)}\xD7 your median prompt (${usd2(med)}) and ${share.toFixed(0)}% of all your spend.`;
   return {
     id: "most_expensive_sentence",
     kind: "money",
@@ -15456,11 +15456,11 @@ function mostExpensiveSentence(c) {
     wow: quote2 ? 95 : 85,
     headline: quote2 ? `Your most expensive sentence: \u201C${quote2}\u201D \u2014 ${usd0(cost)}.` : `One prompt cost you ${usd0(cost)}.`,
     support,
-    numbers: { cost_usd: r2(cost), median_prompt_cost: Math.round(med * 1e4) / 1e4, times_median: Math.round(times3), share_pct: r1(share), model: top.model, day: top.day, project: base(top.project), priced_prompts: priced.length },
-    chart: { type: "histogram", motif: "receipt", series: [{ name: "prompts", points: hist.map((y, i) => ({ x: label4(i), y })) }], highlight: label4(bucket(cost)), xLabel: "cost per prompt", unit: "prompts" },
+    numbers: { cost_usd: r2(cost), median_prompt_cost: Math.round(med * 1e4) / 1e4, times_median: Math.round(times2), share_pct: r1(share), model: top.model, day: top.day, project: base(top.project), priced_prompts: priced.length },
+    chart: { type: "histogram", motif: "receipt", series: [{ name: "prompts", points: hist.map((y, i) => ({ x: label5(i), y })) }], highlight: label5(bucket(cost)), xLabel: "cost per prompt", unit: "prompts" },
     quote: quote2,
-    confidence: clamp2(0.6 + 0.4 * clears(times3, 20)),
-    surprise: times3,
+    confidence: clamp2(0.6 + 0.4 * clears(times2, 20)),
+    surprise: times2,
     public: { headline: `One prompt cost you ${usd0(cost)}.`, support }
   };
 }
@@ -15949,13 +15949,13 @@ function nightOwl(c, shifted) {
   const share = pct2(late, days);
   const tone2 = c.rows.length >= TONE_MIN && A[worst] > 0;
   const support = tone2 ? `${HOUR_NAME(worst)} is your angriest hour (${pct2(A[worst], H[worst]).toFixed(0)}% of prompts swear). ${HOUR_NAME(calm)} you is a saint (${A[calm]} of ${H[calm]}).` : `${f0(H[peak])} prompts at ${HOUR_NAME(peak)}, your busiest hour.`;
-  const headline4 = share >= 20 ? `${share.toFixed(0)}% of your days end after 1am.` : `Your busiest hour is ${HOUR_NAME(peak)}.`;
+  const headline5 = share >= 20 ? `${share.toFixed(0)}% of your days end after 1am.` : `Your busiest hour is ${HOUR_NAME(peak)}.`;
   return {
     id: "night_owl",
     kind: "time",
     section: "clock",
     wow: share >= 20 ? 70 : 50,
-    headline: headline4,
+    headline: headline5,
     support,
     numbers: {
       days_ending_after_1am_pct: r1(share),
@@ -15976,7 +15976,7 @@ function nightOwl(c, shifted) {
     chart: { type: "clock24", series: [{ name: "prompts", points: H.map((y, x) => ({ x, y })) }, { name: "swear %", points: H.map((n2, x) => ({ x, y: r1(pct2(A[x], n2)) })) }], highlight: share >= 20 ? 1 : peak, unit: "prompts" },
     confidence: clears(days, 20),
     surprise: 1 + share / 20,
-    public: { headline: headline4, support }
+    public: { headline: headline5, support }
   };
 }
 function iToWe(c) {
@@ -16106,9 +16106,9 @@ function typoFingerprint(c) {
   const t = typoPairs(c.table.vocab, c.dictionary);
   if (!t)
     return null;
-  const [a, b2, c22, d2] = t.top;
+  const [a, b2, c2, d2] = t.top;
   const kind3 = t.kind ? ` Your signature slip: you ${t.kind.name} (${pct2(t.kind.count, t.total).toFixed(0)}% of ${t.total} typos).` : "";
-  const support = `Also \u201C${b2.typo}\u201D, \u201C${c22.typo}\u201D, \u201C${d2.typo}\u201D.${kind3}`;
+  const support = `Also \u201C${b2.typo}\u201D, \u201C${c2.typo}\u201D, \u201C${d2.typo}\u201D.${kind3}`;
   return {
     id: "typo_fingerprint",
     kind: "language",
@@ -16132,21 +16132,21 @@ function firstVsLatest(c) {
     return null;
   const qa = shorten(a.q, 60);
   const shell = SHELL.has(a.f.fw);
-  const headline4 = shell ? "Your first ever prompt was a terminal command typed into a chat box." : qa ? `Your first ever prompt: \u201C${qa}\u201D` : `Your first prompt was ${a.f.w} words. Your latest was ${b2.f.w}.`;
+  const headline5 = shell ? "Your first ever prompt was a terminal command typed into a chat box." : qa ? `Your first ever prompt: \u201C${qa}\u201D` : `Your first prompt was ${a.f.w} words. Your latest was ${b2.f.w}.`;
   const support = `${dayName(a.day, "year")}, ${a.f.w} words. ${f0(span3)} days and ${f0(c.rows.length)} prompts later, your latest ran to ${b2.f.w} words.`;
   return {
     id: "first_vs_latest",
     kind: "growth",
     section: "first_latest",
     wow: 60,
-    headline: headline4,
+    headline: headline5,
     support,
     numbers: { first_day: a.day, first_words: a.f.w, first_is_shell_command: shell, latest_day: b2.day, latest_words: b2.f.w, days: Math.round(span3) },
     chart: { type: "two_bubbles", series: [{ name: "words", points: [{ x: "then", y: a.f.w, label: a.day }, { x: "now", y: b2.f.w, label: b2.day }] }], unit: "words" },
     quote: shell ? null : qa,
     confidence: clears(span3, 60),
     surprise: 1 + span3 / 180,
-    public: { headline: shell ? headline4 : `Your first prompt was ${a.f.w} words. Your latest was ${b2.f.w}.`, support }
+    public: { headline: shell ? headline5 : `Your first prompt was ${a.f.w} words. Your latest was ${b2.f.w}.`, support }
   };
 }
 function orchestrator(c) {
@@ -16234,20 +16234,20 @@ function lengthEvolution(c) {
     return null;
   const up = l > e;
   const k = up ? l / Math.max(e, 1) : e / Math.max(l, 1);
-  const headline4 = up ? `Your prompts got ${f1(k)}\xD7 longer.` : `Your prompts got ${f1(k)}\xD7 shorter.`;
+  const headline5 = up ? `Your prompts got ${f1(k)}\xD7 longer.` : `Your prompts got ${f1(k)}\xD7 shorter.`;
   const support = `Median ${e.toFixed(0)} words in ${monthName(months[0])}, ${l.toFixed(0)} now.` + (up ? " You stopped commanding and started briefing." : " You learned to trust it.");
   return {
     id: "prompt_length_evolution",
     kind: "growth",
     section: "talk",
     wow: 55,
-    headline: headline4,
+    headline: headline5,
     support,
     numbers: { early_median_words: e, now_median_words: l, ratio: r1(k) },
     chart: { type: "line", series: [{ name: "median words", points: months.map((m) => ({ x: m, y: median2(M3.get(m).map((r3) => r3.f.w)) })) }], unit: "words" },
     confidence: clears(k, 1.8),
     surprise: k,
-    public: { headline: headline4, support }
+    public: { headline: headline5, support }
   };
 }
 function longestStretch(rows) {
@@ -16294,19 +16294,19 @@ function graveyard(c) {
   const dead = real.filter(([, rs]) => (last2 - rs.at(-1).ts) / 864e5 >= 30).sort((a, b2) => b2[1].length - a[1].length);
   if (real.length < 8 || dead.length < 5)
     return null;
-  const headline4 = `${dead.length} of your ${real.length} projects haven't heard from you in a month.`;
+  const headline5 = `${dead.length} of your ${real.length} projects haven't heard from you in a month.`;
   return {
     id: "project_graveyard",
     kind: "project",
     section: "projects",
     wow: 55,
-    headline: headline4,
+    headline: headline5,
     support: `Only ${real.length - dead.length} are still alive. Most-mourned: ${dead.slice(0, 3).map(([p]) => base(p)).join(", ")}.`,
     numbers: { projects: real.length, dead_30d: dead.length },
     chart: { type: "grid", motif: "tombstones", series: [{ name: "prompts", points: dead.slice(0, 24).map(([p, rs]) => ({ x: base(p), y: rs.length })) }], unit: "prompts" },
     confidence: clears(dead.length, 5),
     surprise: 1 + dead.length / real.length,
-    public: { headline: headline4, support: `Only ${real.length - dead.length} are still alive.` }
+    public: { headline: headline5, support: `Only ${real.length - dead.length} are still alive.` }
   };
 }
 function escKey(c) {
@@ -16428,12 +16428,12 @@ function walkAway(c) {
     return null;
   const m = median2(g2), fast = pct2(g2.filter((x) => x < 60).length, g2.length);
   const q2 = median2(c.rows.filter((r3) => r3.gapReplyS !== null && has(r3.f, FLAG.question)).map((r3) => r3.gapReplyS));
-  let headline4, support;
+  let headline5, support;
   if (m >= 240) {
-    headline4 = `You don't babysit. You come back ${(m / 60).toFixed(0)} minutes after the agent finishes.`;
+    headline5 = `You don't babysit. You come back ${(m / 60).toFixed(0)} minutes after the agent finishes.`;
     support = `Only ${fast.toFixed(0)}% of your replies land within a minute.`;
   } else if (m <= 45) {
-    headline4 = `You reply ${m.toFixed(0)} seconds after the agent stops. Every time.`;
+    headline5 = `You reply ${m.toFixed(0)} seconds after the agent stops. Every time.`;
     support = `${fast.toFixed(0)}% of your replies land within a minute. Go outside.`;
   } else
     return null;
@@ -16453,13 +16453,13 @@ function walkAway(c) {
     kind: "habit",
     section: "delegation",
     wow: 45,
-    headline: headline4,
+    headline: headline5,
     support,
     numbers: { median_gap_s: Math.round(m), under_60s_pct: r1(fast), question_gap_s: q2 === null ? null : Math.round(q2), n: g2.length },
     chart: { type: "histogram", series: [{ name: "replies", points: hist.map((y, i) => ({ x: labels3[i], y })) }], unit: "prompts" },
     confidence: clears(g2.length, 150),
     surprise: m >= 240 ? m / 240 : 45 / Math.max(m, 1),
-    public: { headline: headline4, support }
+    public: { headline: headline5, support }
   };
 }
 function weekendSelf(c) {
@@ -16470,7 +16470,7 @@ function weekendSelf(c) {
   if (Math.max(a, b2) < 3 || Math.max(a, b2) / Math.max(Math.min(a, b2), 0.3) < 1.5)
     return null;
   const calmer = a < b2 ? "weekend" : "weekday";
-  const headline4 = calmer === "weekend" ? "Weekend you is a calmer person." : "Weekends make you meaner, somehow.";
+  const headline5 = calmer === "weekend" ? "Weekend you is a calmer person." : "Weekends make you meaner, somehow.";
   const support = `${f1(Math.min(a, b2))}% of ${calmer} prompts swear, vs ${f1(Math.max(a, b2))}% on ${calmer === "weekend" ? "weekdays" : "weekends"}.`;
   const D = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   return {
@@ -16478,13 +16478,13 @@ function weekendSelf(c) {
     kind: "mood",
     section: "clock",
     wow: 40,
-    headline: headline4,
+    headline: headline5,
     support,
     numbers: { weekend_pct: r1(a), weekday_pct: r1(b2) },
     chart: { type: "bar", series: [{ name: "swear %", points: D.map((x, i) => ({ x, y: r1(angryRate(c.rows.filter((r3) => r3.dow === i))) })) }], unit: "pct" },
     confidence: clears(Math.max(a, b2) / Math.max(Math.min(a, b2), 0.3), 1.5),
     surprise: Math.max(a, b2) / Math.max(Math.min(a, b2), 0.3),
-    public: { headline: headline4, support }
+    public: { headline: headline5, support }
   };
 }
 function dayNightTopics(c) {
@@ -16833,10 +16833,10 @@ function archetypeCode(m) {
 function assignArchetype(rows, variant) {
   const m = archetypeMetrics(rows);
   const v = variant ?? m.prompts * 31 + m.activeDays * 7;
-  const metric2 = (key2) => {
-    const d = M[key2];
+  const metric2 = (key4) => {
+    const d = M[key4];
     const value = m[d.key];
-    return { key: key2, label: d.label, value: Math.round(value * 10) / 10, unit: d.unit, display: d.display(value, m), band: Math.round(band(d, value) * 100) / 100 };
+    return { key: key4, label: d.label, value: Math.round(value * 10) / 10, unit: d.unit, display: d.display(value, m), band: Math.round(band(d, value) * 100) / 100 };
   };
   const scores = ARCHETYPES.map((a, order) => {
     const total2 = a.metrics.reduce((s, [, w]) => s + w, 0);
@@ -16895,8 +16895,8 @@ function profileVariants(id, rows) {
     return [];
   const m = archetypeMetrics(rows);
   const title = def.title(m);
-  const cap2 = (x) => x.charAt(0).toUpperCase() + x.slice(1);
-  return [...def.profiles.map((p) => p(m, title)), ...def.taglines.map((t) => `This year you've been ${title}. ${cap2(t(m))}`)];
+  const cap4 = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  return [...def.profiles.map((p) => p(m, title)), ...def.taglines.map((t) => `This year you've been ${title}. ${cap4(t(m))}`)];
 }
 function storyAwards(rows, drafts) {
   const out = [];
@@ -16906,8 +16906,8 @@ function storyAwards(rows, drafts) {
   const m = archetypeMetrics(rows);
   const exp = drafts.get("most_expensive_sentence");
   if (exp) {
-    const cost = num2(exp, "cost_usd"), times3 = num2(exp, "times_median");
-    add("priciest_sentence", `The ${money0(cost)} Sentence`, `${dayName(num2(exp, "day"))}${times3 ? ` \xB7 ${times3.toLocaleString("en-US")}\xD7 your median` : ""}`, 95 * Math.min(2, Math.log10(Math.max(10, times3 ?? 10))));
+    const cost = num2(exp, "cost_usd"), times2 = num2(exp, "times_median");
+    add("priciest_sentence", `The ${money0(cost)} Sentence`, `${dayName(num2(exp, "day"))}${times2 ? ` \xB7 ${times2.toLocaleString("en-US")}\xD7 your median` : ""}`, 95 * Math.min(2, Math.log10(Math.max(10, times2 ?? 10))));
   }
   const dayCost = /* @__PURE__ */ new Map(), dayPrompts = /* @__PURE__ */ new Map();
   for (const r3 of rows) {
@@ -17084,7 +17084,7 @@ var init_story_archetype = __esm({
       hinglish: { key: "hiPct", label: "code-switching", unit: "pct", lo: 3, hi: 20, display: (v) => `${f02(v)}% of prompts switch language` }
     };
     n0 = (n2) => Math.round(n2).toLocaleString("en-US");
-    short = (label4) => (label4 ?? "one model").replace(/^Claude\s+/, "");
+    short = (label5) => (label5 ?? "one model").replace(/^Claude\s+/, "");
     ARCHETYPES = [
       {
         id: "night_shift",
@@ -17526,16 +17526,16 @@ function peakTime(rows) {
     dows[r3.dow]++;
   }
   const hour = hours.indexOf(Math.max(...hours)), dow = dows.indexOf(Math.max(...dows));
-  const label4 = `${WEEKDAY_NAMES[dow]}s around ${HOUR_NAME(hour)}`;
-  return { hour, weekday: dow, label: label4, narrative: peakNarratives(label4, hour, pct2(hours[hour], rows.length), pct2(dows[dow], rows.length))[0], source: "local" };
+  const label5 = `${WEEKDAY_NAMES[dow]}s around ${HOUR_NAME(hour)}`;
+  return { hour, weekday: dow, label: label5, narrative: peakNarratives(label5, hour, pct2(hours[hour], rows.length), pct2(dows[dow], rows.length))[0], source: "local" };
 }
-function peakNarratives(label4, hour, hourShare, dayShare) {
-  const h = hourShare.toFixed(0), d = dayShare.toFixed(0), at = HOUR_NAME(hour), day = label4.split("s around")[0];
+function peakNarratives(label5, hour, hourShare, dayShare) {
+  const h = hourShare.toFixed(0), d = dayShare.toFixed(0), at = HOUR_NAME(hour), day = label5.split("s around")[0];
   const mood2 = hour >= 22 || hour < 5 ? "when the house is quiet" : hour < 9 ? "before the day gets loud" : hour < 13 ? "with the first coffee still warm" : hour < 18 ? "in the long afternoon" : "after dinner";
   return [
     `Your clock peaks at ${at}: ${h}% of everything you typed landed in that hour. ${day} is your busiest day (${d}%).`,
     `${at}, ${mood2}. That's your hour: ${h}% of your prompts. And ${day}s carry ${d}% of your week.`,
-    `If your agent had office hours, they'd be ${label4}. ${h}% of your prompts arrive at ${at}, ${d}% on ${day}s.`
+    `If your agent had office hours, they'd be ${label5}. ${h}% of your prompts arrive at ${at}, ${d}% on ${day}s.`
   ];
 }
 function emptySpend2() {
@@ -17643,7 +17643,7 @@ function recoveredSpend(caches, claudeObserved, book, dateAllowed) {
       const tokens2 = res.input + res.output + res.cacheRead + res.cacheWrite;
       if (!tokens2)
         continue;
-      const price2 = book.lookup(model);
+      const price = book.lookup(model);
       const days = [];
       for (const [d, m] of cache3.daily) {
         const w = m.get(model) ?? 0;
@@ -17654,11 +17654,11 @@ function recoveredSpend(caches, claudeObserved, book, dateAllowed) {
         days.push([cache3.lastDate, 1]);
       const weight = days.reduce((n2, [, w]) => n2 + w, 0);
       const inScope = days.filter(([d]) => dateAllowed(d)), share = inScope.reduce((n2, [, w]) => n2 + w, 0) / weight;
-      if (!price2) {
+      if (!price) {
         out.unpricedTokens += Math.round(tokens2 * share);
         continue;
       }
-      const r3 = price2.rates;
+      const r3 = price.rates;
       const usd3 = (res.input * r3.input + res.output * r3.output + res.cacheRead * r3.cacheRead + res.cacheWrite * r3.cacheWrite) / MILLION;
       const row2 = out.byModel.get(model) ?? { usd: 0, output: 0, byMonth: /* @__PURE__ */ new Map() };
       row2.output += Math.round(res.output * share);
@@ -18007,7 +18007,7 @@ function validateJevRequest(request) {
         fail("invalid_request");
     } else if (q2.type !== "noul")
       fail("invalid_request");
-    else if (q2.criteria !== void 0 && (!record(q2.criteria) || Object.keys(q2.criteria).some((key2) => !["true", "false"].includes(key2)) || Object.values(q2.criteria).some((value) => typeof value !== "string")))
+    else if (q2.criteria !== void 0 && (!record(q2.criteria) || Object.keys(q2.criteria).some((key4) => !["true", "false"].includes(key4)) || Object.values(q2.criteria).some((value) => typeof value !== "string")))
       fail("invalid_request");
   }
   if (Buffer.byteLength(JSON.stringify(request.state)) > 8192 || Buffer.byteLength(JSON.stringify(request)) > 32768)
@@ -18110,7 +18110,7 @@ function validateFreeJevRequest(request, tokenizer2 = estimateFreeJevTokens) {
     if (!id || id.length > 128 || !q2 || typeof q2.instructions !== "string" || !q2.instructions.trim() || q2.instructions.length > 8192)
       throw new JevFailure("invalid_free_request");
     if (q2.type === "choice") {
-      if (!object(q2.criteria) || Object.keys(q2.criteria).length < 2 || Object.keys(q2.criteria).length > 255 || Object.entries(q2.criteria).some(([key2, value]) => !key2 || key2.length > 128 || value !== null && typeof value !== "string"))
+      if (!object(q2.criteria) || Object.keys(q2.criteria).length < 2 || Object.keys(q2.criteria).length > 255 || Object.entries(q2.criteria).some(([key4, value]) => !key4 || key4.length > 128 || value !== null && typeof value !== "string"))
         throw new JevFailure("invalid_free_request");
     } else if (q2.type === "score") {
       if (!Array.isArray(q2.criteria) || q2.criteria.length < 2 || q2.criteria.length > 10 || q2.criteria.some((c) => typeof c !== "string" || !c.trim()))
@@ -18338,9 +18338,9 @@ var init_free_jev = __esm({
         } catch (e) {
           return { state: "skipped", code: failure(e) };
         }
-        const route = this.provider.options.route, key2 = digest(JSON.stringify({ request, identity: identity5, route: { kind: route.kind, endpoint: FREE_JEV_ENDPOINT }, model: FREE_JEV_MODEL }));
+        const route = this.provider.options.route, key4 = digest(JSON.stringify({ request, identity: identity5, route: { kind: route.kind, endpoint: FREE_JEV_ENDPOINT }, model: FREE_JEV_MODEL }));
         try {
-          const cached4 = await abortable(Promise.resolve(this.provider.options.cache?.get(key2)), this.signal);
+          const cached4 = await abortable(Promise.resolve(this.provider.options.cache?.get(key4)), this.signal);
           this.assertCurrent();
           if (cached4 !== void 0 && cached4 !== null) {
             const response2 = validateFreeJevResponse(cached4, request);
@@ -18361,7 +18361,7 @@ var init_free_jev = __esm({
           if (result.state === "ok") {
             try {
               this.assertCurrent();
-              await abortable(Promise.resolve(this.provider.options.cache?.set(key2, structuredClone(result.response))), this.signal);
+              await abortable(Promise.resolve(this.provider.options.cache?.set(key4, structuredClone(result.response))), this.signal);
               this.assertCurrent();
             } catch (e) {
               if (this.signal.aborted)
@@ -18582,17 +18582,17 @@ function fastMultiplier(id) {
   const n2 = normalizeModel(id);
   return FAST_EXACT[n2] ?? FAST_PREFIX.find(([prefix2]) => n2.startsWith(prefix2))?.[1] ?? 1;
 }
-function usageCost(u, price2, fast = false) {
-  let rates2 = price2.rates;
-  if (price2.tiers.length) {
-    const context2 = u.input + u.cacheRead + u.cacheWrite;
-    for (const tier of price2.tiers)
-      if (context2 > tier.threshold)
+function usageCost(u, price, fast = false) {
+  let rates2 = price.rates;
+  if (price.tiers.length) {
+    const context = u.input + u.cacheRead + u.cacheWrite;
+    for (const tier of price.tiers)
+      if (context > tier.threshold)
         rates2 = tier.rates;
   }
   const write1h = Math.min(u.cacheWrite1h, u.cacheWrite), write5m = u.cacheWrite - write1h;
   const usd3 = (u.input * rates2.input + u.output * rates2.output + u.cacheRead * rates2.cacheRead + write5m * rates2.cacheWrite + write1h * rates2.input * 2) / MILLION2;
-  return fast ? usd3 * price2.fast : usd3;
+  return fast ? usd3 * price.fast : usd3;
 }
 var PROVIDER_ORDER, normalizeModel, REGIONAL, tokens, PriceBook, FAST_EXACT, FAST_PREFIX, MILLION2;
 var init_pricing = __esm({
@@ -18691,11 +18691,11 @@ var init_pricing = __esm({
 // packages/core/dist/analytics/aggregate.js
 import path21 from "node:path";
 function sid2(harness, nativeId) {
-  const key2 = `${harness}\0${nativeId}`;
-  let id = idMemo.get(key2);
+  const key4 = `${harness}\0${nativeId}`;
+  let id = idMemo.get(key4);
   if (id === void 0) {
     id = sourceId(harness, nativeId);
-    idMemo.set(key2, id);
+    idMemo.set(key4, id);
   }
   return id;
 }
@@ -18776,7 +18776,7 @@ function aggregate(input) {
     rootMemo.set(k, root);
     return root;
   };
-  const scopedKey = (s, key2) => s.harness === "codex" || s.harness === "pi" ? `${s.harness}:${lineage(s)}:${key2}` : key2;
+  const scopedKey = (s, key4) => s.harness === "codex" || s.harness === "pi" ? `${s.harness}:${lineage(s)}:${key4}` : key4;
   const claudeRows = [], otherRows = [];
   const seenByScope = /* @__PURE__ */ new Map();
   const unscoped = scope2.eventFrom === null && scope2.asOf === null;
@@ -18834,10 +18834,10 @@ function aggregate(input) {
   let lastDayAcc, lastMonthAcc, lastModelKey = null;
   let lastModel, lastTuple = null;
   for (const { u, s } of usageRows) {
-    const price2 = book.lookup(u.model);
+    const price = book.lookup(u.model);
     const fast = u.tier === "fast" || s.harness === "codex" && u.tier === void 0 && input.codexFastDefault;
-    const cost = price2 ? usageCost(u, price2, fast) : 0;
-    if (price2)
+    const cost = price ? usageCost(u, price, fast) : 0;
+    if (price)
       costOf.set(u, cost);
     else {
       unpricedResponses++;
@@ -18881,9 +18881,9 @@ function aggregate(input) {
         lastMonthAcc.usd += cost;
       }
       if (u.model && !u.inferredModel) {
-        const key2 = `${name}\0${s.harness}\0${day ?? ""}`;
-        if (key2 !== lastModelKey) {
-          lastModelKey = key2;
+        const key4 = `${name}\0${s.harness}\0${day ?? ""}`;
+        if (key4 !== lastModelKey) {
+          lastModelKey = key4;
           lastModel = summary3.models.get(name);
           if (!lastModel) {
             lastModel = { output: 0, usd: 0, harness: /* @__PURE__ */ new Map(), months: /* @__PURE__ */ new Map() };
@@ -18924,7 +18924,7 @@ function aggregate(input) {
         id: `model:${name}`,
         provider,
         model: name,
-        canonicalModel: price2 ? `${provider ?? "unknown"}/${price2.pricedAs}` : null,
+        canonicalModel: price ? `${provider ?? "unknown"}/${price.pricedAs}` : null,
         inputTokens: 0,
         outputTokens: 0,
         totalTokens: 0,
@@ -18941,8 +18941,8 @@ function aggregate(input) {
         cacheWriteTokens: 0,
         reasoningTokens: 0,
         harnesses: [],
-        pricedAs: price2?.pricedAs ?? null,
-        estimated: !price2 || price2.estimated,
+        pricedAs: price?.pricedAs ?? null,
+        estimated: !price || price.estimated,
         convs: /* @__PURE__ */ new Set()
       };
       models2.set(name, row2);
@@ -18978,12 +18978,12 @@ function aggregate(input) {
   const refs2 = [];
   const seenPrompts = /* @__PURE__ */ new Set();
   const topClaudeSessions = /* @__PURE__ */ new Set();
-  const route = (id, file, key2, text2) => ({
+  const route = (id, file, key4, text2) => ({
     basis: "transient_snapshot",
     sourceId: id,
     artifactHash: "",
     sourcePath: file,
-    recordKey: key2,
+    recordKey: key4,
     rawStart: null,
     rawEnd: null,
     startUtf16: 0,
@@ -19043,10 +19043,10 @@ function aggregate(input) {
     else
       t.excluded[p.reason ?? p.kind] = (t.excluded[p.reason ?? p.kind] ?? 0) + 1;
   };
-  const addHuman = (entry, h, p, key2, file, identity5, source) => {
+  const addHuman = (entry, h, p, key4, file, identity5, source) => {
     const conv = entry.conversation;
     const prompt = {
-      id: digest(`${conv.id}:${key2}`).slice(0, 32),
+      id: digest(`${conv.id}:${key4}`).slice(0, 32),
       conversationId: conv.id,
       role: "user",
       originBasis: originBasis(h),
@@ -19058,7 +19058,7 @@ function aggregate(input) {
       eventAt: p.at === null ? null : new Date(p.at).toISOString(),
       text: p.text,
       project: normProject(p.project ?? entry.project),
-      route: route(conv.id, file, key2, p.text),
+      route: route(conv.id, file, key4, p.text),
       ...p.lex ? { lex: p.lex } : {}
     };
     refs2.push({ prompt, fact: p, source, history: source === null });
@@ -19240,13 +19240,13 @@ function rates(value) {
   if (!object2(value))
     return {};
   const result = {};
-  for (const key2 of ["input", "output", "cache_read", "cache_write", "reasoning"]) {
-    const n2 = value[key2];
+  for (const key4 of ["input", "output", "cache_read", "cache_write", "reasoning"]) {
+    const n2 = value[key4];
     if (n2 === void 0)
       continue;
     if (typeof n2 !== "number" || !Number.isFinite(n2) || n2 < 0)
       throw new Error("catalog_rates_invalid");
-    result[key2] = n2;
+    result[key4] = n2;
   }
   return result;
 }
@@ -19461,8 +19461,8 @@ var init_facts_cache = __esm({
        * Facts of a non-file-backed or adapter source (Cursor, Gemini, Copilot), keyed by an identity
        * plus size and mtime; parsed again only when that changes.
        */
-      external(key2, size, mtimeMs, tz, read) {
-        const m = this.metas.get(key2);
+      external(key4, size, mtimeMs, tz, read) {
+        const m = this.metas.get(key4);
         if (m && m.size === size && m.mtimeMs === mtimeMs && m.tz === tz) {
           const hit2 = this.shard(m);
           if (hit2)
@@ -19470,9 +19470,9 @@ var init_facts_cache = __esm({
         }
         return read().then((facts) => {
           const stored = { ...facts, size, mtimeMs, tz };
-          this.loaded.set(key2, stored);
-          this.metas.set(key2, { ...metaOf(stored), file: key2, shard: shardOf(key2), source: facts.file });
-          this.dirtyShards.add(key2);
+          this.loaded.set(key4, stored);
+          this.metas.set(key4, { ...metaOf(stored), file: key4, shard: shardOf(key4), source: facts.file });
+          this.dirtyShards.add(key4);
           this.indexDirty = true;
           return facts;
         });
@@ -19814,8 +19814,8 @@ async function parse3(source, options = {}) {
   const projectSlug = options.projectSlug ?? source.projectSlug;
   const isSidechain = source.isSidechain;
   const unknownTypes = {};
-  const bump = (key2) => {
-    unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+  const bump = (key4) => {
+    unknownTypes[key4] = (unknownTypes[key4] ?? 0) + 1;
   };
   const exchanges = [];
   const cwdCandidates = [];
@@ -19856,18 +19856,18 @@ async function parse3(source, options = {}) {
     seq += 1;
     open2 = { seq, ts, userText, assistantTexts: [], toolCalls: [], files: [] };
   };
-  for await (const line of readJsonlLines(source.path, { start: options.fromOffset ?? 0 })) {
-    const record2 = parseJsonLine(line.text);
-    if (!line.terminated) {
+  for await (const line2 of readJsonlLines(source.path, { start: options.fromOffset ?? 0 })) {
+    const record2 = parseJsonLine(line2.text);
+    if (!line2.terminated) {
       if (record2 === void 0) {
-        if (line.text.trim())
+        if (line2.text.trim())
           malformedLines += 1;
         break;
       }
     }
-    endOffset = line.end;
+    endOffset = line2.end;
     if (record2 === void 0) {
-      if (line.text.trim())
+      if (line2.text.trim())
         malformedLines += 1;
       continue;
     }
@@ -20029,8 +20029,8 @@ function filesFromCursorInput(input) {
   if (!isRecord(input))
     return [];
   const out = filesFromToolInput(input);
-  for (const key2 of CURSOR_FILE_KEYS) {
-    const value = input[key2];
+  for (const key4 of CURSOR_FILE_KEYS) {
+    const value = input[key4];
     if (typeof value === "string" && value.trim())
       out.push(value);
     else if (Array.isArray(value)) {
@@ -20289,10 +20289,10 @@ async function parse4(source, options = {}) {
   const counts2 = { userPrompts: 0, assistantTurns: 0, toolCalls: 0 };
   const cwdCandidates = [];
   const exchanges = buildExchanges3(turns, sessionId, fileTime, counts2, unknownTypes, cwdCandidates);
-  const metaString = (key2) => {
+  const metaString = (key4) => {
     if (!meta)
       return void 0;
-    const v = meta[key2];
+    const v = meta[key4];
     return typeof v === "string" && v.trim() ? v : void 0;
   };
   const startedAt = metaString("startTime") ?? metaString("startedAt") ?? fileTime;
@@ -20329,8 +20329,8 @@ function unwrap(doc) {
     return { turns: doc };
   if (!isRecord(doc))
     return { turns: [] };
-  for (const key2 of HISTORY_KEYS2) {
-    const v = doc[key2];
+  for (const key4 of HISTORY_KEYS2) {
+    const v = doc[key4];
     if (Array.isArray(v))
       return { turns: v, meta: doc };
   }
@@ -20379,8 +20379,8 @@ function buildExchanges3(turns, sessionId, fileTime, counts2, unknownTypes, cwdC
     }
     const role = typeof turn.role === "string" ? turn.role : "";
     if (!HANDLED_ROLES.has(role)) {
-      const key2 = `role:${role || "(no role)"}`;
-      unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+      const key4 = `role:${role || "(no role)"}`;
+      unknownTypes[key4] = (unknownTypes[key4] ?? 0) + 1;
       continue;
     }
     const parts = partsOf(turn, unknownTypes);
@@ -20457,10 +20457,10 @@ function partsOf(turn, unknownTypes) {
     }
     if (!isRecord(p))
       continue;
-    for (const key2 of Object.keys(p)) {
-      if (HANDLED_PART_KEYS.has(key2))
+    for (const key4 of Object.keys(p)) {
+      if (HANDLED_PART_KEYS.has(key4))
         continue;
-      const k = `part:${key2}`;
+      const k = `part:${key4}`;
       const counts2 = unknownTypes;
       counts2[k] = (counts2[k] ?? 0) + 1;
     }
@@ -20633,7 +20633,7 @@ async function adapterFacts(harness, source, timezone) {
 }
 async function readAdapterSources(harnesses, discovered, timezone, failures, cache3, stats2 = { parsed: 0 }) {
   const out = [];
-  const parse8 = (h, source) => {
+  const parse9 = (h, source) => {
     stats2.parsed++;
     return adapterFacts(h, source, timezone);
   };
@@ -20642,7 +20642,7 @@ async function readAdapterSources(harnesses, discovered, timezone, failures, cac
       try {
         if (!fs34.existsSync(source.path))
           continue;
-        out.push(await (cache3 ? cache3.external(adapterKey(source), source.bytes, source.mtimeMs, timezone, () => parse8(h, source)) : parse8(h, source)));
+        out.push(await (cache3 ? cache3.external(adapterKey(source), source.bytes, source.mtimeMs, timezone, () => parse9(h, source)) : parse9(h, source)));
       } catch {
         failures.push(`${h}_source_unreadable`);
       }
@@ -20671,7 +20671,7 @@ function openSessions(file, max2, maxStoreBytes, reader) {
     const tables2 = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((r3) => r3.name);
     let schema;
     if (tables2.includes("session_message") && (tables2.includes("session") || tables2.includes("session_v2"))) {
-      const table2 = tables2.includes("session") ? "session" : "session_v2", cols = db.pragma(`table_info(${quote(table2)})`).map((c3) => c3.name), mc = db.pragma("table_info(session_message)").map((c3) => c3.name);
+      const table2 = tables2.includes("session") ? "session" : "session_v2", cols = db.pragma(`table_info(${quote(table2)})`).map((c2) => c2.name), mc = db.pragma("table_info(session_message)").map((c2) => c2.name);
       if (!["id", "session_id", "type", "data"].every((k) => mc.includes(k)))
         return { gap: "opencode_v2_schema_unsupported" };
       const parent = cols.includes("parent_id") ? "parent_id" : cols.includes("fork_session_id") ? "fork_session_id" : void 0;
@@ -20754,10 +20754,10 @@ function openNativeInputs(schema, metadata, reader, maxBytes = 64 * 1024 * 1024)
     const message2 = record2.message;
     if (message2?.role !== "user")
       continue;
-    const key2 = String(record2.id);
+    const key4 = String(record2.id);
     let parts = [];
     if (schema.v2) {
-      const row2 = reader.db.prepare(`SELECT CASE WHEN length(CAST(${quote(schema.messages.columns.content)} AS BLOB))<=8388608 THEN json_extract(${quote(schema.messages.columns.content)},'$.text') ELSE NULL END text FROM session_message WHERE id=?`).get(key2);
+      const row2 = reader.db.prepare(`SELECT CASE WHEN length(CAST(${quote(schema.messages.columns.content)} AS BLOB))<=8388608 THEN json_extract(${quote(schema.messages.columns.content)},'$.text') ELSE NULL END text FROM session_message WHERE id=?`).get(key4);
       if (row2?.text !== null && row2?.text !== void 0) {
         bytes3 += Buffer.byteLength(row2.text);
         if (bytes3 <= maxBytes)
@@ -20768,7 +20768,7 @@ function openNativeInputs(schema, metadata, reader, maxBytes = 64 * 1024 * 1024)
         gaps.push("native_input_text_unavailable");
     }
     if (query) {
-      for (const row2 of query.iterate(key2)) {
+      for (const row2 of query.iterate(key4)) {
         if (typeof row2.data !== "string")
           continue;
         bytes3 += Buffer.byteLength(row2.data);
@@ -20786,13 +20786,13 @@ function openNativeInputs(schema, metadata, reader, maxBytes = 64 * 1024 * 1024)
       }
     }
     if (parts.length && parts.every((p) => p.synthetic === true || p.ignored === true)) {
-      excluded.add(key2);
+      excluded.add(key4);
       continue;
     }
     parts = parts.filter((p) => p.synthetic !== true && p.ignored !== true);
     const unknown = {};
     const parsed = parseContent(JSON.stringify(parts), unknown, () => gaps.push("opencode_native_part_invalid"));
-    prompts.push({ key: key2, text: clean(parsed.text), time: clock(record2.timestamp), seq: prompts.length + 1 });
+    prompts.push({ key: key4, text: clean(parsed.text), time: clock(record2.timestamp), seq: prompts.length + 1 });
   }
   return { prompts, excluded, gaps: [...new Set(gaps)] };
 }
@@ -20860,22 +20860,22 @@ function readLegacyOpenCode(files, maxBytes = 128 * 1024 * 1024) {
   for (const id of ids) {
     const session = sessions.get(id), project = typeof session?.directory === "string" ? session.directory : null, parent = typeof session?.parentID === "string" ? session.parentID : null, rows = [...messages.entries()].filter(([, m]) => m.value.sessionID === id).sort((a, b2) => Number(a[1].value.time?.created ?? 0) - Number(b2[1].value.time?.created ?? 0) || a[0].localeCompare(b2[0])), events = [], records = [];
     let maintenance = false;
-    for (const [key2, row2] of rows) {
-      const actualParts = parts.get(key2) ?? [], eligibleParts = actualParts.filter((p) => p.synthetic !== true && p.ignored !== true), m = row2.value, stamp = m.time?.created, time4 = typeof stamp === "number" ? new Date(stamp).toISOString() : null;
-      records.push({ type: "message", id: key2, timestamp: time4, cwd: project, message: m, content: eligibleParts });
+    for (const [key4, row2] of rows) {
+      const actualParts = parts.get(key4) ?? [], eligibleParts = actualParts.filter((p) => p.synthetic !== true && p.ignored !== true), m = row2.value, stamp = m.time?.created, time4 = typeof stamp === "number" ? new Date(stamp).toISOString() : null;
+      records.push({ type: "message", id: key4, timestamp: time4, cwd: project, message: m, content: eligibleParts });
       if (m.role !== "user")
         continue;
       const text2 = clean(typeof m.content === "string" ? m.content : extractTypedText(eligibleParts));
       if (hasExclusionMarker(text2))
         maintenance = true;
       const excluded = actualParts.length > 0 && eligibleParts.length === 0 ? "declared_meta_or_synthetic_input" : parent && events.length === 0 ? "child_initialization" : null;
-      events.push({ key: key2, rawStart: events.length + 1, rawEnd: events.length + 1, role: "user", text: text2, eventAt: time4, project, origin: "opencode_user_projection", eligible: false, observed: excluded === null, excluded, identity: `message:${key2}` });
+      events.push({ key: key4, rawStart: events.length + 1, rawEnd: events.length + 1, role: "user", text: text2, eventAt: time4, project, origin: "opencode_user_projection", eligible: false, observed: excluded === null, excluded, identity: `message:${key4}` });
     }
     if (maintenance) {
       gaps.add("maintenance_source_excluded");
       continue;
     }
-    const owned = [...captured.values()].filter((f) => f.session === id || f.message !== void 0 && rows.some(([key2]) => key2 === f.message)), hash3 = digest(JSON.stringify(records)), root = rows[0]?.[1].file ?? files[0]?.file ?? "";
+    const owned = [...captured.values()].filter((f) => f.session === id || f.message !== void 0 && rows.some(([key4]) => key4 === f.message)), hash3 = digest(JSON.stringify(records)), root = rows[0]?.[1].file ?? files[0]?.file ?? "";
     groups.push({ facts: { nativeId: id, project, parent, child: parent !== null, title: null, events, gaps: [...gaps], hash: hash3, consumed: 0, bytes: Buffer.alloc(0) }, records, files: owned.map(({ file, hash: hash4 }) => ({ file, hash: hash4 })), root });
   }
   return { groups, parsed, gaps: [...gaps] };
@@ -21154,10 +21154,10 @@ function responseAttributions(records) {
     if (seen.has(unique2))
       continue;
     seen.add(unique2);
-    const key2 = `${record2.conversationId}\0${record2.project}`;
-    const group = groups.get(key2) ?? [];
+    const key4 = `${record2.conversationId}\0${record2.project}`;
+    const group = groups.get(key4) ?? [];
     group.push(record2);
-    groups.set(key2, group);
+    groups.set(key4, group);
   }
   const attribution = /* @__PURE__ */ new Map();
   for (const group of groups.values())
@@ -21184,11 +21184,11 @@ function attributeDirectLanguage(profanity, records, prompts) {
   }) : (profanity?.matches ?? []).filter((m) => m.kind === "direct_prose").map((m) => ({ ...m, occurrences: 1 })), attribution = responseAttributions(records);
   const result = /* @__PURE__ */ new Map();
   for (const match of matches) {
-    const owner = attribution.get(match.promptId) ?? { model: null, provider: null }, key2 = JSON.stringify(owner);
-    let row2 = result.get(key2);
+    const owner = attribution.get(match.promptId) ?? { model: null, provider: null }, key4 = JSON.stringify(owner);
+    let row2 = result.get(key4);
     if (!row2) {
       row2 = { ...owner, occurrences: 0, ids: /* @__PURE__ */ new Set() };
-      result.set(key2, row2);
+      result.set(key4, row2);
     }
     row2.occurrences += match.occurrences;
     row2.ids.add(match.promptId);
@@ -21206,18 +21206,18 @@ function attributeLanguageTerms(profanity, records, prompts) {
     if (!found)
       continue;
     const grouped = /* @__PURE__ */ new Map();
-    for (const [raw, label4] of found.hits) {
-      const term = raw.toLowerCase(), kind3 = kinds2[label4] ?? "unknown", k = term + "\0" + kind3, g2 = grouped.get(k) ?? { term, kind: kind3, occurrences: 0 };
+    for (const [raw, label5] of found.hits) {
+      const term = raw.toLowerCase(), kind3 = kinds2[label5] ?? "unknown", k = term + "\0" + kind3, g2 = grouped.get(k) ?? { term, kind: kind3, occurrences: 0 };
       g2.occurrences++;
       grouped.set(k, g2);
     }
     const attributed = attribution.get(prompt.id);
     for (const term of grouped.values()) {
-      const key2 = JSON.stringify([term.term, term.kind]), models2 = modelRows.get(key2) ?? /* @__PURE__ */ new Map();
+      const key4 = JSON.stringify([term.term, term.kind]), models2 = modelRows.get(key4) ?? /* @__PURE__ */ new Map();
       const owner = term.kind === "direct_prose" && attributed ? { provider: attributed.provider, model: attributed.model } : { provider: null, model: null }, modelKey = JSON.stringify(owner), row2 = models2.get(modelKey) ?? { ...owner, occurrences: 0 };
       row2.occurrences += term.occurrences;
       models2.set(modelKey, row2);
-      modelRows.set(key2, models2);
+      modelRows.set(key4, models2);
     }
   }
   return { ...profanity, terms: profanity.terms?.map((term) => ({ ...term, models: [...modelRows.get(JSON.stringify([term.term, term.kind]))?.values() ?? []].sort((a, b2) => b2.occurrences - a.occurrences) })) };
@@ -21236,18 +21236,18 @@ function segmentContext(records, options = {}) {
     throw new Error("invalid_segment_bounds");
   const segments = [], gaps = new Set(options.gaps ?? []), groups = /* @__PURE__ */ new Map();
   for (const record2 of records) {
-    const key2 = JSON.stringify([record2.conversationId, record2.project]);
-    const group = groups.get(key2) ?? [];
+    const key4 = JSON.stringify([record2.conversationId, record2.project]);
+    const group = groups.get(key4) ?? [];
     group.push(record2);
-    groups.set(key2, group);
+    groups.set(key4, group);
   }
   for (const group of groups.values()) {
     const starts = group.flatMap((r3, i) => r3.role === "user" ? [i] : []);
     if (starts.length === 0)
       continue;
-    const emit = (context2, targetRecords, promptIds, localGaps) => {
+    const emit = (context, targetRecords, promptIds, localGaps) => {
       const target = targetRecords[0];
-      const text2 = JSON.stringify(context2);
+      const text2 = JSON.stringify(context);
       if (Buffer.byteLength(text2) > max2) {
         gaps.add("context_turn_oversize");
         return;
@@ -21261,11 +21261,11 @@ function segmentContext(records, options = {}) {
         project: target.project,
         eventFrom: target.eventAt,
         eventTo: targetRecords.at(-1)?.eventAt ?? target.eventAt,
-        records: context2,
+        records: context,
         promptIds,
         coverage: segmentGaps.length ? "partial" : "complete",
         gaps: segmentGaps,
-        contentHash: digest(JSON.stringify({ records: context2.map(({ route: _, ...record2 }) => record2), promptIds }))
+        contentHash: digest(JSON.stringify({ records: context.map(({ route: _, ...record2 }) => record2), promptIds }))
       });
     };
     if (Buffer.byteLength(JSON.stringify(group)) <= max2) {
@@ -21297,18 +21297,18 @@ function candidates(segment) {
   const firstTarget = segment.records.findIndex((r3) => target.has(r3.id));
   for (const [index, record2] of segment.records.entries()) {
     if (record2.role === "user" && target.has(record2.id)) {
-      for (const line of clean(record2.text).split(/\n|(?<=[.!?])\s+/u)) {
-        const text2 = line.trim();
+      for (const line2 of clean(record2.text).split(/\n|(?<=[.!?])\s+/u)) {
+        const text2 = line2.trim();
         if (!text2)
           continue;
         if (text2.length > 200 || topics.length >= 32) {
           omitted++;
           continue;
         }
-        const key2 = `span_${topics.length}`;
-        topics.push({ key: key2, text: text2 });
+        const key4 = `span_${topics.length}`;
+        topics.push({ key: key4, text: text2 });
         if (record2.directUser)
-          quotes.push({ key: key2, text: text2 });
+          quotes.push({ key: key4, text: text2 });
       }
     }
     if (index >= firstTarget && firstTarget >= 0 && record2.role === "tool" && record2.text.trim() && results.length < 64) {
@@ -21338,7 +21338,7 @@ function buildLaunchRequest(segment, mode = "full_context") {
     coverage: segment.coverage,
     gaps: [...segment.gaps],
     dialogue: segment.records.map((r3) => ({ id: digest(r3.id), role: r3.role, text: clean(r3.text), model: r3.model === null ? null : clean(r3.model), provider: r3.provider === null ? null : clean(r3.provider), directUser: r3.directUser, eventAt: r3.eventAt, target: target.has(r3.id) })),
-    candidates: { topics: options.topics, quotes: options.quotes, results: options.results.map(({ key: key2, dialogueIndex }) => ({ key: key2, dialogueIndex })), omittedSourceSpans: options.omitted }
+    candidates: { topics: options.topics, quotes: options.quotes, results: options.results.map(({ key: key4, dialogueIndex }) => ({ key: key4, dialogueIndex })), omittedSourceSpans: options.omitted }
   }, questions: {
     work: { type: "choice", instructions: safeInstructions + "Which work category best describes the target user request, using the complete dialogue?", criteria: Object.fromEntries(AUDIT_INTENTS.map((intent) => [intent, workLabels[intent]])) },
     topic: { type: "choice", instructions: safeInstructions + "Select a supplied target-user source span that concisely names the actual task. Use none when all spans are uninformative, instruction attacks, or just acknowledgments. Copying this span does not claim completion.", criteria: pool(options.topics) },
@@ -21380,19 +21380,19 @@ function selectSemanticWindow(segments, options) {
   const basis = options.estimateBasis ?? FREE_JEV_ESTIMATE_BASIS;
   const measured = /* @__PURE__ */ new Map();
   const reservation = (segment) => {
-    const key2 = JSON.stringify([segment.id, segment.contentHash, segment.promptIds]);
-    if (measured.has(key2)) {
-      const value = measured.get(key2);
+    const key4 = JSON.stringify([segment.id, segment.contentHash, segment.promptIds]);
+    if (measured.has(key4)) {
+      const value = measured.get(key4);
       if (value === null)
         throw new Error("context_request_limit");
       return value;
     }
     try {
       const value = validateFreeJevRequest(buildLaunchRequest(segment, options.contextMode), tokenizer2) * (1 + (options.retries ?? 1));
-      measured.set(key2, value);
+      measured.set(key4, value);
       return value;
     } catch (error) {
-      measured.set(key2, null);
+      measured.set(key4, null);
       throw error;
     }
   };
@@ -21535,13 +21535,13 @@ async function runLaunchSemantics(options) {
     stories.sort((a, b2) => selected.findIndex((s) => s.id === a.id) - selected.findIndex((s) => s.id === b2.id));
     const counts2 = /* @__PURE__ */ new Map();
     for (const story of stories) {
-      const label4 = story.intent ? workLabels[story.intent] : "Uncertain work";
-      counts2.set(label4, (counts2.get(label4) ?? 0) + 1);
+      const label5 = story.intent ? workLabels[story.intent] : "Uncertain work";
+      counts2.set(label5, (counts2.get(label5) ?? 0) + 1);
     }
     const hall = stories.filter((story) => story.quote !== null && judgments.find((j) => j.segmentId === story.id)?.answers.memorable?.type === "score" && judgments.find((j) => j.segmentId === story.id).answers.memorable.score >= 1.25).slice(0, 8);
     const tone2 = options.tone ?? ([...new Set(tones)].sort((a, b2) => tones.filter((t) => t === b2).length - tones.filter((t) => t === a).length)[0] ?? "elegant");
     const stats2 = run3.stats();
-    return { ...base3, state: run3.signal.aborted ? "cancelled" : stories.length === selected.length && gaps.size === 0 ? "complete" : stories.length ? "partial" : "unavailable", model: judgments[0]?.model ?? null, stories, hallOfFame: hall, work: [...counts2].map(([label4, count5]) => ({ label: label4, count: count5 })), tone: tone2, judgments, attempts: stats2.attempts, cacheHits: stats2.cacheHits, inputTokens: stats2.inputTokens, outputTokens: stats2.outputTokens, reservedTokens: stats2.reservedTokens, gaps: [...gaps] };
+    return { ...base3, state: run3.signal.aborted ? "cancelled" : stories.length === selected.length && gaps.size === 0 ? "complete" : stories.length ? "partial" : "unavailable", model: judgments[0]?.model ?? null, stories, hallOfFame: hall, work: [...counts2].map(([label5, count5]) => ({ label: label5, count: count5 })), tone: tone2, judgments, attempts: stats2.attempts, cacheHits: stats2.cacheHits, inputTokens: stats2.inputTokens, outputTokens: stats2.outputTokens, reservedTokens: stats2.reservedTokens, gaps: [...gaps] };
   } finally {
     run3.dispose();
   }
@@ -21648,17 +21648,17 @@ var init_jev_provider = __esm({
         } catch (error) {
           return Promise.resolve({ state: "failed", code: coded(error) });
         }
-        const key2 = this.key(request, identity5), cached4 = this.cache.get(key2);
+        const key4 = this.key(request, identity5), cached4 = this.cache.get(key4);
         if (cached4) {
-          this.cache.delete(key2);
-          this.cache.set(key2, cached4);
+          this.cache.delete(key4);
+          this.cache.set(key4, cached4);
           job.cacheHits++;
           return Promise.resolve({ state: "ok", response: structuredClone(cached4.response), cacheHit: true, requestId: cached4.requestId });
         }
         if (this.queue.length >= 128)
           return Promise.resolve({ state: "skipped", code: "queue_limit" });
         return new Promise((resolve) => {
-          const queued = { job, request, identity: identity5, key: key2, resolve, cleanup: () => {
+          const queued = { job, request, identity: identity5, key: key4, resolve, cleanup: () => {
           } };
           this.queue.push(queued);
           const cancelled = () => {
@@ -21691,7 +21691,7 @@ var init_jev_provider = __esm({
         }
       }
       async dispatch(item) {
-        const { job, request, key: key2, identity: identity5 } = item;
+        const { job, request, key: key4, identity: identity5 } = item;
         const requestHash = digest(JSON.stringify(request));
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
@@ -21744,7 +21744,7 @@ var init_jev_provider = __esm({
             row2.reportedUsd = result.usage.input_tokens / 1e6 * JEV_PRICE_PER_MILLION_INPUT;
             row2.outcome = "success";
             job.assertCurrent();
-            this.cache.set(key2, { response: structuredClone(result), requestId: row2.requestId });
+            this.cache.set(key4, { response: structuredClone(result), requestId: row2.requestId });
             while (this.cache.size > (this.options.cacheEntries ?? 128))
               this.cache.delete(this.cache.keys().next().value);
             return { state: "ok", response: result, cacheHit: false, requestId: row2.requestId };
@@ -21991,7 +21991,7 @@ function composeJevJudgments(judgments, base3, confidenceThreshold = 0.65) {
     const decision = primaryIntent(j.answers.primary_intent, confidenceThreshold);
     return { ...j, primaryIntent: j.windowCoverage === "truncated" ? null : decision.intent, abstained: j.windowCoverage === "truncated" || decision.abstained };
   }), accepted = recomposed.filter((j) => !j.abstained && j.primaryIntent !== null), denominator = base3.eligiblePrompts;
-  const work = AUDIT_INTENTS.map((label4) => ({ label: label4, count: accepted.filter((j) => j.primaryIntent === label4).length, denominator, state: "partial" })).filter((bar2) => bar2.count > 0);
+  const work = AUDIT_INTENTS.map((label5) => ({ label: label5, count: accepted.filter((j) => j.primaryIntent === label5).length, denominator, state: "partial" })).filter((bar2) => bar2.count > 0);
   return { judgments: recomposed, semantics: { ...base3, qualified: false, classifiedPrompts: accepted.length, unclassifiedPrompts: Math.max(0, denominator - accepted.length), uncertainPrompts: Math.max(0, denominator - accepted.length), work } };
 }
 var AUDIT_SEMANTIC_POLICY_VERSION, isEligible, semantics, JevSessionRunner;
@@ -22036,16 +22036,16 @@ var init_jev_session = __esm({
           throw new Error("semantic_approved_policy_changed");
         if (selection.approvedRequestHashes !== void 0 && JSON.stringify(selection.approvedRequestHashes) !== JSON.stringify(selected.prepared.map((input) => digest(JSON.stringify(input.request)))))
           throw new Error("semantic_approved_request_changed");
-        const key2 = jevKeyFromEnvironment();
-        if (!key2)
+        const key4 = jevKeyFromEnvironment();
+        if (!key4)
           return { semantics: { ...semantics("no_key", denominator), model: null, estimatedCostUsd: null, reportedCostUsd: null, unresolvedCostUsd: null }, judgments: [], gaps: selected.gapCodes };
         if (!isCurrent())
           throw new Error("audit_snapshot_stale");
         this.busy = true;
-        const signature = digest(key2);
+        const signature = digest(key4);
         if (!this.provider || signature !== this.keyHash) {
           this.provider?.clearCache();
-          this.provider = new JevProvider({ apiKey: key2 });
+          this.provider = new JevProvider({ apiKey: key4 });
           this.keyHash = signature;
         }
         const scopeHash = digest(JSON.stringify({ scope: snapshot2.scope, conversationIds: selection.conversationIds })), judgments = [];
@@ -22282,10 +22282,10 @@ function mergeHistories(parts) {
   for (const { file, data } of parts) {
     const added = /* @__PURE__ */ new Map();
     data.entries.forEach((e, index) => {
-      const key2 = `${e.sessionId ?? ""}|${e.at ?? ""}|${e.kind}|${e.f?.w ?? ""}|${e.q ?? ""}|${e.at === null ? `${file}:${index}` : ""}`;
-      if (seen.has(key2))
+      const key4 = `${e.sessionId ?? ""}|${e.at ?? ""}|${e.kind}|${e.f?.w ?? ""}|${e.q ?? ""}|${e.at === null ? `${file}:${index}` : ""}`;
+      if (seen.has(key4))
         return;
-      seen.add(key2);
+      seen.add(key4);
       out.entries.push(e);
       out.origins.push({ file, index });
       added.set(e.sessionId ?? "", (added.get(e.sessionId ?? "") ?? 0) + 1);
@@ -22343,8 +22343,8 @@ function resumeFacts(previous, job, timezone) {
 function codexFastDefault(options) {
   const home2 = options.codexDir ?? process.env["POTSHERD_CODEX_DIR"] ?? process.env["CODEX_HOME"] ?? path28.join(os9.homedir(), ".codex");
   try {
-    for (const line of fs37.readFileSync(path28.join(home2.split(",")[0].trim(), "config.toml"), "utf8").split("\n")) {
-      const m = /^\s*service_tier\s*=\s*["']?([\w-]+)/.exec(line.split("#")[0]);
+    for (const line2 of fs37.readFileSync(path28.join(home2.split(",")[0].trim(), "config.toml"), "utf8").split("\n")) {
+      const m = /^\s*service_tier\s*=\s*["']?([\w-]+)/.exec(line2.split("#")[0]);
       if (m)
         return m[1] === "priority" || m[1] === "fast";
     }
@@ -22538,9 +22538,9 @@ var init_analytics = __esm({
         if (!progressOnly)
           this.callback?.({ type: "snapshot", snapshot: this.current });
       }
-      progress(stage, label4, completed, total2) {
+      progress(stage, label5, completed, total2) {
         const detail = this.detail ? { ...this.detail, harnesses: this.detail.harnesses.map((h) => ({ ...h })), counts: { ...this.detail.counts }, elapsedMs: Math.round(performance.now() - this.t0) } : void 0;
-        this.publish({ status: stage, progress: { stage, label: label4, completed, total: total2, unit: "candidate_source", provisional: true, cancellable: true, ...detail ? { detail } : {} } }, true);
+        this.publish({ status: stage, progress: { stage, label: label5, completed, total: total2, unit: "candidate_source", provisional: true, cancellable: true, ...detail ? { detail } : {} } }, true);
       }
       async run(onEvent) {
         this.assertOpen();
@@ -22963,10 +22963,10 @@ var init_analytics = __esm({
         lap("findingsMs");
         const promptsByProject = /* @__PURE__ */ new Map();
         for (const p of prompts) {
-          const key2 = p.project ?? "(unknown)";
-          const list3 = promptsByProject.get(key2) ?? [];
+          const key4 = p.project ?? "(unknown)";
+          const list3 = promptsByProject.get(key4) ?? [];
           list3.push(p);
-          promptsByProject.set(key2, list3);
+          promptsByProject.set(key4, list3);
         }
         const human = prompts.length;
         const projects3 = a.projects.map((p, i) => ({
@@ -23260,8 +23260,8 @@ var init_analytics = __esm({
                   texts.set(p.key, p.text);
             }
             for (const p of list3) {
-              const key2 = p.route.basis === "transient_snapshot" ? p.route.recordKey : null;
-              const text2 = key2 ? texts.get(key2) : void 0;
+              const key4 = p.route.basis === "transient_snapshot" ? p.route.recordKey : null;
+              const text2 = key4 ? texts.get(key4) : void 0;
               if (text2 !== void 0)
                 p.text = text2;
             }
@@ -23312,7 +23312,7 @@ var init_analytics = __esm({
           normalizationVersion: `${NORMALIZATION_VERSION}/audit-v2`
         };
         const derived = this.derived;
-        const cacheKey = (key2) => ({ ...cacheBase, sourceId: key2, questionVersion: REQUESTED_USER_QUESTION_VERSION, model: FREE_JEV_MODEL, segmentationVersion: CONTEXT_SEGMENTATION_VERSION });
+        const cacheKey = (key4) => ({ ...cacheBase, sourceId: key4, questionVersion: REQUESTED_USER_QUESTION_VERSION, model: FREE_JEV_MODEL, segmentationVersion: CONTEXT_SEGMENTATION_VERSION });
         const provider = this.options.launchPrepareOnly ? void 0 : new FreeJevProvider({
           route: { kind: "zen-public" },
           beforeDispatch: async ({ model, attempt, notice }) => {
@@ -23325,12 +23325,12 @@ var init_analytics = __esm({
               throw new Error("cancelled");
           },
           cache: {
-            get: (key2) => {
-              const saved = derived?.read("semantic-answer", cacheKey(key2), (v) => !!v && typeof v === "object" && Array.isArray(v.answers));
+            get: (key4) => {
+              const saved = derived?.read("semantic-answer", cacheKey(key4), (v) => !!v && typeof v === "object" && Array.isArray(v.answers));
               return saved ? { ...saved, answers: Object.fromEntries(saved.answers.map((x) => [x.id, x.answer])) } : null;
             },
-            set: (key2, value) => {
-              derived?.write("semantic-answer", cacheKey(key2), { ...value, answers: Object.entries(value.answers).map(([id, answer]) => ({ id, answer })) }, (v) => !!v && typeof v === "object" && Array.isArray(v.answers));
+            set: (key4, value) => {
+              derived?.write("semantic-answer", cacheKey(key4), { ...value, answers: Object.entries(value.answers).map(([id, answer]) => ({ id, answer })) }, (v) => !!v && typeof v === "object" && Array.isArray(v.answers));
             }
           }
         });
@@ -23567,8 +23567,8 @@ function renderSweepList(r3, t = new Theme(), limit = 10) {
   card.blank().text("sessions the sweep takes next:");
   for (const s of r3.nextSweep.slice(0, limit)) {
     const when2 = s.daysLeft <= 0 ? "at next startup" : s.daysLeft === 1 ? "in 1 day" : `in ${s.daysLeft} days`;
-    const label4 = s.title ?? `${basename2(s.project)}-${idTag(s.id)}`;
-    card.raw(`    ${t.warn(pad(when2, 16))}${elide(label4, Math.max(20, t.width - 24))}`);
+    const label5 = s.title ?? `${basename2(s.project)}-${idTag(s.id)}`;
+    card.raw(`    ${t.warn(pad(when2, 16))}${elide(label5, Math.max(20, t.width - 24))}`);
   }
   if (r3.nextSweep.length > limit) {
     card.raw(`    ${t.dim(`${r3.nextSweep.length - limit} more`)}`);
@@ -23621,8 +23621,8 @@ function renderVerify(claudeDir2, t = new Theme()) {
   card.text("every number on the audit card with the python standard library and");
   card.text("nothing else \u2014 no potsherd, no database, no checkout needed. paste it:");
   card.blank();
-  for (const line of snippetFor(claudeDir2).split("\n"))
-    card.raw(line);
+  for (const line2 of snippetFor(claudeDir2).split("\n"))
+    card.raw(line2);
   card.blank();
   card.text("the definitions it implements:");
   card.blank();
@@ -24105,11 +24105,11 @@ function foldContinuations(exchanges, fromSeq) {
 async function readTranscriptVersion(filePath) {
   let seen = 0;
   try {
-    for await (const line of readJsonlLines(filePath)) {
+    for await (const line2 of readJsonlLines(filePath)) {
       if (seen >= VERSION_SCAN_LINES)
         break;
       seen += 1;
-      const parsed = parseJsonLine(line.text);
+      const parsed = parseJsonLine(line2.text);
       if (!isRecord(parsed))
         continue;
       if (typeof parsed.version === "string" && parsed.version)
@@ -24128,13 +24128,13 @@ function recordTypeStats(results) {
   for (const result of results) {
     const version = result.version ?? "unknown";
     for (const [type, count5] of Object.entries(result.unknownTypes)) {
-      const key2 = `${version}\0${type}`;
-      const row2 = rows.get(key2);
+      const key4 = `${version}\0${type}`;
+      const row2 = rows.get(key4);
       if (row2) {
         row2.count += count5;
         row2.files += 1;
       } else {
-        rows.set(key2, {
+        rows.set(key4, {
           harness: "claude",
           version,
           type,
@@ -24257,13 +24257,13 @@ async function parseCodexTranscript(filePath, options = {}) {
       redacted: false
     });
   };
-  for await (const line of readJsonlLines(absolute2, { start: fromOffset, snapshot: snapshot2 })) {
-    if (!line.terminated)
+  for await (const line2 of readJsonlLines(absolute2, { start: fromOffset, snapshot: snapshot2 })) {
+    if (!line2.terminated)
       break;
-    endOffset = line.end;
-    const parsed = parseJsonLine(line.text);
+    endOffset = line2.end;
+    const parsed = parseJsonLine(line2.text);
     if (parsed === void 0) {
-      if (line.text.trim())
+      if (line2.text.trim())
         malformedLines += 1;
       continue;
     }
@@ -24333,9 +24333,9 @@ async function parseCodexTranscript(filePath, options = {}) {
           byCallId: /* @__PURE__ */ new Map(),
           files: []
         };
-        seqByOffset.set(line.start, seq);
+        seqByOffset.set(line2.start, seq);
       } else if (payload.role === "assistant" && current) {
-        seqByOffset.set(line.start, current.seq);
+        seqByOffset.set(line2.start, current.seq);
         current.assistantTexts.push(text2);
         current.ts = ts;
         assistantTurns += 1;
@@ -24343,7 +24343,7 @@ async function parseCodexTranscript(filePath, options = {}) {
       continue;
     }
     if (TOOL_CALL_TYPES.has(kind3) && current) {
-      seqByOffset.set(line.start, current.seq);
+      seqByOffset.set(line2.start, current.seq);
       let input = payload.arguments;
       if (typeof input === "string")
         input = safeParseJson(input);
@@ -24363,7 +24363,7 @@ async function parseCodexTranscript(filePath, options = {}) {
       continue;
     }
     if (TOOL_OUTPUT_TYPES.has(kind3) && current) {
-      seqByOffset.set(line.start, current.seq);
+      seqByOffset.set(line2.start, current.seq);
       const callId = typeof payload.call_id === "string" ? payload.call_id : void 0;
       if (!callId)
         continue;
@@ -24412,10 +24412,10 @@ async function parseCodexTranscript(filePath, options = {}) {
 }
 async function collectHumanPrompts(absolute2, start, snapshot2) {
   const out = /* @__PURE__ */ new Set();
-  for await (const line of readJsonlLines(absolute2, { start, snapshot: snapshot2 })) {
-    if (!line.terminated)
+  for await (const line2 of readJsonlLines(absolute2, { start, snapshot: snapshot2 })) {
+    if (!line2.terminated)
       break;
-    const parsed = parseJsonLine(line.text);
+    const parsed = parseJsonLine(line2.text);
     if (!isRecord(parsed) || parsed.type !== "event_msg")
       continue;
     const payload = parsed.payload;
@@ -24589,10 +24589,10 @@ function readSessionIndex(options = {}) {
   } catch {
     return out;
   }
-  for (const line of text2.split("\n")) {
-    if (!line.trim())
+  for (const line2 of text2.split("\n")) {
+    if (!line2.trim())
       continue;
-    const parsed = parseJsonLine(line);
+    const parsed = parseJsonLine(line2);
     if (!isRecord(parsed) || typeof parsed["id"] !== "string")
       continue;
     const id = parsed["id"];
@@ -24624,16 +24624,16 @@ function clearSessionIndexCache() {
   indexCache.clear();
 }
 async function readCodexHeader(filePath) {
-  for await (const line of readJsonlLines(filePath)) {
-    if (!line.terminated)
+  for await (const line2 of readJsonlLines(filePath)) {
+    if (!line2.terminated)
       return void 0;
-    const parsed = parseJsonLine(line.text);
+    const parsed = parseJsonLine(line2.text);
     if (!isRecord(parsed) || parsed["type"] !== "session_meta")
       return void 0;
     const payload = parsed["payload"];
     if (!isRecord(payload))
       return void 0;
-    const str6 = (key2) => typeof payload[key2] === "string" ? payload[key2] : void 0;
+    const str6 = (key4) => typeof payload[key4] === "string" ? payload[key4] : void 0;
     const timestamp = typeof parsed["timestamp"] === "string" ? parsed["timestamp"] : void 0;
     const header2 = {
       ...str6("id") ?? str6("session_id") ? { sessionId: str6("id") ?? str6("session_id") } : {},
@@ -25002,26 +25002,26 @@ async function parse7(source, options = {}) {
   const byId = /* @__PURE__ */ new Map();
   let header2;
   let order = 0;
-  for await (const line of readJsonlLines(absolute2)) {
-    if (!line.terminated)
+  for await (const line2 of readJsonlLines(absolute2)) {
+    if (!line2.terminated)
       break;
-    endOffset = line.end;
-    const parsed = parseJsonLine(line.text);
+    endOffset = line2.end;
+    const parsed = parseJsonLine(line2.text);
     if (parsed === void 0 || !isRecord(parsed)) {
-      if (line.text.trim())
+      if (line2.text.trim())
         malformedLines += 1;
       continue;
     }
     const type = typeof parsed.type === "string" ? parsed.type : "";
     if (!HANDLED_TYPES2.has(type)) {
-      const key2 = type || "(no type)";
-      unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+      const key4 = type || "(no type)";
+      unknownTypes[key4] = (unknownTypes[key4] ?? 0) + 1;
     } else if (type === "message") {
       const message2 = parsed.message;
       const role = isRecord(message2) && typeof message2.role === "string" ? message2.role : "";
       if (!HANDLED_ROLES2.has(role)) {
-        const key2 = `message:${role || "(no role)"}`;
-        unknownTypes[key2] = (unknownTypes[key2] ?? 0) + 1;
+        const key4 = `message:${role || "(no role)"}`;
+        unknownTypes[key4] = (unknownTypes[key4] ?? 0) + 1;
       }
     }
     if (type === "session") {
@@ -25324,8 +25324,8 @@ function captureHistoryEvidence(db, options) {
       g2.project = project;
     const clock3 = options.harness === "claude" ? r3.timestamp : typeof r3.ts === "number" ? r3.ts * 1e3 : void 0;
     const eventAt = typeof clock3 === "number" && Number.isFinite(clock3) && Number.isFinite(new Date(clock3).valueOf()) ? new Date(clock3).toISOString() : null;
-    const key2 = hash(raw);
-    g2.records.push({ unitKey: `ghost_prompt:${key2}:${g2.records.filter((x) => x.locator.rawRecordHash === key2).length}`, role: "ghost_prompt", text: text2, eventAt, timeBasis: eventAt ? "record" : "unknown", project, recordType: "history_prompt", locatorFidelity: "record_ordinal", locator: { recordKey: key2, rawRecordHash: key2, rawStart: g2.bytes, rawEnd: g2.bytes + raw.length, originalHistoryStart: originalStart, originalHistoryEnd: end + 1, historyFormat: options.harness, mapping: "record_container" } });
+    const key4 = hash(raw);
+    g2.records.push({ unitKey: `ghost_prompt:${key4}:${g2.records.filter((x) => x.locator.rawRecordHash === key4).length}`, role: "ghost_prompt", text: text2, eventAt, timeBasis: eventAt ? "record" : "unknown", project, recordType: "history_prompt", locatorFidelity: "record_ordinal", locator: { recordKey: key4, rawRecordHash: key4, rawStart: g2.bytes, rawEnd: g2.bytes + raw.length, originalHistoryStart: originalStart, originalHistoryEnd: end + 1, historyFormat: options.harness, mapping: "record_container" } });
     g2.raw.push(raw);
     g2.bytes += raw.length;
     groups.set(id, g2);
@@ -26037,7 +26037,7 @@ function readCardLegacyRaw(db, sessionId) {
          FROM cards WHERE session_id = ?`).get(sessionId);
   if (!row2)
     return null;
-  const parse8 = (json4, fallback) => {
+  const parse9 = (json4, fallback) => {
     if (!json4)
       return fallback;
     try {
@@ -26046,17 +26046,17 @@ function readCardLegacyRaw(db, sessionId) {
       return fallback;
     }
   };
-  const verified2 = parse8(row2.verified, null);
+  const verified2 = parse9(row2.verified, null);
   return {
     card: {
       title: row2.title ?? "",
       summary: row2.summary ?? "",
-      topics: parse8(row2.topics, []),
-      decisions: parse8(row2.decisions, []),
-      files: parse8(row2.files, []),
+      topics: parse9(row2.topics, []),
+      decisions: parse9(row2.decisions, []),
+      files: parse9(row2.files, []),
       outcome: row2.outcome ?? "unknown",
-      open_threads: parse8(row2.open_threads, []),
-      tags: parse8(row2.suggested_tags, [])
+      open_threads: parse9(row2.open_threads, []),
+      tags: parse9(row2.suggested_tags, [])
     },
     verified: verified2 && typeof verified2.kept === "number" && typeof verified2.dropped === "number" ? verified2 : null,
     source: row2.source,
@@ -26070,7 +26070,7 @@ function readPriorCardLegacyRaw(db, sessionId) {
          FROM cards WHERE session_id = ?`).get(sessionId);
   if (!row2)
     return null;
-  const parse8 = (json4, fallback) => {
+  const parse9 = (json4, fallback) => {
     try {
       return JSON.parse(json4);
     } catch {
@@ -26080,12 +26080,12 @@ function readPriorCardLegacyRaw(db, sessionId) {
   return {
     title: row2.title ?? "",
     summary: row2.summary ?? "",
-    topics: parse8(row2.topics, []),
-    decisions: parse8(row2.decisions, []),
-    files: parse8(row2.files, []),
+    topics: parse9(row2.topics, []),
+    decisions: parse9(row2.decisions, []),
+    files: parse9(row2.files, []),
     outcome: row2.outcome ?? "unknown",
-    open_threads: parse8(row2.open_threads, []),
-    tags: parse8(row2.suggested_tags, [])
+    open_threads: parse9(row2.open_threads, []),
+    tags: parse9(row2.suggested_tags, [])
   };
 }
 function readCard(...args) {
@@ -26490,8 +26490,8 @@ function sharedCounts(db) {
       for (let j = i + 1; j < group.length; j += 1) {
         const a = group[i];
         const b2 = group[j];
-        const key2 = a < b2 ? `${a}\0${b2}` : `${b2}\0${a}`;
-        pairs2.set(key2, (pairs2.get(key2) ?? 0) + 1);
+        const key4 = a < b2 ? `${a}\0${b2}` : `${b2}\0${a}`;
+        pairs2.set(key4, (pairs2.get(key4) ?? 0) + 1);
       }
     }
     at = end;
@@ -26526,8 +26526,8 @@ function deriveThreads(db) {
       best.set(edge.child, edge);
     }
   };
-  for (const [key2, count5] of shared) {
-    const [a, b2] = key2.split("\0");
+  for (const [key4, count5] of shared) {
+    const [a, b2] = key4.split("\0");
     const smaller = Math.min(sizes.size.get(a) ?? 0, sizes.size.get(b2) ?? 0);
     if (smaller === 0)
       continue;
@@ -26549,8 +26549,8 @@ function deriveThreads(db) {
   }
   for (const [child, list3] of declared) {
     for (const d of list3) {
-      const key2 = child < d.parent ? `${child}\0${d.parent}` : `${d.parent}\0${child}`;
-      const count5 = shared.get(key2) ?? 0;
+      const key4 = child < d.parent ? `${child}\0${d.parent}` : `${d.parent}\0${child}`;
+      const count5 = shared.get(key4) ?? 0;
       const edge = best.get(child);
       if (edge && edge.parent === d.parent)
         continue;
@@ -26990,13 +26990,13 @@ function storedRedactionCounts(db) {
   }
   return counts2;
 }
-function readIndexState(db, key2) {
-  const row2 = db.prepare("SELECT value FROM sync_state WHERE key = ?").get(key2);
+function readIndexState(db, key4) {
+  const row2 = db.prepare("SELECT value FROM sync_state WHERE key = ?").get(key4);
   return row2?.value;
 }
-function writeIndexState(db, key2, value) {
+function writeIndexState(db, key4, value) {
   db.prepare(`INSERT INTO sync_state (key, value, updated_at) VALUES (?, ?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`).run(key2, value, (/* @__PURE__ */ new Date()).toISOString());
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`).run(key4, value, (/* @__PURE__ */ new Date()).toISOString());
 }
 function sourceFingerprint(sources) {
   const hash3 = crypto8.createHash("sha256");
@@ -27262,13 +27262,13 @@ async function indexHarness(db, spec, options, recordTypes) {
     report.malformedLines += parsed.malformedLines;
     redaction = addCounts(redaction, result.counts);
     for (const [type, count5] of Object.entries(parsed.unknownTypes)) {
-      const key2 = `${spec.harness}\0${version}\0${type}`;
-      const row2 = recordTypes.get(key2);
+      const key4 = `${spec.harness}\0${version}\0${type}`;
+      const row2 = recordTypes.get(key4);
       if (row2) {
         row2.count += count5;
         row2.files += 1;
       } else {
-        recordTypes.set(key2, {
+        recordTypes.set(key4, {
           harness: spec.harness,
           version,
           type,
@@ -27296,10 +27296,10 @@ async function prepareLineage(db, harness, source, sessionId) {
     };
   const ids = [];
   const declared = /* @__PURE__ */ new Map();
-  for await (const line of readJsonlLines(source.path)) {
-    if (!line.terminated)
+  for await (const line2 of readJsonlLines(source.path)) {
+    if (!line2.terminated)
       break;
-    const record2 = parseJsonLine(line.text);
+    const record2 = parseJsonLine(line2.text);
     if (!isRecord(record2))
       continue;
     const id = record2[fields2.id];
@@ -27566,14 +27566,14 @@ function resolveEnrolledSources(db, input) {
   const harnesses = input.harnesses ? [...input.harnesses] : explicit.length ? explicit : prior?.harnesses ?? Object.keys(names);
   const options = { ...prior?.options ?? {} };
   for (const h of harnesses) {
-    const key2 = names[h];
-    options[key2] = path36.resolve(input[key2] ?? options[key2] ?? defaults[h]());
+    const key4 = names[h];
+    options[key4] = path36.resolve(input[key4] ?? options[key4] ?? defaults[h]());
   }
   const removed = new Set(input.removeHarnesses ?? []);
   const savedHarnesses = [.../* @__PURE__ */ new Set([...prior?.harnesses ?? harnesses, ...explicit, ...input.enrollHarnesses ?? []])].filter((h) => !removed.has(h));
   for (const h of savedHarnesses) {
-    const key2 = names[h];
-    options[key2] = path36.resolve(input[key2] ?? options[key2] ?? defaults[h]());
+    const key4 = names[h];
+    options[key4] = path36.resolve(input[key4] ?? options[key4] ?? defaults[h]());
   }
   const enrollment = { version: 1, harnesses: savedHarnesses, options };
   if (!prior || explicit.length || input.enrollHarnesses || input.removeHarnesses) {
@@ -27952,15 +27952,15 @@ function explainSession(s, place, k, relaxed, result) {
   const hits = [...s.hits].sort((a, b2) => b2.score - a.score).map((h) => explainHit(h, k, relaxed, result));
   const best = hits.length > 0 ? hits[0].score : 0;
   const rest = hits.slice(1).reduce((n2, h) => n2 + h.score, 0);
-  const cap2 = best * CORROBORATION;
+  const cap4 = best * CORROBORATION;
   return {
     id: s.id,
     place,
     title: s.displayTitle,
     score: s.score,
     best,
-    corroboration: Math.min(rest / 2, cap2),
-    capped: rest / 2 > cap2 + 1e-12,
+    corroboration: Math.min(rest / 2, cap4),
+    capped: rest / 2 > cap4 + 1e-12,
     hits
   };
 }
@@ -28109,8 +28109,8 @@ function renderFind(result, t = new Theme(), now = /* @__PURE__ */ new Date(), o
   if (notes)
     lines.push(INDENT + t.dim(notes));
   if (!result.vectors.used && result.vectors.reason && !supersededBySemantic(opts, result.vectors.reason)) {
-    for (const line of wrap(`text search only ${t.dash} ${result.vectors.reason}`, t.width - INDENT.length)) {
-      lines.push(INDENT + t.dim(line));
+    for (const line2 of wrap(`text search only ${t.dash} ${result.vectors.reason}`, t.width - INDENT.length)) {
+      lines.push(INDENT + t.dim(line2));
     }
   }
   lines.push(...semanticNote(opts, t));
@@ -28129,8 +28129,8 @@ function withheldNote(result, t) {
   if (Theme.len(INDENT + wide) <= t.width) {
     out.push(INDENT + t.dim(wide));
   } else {
-    for (const line of wrap(what, t.width - INDENT.length))
-      out.push(INDENT + t.dim(line));
+    for (const line2 of wrap(what, t.width - INDENT.length))
+      out.push(INDENT + t.dim(line2));
     out.push(INDENT + t.dim(`${flag}  shows them anyway`));
   }
   out.push("");
@@ -28153,12 +28153,12 @@ function nearestNote(result, opts, t) {
     const at = sessionDate(s);
     const when2 = at ? date(at) : t.dash;
     const where = `${s.projectName} ${t.sep} ${when2}`;
-    const label4 = s.confidence.padEnd(5);
-    const room2 = t.width - INDENT.length - 2 - label4.length - 1 - Theme.len(where) - 2;
+    const label5 = s.confidence.padEnd(5);
+    const room2 = t.width - INDENT.length - 2 - label5.length - 1 - Theme.len(where) - 2;
     const title = elide(s.displayTitle, Math.max(12, room2), t.ellip);
-    const line = `  ${label4} ${title}`;
-    const pad4 = Math.max(1, t.width - INDENT.length - Theme.len(line) - Theme.len(where));
-    out.push(INDENT + t.dim(line + " ".repeat(pad4) + where));
+    const line2 = `  ${label5} ${title}`;
+    const pad4 = Math.max(1, t.width - INDENT.length - Theme.len(line2) - Theme.len(where));
+    out.push(INDENT + t.dim(line2 + " ".repeat(pad4) + where));
   }
   out.push("");
   return out;
@@ -28181,12 +28181,12 @@ function ignoreNote(result, t) {
   const what = `not searching ${num(n2)} ${plural(n2, "session")} in ${num(p)} ignored ${plural(p, "project")}`;
   const wide = `${what}  ${t.sep}  --all`;
   const text2 = Theme.len(INDENT + wide) <= t.width ? wide : what;
-  return wrap(text2, t.width - INDENT.length).map((line) => INDENT + t.dim(line));
+  return wrap(text2, t.width - INDENT.length).map((line2) => INDENT + t.dim(line2));
 }
 function semanticNote(opts, t) {
   if (!opts.semantic)
     return [];
-  return wrap(opts.semantic, t.width - INDENT.length).map((line) => INDENT + t.dim(line));
+  return wrap(opts.semantic, t.width - INDENT.length).map((line2) => INDENT + t.dim(line2));
 }
 function supersededBySemantic(opts, reason) {
   return Boolean(opts.semantic) && reason.startsWith("the words matched;");
@@ -28449,25 +28449,25 @@ function sessionLedger(s, t, width) {
 function hitLedger(hit2, t, width) {
   const lines = [];
   const score = hit2.score.toFixed(4);
-  const label4 = elide(hit2.label, Math.max(8, width - 3 - score.length - 2), t);
-  const pad4 = Math.max(1, width - 3 - Theme.len(label4) - score.length);
-  lines.push(INDENT + "   " + label4 + " ".repeat(pad4) + t.dim(score));
+  const label5 = elide(hit2.label, Math.max(8, width - 3 - score.length - 2), t);
+  const pad4 = Math.max(1, width - 3 - Theme.len(label5) - score.length);
+  lines.push(INDENT + "   " + label5 + " ".repeat(pad4) + t.dim(score));
   for (const l of hit2.lists)
     lines.push(INDENT + "     " + detailRow(l, t, width - 5));
   return lines;
 }
 function detailRow(l, t, width) {
-  const times3 = t.g("\xD7", "x");
+  const times2 = t.g("\xD7", "x");
   const name = l.list.padEnd(LIST_COL);
   const rank = `r${l.rank}`.padEnd(4);
-  const weight = `${times3}${l.weight.toFixed(2)}${l.relaxed ? "~" : ""}`.padEnd(7);
+  const weight = `${times2}${l.weight.toFixed(2)}${l.relaxed ? "~" : ""}`.padEnd(7);
   const contribution = l.contribution.toFixed(4);
   const share = `${Math.round(l.share * 100)}%`.padStart(4);
   const raw = rawColumn(l).padEnd(12);
   const wide = `${name} ${rank} ${raw} ${weight} ${contribution} ${share}`;
   const narrow = `${name} ${rank} ${weight} ${contribution} ${share}`;
-  const line = Theme.len(wide) <= width ? wide : narrow;
-  return t.dim(clip(line, width, t));
+  const line2 = Theme.len(wide) <= width ? wide : narrow;
+  return t.dim(clip(line2, width, t));
 }
 function rawColumn(l) {
   if (l.list === "vec_exchanges" || l.list === "vec_cards" || l.list === "vec_ghost_prompts")
@@ -28535,8 +28535,8 @@ function renderLs(result, t = new Theme(), now = /* @__PURE__ */ new Date(), ech
   }));
   lines.push("");
   lines.push(INDENT + t.dim(summary(result, t)));
-  for (const line of ignoreNote2(result, t))
-    lines.push(line);
+  for (const line2 of ignoreNote2(result, t))
+    lines.push(line2);
   lines.push(fitLine(t, `${t.dim("run")}  potsherd show <id8>  ${t.dim("to read one, or  potsherd find <words>")}`, `${t.dim("run")}  potsherd show <id8>  ${t.dim("to read one")}`, `${t.dim("run")}  potsherd show <id8>`));
   return lines.join("\n");
 }
@@ -28798,20 +28798,20 @@ function cardBlock(stored, t, width) {
       return;
     section(name);
     const sep = ` ${t.mid} `;
-    let line = "";
+    let line2 = "";
     for (const raw of items) {
       const item = raw.length > body ? elideMiddle(raw, body, t) : raw;
-      if (line === "") {
-        line = item;
-      } else if (line.length + sep.length + item.length <= body) {
-        line += sep + item;
+      if (line2 === "") {
+        line2 = item;
+      } else if (line2.length + sep.length + item.length <= body) {
+        line2 += sep + item;
       } else {
-        out.push(INDENT + "  " + line + ` ${t.mid}`);
-        line = item;
+        out.push(INDENT + "  " + line2 + ` ${t.mid}`);
+        line2 = item;
       }
     }
-    if (line !== "")
-      out.push(INDENT + "  " + line);
+    if (line2 !== "")
+      out.push(INDENT + "  " + line2);
   };
   list3("files", c.files);
   list3("tags", [.../* @__PURE__ */ new Set([...c.topics, ...c.tags])]);
@@ -28967,7 +28967,7 @@ function esc2(s) {
 function renderShowHtml(r3, version) {
   const s = r3.session;
   const out = [];
-  const p = (line) => void out.push(line);
+  const p = (line2) => void out.push(line2);
   p("<!doctype html>");
   p('<html lang="en"><head>');
   p('<meta charset="utf-8">');
@@ -29111,12 +29111,12 @@ function renderStats(r3, t = new Theme()) {
     header2.map((h) => t.dim(h)),
     ...r3.harnesses.map((h) => harnessRow(h, t))
   ];
-  for (const line of table(t, rows, {
+  for (const line2 of table(t, rows, {
     gap: 2,
     grow: 6,
     align: ["left", "right", "right", "right", "right", "right", "left"]
   })) {
-    card.raw(line);
+    card.raw(line2);
   }
   card.blank();
   const tot = r3.totals;
@@ -29371,8 +29371,8 @@ function monthPhrase(v, now) {
   let year = m[2] ? Number(m[2]) : now.getFullYear();
   if (!m[2] && idx > now.getMonth())
     year -= 1;
-  const label4 = `${MONTHS4[idx]} ${year}`;
-  return localRange(new Date(year, idx, 1), new Date(year, idx + 1, 1), label4);
+  const label5 = `${MONTHS4[idx]} ${year}`;
+  return localRange(new Date(year, idx, 1), new Date(year, idx + 1, 1), label5);
 }
 function weekday(v, now) {
   const m = /^(last |this |on )?([a-z]{3,9})$/.exec(v);
@@ -29395,18 +29395,18 @@ function dayLabel(d) {
 function pad2(n2) {
   return String(n2).padStart(2, "0");
 }
-function localRange(start, endExclusive, label4) {
+function localRange(start, endExclusive, label5) {
   return {
     start: start.toISOString(),
     end: new Date(+endExclusive - 1).toISOString(),
-    label: label4
+    label: label5
   };
 }
-function utcRange(startMs, endExclusiveMs, label4) {
+function utcRange(startMs, endExclusiveMs, label5) {
   return {
     start: new Date(startMs).toISOString(),
     end: new Date(endExclusiveMs - 1).toISOString(),
-    label: label4
+    label: label5
   };
 }
 var WHEN_FORMS, MONTHS4, WEEKDAYS, UNIT_ALIASES, WEEK2;
@@ -29849,7 +29849,7 @@ function renderEstimate(plan, t = new Theme(), o = {}) {
     }
   ]);
   card.blank();
-  const money5 = `~${approxMoney(e.usd)}`;
+  const money4 = `~${approxMoney(e.usd)}`;
   const time4 = `~${approxDuration(e.seconds)}`;
   const overTime = e.secondsLow > TARGET_SECONDS;
   const overMoney = e.usdLow > TARGET_USD;
@@ -29891,7 +29891,7 @@ function renderEstimate(plan, t = new Theme(), o = {}) {
       },
       {
         label: e.chargeable ? "estimated cost" : "equivalent cost",
-        value: money5,
+        value: money4,
         tone: e.chargeable ? overMoney ? "warn" : "accent" : "dim",
         note: e.chargeable ? `est. ${moneyRange} ${t.sep} target ${money(TARGET_USD)}` : `$0 charged ${t.sep} ${moneyRange} on an api key`
       }
@@ -29909,8 +29909,8 @@ function renderEstimate(plan, t = new Theme(), o = {}) {
     ] : []
   ]);
   card.blank();
-  for (const line of basisLines(e, t))
-    card.text(line, "dim");
+  for (const line2 of basisLines(e, t))
+    card.text(line2, "dim");
   card.blank();
   if (o.dryRun === false) {
     card.text("this is what the run will do.");
@@ -29981,10 +29981,10 @@ function asStringList(v, max2) {
     const s = asString(typeof item === "object" && item !== null ? item["name"] ?? item["path"] ?? item["topic"] ?? item["what"] : item);
     if (!s)
       continue;
-    const key2 = s.toLowerCase();
-    if (seen.has(key2))
+    const key4 = s.toLowerCase();
+    if (seen.has(key4))
       continue;
-    seen.add(key2);
+    seen.add(key4);
     out.push(s);
     if (out.length >= max2)
       break;
@@ -30064,8 +30064,8 @@ function validateCard(value) {
   if (!value || typeof value !== "object" || Array.isArray(value))
     return null;
   const rec = value;
-  for (const key2 of ["card", "result", "output", "data"]) {
-    const inner = rec[key2];
+  for (const key4 of ["card", "result", "output", "data"]) {
+    const inner = rec[key4];
     if (inner && typeof inner === "object" && !Array.isArray(inner) && !rec["title"] && !rec["summary"]) {
       return validateCard(inner);
     }
@@ -30149,19 +30149,19 @@ function cachedEmbedder(options = {}) {
   const stats2 = { computed: 0, hits: 0, ms: 0 };
   const backing = options.embed ?? ((t) => generateEmbedding(t, options.embeddings ?? {}));
   const embed = (text2) => {
-    const key2 = text2.trim();
-    const seen = cache3.get(key2);
+    const key4 = text2.trim();
+    const seen = cache3.get(key4);
     if (seen) {
       stats2.hits += 1;
       return seen;
     }
     const started = Date.now();
-    const promise = backing(key2).then((v) => {
+    const promise = backing(key4).then((v) => {
       stats2.computed += 1;
       stats2.ms += Date.now() - started;
       return v;
     });
-    cache3.set(key2, promise);
+    cache3.set(key4, promise);
     return promise;
   };
   return {
@@ -30564,19 +30564,19 @@ async function extractCard(llm, transcript, options = {}) {
     return { card: fallback, chunks: 0, spend, parsed: false, model: llm.model };
   }
   const gate = options.gate ?? openGate;
-  const call = async (label4, prompt2) => {
+  const call = async (label5, prompt2) => {
     const r3 = await gate(() => llm.json({
       prompt: prompt2,
       system: systemFor(transcript),
       schema: CARD_SCHEMA,
       fallback,
       validate: validateCard,
-      label: label4,
+      label: label5,
       maxOutputTokens: options.maxOutputTokens ?? 2048,
       ...options.signal ? { signal: options.signal } : {}
     }));
     addSpend(spend, r3);
-    options.onCall?.({ label: label4, usd: r3.usd, ms: r3.ms, parsed: r3.parsed });
+    options.onCall?.({ label: label5, usd: r3.usd, ms: r3.ms, parsed: r3.parsed });
     return { card: r3.value, parsed: r3.parsed };
   };
   if (chunks.length === 1) {
@@ -31215,14 +31215,14 @@ function renderCardRun(report, t = new Theme(), o = {}) {
     card.blank();
     card.text(listed.length < report.cards.length ? `${listed.length} of ${report.cards.length} cards, most-filtered first:` : "the cards:");
     card.blank();
-    for (const line of table(t, listed.map((c) => [
+    for (const line2 of table(t, listed.map((c) => [
       c.title || idTag(c.id),
       c.outcome,
       `${c.decisions}d ${c.openThreads}o`,
       c.dropped ? `-${c.dropped}` : t.g("\xB7", "."),
       c.coverage === null ? t.g("\xB7", ".") : `${Math.round(c.coverage * 100)}%`
     ]), { grow: 0, align: ["left", "left", "right", "right", "right"] })) {
-      card.raw(line);
+      card.raw(line2);
     }
   }
   if (report.errors.length > 0) {
@@ -31491,10 +31491,10 @@ function openThreadCandidates(db, sessionIds, o = {}) {
   }
   const best = /* @__PURE__ */ new Map();
   for (const c of raised) {
-    const key2 = c.what.toLowerCase();
-    const prior = best.get(key2);
+    const key4 = c.what.toLowerCase();
+    const prior = best.get(key4);
     if (!prior || c.score > prior.score)
-      best.set(key2, c);
+      best.set(key4, c);
   }
   return [...best.values()].sort((x, y) => y.score - x.score || x.what.localeCompare(y.what)).slice(0, limit);
 }
@@ -32202,7 +32202,7 @@ async function ask(db, question, o = {}) {
   const k = Math.max(1, Math.floor(o.k ?? (cheap ? ASK_CHEAP_K : ASK_K)));
   const budget2 = o.budget ?? new Budget({ maxUsd: o.maxUsd ?? ASK_MAX_USD });
   const maxUsd = o.maxUsd ?? ASK_MAX_USD;
-  const meter = new SpendMeter();
+  const meter2 = new SpendMeter();
   const drop = (d) => o.onDrop?.(d);
   const found = await recall(db, q2, o.filters ?? {}, {
     limit: Math.max(k, ASK_SCAN),
@@ -32223,7 +32223,7 @@ async function ask(db, question, o = {}) {
     step: "shortlist",
     done: targets.length,
     total: matching2,
-    spend: meter.total
+    spend: meter2.total
   });
   const empty = (extra = {}) => ({
     question: q2,
@@ -32239,8 +32239,8 @@ async function ask(db, question, o = {}) {
     refused: strict,
     refusal: strict ? targets.length === 0 ? "no-match" : "no-answer" : null,
     strict,
-    spend: meter.total,
-    estimated: meter.total.estimatedInputCalls > 0,
+    spend: meter2.total,
+    estimated: meter2.total.estimatedInputCalls > 0,
     cheap,
     ms: Date.now() - started,
     ...extra
@@ -32249,7 +32249,7 @@ async function ask(db, question, o = {}) {
     return empty();
   const ownReader = o.readerFn ? null : o.readerLlm ?? openLlm(o.readerModel ?? CARD_MODEL, budget2, o);
   if (ownReader)
-    meter.track(ownReader);
+    meter2.track(ownReader);
   const readerFn = o.readerFn ?? sdkReader(ownReader, o.signal);
   const gate = makeGate(Math.max(1, Math.floor(o.concurrency ?? ASK_CONCURRENCY)));
   const readers = new Array(targets.length);
@@ -32284,7 +32284,7 @@ async function ask(db, question, o = {}) {
           step: "read",
           done,
           total: targets.length,
-          spend: meter.total,
+          spend: meter2.total,
           detail: report?.error ? "failed" : report?.found ? "found" : "nothing",
           ...report ? { reader: report } : {}
         });
@@ -32295,14 +32295,14 @@ async function ask(db, question, o = {}) {
     if (answered3.length === 0) {
       return base3({ refused: strict, refusal: strict ? "no-answer" : null });
     }
-    if (meter.total.usd >= maxUsd) {
+    if (meter2.total.usd >= maxUsd) {
       return base3({ refused: true, refusal: "budget" });
     }
-    o.onProgress?.({ step: "synthesize", done: 0, total: 1, spend: meter.total });
+    o.onProgress?.({ step: "synthesize", done: 0, total: 1, spend: meter2.total });
     const summaries = cardSummaries(db, targets);
     const ownSynth = o.synthFn ? null : o.llm ?? openLlm(o.model ?? (cheap ? ASK_CHEAP_MODEL : ASK_MODEL), budget2, o);
     if (ownSynth)
-      meter.track(ownSynth);
+      meter2.track(ownSynth);
     let proposed;
     try {
       proposed = o.synthFn ? await hostSynthesize(o.synthFn, q2, answered3, summaries) : await synthesize(ownSynth, q2, answered3, summaries, o.signal);
@@ -32315,7 +32315,7 @@ async function ask(db, question, o = {}) {
         await ownSynth.close().catch(() => {
         });
     }
-    o.onProgress?.({ step: "filter", done: 0, total: 1, spend: meter.total });
+    o.onProgress?.({ step: "filter", done: 0, total: 1, spend: meter2.total });
     const filtered = filterAnswer(proposed.answer, proposed.evidence, targets);
     for (const d of filtered.drops)
       drop(d);
@@ -32327,7 +32327,7 @@ async function ask(db, question, o = {}) {
         step: "threads",
         done: openThreads.length,
         total: openThreads.length,
-        spend: meter.total
+        spend: meter2.total
       });
     }
     const sentences2 = refused ? [] : filtered.sentences;
@@ -32345,8 +32345,8 @@ async function ask(db, question, o = {}) {
       refused,
       refusal: refused ? "strict" : null,
       strict,
-      spend: meter.total,
-      estimated: meter.total.estimatedInputCalls > 0,
+      spend: meter2.total,
+      estimated: meter2.total.estimatedInputCalls > 0,
       cheap,
       ms: Date.now() - started
     };
@@ -32845,8 +32845,8 @@ function cheapNote(r3, t) {
   const full = `--cheap ${t.sep} about half the cost, not faster ${t.sep} ${warn}`;
   const mid = `--cheap ${t.sep} ${warn}`;
   const bare = `--cheap ${t.sep} it can miss`;
-  const line = full.length <= room ? full : mid.length <= room ? mid : bare;
-  return INDENT + t.dim(clip(line, room, t));
+  const line2 = full.length <= room ? full : mid.length <= room ? mid : bare;
+  return INDENT + t.dim(clip(line2, room, t));
 }
 function renderAsk(r3, t = new Theme(), now = /* @__PURE__ */ new Date(), opts = {}) {
   const lines = [];
@@ -32869,8 +32869,8 @@ function renderAsk(r3, t = new Theme(), now = /* @__PURE__ */ new Date(), opts =
   lines.push(t.dim(headline3(r3, t)));
   lines.push("");
   lines.push("ANSWER");
-  for (const line of wrap(answerText(b2.sentences, t), width))
-    lines.push(INDENT + line);
+  for (const line2 of wrap(answerText(b2.sentences, t), width))
+    lines.push(INDENT + line2);
   lines.push("");
   lines.push("EVIDENCE");
   for (const e of b2.evidence)
@@ -32896,7 +32896,7 @@ function fit(r3, t, now, opts) {
     const cited = new Set(kept.flatMap((s) => s.cites));
     return r3.evidence.filter((e) => cited.has(e.index));
   };
-  const height = (kept, ev, th, held, cut2, withNotes) => {
+  const height2 = (kept, ev, th, held, cut2, withNotes) => {
     let n2 = 2;
     n2 += 1 + wrap(answerText(kept, t), width).length + 1;
     n2 += 1 + ev.reduce((a, e) => a + evidenceLine(e, t, now).length, 0) + 1;
@@ -32926,7 +32926,7 @@ function fit(r3, t, now, opts) {
     return budget2();
   const tooTall = () => {
     const b3 = budget2();
-    return height(b3.sentences, b3.evidence, b3.threads, b3.threadsHeld, b3.trimmedHere, b3.notes) > rows;
+    return height2(b3.sentences, b3.evidence, b3.threads, b3.threadsHeld, b3.trimmedHere, b3.notes) > rows;
   };
   if (tooTall())
     notes = false;
@@ -32942,7 +32942,7 @@ function fit(r3, t, now, opts) {
   while (tooTall() && threads.length > 0)
     threads = threads.slice(0, -1);
   const b2 = budget2();
-  b2.over = height(b2.sentences, b2.evidence, b2.threads, b2.threadsHeld, b2.trimmedHere, b2.notes) > rows;
+  b2.over = height2(b2.sentences, b2.evidence, b2.threads, b2.threadsHeld, b2.trimmedHere, b2.notes) > rows;
   return b2;
 }
 function headline3(r3, t) {
@@ -32965,7 +32965,7 @@ function answerText(sentences2, t) {
   return sentences2.map((s) => `${s.text} ${s.cites.map((c) => t.accent(`[${c}]`)).join("")}`).join(" ");
 }
 function evidenceLine(e, t, now) {
-  const label4 = `[${e.index}]`;
+  const label5 = `[${e.index}]`;
   const where = `${e.project}/${e.id8}`;
   const when2 = e.ts ? shortDateTime(e.ts, now) : t.dash;
   const marks = [];
@@ -32973,7 +32973,7 @@ function evidenceLine(e, t, now) {
     marks.push("ghost");
   if (e.isSidechain)
     marks.push("subagent");
-  const head = `${label4} ${where}  ${when2}${marks.length ? `  ${marks.join(" ")}` : ""}`;
+  const head = `${label5} ${where}  ${when2}${marks.length ? `  ${marks.join(" ")}` : ""}`;
   const room = t.width - Theme.len(head) - 6;
   const quote2 = clipQuote(e.quote, Math.min(QUOTE_CHARS, room), t);
   if (room >= 32) {
@@ -32986,8 +32986,8 @@ function threadLines(o, t, now, notes = true) {
   const width = t.width - INDENT.length;
   const head = `${t.warn(OPEN_THREAD_LABEL)} ${t.sep} decided in ${projectName(o.project)}, not seen in ${projectName(o.otherProject)}`;
   const out = [INDENT + clip(head, t.width, t)];
-  for (const line of wrap(o.what, width - 4))
-    out.push(INDENT + "    " + line);
+  for (const line2 of wrap(o.what, width - 4))
+    out.push(INDENT + "    " + line2);
   const seqs = o.evidenceSeqs.length ? `@${o.evidenceSeqs.join(",")}` : "";
   const src = `${projectName(o.project)}/${o.id8}${seqs}  ${o.ts ? shortDateTime(o.ts, now) : t.dash}`;
   out.push(INDENT + "    " + t.dim(clip(src, width - 4, t)));
@@ -33064,8 +33064,8 @@ function footer2(r3, t, opts, b2) {
   }
   const trimmed = r3.trimmed.length + (b2?.trimmedHere ?? 0);
   if (trimmed > 0) {
-    const rule = b2 && b2.trimmedHere > 0 ? `answer held to the ${num(opts.rows ?? ASK_ROWS)}-row screen` : `answer held to ${num(ANSWER_MAX_WORDS)} words`;
-    out.push(INDENT + t.dim(`${num(trimmed)} ${plural(trimmed, "sentence")} trimmed ${t.sep} ${rule}`));
+    const rule2 = b2 && b2.trimmedHere > 0 ? `answer held to the ${num(opts.rows ?? ASK_ROWS)}-row screen` : `answer held to ${num(ANSWER_MAX_WORDS)} words`;
+    out.push(INDENT + t.dim(`${num(trimmed)} ${plural(trimmed, "sentence")} trimmed ${t.sep} ${rule2}`));
   }
   if (b2 && b2.threadsHeld > 0) {
     out.push(INDENT + t.dim(`${num(b2.threadsHeld)} more open ${plural(b2.threadsHeld, "thread")} ${t.sep} --json for all`));
@@ -33081,8 +33081,8 @@ function footer2(r3, t, opts, b2) {
   const next = opts.next ?? (r3.evidence[0] ? `potsherd graft ${r3.evidence[0].id8}` : null);
   if (next) {
     const gloss = opts.next ? "" : "  to carry it into the agent you are in";
-    const line = INDENT + "run  " + next + gloss;
-    out.push(Theme.len(line) <= t.width ? INDENT + t.dim("run") + "  " + next + t.dim(gloss) : INDENT + t.dim("run") + "  " + clip(next, t.width - INDENT.length - 5, t));
+    const line2 = INDENT + "run  " + next + gloss;
+    out.push(Theme.len(line2) <= t.width ? INDENT + t.dim("run") + "  " + next + t.dim(gloss) : INDENT + t.dim("run") + "  " + clip(next, t.width - INDENT.length - 5, t));
   }
   return out;
 }
@@ -33137,8 +33137,8 @@ import fs49 from "node:fs";
 import path38 from "node:path";
 import process10 from "node:process";
 import { spawnSync } from "node:child_process";
-function expandCitationGroups(line) {
-  return line.replace(/\[([^\][\n]{0,400})\]/g, (whole, inner) => {
+function expandCitationGroups(line2) {
+  return line2.replace(/\[([^\][\n]{0,400})\]/g, (whole, inner) => {
     const lead = /^\s*([0-9a-f]{6,40})@\d+/i.exec(inner);
     if (!lead)
       return whole;
@@ -33231,20 +33231,20 @@ function resolveCitations(db, text2, o = {}) {
   const seen = /* @__PURE__ */ new Map();
   const citations = [];
   const check = (id8, seq) => {
-    const key2 = `${id8.toLowerCase()}@${seq}`;
-    const cached4 = seen.get(key2);
+    const key4 = `${id8.toLowerCase()}@${seq}`;
+    const cached4 = seen.get(key4);
     if (cached4 !== void 0)
       return cached4;
     const ok = citationResolves(db, id8, seq, o.sessionId);
-    seen.set(key2, ok);
+    seen.set(key4, ok);
     citations.push({ id8: id8.toLowerCase(), seq, resolves: ok });
     return ok;
   };
   const lines = text2.split("\n");
   const kept = [];
   const droppedLines = [];
-  for (const line of lines) {
-    const cleaned = expandCitationGroups(line.replace(/\[?\s*[0-9a-f]{6,40}@<[^>\]]*>\s*\]?/gi, "")).trimEnd();
+  for (const line2 of lines) {
+    const cleaned = expandCitationGroups(line2.replace(/\[?\s*[0-9a-f]{6,40}@<[^>\]]*>\s*\]?/gi, "")).trimEnd();
     const found = [...cleaned.matchAll(new RegExp(CITATION_RE.source, "gi"))];
     let anyResolved = false;
     let out = cleaned;
@@ -33269,11 +33269,11 @@ function resolveCitations(db, text2, o = {}) {
   }
   return { text: kept.join("\n"), citations, droppedLines };
 }
-function isClaim(line) {
-  return !STRUCTURAL.some((re) => re.test(line));
+function isClaim(line2) {
+  return !STRUCTURAL.some((re) => re.test(line2));
 }
-function tidyBrackets(line) {
-  return line.replace(/,\s*(?=[,\]])/g, "").replace(/\[\s*,\s*/g, "[").replace(/\s*,\s*\]/g, "]").replace(/\[\s*\]/g, "").replace(/[ \t]{2,}/g, " ").trimEnd();
+function tidyBrackets(line2) {
+  return line2.replace(/,\s*(?=[,\]])/g, "").replace(/\[\s*,\s*/g, "[").replace(/\s*,\s*\]/g, "]").replace(/\[\s*\]/g, "").replace(/[ \t]{2,}/g, " ").trimEnd();
 }
 function citationResolves(db, id8, seq, expected) {
   if (!Number.isSafeInteger(seq) || seq < 0)
@@ -34223,8 +34223,8 @@ function setIn(obj, keys5, value) {
   if (last2 !== void 0)
     cur[last2] = value;
 }
-function tomlServerName(line) {
-  const m = TOML_TABLE_RE.exec(line);
+function tomlServerName(line2) {
+  const m = TOML_TABLE_RE.exec(line2);
   if (!m)
     return null;
   const quoted = m[1] ?? m[2];
@@ -34237,8 +34237,8 @@ function tomlServerName(line) {
 }
 function tomlServers(text2) {
   const out = {};
-  for (const line of text2.split("\n")) {
-    const name = tomlServerName(line);
+  for (const line2 of text2.split("\n")) {
+    const name = tomlServerName(line2);
     if (name)
       out[name] = {};
   }
@@ -34263,17 +34263,17 @@ function tomlTable(name, entry) {
 function tomlWithout(text2, name) {
   const out = [];
   let skipping = false;
-  for (const line of text2.split("\n")) {
-    const found = tomlServerName(line);
+  for (const line2 of text2.split("\n")) {
+    const found = tomlServerName(line2);
     if (found !== null) {
       skipping = found === name;
       if (skipping)
         continue;
-    } else if (skipping && /^[ \t]*\[/.test(line)) {
+    } else if (skipping && /^[ \t]*\[/.test(line2)) {
       skipping = false;
     }
     if (!skipping)
-      out.push(line);
+      out.push(line2);
   }
   return out.join("\n").replace(/\n{3,}/g, "\n\n");
 }
@@ -34838,10 +34838,10 @@ function suggestLinks(db, o = {}) {
     const b2 = c.otherSessionIds[0];
     if (!b2)
       continue;
-    const key2 = c.sessionId < b2 ? `${c.sessionId}|${b2}` : `${b2}|${c.sessionId}`;
-    if (seen.has(key2))
+    const key4 = c.sessionId < b2 ? `${c.sessionId}|${b2}` : `${b2}|${c.sessionId}`;
+    if (seen.has(key4))
       continue;
-    seen.add(key2);
+    seen.add(key4);
     if (isLinked(linked, c.sessionId, b2)) {
       alreadyLinked++;
       continue;
@@ -34936,10 +34936,10 @@ function renderSuggestions(r3, t, wrap5) {
   L.push("");
   return L;
 }
-function field(label4, value, t, wrap5) {
+function field(label5, value, t, wrap5) {
   const w = 8;
   const lines = wrap5(value, Math.max(24, t.width - 5 - w));
-  return lines.map((l, i) => `     ${t.dim(i === 0 ? label4.padEnd(w) : " ".repeat(w))}${l}`);
+  return lines.map((l, i) => `     ${t.dim(i === 0 ? label5.padEnd(w) : " ".repeat(w))}${l}`);
 }
 function clip2(s, max2) {
   return s.length <= max2 ? s : "\u2026" + s.slice(s.length - (max2 - 1));
@@ -34966,7 +34966,7 @@ var VERSION;
 var init_version2 = __esm({
   "packages/core/dist/version.js"() {
     "use strict";
-    VERSION = "1.8.5";
+    VERSION = "1.8.6";
   }
 });
 
@@ -35111,9 +35111,9 @@ var init_chunk_VL2OQCWN = __esm({
   "node_modules/.pnpm/js-tiktoken@1.0.21/node_modules/js-tiktoken/dist/chunk-VL2OQCWN.js"() {
     import_base64_js = __toESM(require_base64_js(), 1);
     __defProp2 = Object.defineProperty;
-    __defNormalProp = (obj, key2, value) => key2 in obj ? __defProp2(obj, key2, { enumerable: true, configurable: true, writable: true, value }) : obj[key2] = value;
-    __publicField = (obj, key2, value) => {
-      __defNormalProp(obj, typeof key2 !== "symbol" ? key2 + "" : key2, value);
+    __defNormalProp = (obj, key4, value) => key4 in obj ? __defProp2(obj, key4, { enumerable: true, configurable: true, writable: true, value }) : obj[key4] = value;
+    __publicField = (obj, key4, value) => {
+      __defNormalProp(obj, typeof key4 !== "symbol" ? key4 + "" : key4, value);
       return value;
     };
     _Tiktoken = class {
@@ -35300,17 +35300,17 @@ function json3(v, maxBytes = 2097152) {
     if (Array.isArray(value) ? proto !== Array.prototype : proto !== Object.prototype && proto !== null)
       fail2("prototype");
     ancestors.add(value);
-    for (const key2 of Reflect.ownKeys(value)) {
-      if (Array.isArray(value) && key2 === "length")
+    for (const key4 of Reflect.ownKeys(value)) {
+      if (Array.isArray(value) && key4 === "length")
         continue;
-      if (typeof key2 !== "string")
+      if (typeof key4 !== "string")
         fail2("json");
-      const descriptor = Object.getOwnPropertyDescriptor(value, key2);
+      const descriptor = Object.getOwnPropertyDescriptor(value, key4);
       if (!descriptor.enumerable || !has2(descriptor, "value"))
         fail2("property");
       visit(descriptor.value, depth + 1);
     }
-    if (Array.isArray(value) && (Object.keys(value).length !== value.length || Object.keys(value).some((key2, i) => key2 !== String(i))))
+    if (Array.isArray(value) && (Object.keys(value).length !== value.length || Object.keys(value).some((key4, i) => key4 !== String(i))))
       fail2("sparse_array");
     ancestors.delete(value);
   }
@@ -35328,13 +35328,13 @@ function ref(v) {
 }
 function provenance(v) {
   const p = object3(v);
-  for (const key2 of [...sourceKeys, ...unitProvenanceKeys, "spanTextHash", "chunkPolicy"]) {
-    if (!has2(p, key2))
+  for (const key4 of [...sourceKeys, ...unitProvenanceKeys, "spanTextHash", "chunkPolicy"]) {
+    if (!has2(p, key4))
       continue;
-    if (key2 === "artifactBytes")
-      integer(p[key2]);
-    else if (key2 === "locator") {
-      const l = object3(p[key2]);
+    if (key4 === "artifactBytes")
+      integer(p[key4]);
+    else if (key4 === "locator") {
+      const l = object3(p[key4]);
       string(l.recordKey);
       if (!["exact", "record_container", "unavailable"].includes(String(l.mapping)))
         fail2("locator");
@@ -35343,14 +35343,14 @@ function provenance(v) {
           integer(l[coordinate]);
       if (has2(l, "rawStart") && has2(l, "rawEnd") && Number(l.rawEnd) < Number(l.rawStart))
         fail2("locator_range");
-    } else if (["parentNativeSessionId", "unitToolName", "unitToolCallId"].includes(key2))
-      nullableString(p[key2]);
+    } else if (["parentNativeSessionId", "unitToolName", "unitToolCallId"].includes(key4))
+      nullableString(p[key4]);
     else
-      string(p[key2]);
+      string(p[key4]);
   }
-  for (const key2 of ["spanStartUtf16", "spanEndUtf16"])
-    if (has2(p, key2))
-      integer(p[key2]);
+  for (const key4 of ["spanStartUtf16", "spanEndUtf16"])
+    if (has2(p, key4))
+      integer(p[key4]);
   if (has2(p, "artifactBasis") && !["raw_prefix", "legacy_projection", "history_records"].includes(String(p.artifactBasis)))
     fail2("artifact_basis");
   if (has2(p, "transcriptAvailability") && p.transcriptAvailability !== "unavailable")
@@ -35363,10 +35363,10 @@ function provenance(v) {
 function evidence(v) {
   const e = object3(v);
   ref(e.ref);
-  for (const key2 of ["text", "role", "observedAt", "authority", "citation"])
-    string(e[key2]);
-  for (const key2 of ["sourceEventAt", "project", "branch"])
-    nullableString(e[key2]);
+  for (const key4 of ["text", "role", "observedAt", "authority", "citation"])
+    string(e[key4]);
+  for (const key4 of ["sourceEventAt", "project", "branch"])
+    nullableString(e[key4]);
   boolean(e.historical);
   if (e.quoteBasis !== "redacted_unit")
     fail2("quote_basis");
@@ -35402,8 +35402,8 @@ function response(v) {
   nullableString(c.capturedThrough);
   integer(c.pendingSources);
   integer(c.failedSources);
-  for (const key2 of ["evidence", "notes", "lineage", "deletion", "vector"])
-    integer(object3(c.snapshotEpochs)[key2]);
+  for (const key4 of ["evidence", "notes", "lineage", "deletion", "vector"])
+    integer(object3(c.snapshotEpochs)[key4]);
   for (const code of array(c.omittedKinds))
     string(code);
   if (has2(c, "unavailableKinds"))
@@ -35436,27 +35436,27 @@ function response(v) {
   for (const item of array(r3.evidence))
     evidence(item);
   for (const item of array(r3.candidates, r3.navigation === "inspect-v1" ? 8 : 256)) {
-    const c3 = object3(item);
-    ref(c3.ref);
-    if (typeof c3.score !== "number")
+    const c2 = object3(item);
+    ref(c2.ref);
+    if (typeof c2.score !== "number")
       fail2("score");
-    for (const lane of array(c3.lanes))
+    for (const lane of array(c2.lanes))
       if (!["lexical", "dense", "literal"].includes(String(lane)))
         fail2("lane");
-    if (has2(c3, "evidence")) {
-      evidence(c3.evidence);
-      if (r3.navigation === "inspect-v1" && canonical2(object3(c3.evidence).ref) !== canonical2(c3.ref))
+    if (has2(c2, "evidence")) {
+      evidence(c2.evidence);
+      if (r3.navigation === "inspect-v1" && canonical2(object3(c2.evidence).ref) !== canonical2(c2.ref))
         fail2("candidate_preview_ref");
     }
-    if (r3.navigation === "inspect-v1" && has2(c3, "previewIndex"))
+    if (r3.navigation === "inspect-v1" && has2(c2, "previewIndex"))
       fail2("preview_index_semantic");
   }
   for (const item of array(r3.assertions)) {
     const n2 = object3(item);
-    for (const key2 of ["noteId", "batchId", "text", "project", "observedAt", "authorClaim"])
-      string(n2[key2]);
-    for (const key2 of ["branch", "eventAt", "validFrom", "validUntil", "originSourceId", "lineageAnchorSourceId"])
-      nullableString(n2[key2]);
+    for (const key4 of ["noteId", "batchId", "text", "project", "observedAt", "authorClaim"])
+      string(n2[key4]);
+    for (const key4 of ["branch", "eventAt", "validFrom", "validUntil", "originSourceId", "lineageAnchorSourceId"])
+      nullableString(n2[key4]);
     if (!["decision", "open", "next", "observation", "retraction"].includes(String(n2.kind)))
       fail2("note_kind");
     if (!["user_attested", "agent_assertion", "unknown"].includes(String(n2.authority)))
@@ -35489,10 +35489,10 @@ function put(o, k, v) {
 }
 function take(o, names) {
   const result = {};
-  for (const key2 of names)
-    if (has2(o, key2)) {
-      put(result, key2, o[key2]);
-      delete o[key2];
+  for (const key4 of names)
+    if (has2(o, key4)) {
+      put(result, key4, o[key4]);
+      delete o[key4];
     }
   return result;
 }
@@ -35586,10 +35586,10 @@ function deliveredLiteralRefs(evidence2, literal) {
       refs2.set(refKey(item.ref), item.ref);
     if (!item.provenance?.unitRevisionId || item.quoteBasis !== "redacted_unit")
       continue;
-    const key2 = JSON.stringify([item.ref.sourceId, item.ref.revisionId, item.provenance.unitRevisionId, item.provenance.unitTextHash, item.role]);
-    const group = groups.get(key2) ?? [];
+    const key4 = JSON.stringify([item.ref.sourceId, item.ref.revisionId, item.provenance.unitRevisionId, item.provenance.unitTextHash, item.role]);
+    const group = groups.get(key4) ?? [];
     group.push(item);
-    groups.set(key2, group);
+    groups.set(key4, group);
   }
   for (const group of groups.values()) {
     group.sort((a, b2) => a.startUtf16 - b2.startUtf16 || b2.endUtf16 - a.endUtf16);
@@ -35879,18 +35879,18 @@ function planResponse(original, budget2, options = {}) {
         available.set(refKey(item.ref), { ref: item.ref, score: 0, lanes: ["literal"], evidence: item });
     response2.navigation = "inspect-v1";
   }
-  const seeds = [...available.keys()].filter((key2) => !initialEvidence.has(key2)).slice(0, profile.seeds);
+  const seeds = [...available.keys()].filter((key4) => !initialEvidence.has(key4)).slice(0, profile.seeds);
   const previews = /* @__PURE__ */ new Map();
   if (nav)
-    for (const key2 of seeds) {
-      const item = available.get(key2).evidence;
-      previews.set(key2, inspectPreview(item, nav.query, nav.terms, profile.previewTokens));
+    for (const key4 of seeds) {
+      const item = available.get(key4).evidence;
+      previews.set(key4, inspectPreview(item, nav.query, nav.terms, profile.previewTokens));
     }
   let seedLimit = seeds.length, offeredLimit = INSPECT_ROUTE_LIMIT, previewText = profile.previewTokens > 0;
   const navItemCount = available.size + response2.assertions.length + response2.budget.omittedItems;
   const rebuildNavigation = (hint, mechanicallySatisfied) => {
     const visible = new Set(response2.evidence.map((item) => refKey(item.ref)));
-    const omittedSelected = [...initialEvidence].filter((key2) => !visible.has(key2) && available.has(key2));
+    const omittedSelected = [...initialEvidence].filter((key4) => !visible.has(key4) && available.has(key4));
     const protect = mechanicallySatisfied || response2.coverage.state === "unavailable" || response2.coverage.state === "upgrade_required" ? [] : [...omittedSelected, ...seeds].slice(0, seedLimit);
     if (hint && available.has(refKey(hint)) && !visible.has(refKey(hint)))
       protect.unshift(refKey(hint));
@@ -35899,17 +35899,17 @@ function planResponse(original, budget2, options = {}) {
       if (recovery)
         protect.push(recovery);
     }
-    const protectedKeys = [...new Set(protect)].filter((key2) => !visible.has(key2)).slice(0, Math.max(1, seedLimit));
-    const keys5 = [...protectedKeys, ...available.keys()].filter((key2, index, all) => !visible.has(key2) && all.indexOf(key2) === index).slice(0, Math.max(offeredLimit, protectedKeys.length));
-    response2.candidates = keys5.map((key2) => {
-      const candidate = available.get(key2);
+    const protectedKeys = [...new Set(protect)].filter((key4) => !visible.has(key4)).slice(0, Math.max(1, seedLimit));
+    const keys5 = [...protectedKeys, ...available.keys()].filter((key4, index, all) => !visible.has(key4) && all.indexOf(key4) === index).slice(0, Math.max(offeredLimit, protectedKeys.length));
+    response2.candidates = keys5.map((key4) => {
+      const candidate = available.get(key4);
       const result = { ref: structuredClone(candidate.ref), score: candidate.score, lanes: [...candidate.lanes] };
-      if (protectedKeys.includes(key2)) {
-        if (!previews.has(key2)) {
-          previews.set(key2, inspectPreview(candidate.evidence, nav.query, nav.terms, profile.previewTokens));
+      if (protectedKeys.includes(key4)) {
+        if (!previews.has(key4)) {
+          previews.set(key4, inspectPreview(candidate.evidence, nav.query, nav.terms, profile.previewTokens));
         }
-        if (previewText && previews.get(key2).text.length)
-          result.evidence = previews.get(key2);
+        if (previewText && previews.get(key4).text.length)
+          result.evidence = previews.get(key4);
       }
       return result;
     });
@@ -35927,10 +35927,10 @@ function planResponse(original, budget2, options = {}) {
     if (missingKnown.length && !nav) {
       response2.support.unresolved.push("Matching canonical source text exists, but the complete literal is not in the delivered ranges. Read the candidate spans or increase the response budget.");
       const match = missingKnown.find((match2) => !response2.evidence.some((item2) => JSON.stringify(item2.ref) === JSON.stringify(match2.ref))) ?? missingKnown[0];
-      const key2 = JSON.stringify(match.ref);
-      if (!hinted.has(key2)) {
-        hinted.add(key2);
-        if (!response2.candidates.some((candidate) => JSON.stringify(candidate.ref) === key2)) {
+      const key4 = JSON.stringify(match.ref);
+      if (!hinted.has(key4)) {
+        hinted.add(key4);
+        if (!response2.candidates.some((candidate) => JSON.stringify(candidate.ref) === key4)) {
           response2.candidates.unshift({ ref: match.ref, score: 0, lanes: ["literal"] });
           originalItems++;
         }
@@ -35950,18 +35950,18 @@ function planResponse(original, budget2, options = {}) {
     if (payload && payload.tokens <= limit && payload.bytes <= byteLimit) {
       if (nav && !mechanical && response2.coverage.state === "complete_snapshot") {
         const exposed = /* @__PURE__ */ new Set([...response2.evidence.map((item2) => refKey(item2.ref)), ...response2.candidates.map((candidate) => refKey(candidate.ref))]);
-        for (const key2 of initialEvidence) {
+        for (const key4 of initialEvidence) {
           if (response2.candidates.length >= INSPECT_ROUTE_LIMIT)
             break;
-          if (exposed.has(key2) || !available.has(key2))
+          if (exposed.has(key4) || !available.has(key4))
             continue;
-          const candidate = available.get(key2), previousBudget = { ...response2.budget };
+          const candidate = available.get(key4), previousBudget = { ...response2.budget };
           response2.candidates.push({ ref: structuredClone(candidate.ref), score: candidate.score, lanes: [...candidate.lanes] });
           response2.budget.omittedItems--;
           const proposed = settle();
           if (proposed && proposed.tokens <= limit && proposed.bytes <= byteLimit) {
             payload = proposed;
-            exposed.add(key2);
+            exposed.add(key4);
           } else {
             response2.candidates.pop();
             response2.budget = previousBudget;
@@ -36148,15 +36148,15 @@ function fuseCandidates(lanes) {
   for (const { lane, candidates: candidates2 } of lanes) {
     const seen = /* @__PURE__ */ new Set();
     for (const [index, candidate] of candidates2.slice(0, CANDIDATES_PER_LANE).entries()) {
-      const key2 = refKey(candidate.ref);
-      if (seen.has(key2)) {
-        const current2 = union.get(key2);
+      const key4 = refKey(candidate.ref);
+      if (seen.has(key4)) {
+        const current2 = union.get(key4);
         const merged = current2[literalCovers] ?? [];
         current2[literalCovers] = [...merged, ...(candidate[literalCovers] ?? []).filter((cover2) => !merged.some((existing) => existing.literal === cover2.literal))];
         continue;
       }
-      seen.add(key2);
-      const current = union.get(key2) ?? { ...candidate, score: 0, lanes: [] };
+      seen.add(key4);
+      const current = union.get(key4) ?? { ...candidate, score: 0, lanes: [] };
       current.score += 1 / (60 + index + 1);
       if (!current.lanes.includes(lane))
         current.lanes.push(lane);
@@ -36167,7 +36167,7 @@ function fuseCandidates(lanes) {
         const merged = current[literalCovers] ?? [];
         current[literalCovers] = [...merged, ...covers.filter((cover2) => !merged.some((existing) => existing.literal === cover2.literal))];
       }
-      union.set(key2, current);
+      union.set(key4, current);
     }
   }
   return [...union.values()].sort((a, b2) => b2.score - a.score || refKey(a.ref).localeCompare(refKey(b2.ref)));
@@ -36311,7 +36311,7 @@ function adjacentDialogueContext(db, anchors, query, filter, options = {}) {
         continue;
       if (!comparesPrior && queryTerms(unit.text).filter((word) => words8.has(word)).length < 2)
         continue;
-      const context2 = [];
+      const context = [];
       let position = 0;
       while (position < unit.text.length) {
         const span3 = db.prepare("SELECT p.span_id,p.end_utf16 FROM revision_spans rs JOIN evidence_spans p ON p.span_id=rs.span_id WHERE rs.revision_id=? AND p.unit_revision_id=? AND p.start_utf16<=? AND p.end_utf16>? ORDER BY p.end_utf16 DESC,p.span_id LIMIT 1").get(anchor.ref.revisionId, unit.unit_revision_id, position, position);
@@ -36323,12 +36323,12 @@ function adjacentDialogueContext(db, anchors, query, filter, options = {}) {
         const end = Math.min(unit.text.length, span3.end_utf16), text2 = item.text.slice(position - item.startUtf16, end - item.startUtf16);
         if (text2 !== unit.text.slice(position, end))
           break;
-        context2.push({ ...item, text: text2, startUtf16: position, endUtf16: end, citation: `span:${ref3.sourceId}:${ref3.revisionId}:${ref3.spanId}@${position}-${end}` });
+        context.push({ ...item, text: text2, startUtf16: position, endUtf16: end, citation: `span:${ref3.sourceId}:${ref3.revisionId}:${ref3.spanId}@${position}-${end}` });
         position = end;
       }
       if (position !== unit.text.length)
         continue;
-      group.context.push(...context2);
+      group.context.push(...context);
       remaining -= unit.text.length;
     }
   }
@@ -36339,9 +36339,9 @@ function flattenDialogueGroups(groups) {
   const seen = /* @__PURE__ */ new Set();
   for (const group of groups)
     for (const item of [...group.context, group.anchor]) {
-      const key2 = `${refKey(item.ref)}:${item.startUtf16}:${item.endUtf16}`;
-      if (!seen.has(key2)) {
-        seen.add(key2);
+      const key4 = `${refKey(item.ref)}:${item.startUtf16}:${item.endUtf16}`;
+      if (!seen.has(key4)) {
+        seen.add(key4);
         out.push(item);
       }
     }
@@ -36419,12 +36419,12 @@ function budget(value) {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new MemoryInputError("invalid_budget_object", "budget must be a JSON object.");
   const b2 = keys3(value, ["maxTokens", "tokenizerId", "remainingJourneyTokens", "maxBytes"], "unknown_budget_field");
-  for (const key2 of ["maxTokens", "remainingJourneyTokens", "maxBytes"]) {
-    if (key2 !== "maxTokens" && b2[key2] === void 0)
+  for (const key4 of ["maxTokens", "remainingJourneyTokens", "maxBytes"]) {
+    if (key4 !== "maxTokens" && b2[key4] === void 0)
       continue;
-    const min2 = key2 === "maxBytes" ? 256 : 64, max2 = key2 === "maxBytes" ? 1048576 : 65536;
-    if (!Number.isInteger(b2[key2]) || Number(b2[key2]) < min2 || Number(b2[key2]) > max2)
-      throw new MemoryInputError("invalid_budget_" + key2, `budget.${key2} must be an integer from ${min2} to ${max2}.`);
+    const min2 = key4 === "maxBytes" ? 256 : 64, max2 = key4 === "maxBytes" ? 1048576 : 65536;
+    if (!Number.isInteger(b2[key4]) || Number(b2[key4]) < min2 || Number(b2[key4]) > max2)
+      throw new MemoryInputError("invalid_budget_" + key4, `budget.${key4} must be an integer from ${min2} to ${max2}.`);
   }
   if (b2.tokenizerId === void 0)
     b2.tokenizerId = TOKENIZER_ID;
@@ -36438,9 +36438,9 @@ function refs(value) {
     fail3("invalid_ref_list");
   for (const r3 of value) {
     const ref3 = keys3(r3, ["sourceId", "revisionId", "spanId"], "unknown_ref_field");
-    for (const key2 of ["sourceId", "revisionId", "spanId"]) {
-      text(ref3[key2]);
-      if (!ref3[key2])
+    for (const key4 of ["sourceId", "revisionId", "spanId"]) {
+      text(ref3[key4]);
+      if (!ref3[key4])
         fail3("empty_ref");
     }
   }
@@ -36464,9 +36464,9 @@ function requirements(value) {
         fail3("invalid_note_kind");
       if (n2.status !== void 0 && !["current", "history"].includes(String(n2.status)))
         fail3("invalid_note_status");
-      for (const key2 of ["eventFrom", "eventUntil"])
-        if (n2[key2] !== void 0)
-          date2(n2[key2]);
+      for (const key4 of ["eventFrom", "eventUntil"])
+        if (n2[key4] !== void 0)
+          date2(n2[key4]);
     }
   }
 }
@@ -36488,11 +36488,11 @@ function validateMemoryInput(kind3, value, mcp = false) {
     strings(v.noteIds, 16);
   if (v.requirements !== void 0)
     requirements(v.requirements);
-  for (const key2 of ["query", "cursor", "thread", "about", "originSourceId", "lineageAnchorSourceId", "authorClaim"])
-    if (v[key2] !== void 0) {
-      const max2 = key2 === "cursor" ? 16384 : 8e3;
-      if (typeof v[key2] !== "string" || String(v[key2]).length > max2)
-        throw new MemoryInputError("invalid_" + key2, `${key2} must be text of at most ${max2} characters.`);
+  for (const key4 of ["query", "cursor", "thread", "about", "originSourceId", "lineageAnchorSourceId", "authorClaim"])
+    if (v[key4] !== void 0) {
+      const max2 = key4 === "cursor" ? 16384 : 8e3;
+      if (typeof v[key4] !== "string" || String(v[key4]).length > max2)
+        throw new MemoryInputError("invalid_" + key4, `${key4} must be text of at most ${max2} characters.`);
     }
   if (kind3 === "recall") {
     if (!v.query)
@@ -36513,24 +36513,24 @@ function validateMemoryInput(kind3, value, mcp = false) {
     text(r3.sessionId);
     if (r3.seq !== void 0)
       integer2(r3.seq, 0, Number.MAX_SAFE_INTEGER);
-    for (const key2 of ["fromSeq", "toSeq"])
-      if (r3[key2] !== void 0)
-        integer2(r3[key2], 1, Number.MAX_SAFE_INTEGER);
+    for (const key4 of ["fromSeq", "toSeq"])
+      if (r3[key4] !== void 0)
+        integer2(r3[key4], 1, Number.MAX_SAFE_INTEGER);
     if (r3.seq !== void 0 && (r3.fromSeq !== void 0 || r3.toSeq !== void 0))
       fail3("conflicting_legacy_range");
     if (r3.fromSeq !== void 0 && r3.toSeq !== void 0 && Number(r3.toSeq) < Number(r3.fromSeq))
       fail3("invalid_legacy_range");
   }
-  for (const key2 of ["from", "to"])
-    if (v[key2] !== void 0)
-      integer2(v[key2], 1, Number.MAX_SAFE_INTEGER);
+  for (const key4 of ["from", "to"])
+    if (v[key4] !== void 0)
+      integer2(v[key4], 1, Number.MAX_SAFE_INTEGER);
   if (v.from !== void 0 && v.to !== void 0 && Number(v.to) < Number(v.from))
     fail3("invalid_legacy_range");
   if (kind3 === "read" && (v.from !== void 0 || v.to !== void 0) && v.thread === void 0)
     fail3("legacy_range_requires_thread");
   if (kind3 === "write") {
     const writeScope = object4(v.scope);
-    if (["eventFrom", "asOf", "learnedBy", "includeHistory"].some((key2) => writeScope[key2] !== void 0))
+    if (["eventFrom", "asOf", "learnedBy", "includeHistory"].some((key4) => writeScope[key4] !== void 0))
       fail3("unsupported_write_scope_boundary");
     if (writeScope.lineage !== void 0 && writeScope.lineage !== "self")
       fail3("unsupported_write_lineage");
@@ -36554,13 +36554,13 @@ function validateMemoryInput(kind3, value, mcp = false) {
       if (!["decision", "open", "next", "observation", "retraction"].includes(String(e.kind)))
         fail3("invalid_note_kind");
       text(e.text, 2e3);
-      for (const key2 of ["eventAt", "validFrom", "validUntil"])
-        if (e[key2] !== void 0)
-          date2(e[key2]);
-      for (const key2 of ["supports", "contradicts", "context"])
-        if (e[key2] !== void 0) {
-          refs(e[key2]);
-          if (sourceIds && e[key2].some((ref3) => !sourceIds.includes(ref3.sourceId)))
+      for (const key4 of ["eventAt", "validFrom", "validUntil"])
+        if (e[key4] !== void 0)
+          date2(e[key4]);
+      for (const key4 of ["supports", "contradicts", "context"])
+        if (e[key4] !== void 0) {
+          refs(e[key4]);
+          if (sourceIds && e[key4].some((ref3) => !sourceIds.includes(ref3.sourceId)))
             fail3("write_ref_outside_source_scope");
         }
       if (e.supersedes !== void 0)
@@ -36570,9 +36570,9 @@ function validateMemoryInput(kind3, value, mcp = false) {
       fail3("invalid_authority");
     if (v.origin !== void 0 && !["cli", "mcp", "api", "migration"].includes(String(v.origin)))
       fail3("invalid_origin");
-    for (const key2 of ["validFrom", "validUntil"])
-      if (v[key2] !== void 0)
-        date2(v[key2]);
+    for (const key4 of ["validFrom", "validUntil"])
+      if (v[key4] !== void 0)
+        date2(v[key4]);
   }
   return v;
 }
@@ -36621,7 +36621,7 @@ function decodeCursor(encoded) {
   return v;
 }
 function sameEvidenceEpochs(a, b2) {
-  return ["evidence", "notes", "lineage", "deletion"].every((key2) => a[key2] === b2[key2]);
+  return ["evidence", "notes", "lineage", "deletion"].every((key4) => a[key4] === b2[key4]);
 }
 function unchangedNonemptyRead(original, delivered, positions) {
   if (original.coverage.state === "unavailable" || original.coverage.state === "upgrade_required" || original.warnings.some((code) => ["privacy_refresh_required", "source_span_unavailable", "note_unavailable"].includes(code)))
@@ -37672,7 +37672,7 @@ var init_maintenance = __esm({
         const pipelinePolicy = currentSpanPolicy(tokenizerHash ? { assetHash: tokenizerHash } : void 0) + "\0" + SPAN_MANIFEST_VERSION;
         const versions = new Map(adapterSpecs({ ...enrollment.options, potsherdDir: this.root }).map((spec) => [spec.harness, spec.evidenceVersion]));
         for (const source of discoverEnrolledSources(db, this.root, () => assertFence(db, this.fence))) {
-          const key2 = JSON.stringify([source.harness, source.sessionId, source.path]);
+          const key4 = JSON.stringify([source.harness, source.sessionId, source.path]);
           let fingerprint2;
           try {
             const paths = source.harness === "opencode" ? [source.path, source.path + "-wal"] : [source.path];
@@ -37687,11 +37687,11 @@ var init_maintenance = __esm({
           } catch {
             continue;
           }
-          if (this.seen.get(key2) === fingerprint2 + "\0" + NORMALIZATION_VERSION + "\0" + (versions.get(source.harness) ?? "adapter-unknown") + "\0" + pipelinePolicy)
+          if (this.seen.get(key4) === fingerprint2 + "\0" + NORMALIZATION_VERSION + "\0" + (versions.get(source.harness) ?? "adapter-unknown") + "\0" + pipelinePolicy)
             continue;
           const pipelineFingerprint = fingerprint2 + "\0" + NORMALIZATION_VERSION + "\0" + (versions.get(source.harness) ?? "adapter-unknown") + "\0" + pipelinePolicy;
-          this.seen.set(key2, pipelineFingerprint);
-          enqueueJob(db, { kind: "capture", targetId: "source:" + JSON.stringify([source.harness, source.sessionId]), inputHash: hash(key2 + "\0" + pipelineFingerprint) });
+          this.seen.set(key4, pipelineFingerprint);
+          enqueueJob(db, { kind: "capture", targetId: "source:" + JSON.stringify([source.harness, source.sessionId]), inputHash: hash(key4 + "\0" + pipelineFingerprint) });
         }
         for (const { harness, historyPath } of discoverEnrolledHistoryInputs(db, this.root)) {
           let fingerprint2;
@@ -37701,10 +37701,10 @@ var init_maintenance = __esm({
           } catch {
             continue;
           }
-          const key2 = `history:${historyPath}`;
-          if (this.seen.get(key2) === fingerprint2)
+          const key4 = `history:${historyPath}`;
+          if (this.seen.get(key4) === fingerprint2)
             continue;
-          this.seen.set(key2, fingerprint2);
+          this.seen.set(key4, fingerprint2);
           enqueueJob(db, { kind: "discover", targetId: "history:" + hash(historyPath), inputHash: fingerprint2 });
         }
       }
@@ -37817,7 +37817,7 @@ var init_maintenance = __esm({
           }
           if (missing.size) {
             const keys5 = [...missing.keys()], vectors = await this.encoder.encodeBatch([...missing.values()], this.controller.signal);
-            keys5.forEach((key2, i) => values.set(key2, vectors[i]));
+            keys5.forEach((key4, i) => values.set(key4, vectors[i]));
           }
           const committed = db.transaction(() => {
             assertFence(db, f);
@@ -37986,10 +37986,10 @@ function complementaryReadRefs(packet, delivered = packet.evidence, attempted = 
   const out = [];
   const seen = new Set(attempted);
   for (const ref3 of [...packet.assertions.flatMap((note) => note.supportRefs), ...packet.evidence.map((item) => item.ref), ...packet.candidates.map((candidate) => candidate.ref)]) {
-    const key2 = refKey(ref3);
-    if (seen.has(key2) || completeDeliveredSpan(delivered, ref3))
+    const key4 = refKey(ref3);
+    if (seen.has(key4) || completeDeliveredSpan(delivered, ref3))
       continue;
-    seen.add(key2);
+    seen.add(key4);
     out.push({ ...ref3 });
     if (out.length === 2)
       break;
@@ -38778,9 +38778,9 @@ var require_help = __commonJS({
           "g"
         );
         const lines = columnText.match(regex) || [];
-        return leadingStr + lines.map((line, i) => {
-          if (line === "\n") return "";
-          return (i > 0 ? indentString : "") + line.trimEnd();
+        return leadingStr + lines.map((line2, i) => {
+          if (line2 === "\n") return "";
+          return (i > 0 ? indentString : "") + line2.trimEnd();
         }).join("\n");
       }
     };
@@ -39016,9 +39016,9 @@ var require_option = __commonJS({
             this.positiveOptions.set(option.attributeName(), option);
           }
         });
-        this.negativeOptions.forEach((value, key2) => {
-          if (this.positiveOptions.has(key2)) {
-            this.dualOptions.add(key2);
+        this.negativeOptions.forEach((value, key4) => {
+          if (this.positiveOptions.has(key4)) {
+            this.dualOptions.add(key4);
           }
         });
       }
@@ -39902,11 +39902,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} key
        * @return {object} value
        */
-      getOptionValue(key2) {
+      getOptionValue(key4) {
         if (this._storeOptionsAsProperties) {
-          return this[key2];
+          return this[key4];
         }
-        return this._optionValues[key2];
+        return this._optionValues[key4];
       }
       /**
        * Store option value.
@@ -39915,8 +39915,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {object} value
        * @return {Command} `this` command for chaining
        */
-      setOptionValue(key2, value) {
-        return this.setOptionValueWithSource(key2, value, void 0);
+      setOptionValue(key4, value) {
+        return this.setOptionValueWithSource(key4, value, void 0);
       }
       /**
        * Store option value and where the value came from.
@@ -39926,13 +39926,13 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} source - expected values are default/config/env/cli/implied
        * @return {Command} `this` command for chaining
        */
-      setOptionValueWithSource(key2, value, source) {
+      setOptionValueWithSource(key4, value, source) {
         if (this._storeOptionsAsProperties) {
-          this[key2] = value;
+          this[key4] = value;
         } else {
-          this._optionValues[key2] = value;
+          this._optionValues[key4] = value;
         }
-        this._optionValueSources[key2] = source;
+        this._optionValueSources[key4] = source;
         return this;
       }
       /**
@@ -39942,8 +39942,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} key
        * @return {string}
        */
-      getOptionValueSource(key2) {
-        return this._optionValueSources[key2];
+      getOptionValueSource(key4) {
+        return this._optionValueSources[key4];
       }
       /**
        * Get source of option value. See also .optsWithGlobals().
@@ -39952,11 +39952,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} key
        * @return {string}
        */
-      getOptionValueSourceWithGlobals(key2) {
+      getOptionValueSourceWithGlobals(key4) {
         let source;
         this._getCommandAndAncestors().forEach((cmd) => {
-          if (cmd.getOptionValueSource(key2) !== void 0) {
-            source = cmd.getOptionValueSource(key2);
+          if (cmd.getOptionValueSource(key4) !== void 0) {
+            source = cmd.getOptionValueSource(key4);
           }
         });
         return source;
@@ -40611,8 +40611,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
           const result = {};
           const len = this.options.length;
           for (let i = 0; i < len; i++) {
-            const key2 = this.options[i].attributeName();
-            result[key2] = key2 === this._versionOptionName ? this._version : this[key2];
+            const key4 = this.options[i].attributeName();
+            result[key4] = key4 === this._versionOptionName ? this._version : this[key4];
           }
           return result;
         }
@@ -40996,16 +40996,16 @@ Expecting one of '${allowedValues.join("', '")}'`);
        */
       _getHelpContext(contextOptions) {
         contextOptions = contextOptions || {};
-        const context2 = { error: !!contextOptions.error };
+        const context = { error: !!contextOptions.error };
         let write;
-        if (context2.error) {
+        if (context.error) {
           write = (arg) => this._outputConfiguration.writeErr(arg);
         } else {
           write = (arg) => this._outputConfiguration.writeOut(arg);
         }
-        context2.write = contextOptions.write || write;
-        context2.command = this;
-        return context2;
+        context.write = contextOptions.write || write;
+        context.command = this;
+        return context;
       }
       /**
        * Output help information for this command.
@@ -41020,23 +41020,23 @@ Expecting one of '${allowedValues.join("', '")}'`);
           deprecatedCallback = contextOptions;
           contextOptions = void 0;
         }
-        const context2 = this._getHelpContext(contextOptions);
-        this._getCommandAndAncestors().reverse().forEach((command) => command.emit("beforeAllHelp", context2));
-        this.emit("beforeHelp", context2);
-        let helpInformation = this.helpInformation(context2);
+        const context = this._getHelpContext(contextOptions);
+        this._getCommandAndAncestors().reverse().forEach((command) => command.emit("beforeAllHelp", context));
+        this.emit("beforeHelp", context);
+        let helpInformation = this.helpInformation(context);
         if (deprecatedCallback) {
           helpInformation = deprecatedCallback(helpInformation);
           if (typeof helpInformation !== "string" && !Buffer.isBuffer(helpInformation)) {
             throw new Error("outputHelp callback must return a string or a Buffer");
           }
         }
-        context2.write(helpInformation);
+        context.write(helpInformation);
         if (this._getHelpOption()?.long) {
           this.emit(this._getHelpOption().long);
         }
-        this.emit("afterHelp", context2);
+        this.emit("afterHelp", context);
         this._getCommandAndAncestors().forEach(
-          (command) => command.emit("afterAllHelp", context2)
+          (command) => command.emit("afterAllHelp", context)
         );
       }
       /**
@@ -41121,15 +41121,15 @@ Expecting one of '${allowedValues.join("', '")}'`);
 Expecting one of '${allowedValues.join("', '")}'`);
         }
         const helpEvent = `${position}Help`;
-        this.on(helpEvent, (context2) => {
+        this.on(helpEvent, (context) => {
           let helpStr;
           if (typeof text2 === "function") {
-            helpStr = text2({ error: context2.error, command: context2.command });
+            helpStr = text2({ error: context.error, command: context.command });
           } else {
             helpStr = text2;
           }
           if (helpStr) {
-            context2.write(`${helpStr}
+            context.write(`${helpStr}
 `);
           }
         });
@@ -41290,8 +41290,8 @@ var init_output = __esm({
       }
     };
     Progress = class {
-      constructor(label4, enabled) {
-        this.label = label4;
+      constructor(label5, enabled) {
+        this.label = label5;
         this.enabled = enabled;
       }
       last = 0;
@@ -41308,8 +41308,8 @@ var init_output = __esm({
         const frac = total2 > 0 ? Math.min(1, done / total2) : 0;
         const filled = Math.round(frac * width);
         const bar2 = "#".repeat(filled) + ".".repeat(width - filled);
-        const line = `  ${this.label} [${bar2}] ${done}/${total2}${note ? "  " + note : ""}`;
-        process13.stderr.write("\r" + line.slice(0, (process13.stderr.columns ?? 80) - 1) + "\x1B[K");
+        const line2 = `  ${this.label} [${bar2}] ${done}/${total2}${note ? "  " + note : ""}`;
+        process13.stderr.write("\r" + line2.slice(0, (process13.stderr.columns ?? 80) - 1) + "\x1B[K");
       }
       done() {
         if (this.active) process13.stderr.write("\r\x1B[K");
@@ -41882,12 +41882,12 @@ function redact2(text2) {
   const claimed = new Uint8Array(text2.length);
   const spans = [];
   for (const span3 of protectedSpans2(text2)) claim2(claimed, span3);
-  for (const rule of RULES2) {
-    for (const m of rule.scan(text2)) {
+  for (const rule2 of RULES2) {
+    for (const m of rule2.scan(text2)) {
       if (m.start < 0 || m.end > text2.length || m.end <= m.start) continue;
       if (isClaimed2(claimed, m)) continue;
       claim2(claimed, m);
-      spans.push({ start: m.start, end: m.end, rule, value: m.value });
+      spans.push({ start: m.start, end: m.end, rule: rule2, value: m.value });
     }
   }
   if (spans.length === 0) return { text: text2, hits: [] };
@@ -41942,9 +41942,9 @@ function redactLegacyProjection2(value) {
     if (input && typeof input === "object" && Object.getPrototypeOf(input) === Object.prototype) {
       const output = {};
       let changed = false;
-      for (const [key2, child] of Object.entries(input)) {
+      for (const [key4, child] of Object.entries(input)) {
         const result = visit(child);
-        output[key2] = result.value;
+        output[key4] = result.value;
         changed ||= result.changed;
       }
       if (changed) {
@@ -41996,31 +41996,31 @@ function labels2(text2) {
 function computeLabels2(text2) {
   const map = new Uint8Array(text2.length);
   let ambiguous2 = false, offset = 0, fence = null;
-  for (const line of text2.split(/(?<=\n)/u)) {
-    const marker2 = line.match(/^ {0,3}(`{3,}|~{3,})/u);
+  for (const line2 of text2.split(/(?<=\n)/u)) {
+    const marker2 = line2.match(/^ {0,3}(`{3,}|~{3,})/u);
     if (fence) {
-      if (marker2 && marker2[1][0] === fence.char && marker2[1].length >= fence.length && line.slice(marker2[0].length).trim() === "") {
-        map.fill(CODE2, fence.start, offset + line.length);
+      if (marker2 && marker2[1][0] === fence.char && marker2[1].length >= fence.length && line2.slice(marker2[0].length).trim() === "") {
+        map.fill(CODE2, fence.start, offset + line2.length);
         fence = null;
       }
     } else if (marker2) fence = { char: marker2[1][0], length: marker2[1].length, start: offset };
-    else if (/^ {0,3}>/u.test(line)) map.fill(QUOTE2, offset, offset + line.length);
-    else if (/^(?: {4}|\t)\S/u.test(line)) {
-      map.fill(UNKNOWN2, offset, offset + line.length);
+    else if (/^ {0,3}>/u.test(line2)) map.fill(QUOTE2, offset, offset + line2.length);
+    else if (/^(?: {4}|\t)\S/u.test(line2)) {
+      map.fill(UNKNOWN2, offset, offset + line2.length);
       ambiguous2 = true;
     }
-    offset += line.length;
+    offset += line2.length;
   }
   if (fence) {
     map.fill(UNKNOWN2, fence.start);
     ambiguous2 = true;
   }
   const sourceRows = text2.split(/(?<=\n)/u), timestamp = /^\s*(?:(?:[-*#]+|\*\*)\s*)?\[?\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?\]?/u;
-  if (/(?:transcript|captions|youtube|youtu\.be|video transcription)/iu.test(text2) && sourceRows.filter((line) => timestamp.test(line)).length >= 3) {
+  if (/(?:transcript|captions|youtube|youtu\.be|video transcription)/iu.test(text2) && sourceRows.filter((line2) => timestamp.test(line2)).length >= 3) {
     let at = 0;
-    for (const line of sourceRows) {
-      if (timestamp.test(line)) map.fill(QUOTE2, at, at + line.length);
-      at += line.length;
+    for (const line2 of sourceRows) {
+      if (timestamp.test(line2)) map.fill(QUOTE2, at, at + line2.length);
+      at += line2.length;
     }
   }
   for (let i = 0; i < text2.length; i++) {
@@ -42085,18 +42085,18 @@ function auditProfanity2(prompts, partial = false) {
     const found = hitsOf2(prompt);
     if (!found) continue;
     ambiguous2 ||= found.ambiguous;
-    for (const [raw, label4, start, end] of found.hits) {
-      const bucket = kind2(label4), counter2 = bucketCounts.get(bucket);
+    for (const [raw, label5, start, end] of found.hits) {
+      const bucket = kind2(label5), counter2 = bucketCounts.get(bucket);
       occurrences++;
       containing.add(prompt.id);
       counter2.occurrences++;
       counter2.prompts.add(prompt.id);
-      const normalized = raw.toLowerCase(), key2 = normalized + "\0" + bucket;
-      const term = terms.get(key2) ?? { term: normalized, kind: bucket, occurrences: 0, ids: /* @__PURE__ */ new Set(), samples: [] };
+      const normalized = raw.toLowerCase(), key4 = normalized + "\0" + bucket;
+      const term = terms.get(key4) ?? { term: normalized, kind: bucket, occurrences: 0, ids: /* @__PURE__ */ new Set(), samples: [] };
       term.occurrences++;
       term.ids.add(prompt.id);
       if (term.samples.length < 3) term.samples.push({ promptId: prompt.id, conversationId: prompt.conversationId, startUtf16: start, endUtf16: end, route: prompt.route });
-      terms.set(key2, term);
+      terms.set(key4, term);
       if (matches.length < 8) matches.push({ term: raw, kind: bucket, promptId: prompt.id, conversationId: prompt.conversationId, startUtf16: start, endUtf16: end, route: prompt.route });
     }
   }
@@ -42114,7 +42114,7 @@ var init_profanity2 = __esm({
     CODE2 = 2;
     QUOTE2 = 1;
     UNKNOWN2 = 3;
-    kind2 = (label4) => label4 === CODE2 ? "code" : label4 === QUOTE2 ? "quoted" : label4 === UNKNOWN2 ? "unknown" : "direct_prose";
+    kind2 = (label5) => label5 === CODE2 ? "code" : label5 === QUOTE2 ? "quoted" : label5 === UNKNOWN2 ? "unknown" : "direct_prose";
     escaped2 = (text2, index) => {
       let count5 = 0;
       for (let i = index - 1; i >= 0 && text2[i] === "\\"; i--) count5++;
@@ -42146,19 +42146,19 @@ function languageLines2(text2) {
   let labelCache = null;
   const L = (i) => (labelCache ??= proseLabels2(text2))[i];
   let offset = 0;
-  for (const line of text2.split("\n")) {
+  for (const line2 of text2.split("\n")) {
     const start = offset;
-    offset += line.length + 1;
-    const trimmed = line.trim();
+    offset += line2.length + 1;
+    const trimmed = line2.trim();
     if (!trimmed) continue;
-    const at = start + line.indexOf(trimmed), end = at + trimmed.length;
+    const at = start + line2.indexOf(trimmed), end = at + trimmed.length;
     if (!LEXICON_HINT2.test(trimmed) && !POSITIVE_HINT2.test(trimmed)) continue;
     const probe2 = { id: "line", conversationId: "", role: "user", originBasis: "claude_prompt_id", identityBasis: "", eligibleHuman: true, excludedReason: null, eventAt: null, route: { basis: "canonical", refs: [], scope: {} } };
-    const local = auditProfanity2([{ ...probe2, text: line }]);
+    const local = auditProfanity2([{ ...probe2, text: line2 }]);
     const direct = local.terms?.some((t) => t.kind === "direct_prose" && t.samples.some((sample) => L(start + sample.startUtf16) === 0)) ?? false;
     const nonprose = local.terms?.some((t) => t.kind !== "direct_prose") ?? false;
     const positiveMatch = trimmed.match(POSITIVE2), positive2 = !!positiveMatch && L(at + (positiveMatch.index ?? 0)) === 0, negated = NEGATED2.test(trimmed);
-    const quoted = L(at) !== 0 || /^\s*(?:>|[`~]{3}|["“'])/u.test(line) || /^ {4}|^\t/u.test(line);
+    const quoted = L(at) !== 0 || /^\s*(?:>|[`~]{3}|["“'])/u.test(line2) || /^ {4}|^\t/u.test(line2);
     const row2 = {};
     if (direct) row2.d = 1;
     if (nonprose) row2.np = 1;
@@ -42169,8 +42169,8 @@ function languageLines2(text2) {
     if (NEGATIVE2.test(trimmed)) row2.n = 1;
     if (direct && !quoted && words6(trimmed) >= 2) {
       const spans = trimmed.length <= 160 ? [{ text: trimmed, start: at, end }] : [...trimmed.matchAll(/[^.!?;\n]+[.!?;]?/gu)].map((match) => {
-        const value = match[0].trim(), begin = at + match.index + match[0].indexOf(value);
-        return { text: value, start: begin, end: begin + value.length };
+        const value = match[0].trim(), begin2 = at + match.index + match[0].indexOf(value);
+        return { text: value, start: begin2, end: begin2 + value.length };
       }).filter((span3) => span3.text.length <= 160 && words6(span3.text) >= 2 && auditProfanity2([{ ...probe2, text: span3.text }]).terms?.some((t) => t.kind === "direct_prose" && L(span3.start + t.samples[0].startUtf16) === 0));
       if (spans.length) row2.sp = spans.map((s) => [s.text, s.start, s.end]);
       else row2.ns = 1;
@@ -42197,7 +42197,7 @@ var init_language_feedback2 = __esm({
 function focusLabels2(raw) {
   if (!VERBS2.test(raw) || !categories2.some(([, pattern]) => pattern.test(raw))) return [];
   const labels3 = proseLabels2(raw), text2 = Array.from({ length: raw.length }, (_, i) => labels3[i] === 0 ? raw[i] : " ").join("");
-  return categories2.filter(([, pattern]) => pattern.test(text2)).map(([label4]) => label4);
+  return categories2.filter(([, pattern]) => pattern.test(text2)).map(([label5]) => label5);
 }
 var categories2, VERBS2;
 var init_project_focus2 = __esm({
@@ -42777,13 +42777,13 @@ function addUsage2(b2, u) {
   touch2(b2, u.at);
   answered2(b2, u.model, u.provider);
 }
-function addPrompt2(b2, key2, at, project, kind3, reason, text2) {
-  if (b2.seenPrompts.has(key2)) return;
-  b2.seenPrompts.add(key2);
+function addPrompt2(b2, key4, at, project, kind3, reason, text2) {
+  if (b2.seenPrompts.has(key4)) return;
+  b2.seenPrompts.add(key4);
   if (kind3 === "human" && hasExclusionMarker2(text2)) b2.facts.excluded = true;
   if (reason === "interrupt_marker" && at !== null) b2.interrupts.push(at);
   const prompt = {
-    key: key2,
+    key: key4,
     at,
     project,
     kind: kind3,
@@ -42798,15 +42798,15 @@ function addPrompt2(b2, key2, at, project, kind3, reason, text2) {
   if (kind3 === "human") b2.pending.push(prompt);
   touch2(b2, at);
 }
-function claudeLine2(b2, line, subagentPath, sessions, archive = false) {
+function claudeLine2(b2, line2, subagentPath, sessions, archive = false) {
   let subagent = subagentPath || !!b2.sidechainFile;
-  const assistant = line.includes('"type":"assistant"');
-  if (assistant ? !line.includes('"usage"') : subagent || !line.includes('"type":"user"')) {
-    if (line.length > 4096 || !line.includes('-title"') && !line.includes('"type":"summary"')) return;
+  const assistant = line2.includes('"type":"assistant"');
+  if (assistant ? !line2.includes('"usage"') : subagent || !line2.includes('"type":"user"')) {
+    if (line2.length > 4096 || !line2.includes('-title"') && !line2.includes('"type":"summary"')) return;
   }
   let r3;
   try {
-    r3 = JSON.parse(line.toString("utf8"));
+    r3 = JSON.parse(line2.toString("utf8"));
   } catch {
     b2.facts.malformed++;
     return;
@@ -42894,9 +42894,9 @@ function claudeLine2(b2, line, subagentPath, sessions, archive = false) {
   }
   addPrompt2(b2, str4(r3.uuid) ?? `${f.sessionId}:${String(r3.timestamp)}`, at, str4(r3.cwd) ?? f.project, kind3, reason, text2);
 }
-function codexFact2(model, tier, at, d, key2) {
+function codexFact2(model, tier, at, d, key4) {
   const input = d[0], output = d[2], reasoning = d[3], cached4 = Math.min(d[1], input);
-  const fact = { key: key2, at, model: codexModel2(model), provider: "openai", input: input - cached4, output, cacheRead: cached4, cacheWrite: 0, cacheWrite1h: 0, reasoning };
+  const fact = { key: key4, at, model: codexModel2(model), provider: "openai", input: input - cached4, output, cacheRead: cached4, cacheWrite: 0, cacheWrite1h: 0, reasoning };
   if (model && !fact.model) fact.identity = model;
   if (tier) fact.tier = tier;
   return fact;
@@ -42904,13 +42904,13 @@ function codexFact2(model, tier, at, d, key2) {
 function codexWanted2(head, lineNo) {
   return lineNo === 0 && head.includes("session_meta") || head.includes('"token_count"') || head.includes('"turn_context"') || head.includes("thread_settings_applied") || head.includes('"task_started"') || head.includes('"token_usage_record"') || head.includes('"type":"compacted"') || head.includes('"UserMessage"') && head.includes("item_completed") || head.includes('"role":"user"') && head.includes('"response_item"') || head.includes('"event_msg"') && head.includes('"type":"user_message"');
 }
-function codexLine2(b2, line, s) {
+function codexLine2(b2, line2, s) {
   const n2 = s.lineNo++;
-  const head = line.toString("latin1", 0, Math.min(line.length, 260));
+  const head = line2.toString("latin1", 0, Math.min(line2.length, 260));
   const f = b2.facts;
-  const parse8 = () => {
+  const parse9 = () => {
     try {
-      const v = JSON.parse(line.toString("utf8"));
+      const v = JSON.parse(line2.toString("utf8"));
       if (isRec3(v)) return v;
     } catch {
     }
@@ -42918,7 +42918,7 @@ function codexLine2(b2, line, s) {
     return null;
   };
   if (n2 === 0 && head.includes("session_meta")) {
-    const r3 = parse8();
+    const r3 = parse9();
     if (!r3) return;
     const p = isRec3(r3.payload) ? r3.payload : {};
     f.sessionId = str4(p.id) ?? str4(p.session_id) ?? f.sessionId;
@@ -42937,7 +42937,7 @@ function codexLine2(b2, line, s) {
     return;
   }
   if (head.includes('"token_count"')) {
-    const r3 = parse8();
+    const r3 = parse9();
     const p = r3 && isRec3(r3.payload) ? r3.payload : null;
     const info = p && isRec3(p.info) ? p.info : null;
     if (!r3 || !info) return;
@@ -42953,14 +42953,14 @@ function codexLine2(b2, line, s) {
     if (totalSig) s.previousTotal = totalSig;
     if (!d || !(d[0] || d[1] || d[2] || d[3])) return;
     s.deltas.add(d.join(","));
-    const key2 = totalSig ? `x:${totalSig}|${last2 ? last2.join(",") : ""}` : `y:${String(r3.timestamp ?? "")}|${d.join(",")}`;
-    const fact = codexFact2(b2.currentModel, s.tier, time3(r3.timestamp), d, key2);
+    const key4 = totalSig ? `x:${totalSig}|${last2 ? last2.join(",") : ""}` : `y:${String(r3.timestamp ?? "")}|${d.join(",")}`;
+    const fact = codexFact2(b2.currentModel, s.tier, time3(r3.timestamp), d, key4);
     addUsage2(b2, fact);
     if (fact.at !== null) b2.events.push({ at: fact.at, tools: 0, subs: 0, weight: usageWeight2(fact.input, fact.output, fact.cacheRead, fact.cacheWrite) });
     return;
   }
   if (head.includes('"turn_context"')) {
-    const p = parse8()?.payload;
+    const p = parse9()?.payload;
     if (isRec3(p)) {
       b2.currentModel = str4(p.model) ?? b2.currentModel;
       if (typeof p.cwd === "string") f.project = p.cwd;
@@ -42968,7 +42968,7 @@ function codexLine2(b2, line, s) {
     return;
   }
   if (head.includes("thread_settings_applied")) {
-    const p = parse8()?.payload;
+    const p = parse9()?.payload;
     const settings = isRec3(p) && isRec3(p.thread_settings) ? p.thread_settings : null;
     if (settings && "service_tier" in settings) {
       const v = settings.service_tier;
@@ -42977,7 +42977,7 @@ function codexLine2(b2, line, s) {
     return;
   }
   if (head.includes('"task_started"')) {
-    const p = parse8()?.payload;
+    const p = parse9()?.payload;
     s.imported = isRec3(p) && String(p.turn_id ?? "").startsWith("external-import");
     if (!s.imported) {
       s.inTurn = true;
@@ -42986,7 +42986,7 @@ function codexLine2(b2, line, s) {
     return;
   }
   if (head.includes('"UserMessage"') && head.includes("item_completed")) {
-    const r3 = parse8();
+    const r3 = parse9();
     const p = r3 && isRec3(r3.payload) ? r3.payload : null;
     if (!r3 || !p) return;
     const item = isRec3(p.item) ? p.item : {};
@@ -43001,14 +43001,14 @@ function codexLine2(b2, line, s) {
     return;
   }
   if (head.includes('"role":"user"') && head.includes('"response_item"')) {
-    const r3 = parse8();
+    const r3 = parse9();
     if (!r3) return;
     const p = isRec3(r3.payload) ? r3.payload : {};
     s.responsePrompts.push({ key: null, at: time3(r3.timestamp), text: textOf2(p.content), imported: s.imported, project: f.project, inTurn: s.inTurn });
     return;
   }
-  if (head.includes('"event_msg"') && line.subarray(0, 400).includes('"type":"user_message"')) {
-    const r3 = parse8();
+  if (head.includes('"event_msg"') && line2.subarray(0, 400).includes('"type":"user_message"')) {
+    const r3 = parse9();
     if (!r3) return;
     const p = isRec3(r3.payload) ? r3.payload : {};
     s.itemPrompts.push({ key: null, at: time3(r3.timestamp), text: typeof p.message === "string" ? p.message : "", imported: s.imported, project: f.project, inTurn: s.inTurn });
@@ -43016,17 +43016,17 @@ function codexLine2(b2, line, s) {
   }
   if (codexToolOrAbort2(b2, head)) return;
   if (head.includes('"token_usage_record"')) {
-    const r3 = parse8();
+    const r3 = parse9();
     const p = r3 && isRec3(r3.payload) ? r3.payload : null;
     const id = p ? str4(p.response_id) : null;
     if (r3 && p && id && isRec3(p.usage) && !s.records.has(id)) s.records.set(id, { at: time3(r3.timestamp), usage: p.usage, model: b2.currentModel, tier: s.tier });
     return;
   }
   if (head.includes('"type":"compacted"')) {
-    const at = line.lastIndexOf('"compaction_response_id":"');
+    const at = line2.lastIndexOf('"compaction_response_id":"');
     if (at >= 0) {
-      const start = at + 26, end = line.indexOf(34, start);
-      if (end > start) s.compacted.add(line.toString("latin1", start, end));
+      const start = at + 26, end = line2.indexOf(34, start);
+      if (end > start) s.compacted.add(line2.toString("latin1", start, end));
     }
   }
 }
@@ -43070,11 +43070,11 @@ function finishCodex2(b2, s) {
       if (seen.has(p.key)) return;
       seen.add(p.key);
     }
-    const key2 = `codex:${p.key ?? `${i}@${p.at ?? ""}`}`;
-    if (reason) return addPrompt2(b2, key2, p.at, p.project, "excluded", reason, "");
-    if (p.imported) return addPrompt2(b2, key2, p.at, p.project, "excluded", "imported_from_claude_transcript", "");
+    const key4 = `codex:${p.key ?? `${i}@${p.at ?? ""}`}`;
+    if (reason) return addPrompt2(b2, key4, p.at, p.project, "excluded", reason, "");
+    if (p.imported) return addPrompt2(b2, key4, p.at, p.project, "excluded", "imported_from_claude_transcript", "");
     const c = classifyText2(cleanCodexText2(p.text));
-    addPrompt2(b2, key2, p.at, p.project, c.kind, c.reason, c.text);
+    addPrompt2(b2, key4, p.at, p.project, c.kind, c.reason, c.text);
     if (!p.inTurn) f.prompts[f.prompts.length - 1].imp = 1;
   });
   if (!s.anyTurn) {
@@ -43093,10 +43093,10 @@ function finishCodex2(b2, s) {
     p.afterProvider = p.after ? "openai" : null;
   }
 }
-function piLine2(b2, line) {
+function piLine2(b2, line2) {
   let r3;
   try {
-    r3 = JSON.parse(line.toString("utf8"));
+    r3 = JSON.parse(line2.toString("utf8"));
   } catch {
     b2.facts.malformed++;
     return;
@@ -43178,7 +43178,7 @@ function extractFile2(file, requested, options = {}, previous) {
       firstNew = b2.facts.prompts.length;
     }
     const archive = !!options.archive;
-    const onLine = harness === "claude" ? (line) => claudeLine2(b2, line, subagent, sessions, archive) : harness === "codex" ? (line) => codexLine2(b2, line, codex) : (line) => piLine2(b2, line);
+    const onLine = harness === "claude" ? (line2) => claudeLine2(b2, line2, subagent, sessions, archive) : harness === "codex" ? (line2) => codexLine2(b2, line2, codex) : (line2) => piLine2(b2, line2);
     let buffer = sharedBuffer2 ??= Buffer.allocUnsafe(CHUNK2);
     let filled = 0, skipping = false, base3 = position, endsWithNewline = true;
     for (; ; ) {
@@ -43843,11 +43843,11 @@ function bigNumber(text2, ascii = false) {
       rows[2] += "  ";
       continue;
     }
-    const glyph2 = font[char];
-    if (!glyph2) continue;
+    const glyph = font[char];
+    if (!glyph) continue;
     const gap2 = first ? "" : " ";
     first = false;
-    for (let i = 0; i < 3; i++) rows[i] += gap2 + glyph2[i];
+    for (let i = 0; i < 3; i++) rows[i] += gap2 + glyph[i];
   }
   return rows;
 }
@@ -43856,20 +43856,20 @@ var init_big_digits = __esm({
   "packages/cli/src/audit-ui/big-digits.ts"() {
     "use strict";
     GLYPHS = {
-      "0": ["\u2588\u2580\u2588", "\u2588 \u2588", "\u2580\u2580\u2580"],
-      "1": ["\u2580\u2588 ", " \u2588 ", "\u2580\u2580\u2580"],
-      "2": ["\u2580\u2580\u2588", "\u2588\u2580\u2580", "\u2580\u2580\u2580"],
-      "3": ["\u2580\u2580\u2588", " \u2580\u2588", "\u2580\u2580\u2580"],
-      "4": ["\u2588 \u2588", "\u2580\u2580\u2588", "  \u2580"],
-      "5": ["\u2588\u2580\u2580", "\u2580\u2580\u2588", "\u2580\u2580\u2580"],
-      "6": ["\u2588\u2580\u2580", "\u2588\u2580\u2588", "\u2580\u2580\u2580"],
-      "7": ["\u2580\u2580\u2588", "  \u2588", "  \u2580"],
-      "8": ["\u2588\u2580\u2588", "\u2588\u2580\u2588", "\u2580\u2580\u2580"],
-      "9": ["\u2588\u2580\u2588", "\u2580\u2580\u2588", "\u2580\u2580\u2580"],
-      ",": [" ", " ", "\u2584"],
-      ".": [" ", " ", "\u2580"],
-      "<": ["  ", "\u2584\u2580", " \u2580"],
-      "\u2014": ["   ", "\u2580\u2580\u2580", "   "]
+      "0": ["\u250F\u2501\u2513", "\u2503 \u2503", "\u2517\u2501\u251B"],
+      "1": ["\u257A\u2513 ", " \u2503 ", "\u257A\u253B\u2578"],
+      "2": ["\u257A\u2501\u2513", "\u250F\u2501\u251B", "\u2517\u2501\u2578"],
+      "3": ["\u257A\u2501\u2513", "\u257A\u2501\u252B", "\u257A\u2501\u251B"],
+      "4": ["\u257B \u257B", "\u2517\u2501\u252B", "  \u2579"],
+      "5": ["\u250F\u2501\u2578", "\u2517\u2501\u2513", "\u257A\u2501\u251B"],
+      "6": ["\u250F\u2501\u2578", "\u2523\u2501\u2513", "\u2517\u2501\u251B"],
+      "7": ["\u257A\u2501\u2513", "  \u2503", "  \u2579"],
+      "8": ["\u250F\u2501\u2513", "\u2523\u2501\u252B", "\u2517\u2501\u251B"],
+      "9": ["\u250F\u2501\u2513", "\u2517\u2501\u252B", "\u257A\u2501\u251B"],
+      ",": [" ", " ", "\u257B"],
+      ".": [" ", " ", "\u2578"],
+      "<": ["  ", "\u257A\u2513", " \u2579"],
+      "\u2014": ["   ", "\u257A\u2501\u2578", "   "]
     };
     ASCII_GLYPHS = {
       "0": [" _ ", "| |", "|_|"],
@@ -44035,15 +44035,15 @@ function padStart(text2, width) {
 function wrap3(text2, width) {
   const rows = [];
   for (const paragraph of text2.split("\n")) {
-    let line = "";
+    let line2 = "";
     for (const word of sanitize(paragraph).split(" ")) {
       if (!word) continue;
-      const candidate = line ? `${line} ${word}` : word;
+      const candidate = line2 ? `${line2} ${word}` : word;
       if (cellWidth(candidate) <= width) {
-        line = candidate;
+        line2 = candidate;
         continue;
       }
-      if (line) rows.push(line);
+      if (line2) rows.push(line2);
       let rest = word;
       while (cellWidth(rest) > width) {
         const head = clip3(rest, width);
@@ -44051,9 +44051,9 @@ function wrap3(text2, width) {
         rows.push(head);
         rest = rest.slice(head.length);
       }
-      line = rest;
+      line2 = rest;
     }
-    rows.push(line);
+    rows.push(line2);
   }
   return rows;
 }
@@ -44116,10 +44116,10 @@ function spread(left, right, width) {
   const gap2 = Math.max(right.length ? 1 : 0, width - lineWidth(clippedLeft) - rightWidth);
   return [...clippedLeft, seg(" ".repeat(gap2)), ...right];
 }
-function clipLine(line, width) {
+function clipLine(line2, width) {
   const out = [];
   let left = width;
-  for (const part of line) {
+  for (const part of line2) {
     if (left <= 0) break;
     const text2 = clip3(part.text, left);
     if (text2) out.push({ ...part, text: text2 });
@@ -44127,8 +44127,8 @@ function clipLine(line, width) {
   }
   return out;
 }
-function padLine(line, width) {
-  const clipped = clipLine(line, width);
+function padLine(line2, width) {
+  const clipped = clipLine(line2, width);
   const used = lineWidth(clipped);
   return used < width ? [...clipped, seg(" ".repeat(width - used))] : clipped;
 }
@@ -44166,7 +44166,7 @@ function modelsCard(data, width) {
     const lines = [head];
     for (const row2 of shown) {
       lines.push([
-        seg(row2.favourite ? "\u2605 " : "  ", "accent"),
+        seg(row2.favourite ? "\u203A " : "  ", "accent"),
         seg(padEnd(ellipsize(row2.name, nameWidth), nameWidth), "text"),
         seg(" "),
         seg(barWidth >= 3 ? bar(row2.value === null ? null : row2.value / max2, barWidth) : " ".repeat(barWidth), "accent"),
@@ -44239,18 +44239,18 @@ function weeklySeries(days, width) {
   }
   return bins;
 }
-function chart(values, height, ascii) {
+function chart(values, height2, ascii) {
   const max2 = Math.max(...values, 1);
   const levels = ascii ? ASCII_LEVELS : LEVELS;
   const rows = [];
-  for (let r3 = height - 1; r3 >= 0; r3--) {
-    let line = "";
+  for (let r3 = height2 - 1; r3 >= 0; r3--) {
+    let line2 = "";
     for (const value of values) {
-      const eighths = value <= 0 ? 0 : Math.max(1, Math.round(value / max2 * height * 8));
+      const eighths = value <= 0 ? 0 : Math.max(1, Math.round(value / max2 * height2 * 8));
       const here = Math.max(0, Math.min(8, eighths - r3 * 8));
-      line += levels[here];
+      line2 += levels[here];
     }
-    rows.push(line);
+    rows.push(line2);
   }
   return rows;
 }
@@ -44281,13 +44281,13 @@ function monthTicks(days, width) {
 function activityCard(data, width, ascii) {
   const { activity } = data;
   const facts = [];
-  const label4 = (text2) => seg(padEnd(text2, 13), "muted");
-  if (activity.busiest) facts.push([label4("busiest day"), seg(shortDate2(activity.busiest.date), "value"), seg(` \xB7 ${count4(activity.busiest.count)} prompts`, "muted")]);
+  const label5 = (text2) => seg(padEnd(text2, 13), "muted");
+  if (activity.busiest) facts.push([label5("busiest day"), seg(shortDate2(activity.busiest.date), "value"), seg(` \xB7 ${count4(activity.busiest.count)} prompts`, "muted")]);
   if (activity.peakHour !== null) {
     const owl = activity.peakHour <= 4 ? " \xB7 night owl" : activity.peakHour >= 5 && activity.peakHour <= 8 ? " \xB7 early bird" : "";
-    facts.push([label4("peak hour"), seg(hourLabel(activity.peakHour), "value"), seg(owl, "muted")]);
+    facts.push([label5("peak hour"), seg(hourLabel(activity.peakHour), "value"), seg(owl, "muted")]);
   }
-  if (activity.topWeekday) facts.push([label4("top weekday"), seg(activity.topWeekday, "value")]);
+  if (activity.topWeekday) facts.push([label5("top weekday"), seg(activity.topWeekday, "value")]);
   const render2 = (rows) => {
     const head = titleLine("WHEN YOU CODE", width, [seg("prompts per week", "muted")]);
     if (activity.state === "pending") return [head, ...pendingRows2(width, rows - 1, 5)];
@@ -44331,10 +44331,10 @@ function reactionsCard(data, width) {
     if (reactions.state === "empty") return [head, [seg("No strong feelings either way", "muted")]];
     const lines = [head];
     const wide = width >= 52;
-    const add = (label4, row2, noun) => {
+    const add = (label5, row2, noun) => {
       if (!row2) return;
       const tail2 = wide ? [seg(`${count4(row2.hits)} ${noun} in ${count4(row2.of)} \xB7 `, "muted"), seg(percent(row2.hits / row2.of, 1), "value")] : [seg(percent(row2.hits / row2.of, 1), "value"), seg(` of ${count4(row2.of)}`, "muted")];
-      lines.push(spread([seg(padEnd(wide ? `most ${label4}` : label4, wide ? 14 : 9), "muted"), seg(row2.model, "text")], tail2, width));
+      lines.push(spread([seg(padEnd(wide ? `most ${label5}` : label5, wide ? 14 : 9), "muted"), seg(row2.model, "text")], tail2, width));
     };
     add("roasted", reactions.roasted, reactions.roasted?.hits === 1 ? "rant" : "rants");
     add("praised", reactions.praised, "thanks");
@@ -44485,20 +44485,20 @@ function footerLine(data, width, page, pages, options, mode) {
 function groupHeight(group, pick4) {
   return Math.max(...group.map(pick4));
 }
-function renderGroup(group, height, width, gutter) {
+function renderGroup(group, height2, width, gutter) {
   if (group.length === 1) {
-    const lines = group[0].render(height);
-    return Array.from({ length: height }, (_, i) => padLine(lines[i] ?? [], width));
+    const lines = group[0].render(height2);
+    return Array.from({ length: height2 }, (_, i) => padLine(lines[i] ?? [], width));
   }
   const columnWidth = Math.floor((width - gutter * (group.length - 1)) / group.length);
-  const rendered = group.map((card) => card.render(height));
-  return Array.from({ length: height }, (_, i) => {
-    const line = [];
+  const rendered = group.map((card) => card.render(height2));
+  return Array.from({ length: height2 }, (_, i) => {
+    const line2 = [];
     rendered.forEach((lines, c) => {
-      if (c) line.push(seg(" ".repeat(gutter)));
-      line.push(...padLine(lines[i] ?? [], c === group.length - 1 ? width - (columnWidth + gutter) * (group.length - 1) : columnWidth));
+      if (c) line2.push(seg(" ".repeat(gutter)));
+      line2.push(...padLine(lines[i] ?? [], c === group.length - 1 ? width - (columnWidth + gutter) * (group.length - 1) : columnWidth));
     });
-    return line;
+    return line2;
   });
 }
 function fitHeights(groups, available, growth = 3) {
@@ -44593,7 +44593,7 @@ function buildBoard(data, options) {
     const body = lines.slice(0, rows - bottom);
     while (body.length < rows - bottom) body.push([]);
     body.push(...banner, [], footerLine(data, content, index, pages.length, options, "board"));
-    return finish(body.map((line) => [seg(" ".repeat(margin)), ...line]), columns2, ascii);
+    return finish(body.map((line2) => [seg(" ".repeat(margin)), ...line2]), columns2, ascii);
   });
   return { pages: built, cards: pages.map((page) => page.groups.flat().map((card) => card.id)), bannerRows: banner.length };
 }
@@ -44616,14 +44616,14 @@ function buildDetails(data, sections2, options) {
     const lines = [[seg("slopie", "brand"), seg("  details", "muted")], [], ...chunk];
     while (lines.length < rows - 2) lines.push([]);
     lines.push([], footerLine(data, content, index, chunks.length, { ...options, hint: null }, "details"));
-    return finish(lines.slice(0, rows).map((line) => [seg(" ".repeat(margin)), ...line]), columns2, Boolean(options.ascii));
+    return finish(lines.slice(0, rows).map((line2) => [seg(" ".repeat(margin)), ...line2]), columns2, Boolean(options.ascii));
   });
 }
 function finish(lines, columns2, ascii) {
-  return lines.map((line) => clipLine(ascii ? line.map((part) => ({ ...part, text: toAscii2(part.text) })) : line, columns2));
+  return lines.map((line2) => clipLine(ascii ? line2.map((part) => ({ ...part, text: toAscii2(part.text) })) : line2, columns2));
 }
 function pageText(page) {
-  return page.map((line) => line.map((part) => part.text).join("").trimEnd()).join("\n");
+  return page.map((line2) => line2.map((part) => part.text).join("").trimEnd()).join("\n");
 }
 var SPINNER, MAX_CONTENT, MIN_COLUMNS, MIN_ROWS, seg, lineWidth, LEVELS, ASCII_LEVELS;
 var init_layout = __esm({
@@ -44637,7 +44637,7 @@ var init_layout = __esm({
     MIN_COLUMNS = 40;
     MIN_ROWS = 12;
     seg = (text2, style = "text") => ({ text: text2, style });
-    lineWidth = (line) => line.reduce((sum2, part) => sum2 + cellWidth(part.text), 0);
+    lineWidth = (line2) => line2.reduce((sum2, part) => sum2 + cellWidth(part.text), 0);
     LEVELS = [" ", "\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"];
     ASCII_LEVELS = [" ", ".", ".", ":", ":", "|", "|", "#", "#"];
   }
@@ -44664,16 +44664,16 @@ function knownTokens(models2) {
   const values = models2.map((model) => model.knownTokens ?? model.totalTokens).filter((value) => value !== null && value !== void 0);
   return values.length ? values.reduce((sum2, value) => sum2 + value, 0) : null;
 }
-function friendlyProgress(label4, fallback) {
-  if (!label4) return fallback;
-  for (const [pattern, text2] of PROGRESS_LABELS) if (pattern.test(label4)) return text2;
+function friendlyProgress(label5, fallback) {
+  if (!label5) return fallback;
+  for (const [pattern, text2] of PROGRESS_LABELS) if (pattern.test(label5)) return text2;
   return fallback;
 }
 function progressOf(snapshot2, phase) {
   if (phase === "ready" || phase === "cancelled" || phase === "error") return null;
   const facts = snapshot2.launch?.factProgress;
-  const label4 = friendlyProgress(snapshot2.progress.label, phase === "finding" ? "finding history" : "reading history");
-  if (phase === "finding") return { label: label4, done: null, total: null, unit: "files" };
+  const label5 = friendlyProgress(snapshot2.progress.label, phase === "finding" ? "finding history" : "reading history");
+  if (phase === "finding") return { label: label5, done: null, total: null, unit: "files" };
   if (facts && facts.state === "collecting" && facts.totalSources) {
     return { label: "reading history files", done: facts.completedSources, total: facts.totalSources, unit: "files" };
   }
@@ -44681,7 +44681,7 @@ function progressOf(snapshot2, phase) {
     return { label: snapshot2.launch.stage === "analyzing" ? "asking Jev for commentary" : "adding it all up", done: null, total: null, unit: "" };
   }
   const unit = snapshot2.progress.unit === "candidate_source" ? "files" : snapshot2.progress.unit === "conversation" ? "chats" : "prompts";
-  return { label: label4, done: snapshot2.progress.completed || null, total: snapshot2.progress.total, unit };
+  return { label: label5, done: snapshot2.progress.completed || null, total: snapshot2.progress.total, unit };
 }
 function phaseOf(snapshot2) {
   if (snapshot2.status === "cancelled") return "cancelled";
@@ -44804,13 +44804,13 @@ function repeatsOf(snapshot2, loading) {
   const add = (raw, n2) => {
     const text2 = typedText(raw);
     if (!text2 || n2 < 2) return;
-    const key2 = text2.toLowerCase().replace(/[\s\p{P}]+/gu, " ").trim();
-    if (!key2) return;
-    const existing = groups.get(key2);
-    if (!existing || existing.count < n2) groups.set(key2, { text: text2, count: n2 });
+    const key4 = text2.toLowerCase().replace(/[\s\p{P}]+/gu, " ").trim();
+    if (!key4) return;
+    const existing = groups.get(key4);
+    if (!existing || existing.count < n2) groups.set(key4, { text: text2, count: n2 });
   };
   for (const phrase of snapshot2.phrases ?? []) add(phrase.text, phrase.prompts);
-  for (const line of snapshot2.launch?.languageLines ?? []) add(line.text, line.occurrences);
+  for (const line2 of snapshot2.launch?.languageLines ?? []) add(line2.text, line2.occurrences);
   const rows = [...groups.values()].sort((a, b2) => b2.count - a.count || a.text.length - b2.text.length);
   const done = !loading || Boolean(snapshot2.launch?.languageLines) || Boolean(snapshot2.phrases?.length);
   return { state: rows.length ? "ready" : done ? "empty" : "pending", rows };
@@ -44818,10 +44818,10 @@ function repeatsOf(snapshot2, loading) {
 function reactionsOf(snapshot2, loading) {
   const feedback = snapshot2.launch?.modelFeedback;
   if (!feedback) return { state: loading ? "pending" : "empty", roasted: null, praised: null };
-  const pick4 = (key2) => {
-    const ranked = feedback.filter((row2) => row2.model !== null && row2.associatedInputs >= MIN_REACTION_SAMPLE && row2[key2] > 0 && row2[key2] <= row2.associatedInputs).sort((a, b2) => b2[key2] / b2.associatedInputs - a[key2] / a.associatedInputs || b2[key2] - a[key2] || (a.model ?? "").localeCompare(b2.model ?? ""));
+  const pick4 = (key4) => {
+    const ranked = feedback.filter((row2) => row2.model !== null && row2.associatedInputs >= MIN_REACTION_SAMPLE && row2[key4] > 0 && row2[key4] <= row2.associatedInputs).sort((a, b2) => b2[key4] / b2.associatedInputs - a[key4] / a.associatedInputs || b2[key4] - a[key4] || (a.model ?? "").localeCompare(b2.model ?? ""));
     const top = ranked[0];
-    return top ? { model: modelName(top.model), hits: top[key2], of: top.associatedInputs } : null;
+    return top ? { model: modelName(top.model), hits: top[key4], of: top.associatedInputs } : null;
   };
   const roasted = pick4("directedNegativeInputs");
   const praised = pick4("praiseInputs");
@@ -45015,12 +45015,12 @@ function progressDetailOf(snapshot2) {
 function cardOf(story, id) {
   return story?.cards.find((card) => card.id === id) ?? null;
 }
-function num6(card, key2) {
-  const value = card?.numbers[key2];
+function num6(card, key4) {
+  const value = card?.numbers[key4];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
-function str5(card, key2) {
-  const value = card?.numbers[key2];
+function str5(card, key4) {
+  const value = card?.numbers[key4];
   return typeof value === "string" && value ? value : null;
 }
 function wentOnline(snapshot2, transfers = 0) {
@@ -45065,9 +45065,9 @@ function modelShareOf(story) {
   const seen = /* @__PURE__ */ new Map();
   for (const row2 of arr(raw.rows)) {
     if (!row2 || typeof row2.label !== "string" || !finite(row2.outputTokens) || !finite(row2.tokenSharePct)) continue;
-    const key2 = row2.label.trim().toLowerCase();
-    const prior = seen.get(key2);
-    if (prior) seen.set(key2, {
+    const key4 = row2.label.trim().toLowerCase();
+    const prior = seen.get(key4);
+    if (prior) seen.set(key4, {
       ...prior,
       outputTokens: prior.outputTokens + row2.outputTokens,
       tokenSharePct: prior.tokenSharePct + row2.tokenSharePct,
@@ -45076,7 +45076,7 @@ function modelShareOf(story) {
       usd: prior.usd + (row2.usd || 0),
       spendSharePct: prior.spendSharePct + (row2.spendSharePct || 0)
     });
-    else seen.set(key2, { ...row2, prompts: row2.prompts || 0, promptSharePct: row2.promptSharePct || 0, usd: row2.usd || 0, spendSharePct: row2.spendSharePct || 0 });
+    else seen.set(key4, { ...row2, prompts: row2.prompts || 0, promptSharePct: row2.promptSharePct || 0, usd: row2.usd || 0, spendSharePct: row2.spendSharePct || 0 });
   }
   const rows = [...seen.values()].filter((row2) => row2.outputTokens > 0).sort((a, b2) => b2.tokenSharePct - a.tokenSharePct || b2.outputTokens - a.outputTokens);
   const timeline = arr(raw.timeline).filter((row2) => row2 && /^\d{4}-\d{2}$/.test(row2.month) && typeof row2.label === "string");
@@ -45141,7 +45141,7 @@ var init_fun_facts = __esm({
     Q = (text2) => ({ text: `\u201C${text2}\u201D`, tone: "quote" });
     T = (text2) => ({ text: text2 });
     times = (ratio2) => `${ratio2 >= 9.95 ? Math.round(ratio2) : ratio2.toFixed(1).replace(/\.0$/, "")}\xD7`;
-    shortModel = (label4) => sanitize(label4).replace(/^(Claude|Gemini)\s+/, "");
+    shortModel = (label5) => sanitize(label5).replace(/^(Claude|Gemini)\s+/, "");
     safeWord = (text2, mask4) => {
       if (!text2) return null;
       const clean3 = mask4(text2).replace(/\s+/g, " ").trim();
@@ -45452,11 +45452,11 @@ function modelsPanel(story, board) {
   const best = story?.models.best ?? null;
   const worst = story?.models.worst && story.models.worst.matchedMonths >= 2 ? story.models.worst : null;
   const same3 = (a, b2) => !!b2 && a.trim().toLowerCase() === b2.trim().toLowerCase();
-  const tag = (label4, priciest, topLabel) => {
+  const tag = (label5, priciest, topLabel) => {
     const tags = [];
-    if (best ? same3(label4, best.label) : same3(label4, topLabel)) tags.push("fav");
-    if (worst && same3(label4, worst.label)) tags.push("nemesis");
-    if (priciest && same3(label4, priciest)) tags.push("priciest");
+    if (best ? same3(label5, best.label) : same3(label5, topLabel)) tags.push("fav");
+    if (worst && same3(label5, worst.label)) tags.push("nemesis");
+    if (priciest && same3(label5, priciest)) tags.push("priciest");
     return tags;
   };
   if (share && share.rows.length) {
@@ -45466,7 +45466,7 @@ function modelsPanel(story, board) {
     const rows2 = share.rows.map((r3, i) => ({ label: sanitize(r3.label), pct: pcts2[i], value: shareText(pcts2[i]), tags: tag(r3.label, priciestLabel, share.rows[0].label), note: r3.usd > 0 ? money2(r3.usd) : void 0 }));
     const facts = [];
     if (priciest) facts.push(`$ priciest: ${sanitize(priciest.label)}, ${money2(priciest.usd / priciest.prompts)}/prompt`);
-    if (worst) facts.push(`\u2620 nemesis: ${sanitize(worst.label)}, ${(worst.swearRatio ?? 1).toFixed(1)}\xD7 swears`);
+    if (worst) facts.push(`nemesis: ${sanitize(worst.label)}, ${(worst.swearRatio ?? 1).toFixed(1)}\xD7 swears`);
     const era = eras(share.timeline);
     if (era) facts.push(`eras ${era}`);
     const now = share.last30d[0];
@@ -45476,7 +45476,7 @@ function modelsPanel(story, board) {
   const top = story?.models.top ?? [];
   if (top.length) {
     const pcts2 = tenths(top.map((t) => t.prompts));
-    return { basis: "by prompts", rows: top.map((t, i) => ({ label: sanitize(t.label), pct: pcts2[i], value: shareText(pcts2[i]), tags: tag(t.label, null, top[0].label) })), more: 0, unknown: null, facts: worst ? [`\u2620 nemesis: ${sanitize(worst.label)}`] : [] };
+    return { basis: "by prompts", rows: top.map((t, i) => ({ label: sanitize(t.label), pct: pcts2[i], value: shareText(pcts2[i]), tags: tag(t.label, null, top[0].label) })), more: 0, unknown: null, facts: worst ? [`nemesis: ${sanitize(worst.label)}`] : [] };
   }
   const rows = board.models.rows.filter((r3) => r3.value !== null && r3.value > 0);
   if (!rows.length) return null;
@@ -45513,16 +45513,16 @@ function eras(timeline) {
   const seq = [];
   for (const row2 of timeline) if (seq.at(-1) !== row2.label) seq.push(row2.label);
   if (seq.length < 2) return null;
-  const short3 = (label4) => sanitize(label4).replace(/^Claude\s+/, "");
-  return seq.slice(-4).map(short3).join(" \u25B8 ");
+  const short3 = (label5) => sanitize(label5).replace(/^Claude\s+/, "");
+  return seq.slice(-4).map(short3).join(" \u2192 ");
 }
 function agentsPanel(story, board, spend) {
   const automated = automatedRunsOf(story);
   const merged = /* @__PURE__ */ new Map();
   const add = (harness, prompts, usd3) => {
-    const key2 = harness === "claude_hist" ? "claude" : harness;
-    const prior = merged.get(key2) ?? { prompts: 0, usd: 0 };
-    merged.set(key2, { prompts: prior.prompts + prompts, usd: prior.usd + usd3 });
+    const key4 = harness === "claude_hist" ? "claude" : harness;
+    const prior = merged.get(key4) ?? { prompts: 0, usd: 0 };
+    merged.set(key4, { prompts: prior.prompts + prompts, usd: prior.usd + usd3 });
   };
   if (spend && spend.byHarness.length) for (const h of spend.byHarness) add(h.harness, h.prompts, h.usd);
   else if (story) {
@@ -45644,11 +45644,11 @@ function posterViz(story) {
 function heroStats(story, board) {
   const t = story?.totals;
   const out = [];
-  const push2 = (value, label4, fmt = count4) => {
+  const push2 = (value, label5, fmt = count4) => {
     if (value === null || value === void 0 || !(value > 0)) return;
     const v = fmt(value);
-    if (v.endsWith("-")) out.push({ value: v.slice(0, -1), label: "-" + label4 });
-    else out.push({ value: v, label: label4 });
+    if (v.endsWith("-")) out.push({ value: v.slice(0, -1), label: "-" + label5 });
+    else out.push({ value: v, label: label5 });
   };
   push2(t?.prompts ?? board.stats.prompts, "prompts");
   push2(t?.sessions ?? board.stats.chats, "chats");
@@ -45718,9 +45718,9 @@ function safeQuote3(text2) {
   if (/https?:|www\.|@[\w-]+\.|\/Users\/|\/home\/|[A-Za-z0-9_-]{32,}|sk-[A-Za-z0-9]/.test(clean3)) return null;
   return clean3;
 }
-function displayModel(id, label4) {
+function displayModel(id, label5) {
   const formatted = id ? modelName(id) : "";
-  return mask3(formatted && formatted !== "Unknown model" && formatted !== id ? formatted : label4);
+  return mask3(formatted && formatted !== "Unknown model" && formatted !== id ? formatted : label5);
 }
 function cover(story, board) {
   const a = story?.archetype;
@@ -45828,14 +45828,14 @@ function bill(story, board) {
   const pricey = story?.highlights.mostExpensivePrompt ?? null;
   const card = cardOf(story, "most_expensive_sentence");
   const sv = spendOf(story);
-  const headline4 = sv ? `${money2(sv.measuredUsd)} of agent work, at API list prices.` : pricey ? `Your most expensive sentence cost ${money2(pricey.costUsd)}.` : `Your agents would have cost ${money2(total2)} at API prices.`;
+  const headline5 = sv ? `${money2(sv.measuredUsd)} of agent work, at API list prices.` : pricey ? `Your most expensive sentence cost ${money2(pricey.costUsd)}.` : `Your agents would have cost ${money2(total2)} at API prices.`;
   const support = sv ? [sv.perActiveDayUsd > 0 ? `${money2(sv.perActiveDayUsd)} per active day` : null, sv.priciestDay ? `worst day ${shortDate2(sv.priciestDay.day)}: ${money2(sv.priciestDay.usd)}` : null, pricey ? `and that sentence? ${money2(pricey.costUsd)}` : null].filter(Boolean).join(" \xB7 ") + "." : pricey ? `${shortDate2(pricey.day)}${pricey.model ? `, ${modelName(pricey.model)}` : ""}. That's ${Math.round(pricey.timesMedian)}\xD7 your median prompt and ${Math.round(pricey.sharePct)}% of everything.` : card ? mask3(card.support) : "What your recorded tokens would cost at public list prices. Not a bill.";
   return {
     kind: "bill",
     id: "bill",
     kicker: "THE BILL",
     expression: "shocked",
-    headline: headline4,
+    headline: headline5,
     support,
     notes: [
       "The total is what your recorded tokens would cost at public API list prices. It is not what you paid: subscriptions and discounts are unknown.",
@@ -45869,7 +45869,7 @@ function clock2(story) {
   const copy = engineCopy(owl);
   const peak = rhythm2.peakHour !== null && rhythm2.peakWeekday !== null ? `${WEEKDAYS3[rhythm2.peakWeekday]} around ${hourLabel(rhythm2.peakHour).toLowerCase().replace(" ", "")}` : null;
   const peakLine = rhythm2.peakHour !== null && rhythm2.peakWeekday !== null ? `${WEEKDAYS3[rhythm2.peakWeekday]}, ${hourLabel(rhythm2.peakHour)}. That's you.` : null;
-  const headline4 = peakLine ?? copy?.headline ?? (story?.peakTime ? `You're a ${mask3(story.peakTime.label)} person.` : peak ? `Peak you: ${peak}.` : "Your week, hour by hour.");
+  const headline5 = peakLine ?? copy?.headline ?? (story?.peakTime ? `You're a ${mask3(story.peakTime.label)} person.` : peak ? `Peak you: ${peak}.` : "Your week, hour by hour.");
   const support = (peakLine && copy ? copy.headline + " " + copy.support : null) ?? copy?.support ?? story?.peakTime?.narrative ?? (rhythm2.lateNightDaysPct !== null ? `${Math.round(rhythm2.lateNightDaysPct)}% of your days end after 1am.` : "");
   const busiest = [...spendOf(story)?.daily ?? []].sort((a, b2) => b2.prompts - a.prompts)[0];
   return {
@@ -45877,7 +45877,7 @@ function clock2(story) {
     id: owl ? "night_owl" : "clock",
     kicker: "YOUR CLOCK",
     expression: (rhythm2.lateNightDaysPct ?? 0) >= 25 ? "sleepy" : "idle",
-    headline: headline4,
+    headline: headline5,
     support: mask3(support),
     notes: [`Every prompt placed on a weekday \xD7 hour grid in your timezone (${sanitize(story.timezone)}). Brighter = more prompts.`, 'A "day" runs 6am to 6am, so a 2am prompt belongs to the night before.', "Angriest and calmest hours only count hours with at least 50 prompts."],
     data: { grid: rhythm2.weekdayHour.map((row2) => [...row2]), peakHour: rhythm2.peakHour, peakWeekday: rhythm2.peakWeekday, lateNightPct: rhythm2.lateNightDaysPct, callouts: clockCallouts(story, owl) },
@@ -45975,25 +45975,25 @@ function timelineBeat(story) {
   const first = tl[0], last2 = tl.at(-1);
   const now = share.last30d[0];
   const short3 = (l) => mask3(l);
-  const line = first.label !== last2.label ? `You started on ${short3(first.label)}. You're ending on ${short3(last2.label)}.` : `${short3(first.label)} from ${monthLabel(first.month)} to ${monthLabel(last2.month)}. No notes.`;
-  return { line, eras: tl.map((t) => ({ month: t.month, label: mask3(t.label) })), now: now ? `last 30 days: ${mask3(now.label)}, ${Math.round(now.promptSharePct)}% of prompts` : null };
+  const line2 = first.label !== last2.label ? `You started on ${short3(first.label)}. You're ending on ${short3(last2.label)}.` : `${short3(first.label)} from ${monthLabel(first.month)} to ${monthLabel(last2.month)}. No notes.`;
+  return { line: line2, eras: tl.map((t) => ({ month: t.month, label: mask3(t.label) })), now: now ? `last 30 days: ${mask3(now.label)}, ${Math.round(now.promptSharePct)}% of prompts` : null };
 }
 function faceoff(story) {
   const best = story?.models.best ?? null;
   const worst = story?.models.worst && story.models.worst.matchedMonths >= 2 ? story.models.worst : null;
   const beat = timelineBeat(story);
   if (!best && !worst && !beat) return null;
-  const gauge = (m, key2) => ({
+  const gauge = (m, key4) => ({
     label: displayModel(m.model, m.label),
     prompts: m.prompts,
-    per100: key2 === "praise" ? m.praisePer100 : m.swearPer100,
-    expected: key2 === "praise" ? m.expectedPraisePer100 : m.expectedSwearPer100,
-    ratio: key2 === "praise" ? m.praiseRatio : m.swearRatio
+    per100: key4 === "praise" ? m.praisePer100 : m.swearPer100,
+    expected: key4 === "praise" ? m.expectedPraisePer100 : m.expectedSwearPer100,
+    ratio: key4 === "praise" ? m.praiseRatio : m.swearRatio
   });
   const worstCard = worst ? cardOf(story, "worst_model") : null;
   const bestCard = cardOf(story, "best_model");
   const verdict = worstCard ? mask3(worstCard.headline) : bestCard ? mask3(bestCard.headline) : worst ? `${mask3(worst.label)} brings out the worst in you.` : best ? `${mask3(best.label)} is your favourite.` : "";
-  const headline4 = beat?.line ?? verdict;
+  const headline5 = beat?.line ?? verdict;
   const support = beat ? verdict : worstCard ? mask3(worstCard.support) : bestCard ? mask3(bestCard.support) : "";
   const honey = cardOf(story, "honeymoon");
   const callouts = [
@@ -46006,7 +46006,7 @@ function faceoff(story) {
     id: "faceoff",
     kicker: "THE MODEL LINEUP",
     expression: "side-eye",
-    headline: headline4,
+    headline: headline5,
     support,
     callouts,
     notes: ["Rates per 100 prompts sent to each model, compared with what the other models got from you in the same months (month-matched), so a model is not blamed for the month you had.", "Only models with at least 40 prompts seen in transcripts are ranked."],
@@ -46016,7 +46016,7 @@ function faceoff(story) {
 function erasLine(eras2) {
   const seq = [];
   for (const e of eras2) if (seq.at(-1) !== e.label) seq.push(e.label);
-  return seq.join(" \u25B8 ");
+  return seq.join(" \u2192 ");
 }
 function compareOf(card) {
   const observed = card?.chart.series.find((sr) => /observed/i.test(sr.name)) ?? card?.chart.series[0];
@@ -46490,8 +46490,8 @@ var init_deck = __esm({
 // packages/cli/src/audit-ui/plain.ts
 function plainCard(card, width = 80) {
   const out = [card.kicker];
-  for (const line of wrap3(card.headline, width - 2)) out.push(line);
-  if (card.support && card.kind !== "guess") for (const line of wrap3(card.support, width - 2)) out.push(line);
+  for (const line2 of wrap3(card.headline, width - 2)) out.push(line2);
+  if (card.support && card.kind !== "guess") for (const line2 of wrap3(card.support, width - 2)) out.push(line2);
   const rows = [];
   const d = card.data;
   switch (card.kind) {
@@ -46509,7 +46509,7 @@ function plainCard(card, width = 80) {
         const sp = card.data.spend;
         rows.push(`measured ${money2(sp.measured)}${sp.recovered ? ` \xB7 recovered ${money2(sp.recovered)}` : ""}${sp.estimated ? ` \xB7 est. ${money2(sp.estimated.low)}\u2013${money2(sp.estimated.high)} for ${count4(sp.estimated.prompts)} older prompts` : ""}`, "by month: " + sp.months.map((m) => `${monthLabel(m.month)} ${money2(m.measured)}`).join(" \xB7 "));
       }
-      for (const line of card.data.lines) rows.push(`${line.name.padEnd(24, ".")} ${money2(line.value)}`);
+      for (const line2 of card.data.lines) rows.push(`${line2.name.padEnd(24, ".")} ${money2(line2.value)}`);
       if (card.data.more) rows.push(`${"everything else".padEnd(24, ".")} ${money2(card.data.more)}`);
       rows.push(`${"TOTAL".padEnd(24)} ${money2(card.data.total)}`);
       if (card.data.byAgent.length) rows.push("by agent: " + card.data.byAgent.map((a) => `${a.name} ${a.share > 0 && a.share < 0.01 ? "<1" : Math.round(a.share * 100)}%`).join(" \xB7 "));
@@ -46534,7 +46534,7 @@ function plainCard(card, width = 80) {
       rows.push(`first swear at prompt #${card.data.median} (median) \xB7 ${card.data.sessions} of ${card.data.of} sessions`);
       break;
     case "talk":
-      for (const tile2 of card.data.tiles) rows.push(`${tile2.label.toLowerCase()}: ${tile2.quoted ? `\u201C${tile2.text}\u201D` : tile2.text}${tile2.count !== null ? ` \xD7${count4(tile2.count)}` : ""}`);
+      for (const tile of card.data.tiles) rows.push(`${tile.label.toLowerCase()}: ${tile.quoted ? `\u201C${tile.text}\u201D` : tile.text}${tile.count !== null ? ` \xD7${count4(tile.count)}` : ""}`);
       break;
     case "manners":
       rows.push(`${count4(card.data.kind)} ${card.data.kindLabel} vs ${count4(card.data.rude)} ${card.data.rudeLabel}`);
@@ -46566,7 +46566,7 @@ function plainCard(card, width = 80) {
       break;
   }
   for (const callout of card.callouts ?? []) rows.push(`> ${callout}`);
-  for (const row2 of rows) for (const line of wrap3(row2, width - 4)) out.push("  " + line);
+  for (const row2 of rows) for (const line2 of wrap3(row2, width - 4)) out.push("  " + line2);
   if (card.bridge) out.push(`  next: ${card.bridge}`);
   return out;
 }
@@ -46581,7 +46581,7 @@ function boardPlain(b2) {
     if (more.length) rows.push(more.join(" \xB7 "));
   }
   const bars = (title, list3) => {
-    if (list3.length) rows.push(`${title}: ` + list3.map((r3) => `${r3.label} ${r3.value}${r3.tags?.includes("fav") ? " \u2665" : ""}${r3.tags?.includes("nemesis") ? " \u2620" : ""}`).join(" \xB7 "));
+    if (list3.length) rows.push(`${title}: ` + list3.map((r3) => `${r3.label} ${r3.value}${r3.tags?.includes("fav") ? " (favourite)" : ""}${r3.tags?.includes("nemesis") ? " (nemesis)" : ""}`).join(" \xB7 "));
   };
   if (b2.models) {
     bars(`models (${b2.models.basis})`, b2.models.rows);
@@ -46606,7 +46606,7 @@ function renderPlain(snapshot2, options = {}, transfers = []) {
   if (storyOf(snapshot2)) {
     for (const card of buildDeck(snapshot2)) {
       if (card.kind === "board") continue;
-      story.push(...plainCard(card, width).map((line, i) => i === 0 ? "  " + line : "  " + line), "");
+      story.push(...plainCard(card, width).map((line2, i) => i === 0 ? "  " + line2 : "  " + line2), "");
     }
     story.push("  THE BOARD", "");
   }
@@ -46630,11 +46630,11 @@ function renderShareSvg(snapshot2, options = {}) {
   while (page.length && !lineText(page.at(-1))) page.pop();
   const cellWidth2 = 8.4;
   const cellHeight = 18;
-  const colors = { brand: "#F2A45E", accent: "#F2A45E", title: "#A6A29B", value: "#EEEAE4", text: "#EEEAE4", muted: "#A6A29B", faint: "#68665F" };
+  const colors = { brand: "#F7F8F8", accent: "#7C7CFF", title: "#8A8F98", value: "#F7F8F8", text: "#F7F8F8", muted: "#8A8F98", faint: "#5D6168" };
   const escape = (text2) => text2.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const body = page.map((line, row2) => {
+  const body = page.map((line2, row2) => {
     let column = 0;
-    const spans = line.map((part) => {
+    const spans = line2.map((part) => {
       const x = (column * cellWidth2 + 16).toFixed(1);
       column += [...part.text].length;
       if (!part.text.trim()) return "";
@@ -46644,10 +46644,10 @@ function renderShareSvg(snapshot2, options = {}) {
     return `<text y="${(row2 + 1) * cellHeight + 12}" xml:space="preserve">${spans}</text>`;
   });
   const width = Math.ceil(columns2 * cellWidth2 + 32);
-  const height = (page.length + 1) * cellHeight + 24;
+  const height2 = (page.length + 1) * cellHeight + 24;
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-    `<rect width="100%" height="100%" rx="12" fill="#10100F"/>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height2}" viewBox="0 0 ${width} ${height2}">`,
+    `<rect width="100%" height="100%" rx="12" fill="#08090A"/>`,
     `<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">`,
     ...body,
     "</g>",
@@ -46666,7 +46666,7 @@ var init_plain = __esm({
     init_deck();
     init_source4();
     init_format3();
-    lineText = (line) => line.map((part) => part.text).join("").trimEnd();
+    lineText = (line2) => line2.map((part) => part.text).join("").trimEnd();
     WEEK3 = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   }
 });
@@ -46707,59 +46707,57 @@ function to16(color) {
   if (max2 - min2 < 40) {
     if (lum > 200) return 97;
     if (lum > 120) return 37;
-    if (lum > 50) return 90;
+    if (lum > 25) return 90;
     return 30;
   }
-  if (red > green && red > blue) {
-    if (green / red < 0.36) return lum > 90 ? 91 : 31;
-    if (lum > 200) return 97;
-    return lum > 140 ? 93 : 33;
-  }
+  if (blue > red && blue > green) return lum > 90 ? 94 : 34;
+  if (red > green && red > blue) return lum > 90 ? 91 : 31;
   return lum > 128 ? 97 : 37;
 }
-var DEFAULT, hx, C, r, g, b, rgb, fade, HEAT, TUNED_256, CUBE, channels, hex;
+var DEFAULT, hx, C, r, g, b, rgb, fade, HEAT, TUNED_256, CUBE, luminance, channels, hex;
 var init_color = __esm({
   "packages/cli/src/audit-ui/gfx/color.ts"() {
     "use strict";
     DEFAULT = -1;
     hx = (rrggbb) => parseInt(rrggbb, 16);
     C = {
-      orange: hx("ff7a1a"),
-      ember: hx("ff4d00"),
-      peach: hx("ffb070"),
-      cream: hx("fff4e6"),
-      white: hx("ffffff"),
-      gray: hx("9a9a9a"),
-      slate: hx("5c5c5c"),
-      coal: hx("2a2a2a"),
-      /** Card background: a warm near-black so fades have a known start colour. */
-      ink: hx("0d0b0a"),
-      /** Mascot-only shades (still orange family). */
-      rust: hx("c94a0a"),
-      deep: hx("8a2e05"),
-      pupil: hx("1c0f08")
+      /** Card background, painted edge to edge (fades start from it). */
+      bg: hx("08090a"),
+      /** Primary text: headlines, values, display type. */
+      text: hx("f7f8f8"),
+      /** Secondary: supporting copy. */
+      text2: hx("8a8f98"),
+      /** Tertiary: labels, axes, hints. */
+      text3: hx("5d6168"),
+      /** Hairlines and empty tracks. */
+      rule: hx("1f2125"),
+      /** Chart ink for ordinary marks, and a softer one for estimates. */
+      bar: hx("3e424a"),
+      barSoft: hx("25282d"),
+      /** The one accent: the single point a screen is about. */
+      accent: hx("7c7cff"),
+      /** Placeholder ink (the locked title). */
+      ghost: hx("16181b")
     };
     r = (c) => c >> 16 & 255;
     g = (c) => c >> 8 & 255;
     b = (c) => c & 255;
     rgb = (red, green, blue) => Math.max(0, Math.min(255, Math.round(red))) << 16 | Math.max(0, Math.min(255, Math.round(green))) << 8 | Math.max(0, Math.min(255, Math.round(blue)));
-    fade = (color, alpha) => alpha >= 1 ? color : mix(C.ink, color, alpha);
-    HEAT = [hx("1a1512"), hx("5a1d05"), C.ember, C.orange, C.peach, C.cream];
+    fade = (color, alpha) => alpha >= 1 ? color : mix(C.bg, color, Math.max(0, alpha));
+    HEAT = [hx("17191c"), C.bar, C.text2, C.text];
     TUNED_256 = /* @__PURE__ */ new Map([
-      [C.orange, 208],
-      [C.ember, 202],
-      [C.peach, 215],
-      [C.cream, 230],
-      [C.white, 231],
-      [C.gray, 247],
-      [C.slate, 240],
-      [C.coal, 235],
-      [C.ink, 233],
-      [C.rust, 166],
-      [C.deep, 94],
-      [C.pupil, 232]
+      [C.bg, 232],
+      [C.text, 255],
+      [C.text2, 245],
+      [C.text3, 241],
+      [C.rule, 234],
+      [C.bar, 238],
+      [C.barSoft, 235],
+      [C.accent, 105],
+      [C.ghost, 233]
     ]);
     CUBE = [0, 95, 135, 175, 215, 255];
+    luminance = (color) => color < 0 ? 0 : (0.299 * r(color) + 0.587 * g(color) + 0.114 * b(color)) / 255;
     channels = (color) => [r(color), g(color), b(color)];
     hex = (color) => "#" + (color & hx("ffffff")).toString(16).padStart(6, "0").toUpperCase();
   }
@@ -46837,7 +46835,7 @@ var init_canvas = __esm({
         if (y < 0 || y >= this.h) return 0;
         const alpha = style.alpha ?? 1;
         if (alpha <= 0.02) return Math.min(maxW, textWidth(text2));
-        const fg = style.fg === void 0 ? C.cream : fade(style.fg, alpha);
+        const fg = style.fg === void 0 ? C.text : fade(style.fg, alpha);
         const attr = (style.bold ? BOLD : 0) | (style.dim ? DIM : 0) | (style.italic ? ITALIC : 0) | (style.underline ? UNDERLINE : 0);
         let used = 0;
         for (const grapheme of graphemes2(sanitize(text2))) {
@@ -46855,7 +46853,7 @@ var init_canvas = __esm({
       }
       fill(x, y, w, h, ch = " ", style = {}) {
         for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
-          this.put(xx, yy, ch, style.fg === void 0 ? C.cream : fade(style.fg, style.alpha ?? 1), style.bg ?? this.base);
+          this.put(xx, yy, ch, style.fg === void 0 ? C.text : fade(style.fg, style.alpha ?? 1), style.bg ?? this.base);
         }
       }
       /** Set one half-block pixel. `py` is in pixel rows (two per cell). Colour -1 erases. */
@@ -46936,7 +46934,7 @@ var init_canvas = __esm({
 });
 
 // packages/cli/src/audit-ui/gfx/draw.ts
-function rich(text2, base3, accent = { fg: C.orange, bold: true }, quote2 = { fg: C.peach, italic: true }) {
+function rich(text2, base3, accent = { fg: C.text }, quote2 = { italic: true }) {
   const spans = [];
   let inQuote = false;
   for (const word of text2.split(/(\s+)/)) {
@@ -46972,8 +46970,8 @@ function wrapSpans(spans, width) {
       return;
     }
     if (used + w > width && used > 0) {
-      const line = lines.at(-1);
-      while (line.length && /^\s+$/.test(line.at(-1).text)) line.pop();
+      const line2 = lines.at(-1);
+      while (line2.length && /^\s+$/.test(line2.at(-1).text)) line2.pop();
       lines.push([]);
       used = 0;
     }
@@ -46996,21 +46994,10 @@ function wrapSpans(spans, width) {
   for (const span3 of spans) pushWord(span3);
   const last2 = lines.at(-1);
   while (last2.length && /^\s+$/.test(last2.at(-1).text)) last2.pop();
-  return lines.filter((line, i) => line.length || i === 0);
-}
-function drawSpans(canvas, x, y, line, alpha = 1, chars = Infinity) {
-  let cx = x;
-  let left = chars;
-  for (const span3 of line) {
-    if (left <= 0) break;
-    const text2 = [...span3.text].slice(0, left).join("");
-    left -= [...span3.text].length;
-    cx += canvas.text(cx, y, text2, { ...span3.style, alpha: (span3.style.alpha ?? 1) * alpha });
-  }
-  return cx - x;
+  return lines.filter((line2, i) => line2.length || i === 0);
 }
 function wrapText(text2, width, maxLines = Infinity) {
-  const lines = wrapSpans(rich(text2, {}), width).map((line) => line.map((s) => s.text).join(""));
+  const lines = wrapSpans(rich(text2, {}), width).map((line2) => line2.map((s) => s.text).join(""));
   if (lines.length <= maxLines) return lines;
   const kept = lines.slice(0, maxLines);
   let last2 = kept.at(-1);
@@ -47018,43 +47005,13 @@ function wrapText(text2, width, maxLines = Infinity) {
   kept[kept.length - 1] = last2.trimEnd() + "\u2026";
   return kept;
 }
-function spaced(text2) {
-  return text2.toUpperCase().split(" ").map((word) => [...word].join(" ")).join("   ");
-}
-function box(canvas, r3, color, options = {}) {
-  if (r3.w < 2 || r3.h < 2) return;
-  const [tl, tr, bl, br, hz, vt] = options.ascii ? ["+", "+", "+", "+", "-", "|"] : options.rounded === false ? ["\u250C", "\u2510", "\u2514", "\u2518", options.dashed ? "\u2504" : "\u2500", options.dashed ? "\u2506" : "\u2502"] : ["\u256D", "\u256E", "\u2570", "\u256F", options.dashed ? "\u2504" : "\u2500", options.dashed ? "\u2506" : "\u2502"];
-  const bg = options.fill;
-  if (bg !== void 0) for (let y = r3.y + 1; y < r3.y + r3.h - 1; y++) for (let x = r3.x + 1; x < r3.x + r3.w - 1; x++) canvas.put(x, y, " ", C.cream, bg);
-  canvas.put(r3.x, r3.y, tl, color, bg);
-  canvas.put(r3.x + r3.w - 1, r3.y, tr, color, bg);
-  canvas.put(r3.x, r3.y + r3.h - 1, bl, color, bg);
-  canvas.put(r3.x + r3.w - 1, r3.y + r3.h - 1, br, color, bg);
-  for (let x = r3.x + 1; x < r3.x + r3.w - 1; x++) {
-    canvas.put(x, r3.y, hz, color, bg);
-    canvas.put(x, r3.y + r3.h - 1, hz, color, bg);
-  }
-  for (let y = r3.y + 1; y < r3.y + r3.h - 1; y++) {
-    canvas.put(r3.x, y, vt, color, bg);
-    canvas.put(r3.x + r3.w - 1, y, vt, color, bg);
-  }
-}
-function hbar(canvas, x, y, width, frac, color, ascii = false) {
-  const total2 = Math.max(0, Math.min(1, frac)) * width;
-  const eighths = Math.round(total2 * 8);
-  const full = Math.floor(eighths / 8);
-  const rest = eighths % 8;
-  for (let i = 0; i < full; i++) canvas.put(x + i, y, ascii ? "=" : "\u2588", color);
-  if (rest > 0 && full < width) canvas.put(x + full, y, ascii ? "-" : EIGHTHS_H[rest], color);
-  return total2;
-}
-function vbar(canvas, x, bottom, height, frac, color, width = 1, ascii = false) {
-  const total2 = Math.max(0, Math.min(1, frac)) * height;
+function vbar(canvas, x, bottom, height2, frac, color, width = 1, ascii = false) {
+  const total2 = Math.max(0, Math.min(1, frac)) * height2;
   const eighths = Math.round(total2 * 8);
   const full = Math.floor(eighths / 8);
   const rest = eighths % 8;
   for (let i = 0; i < full; i++) for (let k = 0; k < width; k++) canvas.put(x + k, bottom - i, ascii ? "#" : "\u2588", color);
-  if (rest > 0 && full < height) for (let k = 0; k < width; k++) canvas.put(x + k, bottom - full, ascii ? "." : EIGHTHS_V[rest], color);
+  if (rest > 0 && full < height2) for (let k = 0; k < width; k++) canvas.put(x + k, bottom - full, ascii ? "." : EIGHTHS_V[rest], color);
 }
 function pxLine(canvas, x0, y0, x1, y1, color) {
   if (![x0, y0, x1, y1].every(Number.isFinite)) return;
@@ -47079,31 +47036,16 @@ function pxLine(canvas, x0, y0, x1, y1, color) {
     }
   }
 }
-function textRight(canvas, right, y, text2, style) {
-  canvas.text(right - textWidth(text2), y, text2, style);
-}
 function textCenter(canvas, cx, y, text2, style) {
   canvas.text(Math.round(cx - textWidth(text2) / 2), y, text2, style);
 }
-function bar8(canvas, x, y, width, frac, color, ascii = false, track) {
-  if (width <= 0) return;
-  const f = Math.max(0, Math.min(1, frac));
-  let eighths = Math.round(f * width * 8);
-  if (f > 0 && eighths === 0) eighths = 1;
-  const full = Math.floor(eighths / 8);
-  const rest = eighths % 8;
-  if (track !== void 0) for (let i = 0; i < width; i++) canvas.put(x + i, y, ascii ? " " : "\xB7", track);
-  for (let i = 0; i < full; i++) canvas.put(x + i, y, ascii ? "#" : "\u2588", color);
-  if (rest > 0 && full < width) canvas.put(x + full, y, ascii ? "." : EIGHTHS_H[rest], color);
-}
-var NUMBERISH, EIGHTHS_H, EIGHTHS_V;
+var NUMBERISH, EIGHTHS_V;
 var init_draw = __esm({
   "packages/cli/src/audit-ui/gfx/draw.ts"() {
     "use strict";
     init_canvas();
     init_color();
     NUMBERISH = /^[(\[]?[~<>]?[$£€#×]?\d[\d,.]*(?:[%×xKMBkh]|st|nd|rd|th|am|pm)?[)\].,!:;?]*$|^×\d+[.,]?$/i;
-    EIGHTHS_H = ["", "\u258F", "\u258E", "\u258D", "\u258C", "\u258B", "\u258A", "\u2589"];
     EIGHTHS_V = ["", "\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587"];
   }
 });
@@ -47125,777 +47067,956 @@ function seg2(t, start, dur, ease = easeOutCubic) {
 function countUp(target, t, start, dur) {
   return target * seg2(t, start, dur, easeOutQuart);
 }
-function hash01(seed) {
-  let x = (seed | 0) ^ 2654435769;
-  x = Math.imul(x ^ x >>> 16, 2246822507);
-  x = Math.imul(x ^ x >>> 13, 3266489909);
-  x ^= x >>> 16;
-  return (x >>> 0) / 4294967296;
-}
-var clamp012, easeOutCubic, easeInOutCubic, easeOutQuart, easeOutBack;
+var clamp012, easeOutCubic, easeOutQuart;
 var init_motion = __esm({
   "packages/cli/src/audit-ui/gfx/motion.ts"() {
     "use strict";
     clamp012 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
     easeOutCubic = (t) => 1 - (1 - clamp012(t)) ** 3;
-    easeInOutCubic = (t) => {
-      const k = clamp012(t);
-      return k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
-    };
     easeOutQuart = (t) => 1 - (1 - clamp012(t)) ** 4;
-    easeOutBack = (t) => {
-      const k = clamp012(t);
-      const c1 = 1.70158, c3 = c1 + 1;
-      return 1 + c3 * (k - 1) ** 3 + c1 * (k - 1) ** 2;
-    };
   }
 });
 
-// packages/cli/src/audit-ui/mascot.ts
-function bigBody(fullness = 0) {
-  const px = [];
-  BIG_SPANS.forEach(([l, r3], y) => {
-    const grow = y >= 6 ? fullness : 0;
-    for (let x = l - grow; x <= r3 + grow; x++) {
-      let color = O;
-      const edgeR = x >= r3 + grow - (y >= 4 ? 1 : 0);
-      if (y >= 12) color = RIM;
-      else if (y === 11 && (x <= l - grow + 1 || x >= r3 + grow - 1)) color = RIM;
-      else if (y >= 10 && (x === l - grow || x === r3 + grow)) color = RIM;
-      else if (edgeR && y >= 3) color = SHADE;
-      px.push([x, y, color]);
-    }
-  });
-  px.push([7, -1, O], [8, -1, O], [8, -2, O], [9, -2, SHADE]);
-  px.push([5, 1, C.peach], [6, 1, C.peach], [3, 2, C.peach], [4, 2, C.cream], [5, 2, C.peach], [3, 3, C.peach], [2, 4, C.peach]);
-  px.push([3, 14, RIM], [11, 14, RIM], [11, 15, SHADE]);
-  return px;
-}
-function eyes(kind3, px) {
-  for (const ex of [EL, ER]) {
-    switch (kind3) {
-      case "open":
-        px.push([ex, EY, GLINT], [ex + 1, EY, EYE], [ex, EY + 1, EYE], [ex + 1, EY + 1, EYE]);
-        break;
-      case "blink":
-        px.push([ex, EY + 1, EYE], [ex + 1, EY + 1, EYE]);
-        break;
-      case "happy":
-        px.push([ex, EY + 1, EYE], [ex + 1, EY, EYE], [ex + 2, EY + 1, EYE]);
-        break;
-      case "sleepy":
-        px.push([ex, EY + 1, EYE], [ex + 1, EY + 1, EYE], [ex + 1, EY + 2, SHADE]);
-        break;
-      case "wide":
-        px.push([ex - 1, EY - 1, GLINT], [ex, EY - 1, GLINT], [ex + 1, EY - 1, GLINT], [ex + 2, EY - 1, GLINT]);
-        px.push([ex - 1, EY, GLINT], [ex, EY, EYE], [ex + 1, EY, EYE], [ex + 2, EY, GLINT]);
-        px.push([ex - 1, EY + 1, GLINT], [ex, EY + 1, EYE], [ex + 1, EY + 1, EYE], [ex + 2, EY + 1, GLINT]);
-        px.push([ex, EY + 2, GLINT], [ex + 1, EY + 2, GLINT]);
-        break;
-      case "lid":
-        px.push([ex, EY, SHADE], [ex + 1, EY, SHADE], [ex, EY + 1, EYE], [ex + 1, EY + 1, EYE]);
-        break;
-      case "side":
-        px.push([ex - 1, EY, GLINT], [ex, EY, GLINT], [ex + 1, EY, EYE]);
-        px.push([ex - 1, EY + 1, GLINT], [ex, EY + 1, GLINT], [ex + 1, EY + 1, EYE]);
-        px.push([ex - 1, EY - 1, SHADE], [ex, EY - 1, SHADE], [ex + 1, EY - 1, SHADE]);
-        break;
-      case "heart": {
-        const hx2 = ex === EL ? 1 : 8;
-        px.push([hx2 + 1, EY - 1, HEART], [hx2 + 3, EY - 1, HEART]);
-        for (let k = 0; k < 5; k++) px.push([hx2 + k, EY, HEART]);
-        for (let k = 1; k < 4; k++) px.push([hx2 + k, EY + 1, HEART]);
-        px.push([hx2 + 2, EY + 2, HEART]);
-        px.push([hx2, EY - 1, O], [hx2 + 2, EY - 1, O], [hx2 + 4, EY - 1, O]);
-        break;
-      }
-    }
-  }
-}
-function mouth(kind3, px) {
-  const my = 9;
-  switch (kind3) {
-    case "smile":
-      px.push([5, my, MOUTH], [8, my, MOUTH], [6, my + 1, MOUTH], [7, my + 1, MOUTH]);
-      break;
-    case "grin":
-      px.push([4, my, MOUTH], [5, my, MOUTH], [6, my, MOUTH], [7, my, MOUTH], [8, my, MOUTH], [9, my, MOUTH]);
-      px.push([5, my + 1, MOUTH], [6, my + 1, TONGUE], [7, my + 1, TONGUE], [8, my + 1, MOUTH]);
-      break;
-    case "open":
-      px.push([5, my, MOUTH], [6, my, MOUTH], [7, my, MOUTH], [8, my, MOUTH]);
-      px.push([5, my + 1, MOUTH], [6, my + 1, TONGUE], [7, my + 1, TONGUE], [8, my + 1, MOUTH]);
-      px.push([6, my + 2, MOUTH], [7, my + 2, MOUTH]);
-      break;
-    case "chew":
-      px.push([5, my + 1, MOUTH], [6, my + 1, MOUTH], [7, my + 1, MOUTH], [8, my + 1, MOUTH]);
-      break;
-    case "o":
-      px.push([6, my, MOUTH], [7, my, MOUTH], [6, my + 1, MOUTH], [7, my + 1, MOUTH]);
-      break;
-    case "small":
-      px.push([6, my + 1, MOUTH], [7, my + 1, MOUTH]);
-      break;
-    case "smirk":
-      px.push([5, my + 1, MOUTH], [6, my + 1, MOUTH], [7, my + 1, MOUTH], [8, my, MOUTH], [9, my - 1, MOUTH]);
-      break;
-    case "flat":
-      px.push([5, my + 1, MOUTH], [6, my + 1, MOUTH], [7, my + 1, MOUTH], [8, my + 1, MOUTH]);
-      break;
-    case "frown":
-      px.push([6, my, MOUTH], [7, my, MOUTH], [5, my + 1, MOUTH], [8, my + 1, MOUTH]);
-      break;
-  }
-}
-function blush(px) {
-  px.push([1, 9, BLUSH], [2, 9, BLUSH], [11, 9, BLUSH], [12, 9, BLUSH]);
-}
-function bigPixels(expression, fullness = 0) {
-  const px = bigBody(fullness);
-  switch (expression) {
-    case "idle":
-      eyes("open", px);
-      mouth("smile", px);
-      blush(px);
-      break;
-    case "blink":
-      eyes("blink", px);
-      mouth("smile", px);
-      blush(px);
-      break;
-    case "chewing":
-      eyes("happy", px);
-      mouth("chew", px);
-      blush(px);
-      break;
-    case "chewing2":
-      eyes("happy", px);
-      mouth("o", px);
-      blush(px);
-      break;
-    case "shocked":
-      eyes("wide", px);
-      mouth("open", px);
-      break;
-    case "smirk":
-      eyes("lid", px);
-      mouth("smirk", px);
-      blush(px);
-      break;
-    case "sleepy":
-      eyes("sleepy", px);
-      mouth("small", px);
-      break;
-    case "heart-eyes":
-      eyes("heart", px);
-      mouth("grin", px);
-      blush(px);
-      break;
-    case "side-eye":
-      eyes("side", px);
-      mouth("flat", px);
-      break;
-    case "proud":
-      eyes("happy", px);
-      mouth("grin", px);
-      blush(px);
-      break;
-    case "sad":
-      eyes("open", px);
-      mouth("frown", px);
-      break;
-    case "waving":
-    case "waving2": {
-      eyes("open", px);
-      mouth("grin", px);
-      blush(px);
-      const up = expression === "waving";
-      if (up) px.push([14, 7, O], [15, 6, O], [15, 5, O], [16, 4, O], [16, 3, C.peach]);
-      else px.push([14, 7, O], [15, 7, O], [16, 6, O], [17, 5, O], [17, 4, C.peach]);
-      break;
-    }
-  }
-  return px;
-}
-function smallPixels(expression) {
-  const px = [];
-  SMALL_SPANS.forEach(([l, r3], y) => {
-    for (let x = l; x <= r3; x++) px.push([x, y, y === 7 || y === 6 && (x === l || x === r3) ? RIM : x === r3 && y >= 2 ? SHADE : O]);
-  });
-  px.push([2, 1, C.peach], [1, 2, C.cream]);
-  const eye = (x) => {
-    switch (expression) {
-      case "blink":
-      case "sleepy":
-        px.push([x, 4, EYE]);
-        break;
-      case "chewing":
-      case "chewing2":
-      case "proud":
-        px.push([x, 4, EYE]);
-        px.push([x, 3, O]);
-        break;
-      case "shocked":
-        px.push([x, 2, GLINT], [x, 3, EYE], [x, 4, GLINT]);
-        break;
-      case "heart-eyes":
-        px.push([x, 3, HEART], [x, 4, HEART]);
-        break;
-      case "side-eye":
-        px.push([x, 3, GLINT], [x + 1, 3, EYE], [x, 4, GLINT], [x + 1, 4, EYE]);
-        break;
-      case "smirk":
-        px.push([x, 3, SHADE], [x, 4, EYE]);
-        break;
-      default:
-        px.push([x, 3, EYE], [x, 4, EYE]);
-    }
-  };
-  eye(2);
-  eye(expression === "side-eye" ? 4 : 5);
-  switch (expression) {
-    case "shocked":
-    case "chewing2":
-      px.push([3, 6, MOUTH], [4, 6, MOUTH]);
-      break;
-    case "smirk":
-      px.push([3, 6, MOUTH], [4, 6, MOUTH], [5, 5, MOUTH]);
-      break;
-    case "side-eye":
-    case "chewing":
-      px.push([3, 6, MOUTH], [4, 6, MOUTH]);
-      break;
-    case "sleepy":
-      px.push([4, 6, MOUTH]);
-      break;
-    case "sad":
-      px.push([3, 5, MOUTH], [4, 5, MOUTH], [2, 6, MOUTH], [5, 6, MOUTH]);
-      break;
-    default:
-      px.push([2, 5, MOUTH], [5, 5, MOUTH], [3, 6, MOUTH], [4, 6, MOUTH]);
-  }
-  if (expression === "waving" || expression === "waving2") px.push([8, 4, O], [9, expression === "waving" ? 3 : 4, O], [9, expression === "waving" ? 2 : 3, C.peach]);
-  return px;
-}
-function mascotLine(expression, ascii = false) {
-  return (ascii ? LINE_ASCII : LINE)[expression];
-}
-function drawMascot(canvas, x, y, expression, options = {}) {
-  const size = options.size ?? "big";
-  const scale2 = Math.max(1, Math.round(options.scale ?? 1));
-  const pixels = size === "big" ? bigPixels(expression, options.fullness ?? 0) : smallPixels(expression);
-  const lift = Math.round(options.bob ?? 0);
-  const offset = size === "big" ? 2 : 0;
-  const top = size === "big" ? 2 : 0;
-  for (const [px, py, color] of pixels) {
-    for (let sy = 0; sy < scale2; sy++) for (let sx = 0; sx < scale2; sx++) {
-      canvas.px(x + (px + offset) * scale2 + sx, y * 2 + (py + top) * scale2 + sy - lift, color);
-    }
-  }
-}
-var O, SHADE, RIM, EYE, GLINT, MOUTH, TONGUE, BLUSH, HEART, BIG_SPANS, EL, ER, EY, SMALL_SPANS, LINE, LINE_ASCII;
-var init_mascot = __esm({
-  "packages/cli/src/audit-ui/mascot.ts"() {
+// packages/cli/src/audit-ui/theme/tokens.ts
+var TK, fadeIn;
+var init_tokens = __esm({
+  "packages/cli/src/audit-ui/theme/tokens.ts"() {
     "use strict";
     init_color();
-    O = C.orange;
-    SHADE = mix(C.orange, C.rust, 0.55);
-    RIM = C.rust;
-    EYE = C.pupil;
-    GLINT = C.white;
-    MOUTH = C.deep;
-    TONGUE = C.ember;
-    BLUSH = mix(C.ember, C.peach, 0.35);
-    HEART = C.cream;
-    BIG_SPANS = [
-      [5, 8],
-      [3, 10],
-      [2, 11],
-      [1, 12],
-      [1, 12],
-      [0, 13],
-      [0, 13],
-      [0, 13],
-      [0, 13],
-      [0, 13],
-      [0, 13],
-      [0, 13],
-      [1, 12],
-      [2, 11]
-    ];
-    EL = 3;
-    ER = 9;
-    EY = 6;
-    SMALL_SPANS = [[2, 5], [1, 6], [0, 7], [0, 7], [0, 7], [0, 7], [0, 7], [1, 6]];
-    LINE = {
-      idle: "(\u2022\u1D17\u2022)",
-      blink: "(-\u1D17-)",
-      chewing: "(^~^)",
-      chewing2: "(^o^)",
-      shocked: "(\u2299o\u2299)",
-      smirk: "(\xAC\u1D17\xAC)",
-      sleepy: "(-_-)zz",
-      "heart-eyes": "(\u2665\u1D17\u2665)",
-      "side-eye": "(\xAC_\xAC)",
-      proud: "(^\u1D17^)",
-      waving: "(\u2022\u1D17\u2022)/",
-      waving2: "(\u2022\u1D17\u2022)~",
-      sad: "(\u2022_\u2022)"
-    };
-    LINE_ASCII = {
-      idle: "(o_o)",
-      blink: "(-_-)",
-      chewing: "(^~^)",
-      chewing2: "(^o^)",
-      shocked: "(O_O)",
-      smirk: "(\xAC_\xAC)",
-      sleepy: "(-_-)zz",
-      "heart-eyes": "(<3_<3)",
-      "side-eye": "(\xAC_\xAC)",
-      proud: "(^_^)",
-      waving: "(o_o)/",
-      waving2: "(o_o)/",
-      sad: "(o_o;)"
-    };
+    TK = { ...C, face: "solid" };
+    fadeIn = (tk, color, alpha) => alpha >= 1 ? color : mix(tk.bg, color, Math.max(0, alpha));
   }
 });
 
-// packages/cli/src/audit-ui/cards/chrome.ts
-function drawRail(s, y) {
-  const { c, w, tier, index, total: total2, t } = s;
-  const x0 = tier.mx;
-  const width = w - tier.mx * 2;
-  const gap2 = total2 * 2 - 1 <= width ? 1 : 0;
-  const segW = Math.max(1, Math.floor((width - gap2 * (total2 - 1)) / total2));
-  const fill = seg2(t, 0, 420, easeOutCubic);
-  for (let i = 0; i < total2; i++) {
-    const sx = x0 + i * (segW + gap2);
-    for (let k = 0; k < segW; k++) {
-      const done = i < index || i === index && k < Math.ceil(segW * fill);
-      const color = done ? i === index ? C.orange : fade(C.orange, 0.55) : C.coal;
-      c.put(sx + k, y, s.caps.unicode ? done ? "\u2501" : "\u2500" : done ? "=" : "-", color);
-    }
-  }
-  return fill < 1;
+// packages/cli/src/audit-ui/theme/kit.ts
+function begin(s, tk = TK) {
+  const L = s.tier.id === "L";
+  const mx = L ? 6 : 3;
+  for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) s.c.put(x, y, " ", tk.text, tk.bg, 0);
+  return { s, c: s.c, tk, W: s.w, H: s.h, mx, iw: s.w - mx * 2, L, uni: s.caps.unicode, busy: false, px: /* @__PURE__ */ new Map() };
 }
-function drawFooter(s, extra) {
-  const { c, w, h, tier } = s;
-  const y = tier.id === "L" ? h - 2 : h - 1;
-  const arrows = s.caps.unicode ? "\u2190 \u2192" : "< >";
-  const items = [];
-  if (extra) items.push([extra.split(" ")[0], extra.split(" ").slice(1).join(" ")]);
-  items.push([arrows, tier.id === "S" ? "" : "move"], ["b", "board"], ["s", "share"], ["?", "how"], ["q", "quit"]);
-  let x = tier.mx;
-  for (const [key2, label4] of items) {
-    const need = textWidth(key2) + (label4 ? 1 + textWidth(label4) : 0) + 3;
-    if (x + need > w - tier.mx - (tier.id === "S" ? 0 : 12)) break;
-    x += c.text(x, y, key2, { fg: C.gray, bold: true });
-    if (label4) x += 1 + c.text(x + 1, y, label4, { fg: C.slate });
+function fade2(k, start, dur = 320) {
+  if (!k.s.caps.motion) return 1;
+  const a = seg2(k.s.t, start, dur, easeOutCubic);
+  if (a < 1) k.busy = true;
+  return a;
+}
+function txt(k, x, y, text2, fg, st = {}, maxW = Infinity) {
+  const a = st.a ?? 1;
+  if (a <= 0.02) return Math.min(maxW, textWidth(text2));
+  return k.c.text(x, y, text2, { fg: fadeIn(k.tk, fg, a), bg: k.tk.bg, bold: st.bold, italic: st.italic }, maxW);
+}
+function txtRight(k, right, y, text2, fg, st = {}) {
+  return txt(k, right - textWidth(text2), y, text2, fg, st);
+}
+function rule(k, x, y, w, color = k.tk.rule, a = 1) {
+  for (let i = 0; i < w; i++) k.c.put(x + i, y, k.uni ? "\u2500" : "-", fadeIn(k.tk, color, a), k.tk.bg, 0);
+}
+function vrule(k, x, y, h, a = 1) {
+  for (let i = 0; i < h; i++) k.c.put(x, y + i, k.uni ? "\u2502" : "|", fadeIn(k.tk, k.tk.rule, a), k.tk.bg, 0);
+}
+function label4(k, x, y, text2, a = 1, maxW = Infinity) {
+  return txt(k, x, y, text2.toUpperCase().replace(/…$/, ""), k.tk.text3, { a }, maxW);
+}
+function supportSpans(k, text2, base3 = k.tk.text2) {
+  return text2.split(/(\s+)/).filter(Boolean).map((word) => ({ text: word, style: { fg: NUMBERISH2.test(word) ? k.tk.text : base3, bg: k.tk.bg } }));
+}
+function headline4(k, x, y, w, head, support, maxLines = 3, a = 1) {
+  const headSpans = head.split(/(\s+)/).filter(Boolean).map((t) => ({ text: t, style: { fg: k.tk.text, bg: k.tk.bg, bold: true } }));
+  const both = support ? [...headSpans, { text: " ", style: { fg: k.tk.text2, bg: k.tk.bg } }, ...supportSpans(k, support)] : headSpans;
+  let lines = wrapSpans(both, w);
+  if (lines.length > maxLines) lines = wrapSpans(headSpans, w);
+  lines.forEach((line2, i) => {
+    let cx = x;
+    for (const sp of line2) cx += txt(k, cx, y + i, sp.text, sp.style.fg, { bold: sp.style.bold, italic: sp.style.italic, a });
+  });
+  return lines.length;
+}
+function header(k, right) {
+  const { s, tk, mx, iw } = k;
+  const y = k.L ? 1 : 0;
+  const wx = mx + txt(k, mx, y, "slopie", tk.text, { bold: true });
+  txt(k, wx + 1, y, "audit", tk.text3);
+  const meta = right ?? (s.share ? "" : `${s.index + 1} / ${s.total}`);
+  if (meta) txtRight(k, mx + iw, y, meta, tk.text3);
+  const done = s.share || right !== void 0 ? 0 : Math.round(iw * ((s.index + (s.caps.motion ? seg2(s.t, 0, 500, easeOutCubic) : 1)) / s.total));
+  if (s.caps.motion && s.t < 500) k.busy = true;
+  for (let i = 0; i < iw; i++) k.c.put(mx + i, y + 1, k.uni ? "\u2500" : "-", i < done ? tk.text3 : tk.rule, tk.bg, 0);
+  return y + 2;
+}
+function footer3(k, opts = {}) {
+  const { s, tk, mx, iw } = k;
+  const y = k.L ? k.H - 2 : k.H - 1;
+  const arrows = k.uni ? "\u2190 \u2192" : "< >";
+  const keys5 = opts.keys ?? [[arrows, k.L || k.W >= 80 ? "move" : ""], ["b", "board"], ["s", "share"], ["?", "how"], ["q", "quit"]];
+  const local = s.online ? "online \xB7 Jev" : "all local";
+  const right = opts.right ?? [[k.uni ? "\u25CF" : "*", tk.accent], [" " + local, tk.text3]];
+  const rw = right.reduce((a, [t]) => a + textWidth(t), 0);
+  let rx = mx + iw - rw;
+  for (const [t, col3] of right) rx += txt(k, rx, y, t, col3);
+  let x = mx;
+  for (const [key4, word] of keys5) {
+    const need = textWidth(key4) + (word ? 1 + textWidth(word) : 0);
+    if (x + need > mx + iw - rw - 3) break;
+    x += txt(k, x, y, key4, tk.text2);
+    if (word) x += 1 + txt(k, x + 1, y, word, tk.text3);
     x += 3;
   }
-  if (tier.id !== "S") {
-    const local = s.online ? "online \xB7 Jev" : "all local";
-    c.text(w - tier.mx - textWidth(local) - 2, y, s.caps.unicode ? "\u25CF" : "*", { fg: fade(C.orange, 0.7) });
-    c.text(w - tier.mx - textWidth(local), y, local, { fg: C.slate });
-  }
+  return y;
 }
-function drawMascotCorner(s, expression, y) {
-  const { c, w, tier, t } = s;
-  const hop = t < 420 ? Math.sin(Math.PI * Math.min(1, t / 420)) * 2 : 0;
-  const face = s.blink && (expression === "idle" || expression === "waving" || expression === "waving2") ? "blink" : expression;
-  if (tier.mascot === "big" && s.caps.color !== "none" && s.caps.color !== "16") {
-    const x2 = w - tier.mx - 18;
-    drawMascot(c, x2, y, face, { bob: hop });
-    return { x: x2, w: 18, h: 9 };
+var NUMBERISH2;
+var init_kit = __esm({
+  "packages/cli/src/audit-ui/theme/kit.ts"() {
+    "use strict";
+    init_canvas();
+    init_draw();
+    init_motion();
+    init_tokens();
+    NUMBERISH2 = /^[(\[]?[~<>≈]?[$£€#×]?\d[\d,.]*(?:[%×xKMBkh]|st|nd|rd|th|am|pm)?[)\].,!:;?]*$|^×\d+[.,]?$/i;
   }
-  if (tier.mascot !== "line" && s.caps.color !== "none" && s.caps.color !== "16") {
-    const x2 = w - tier.mx - 9;
-    drawMascot(c, x2, y, face, { size: "compact", bob: hop > 1 ? 1 : 0 });
-    return { x: x2, w: 10, h: 4 };
+});
+
+// packages/cli/src/audit-ui/theme/chrome.ts
+function chrome(s, card, o = {}) {
+  const k = begin(s);
+  const top = header(k);
+  const { mx, iw, L } = k;
+  const keys5 = [];
+  if (o.hint) keys5.push(o.hint);
+  const arrows = k.uni ? "\u2190 \u2192" : "< >";
+  keys5.push([arrows, "move"], ["b", "board"], ["s", "share"], ["?", "how"], ["q", "quit"]);
+  let bottom = footer3(k, { keys: keys5 }) - (L ? 2 : 1);
+  let y = top + (L ? 2 : 1);
+  label4(k, mx, y, card.kicker, fade2(k, 0));
+  y += L ? 2 : 1;
+  if (o.headline !== false) {
+    const support = o.support ?? card.support ?? "";
+    const rows = headline4(k, mx, y, Math.min(iw, L ? 88 : iw), card.headline, support, o.maxLines ?? (L ? 3 : 2), fade2(k, 60));
+    y += rows + (L ? 2 : 1);
   }
-  const line = mascotLine(face, !s.caps.unicode);
-  const x = w - tier.mx - textWidth(line);
-  c.text(x, y, line, { fg: C.orange, bold: true });
-  return { x, w: textWidth(line), h: 1 };
-}
-function drawChrome(s, card, options = {}) {
-  const { c, w, h, tier, t } = s;
-  const L = tier.id === "L";
-  const railY = L ? 1 : 0;
-  let busy = s.share ? false : drawRail(s, railY);
-  const kickY = L ? 3 : tier.id === "M" ? 2 : 2;
-  const a = seg2(t, 0, 220);
-  busy ||= a < 1;
-  const kicker = L ? spaced(card.kicker) : card.kicker;
-  c.text(tier.mx, kickY, kicker, { fg: C.orange, bold: true, alpha: a });
-  const pos = `${s.index + 1}/${s.total}`;
-  let mascotBox = { x: w, w: 0, h: 0 };
-  if (options.mascot !== false) {
-    const my = L ? 2 : 1;
-    mascotBox = drawMascotCorner(s, options.expression ?? card.expression, tier.mascot === "line" ? kickY : my);
-  }
-  if (s.share) {
-  } else if (tier.mascot === "line" || options.mascot === false) c.text(Math.min(mascotBox.x, w - tier.mx) - textWidth(pos) - 2, kickY, pos, { fg: C.slate, alpha: a });
-  else c.text(tier.mx + textWidth(kicker) + 3, kickY, pos, { fg: C.slate, alpha: a });
-  let y = kickY + 2;
-  if (options.headline !== false) {
-    const right = tier.mascot === "line" || options.mascot === false ? w - tier.mx : mascotBox.x - 3;
-    const width = Math.max(20, right - tier.mx);
-    const maxLines = options.maxLines ?? 3;
-    const lines = wrapSpans(rich(card.headline, { fg: C.cream, bold: true }), width);
-    lines.slice(0, maxLines).forEach((line, i) => {
-      const la = seg2(t, 60 + i * 70, 260);
-      busy ||= la < 1;
-      drawSpans(c, tier.mx, y + i, line, la);
-    });
-    y += Math.min(maxLines, lines.length);
-    if (card.support) {
-      y += 1;
-      const sw = Math.max(20, (y >= (L ? 2 : 1) + mascotBox.h ? w - tier.mx : right) - tier.mx);
-      const support = wrapSpans(rich(card.support, { fg: C.gray }, { fg: C.peach, bold: false }, { fg: C.peach, italic: true }), sw).slice(0, L ? 2 : 2);
-      const sa = seg2(t, 200, 300);
-      busy ||= sa < 1;
-      support.forEach((line, i) => drawSpans(c, tier.mx, y + i, line, sa));
-      y += support.length;
-    }
-  }
-  const minTop = options.mascot === false ? y + 1 : Math.max(y + 1, (L ? 2 : 1) + mascotBox.h + (L ? 0 : 0));
-  const top = options.bodyUnderKicker ? kickY + 2 : Math.max(y + 2, minTop);
-  let bottom = L ? h - 3 : h - 2;
   if (card.bridge && !s.share && (card.kind !== "guess" || s.state.guess !== void 0)) {
-    const ba = s.caps.motion ? seg2(t - (card.kind === "guess" ? s.state.guessAt ?? 0 : 0), 900, 400) : 1;
-    busy ||= ba < 1;
-    const text2 = `next ${s.caps.unicode ? "\u2192" : "->"} ${card.bridge}`;
-    const by = bottom;
-    if (ba > 0) c.text(Math.max(tier.mx, w - tier.mx - textWidth(text2)), by, text2, { fg: C.gray, italic: true, alpha: ba });
-    bottom -= 1;
+    const since = card.kind === "guess" ? s.state.guessAt ?? 0 : 0;
+    const a = s.caps.motion ? fade2(k, since + 900, 400) : 1;
+    const text2 = `next ${k.uni ? "\u2192" : "->"} ${card.bridge}`;
+    if (textWidth(text2) <= iw) txt(k, mx + iw - textWidth(text2), bottom, text2, k.tk.text3, { a });
+    bottom -= 2;
   }
-  drawFooter(s, options.hint);
-  const mascotRect = { x: mascotBox.x, y: tier.mascot === "line" ? kickY : L ? 2 : 1, w: mascotBox.w, h: mascotBox.h };
-  return { body: { x: tier.mx, y: top, w: w - tier.mx * 2, h: Math.max(0, bottom - top) }, busy, mascot: mascotRect };
+  const callouts = (card.callouts ?? []).filter(Boolean);
+  if (callouts.length && bottom - y >= 10) {
+    const room = Math.min(callouts.length, Math.max(1, Math.floor((bottom - y - 8) / 2)));
+    const lines = callouts.slice(0, room).map((t) => wrapText(t, iw, 99)).filter((l) => l.length === 1).map((l) => l[0]);
+    const a = fade2(k, 1100, 400);
+    lines.forEach((line2, i) => txt(k, mx, bottom - lines.length + 1 + i, line2, k.tk.text2, { a }));
+    if (lines.length) bottom -= lines.length + 1;
+  }
+  return { k, body: { x: mx, y, w: iw, h: Math.max(0, bottom - y + 1) } };
 }
 var init_chrome = __esm({
-  "packages/cli/src/audit-ui/cards/chrome.ts"() {
+  "packages/cli/src/audit-ui/theme/chrome.ts"() {
     "use strict";
-    init_color();
     init_draw();
-    init_motion();
-    init_mascot();
+    init_kit();
   }
 });
 
-// packages/cli/src/audit-ui/gfx/font.ts
-function bigWidth(text2, scale2 = 1) {
+// packages/cli/src/audit-ui/theme/charts.ts
+function grow(k, start, dur = 600) {
+  if (!k.s.caps.motion) return 1;
+  const g2 = seg2(k.s.t, start, dur, easeOutCubic);
+  if (g2 < 1) k.busy = true;
+  return g2;
+}
+function meter(k, x, y, w, frac, color, start = 0) {
+  const f = Math.max(0, Math.min(1, frac)) * grow(k, start);
+  const { tk } = k;
+  if (!k.uni) {
+    const n2 = Math.round(f * w);
+    for (let i = 0; i < w; i++) k.c.put(x + i, y, i < n2 ? "=" : "-", i < n2 ? color : tk.rule, tk.bg, 0);
+    return;
+  }
+  const halves = Math.round(f * w * 2);
+  for (let i = 0; i < w; i++) {
+    const on = halves - i * 2;
+    k.c.put(x + i, y, on >= 2 ? "\u2501" : on === 1 ? "\u2578" : "\u2500", on >= 1 ? color : tk.rule, tk.bg, 0);
+  }
+}
+function spark(k, x, y, values, per, ink, hi, start = 0, hiInk = k.tk.accent) {
+  const max2 = Math.max(...values, 1e-9);
+  const g2 = grow(k, start, 700);
+  values.forEach((v, i) => {
+    const shown = Math.max(0, Math.min(1, g2 * values.length - i));
+    const lvl = v > 0 ? Math.max(1, Math.round(v / max2 * 8 * shown)) : 0;
+    const ch = k.uni ? lvl ? V8[lvl] : "\u2581" : lvl > 4 ? "#" : lvl ? "+" : ".";
+    const col3 = lvl ? i === hi ? hiInk : ink : k.tk.rule;
+    for (let j = 0; j < per; j++) k.c.put(x + i * per + j, y, ch, col3, k.tk.bg, 0);
+  });
+  return values.length * per;
+}
+function monthBars(k, r3, months, start = 300) {
+  const { tk } = k;
+  const list3 = months.slice(-12);
+  const n2 = list3.length;
+  const colW = Math.max(2, Math.min(6, Math.floor((r3.w + 1) / n2)));
+  const barW = Math.max(1, colW - (colW >= 4 ? 2 : 1));
+  const h = r3.h - 2;
+  const base3 = r3.y + h;
+  const max2 = Math.max(...list3.map((m) => m.measured + m.extra), 1e-9);
+  const peak = list3.reduce((a, m, i) => m.measured > list3[a].measured ? i : a, 0);
+  rule(k, r3.x, base3, n2 * colW - (colW - barW), tk.rule);
+  list3.forEach((m, i) => {
+    const g2 = grow(k, start + i * 50, 520);
+    const x = r3.x + i * colW;
+    const solid = m.measured / max2 * h * g2;
+    const total2 = (m.measured + m.extra) / max2 * h * g2;
+    const ink = i === peak ? tk.accent : tk.bar;
+    const cells = Math.ceil(total2);
+    for (let row2 = 0; row2 < cells; row2++) {
+      const y = base3 - 1 - row2;
+      const inSolid = row2 < solid;
+      const part = Math.min(1, total2 - row2);
+      const color = inSolid ? ink : tk.barSoft;
+      let ch;
+      if (!k.uni) ch = inSolid ? "#" : ":";
+      else ch = part >= 1 ? "\u2588" : V8[Math.max(1, Math.round(part * 8))];
+      for (let b2 = 0; b2 < barW; b2++) k.c.put(x + b2, y, ch, color, tk.bg, 0);
+    }
+    const lab = monthLabel(m.month);
+    if (colW >= 4 || i % 2 === 0 || i === n2 - 1) txt(k, x, base3 + 1, colW >= 4 ? lab : lab.slice(0, colW - 0), i === peak ? tk.text : tk.text3, {}, colW >= 4 ? colW : colW * 2 - 1);
+  });
+  const pk = list3[peak];
+  const la = fade2(k, start + n2 * 50 + 400);
+  const label5 = money2(pk.measured);
+  const top = base3 - 1 - Math.ceil((pk.measured + pk.extra) / max2 * h);
+  const lx = Math.min(r3.x + peak * colW, r3.x + n2 * colW - textWidth(label5));
+  if (top >= r3.y) txt(k, lx, top, label5, tk.text, { bold: true, a: la });
+}
+function dayGrid(k, r3, days, start = 600) {
+  const { tk } = k;
+  if (!days.length) return { w: 0 };
+  const byDay = new Map(days.map((d) => [d.day, d.usd]));
+  const last2 = /* @__PURE__ */ new Date(days.at(-1).day + "T12:00:00Z");
+  const lx = 4;
+  const weeks = Math.min(53, Math.max(4, r3.w - lx));
+  const first = new Date(last2);
+  first.setUTCDate(first.getUTCDate() - (last2.getUTCDay() + 6) % 7 - (weeks - 1) * 7);
+  const max2 = Math.max(...days.map((d) => d.usd), 1e-9);
+  const brightest = [...days].sort((a, b2) => b2.usd - a.usd)[0];
+  const pixel = k.s.caps.color === "truecolor" || k.s.caps.color === "256";
+  const g2 = grow(k, start, 900);
+  const empty = mix(tk.bg, tk.text, 0.06);
+  const lo = mix(tk.bg, tk.text, 0.2);
+  txt(k, r3.x, r3.y, "Mon", tk.text3);
+  txt(k, r3.x, r3.y + 3, "Sun", tk.text3);
+  for (let w = 0; w < weeks; w++) {
+    if (w / weeks > g2) break;
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(first);
+      day.setUTCDate(first.getUTCDate() + w * 7 + d);
+      if (day > last2) continue;
+      const iso3 = day.toISOString().slice(0, 10);
+      const usd3 = byDay.get(iso3) ?? 0;
+      const v = usd3 > 0 ? Math.sqrt(usd3 / max2) : 0;
+      const color = usd3 <= 0 ? empty : iso3 === brightest.day ? tk.accent : mix(lo, tk.text, v);
+      if (pixel) setPx(k, r3.x + lx + w, r3.y * 2 + d, color);
+      else if (d % 2 === 0) k.c.put(r3.x + lx + w, r3.y + d / 2, usd3 <= 0 ? "\xB7" : v > 0.5 ? "#" : "+", usd3 <= 0 ? tk.rule : tk.text2, tk.bg, 0);
+    }
+  }
+  const ca = fade2(k, start + 900);
+  txt(k, r3.x + lx, r3.y + 4, `Brightest ${shortDate2(brightest.day, true)}`, tk.text3, { a: ca });
+  txtRight(k, r3.x + lx + weeks, r3.y + 4, money2(brightest.usd), tk.text2, { a: ca });
+  return { w: lx + weeks };
+}
+function setPx(k, x, py, color) {
+  const m = k.px;
+  const y = py >> 1;
+  const key4 = y * k.c.w + x;
+  const cur = m.get(key4) ?? [k.tk.bg, k.tk.bg];
+  if (py & 1) cur[1] = color;
+  else cur[0] = color;
+  m.set(key4, cur);
+  const [top, bot] = cur;
+  if (top === bot) k.c.put(x, y, top === k.tk.bg ? " " : "\u2588", top, k.tk.bg, 0);
+  else k.c.put(x, y, "\u2580", top, bot, 0);
+}
+var V8;
+var init_charts = __esm({
+  "packages/cli/src/audit-ui/theme/charts.ts"() {
+    "use strict";
+    init_color();
+    init_motion();
+    init_format3();
+    init_deck();
+    init_kit();
+    V8 = ["", "\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"];
+  }
+});
+
+// packages/cli/src/audit-ui/theme/display.ts
+function parse8(rows) {
+  return rows.map((r3) => [...r3].map((ch) => ARMS[ch] ?? [false, false, false, false]));
+}
+function tallen(g2) {
+  const cont = (row2) => row2.map((a) => [a[1], a[1], false, false]);
+  return [g2[0], cont(g2[0]), g2[1], cont(g2[1]), g2[2]];
+}
+function layout(text2, o) {
+  const grids = [];
+  for (const ch of text2) {
+    if (ch === "$" || ch === "\xD7") {
+      grids.push(ch);
+      continue;
+    }
+    const g2 = glyphOf(ch);
+    if (!g2) continue;
+    let grid = parse8(g2);
+    if (o.tall) grid = tallen(grid);
+    grids.push(grid);
+  }
+  return { grids };
+}
+function displayWidth(text2, o) {
+  const { grids } = layout(text2, o);
   let w = 0;
-  let first = true;
-  for (const ch of text2) {
-    const g2 = glyph(ch);
-    if (!g2) continue;
-    w += (first ? 0 : 1) + g2[0].length;
-    first = false;
-  }
-  return w * scale2;
+  grids.forEach((g2, i) => {
+    if (i) w += typeof g2 === "string" || typeof grids[i - 1] === "string" ? 1 : gapOf(o.face);
+    w += typeof g2 === "string" ? 1 : colsOf(g2, o.face);
+  });
+  return w;
 }
-function bigSupported(text2) {
-  return [...text2].every((ch) => glyph(ch) !== null);
+function displayHeight(o) {
+  return o.tall ? 5 : 3;
 }
-function drawBig(canvas, x, y, text2, options) {
-  const scale2 = Math.max(1, Math.round(options.scale ?? 1));
-  let cx = 0;
-  let index = 0;
-  let first = true;
-  for (const ch of text2) {
-    const g2 = glyph(ch);
-    if (!g2) continue;
-    if (!first) cx += 1;
-    first = false;
-    if (ch === "$") {
-      if (options.limit === void 0 || index < options.limit) {
-        const color = options.color(cx * scale2, 0, index);
-        if (color >= 0) canvas.text(x + cx * scale2, y, "$", { fg: color, bold: true });
-      }
+function drawDisplay(c, x, y, text2, fg, bg, o) {
+  const { grids } = layout(text2, o);
+  let cx = x;
+  grids.forEach((g2, i) => {
+    if (i) cx += typeof g2 === "string" || typeof grids[i - 1] === "string" ? 1 : gapOf(o.face);
+    if (typeof g2 === "string") {
+      c.put(cx, g2 === "$" ? y : y + displayHeight(o) - 1, g2, o.currency ?? fg, bg, 0);
       cx += 1;
-      index++;
-      continue;
+      return;
     }
-    if (options.limit !== void 0 && index >= options.limit) {
-      cx += g2[0].length;
-      index++;
-      continue;
+    if (o.face === "solid") drawSolid(c, cx, y, g2, fg, bg);
+    else {
+      g2.forEach((row2, ry) => row2.forEach((a, rx) => {
+        const ch = HEAVY.get(key2(a));
+        if (ch) c.put(cx + rx, y + ry, ch, fg, bg, 0);
+      }));
     }
-    const dy = Math.round(options.dy?.(index) ?? 0);
-    g2.forEach((row2, ry) => {
-      for (let rx = 0; rx < row2.length; rx++) {
-        if (row2[rx] !== "#") continue;
-        for (let sy = 0; sy < scale2; sy++) for (let sx = 0; sx < scale2; sx++) {
-          const px = (cx + rx) * scale2 + sx;
-          const py = ry * scale2 + sy;
-          const color = options.color(px, py, index);
-          if (color < 0) continue;
-          canvas.px(x + px, y * 2 + py + dy, color);
-        }
-      }
-    });
-    cx += g2[0].length;
-    index++;
-  }
-  return cx * scale2;
+    cx += colsOf(g2, o.face);
+  });
+  return cx - x;
 }
-var G, glyph, bigHeight;
-var init_font = __esm({
-  "packages/cli/src/audit-ui/gfx/font.ts"() {
+function drawSolid(c, x, y, g2, fg, bg) {
+  const ky = 2;
+  const W = g2[0].length * 2 - 1;
+  const H = g2.length * ky;
+  const on = /* @__PURE__ */ new Set();
+  const set = (px, py) => {
+    if (px >= 0 && px < W && py >= 0 && py < H) on.add(`${px},${py}`);
+  };
+  g2.forEach((row2, ry) => row2.forEach((a, rx) => {
+    if (!a.some(Boolean)) return;
+    const px = rx * 2, py = ry * ky;
+    set(px, py);
+    if (a[3]) set(px + 1, py);
+    if (a[1]) for (let k = 1; k < ky; k++) set(px, py + k);
+  }));
+  const rows = Math.ceil(H / 2);
+  for (let r3 = 0; r3 < rows; r3++) for (let col3 = 0; col3 < W; col3++) {
+    const top = on.has(`${col3},${r3 * 2}`), bot = on.has(`${col3},${r3 * 2 + 1}`);
+    if (!top && !bot) continue;
+    c.put(x + col3, y + r3, top && bot ? "\u2588" : top ? "\u2580" : "\u2584", fg, bg, 0);
+  }
+}
+function fitDisplay(text2, maxW, base3) {
+  if (!displaySupported(text2)) return null;
+  for (const face of base3.face === "solid" ? ["solid", "heavy"] : ["heavy"]) {
+    const o = { ...base3, face };
+    if (displayWidth(text2, o) <= maxW) return o;
+  }
+  return null;
+}
+var G, ARMS, key2, HEAVY, glyphOf, MARKS, displaySupported, colsOf, gapOf;
+var init_display = __esm({
+  "packages/cli/src/audit-ui/theme/display.ts"() {
     "use strict";
     G = {
-      "0": ["###", "#.#", "#.#", "#.#", "###"],
-      "1": ["##.", ".#.", ".#.", ".#.", "###"],
-      "2": ["###", "..#", "###", "#..", "###"],
-      "3": ["###", "..#", ".##", "..#", "###"],
-      "4": ["#.#", "#.#", "###", "..#", "..#"],
-      "5": ["###", "#..", "###", "..#", "###"],
-      "6": ["###", "#..", "###", "#.#", "###"],
-      "7": ["###", "..#", "..#", ".#.", ".#."],
-      "8": ["###", "#.#", "###", "#.#", "###"],
-      "9": ["###", "#.#", "###", "..#", "###"],
-      "$": [".", ".", ".", ".", "."],
-      ",": [".", ".", ".", "#", "#"],
-      ".": [".", ".", ".", ".", "#"],
-      "%": ["#.#", "..#", ".#.", "#..", "#.#"],
-      "\xD7": ["...", "#.#", ".#.", "#.#", "..."],
-      "#": [".#.#.", "#####", ".#.#.", "#####", ".#.#."],
-      "+": ["...", ".#.", "###", ".#.", "..."],
-      "-": ["...", "...", "###", "...", "..."],
-      "/": ["..#", "..#", ".#.", "#..", "#.."],
-      ":": [".", "#", ".", "#", "."],
-      "!": ["#", "#", "#", ".", "#"],
-      "?": ["###", "..#", ".##", "...", ".#."],
-      "'": ["#", "#", ".", ".", "."],
-      "\u2019": ["#", "#", ".", ".", "."],
-      "\u201C": ["#.#", "#.#", "...", "...", "..."],
-      "\u201D": ["#.#", "#.#", "...", "...", "..."],
-      '"': ["#.#", "#.#", "...", "...", "..."],
-      "&": [".#.", "#.#", ".#.", "#.#", ".##"],
-      "\u2026": [".....", ".....", ".....", ".....", "#.#.#"],
-      " ": ["..", "..", "..", "..", ".."],
-      A: [".#.", "#.#", "###", "#.#", "#.#"],
-      B: ["##.", "#.#", "##.", "#.#", "##."],
-      C: [".##", "#..", "#..", "#..", ".##"],
-      D: ["##.", "#.#", "#.#", "#.#", "##."],
-      E: ["###", "#..", "##.", "#..", "###"],
-      F: ["###", "#..", "##.", "#..", "#.."],
-      G: [".##", "#..", "#.#", "#.#", ".##"],
-      H: ["#.#", "#.#", "###", "#.#", "#.#"],
-      I: ["###", ".#.", ".#.", ".#.", "###"],
-      J: ["..#", "..#", "..#", "#.#", ".#."],
-      K: ["#.#", "#.#", "##.", "#.#", "#.#"],
-      L: ["#..", "#..", "#..", "#..", "###"],
-      M: ["#...#", "##.##", "#.#.#", "#...#", "#...#"],
-      N: ["#..#", "##.#", "#.##", "#..#", "#..#"],
-      O: [".#.", "#.#", "#.#", "#.#", ".#."],
-      P: ["##.", "#.#", "##.", "#..", "#.."],
-      Q: [".#.", "#.#", "#.#", "#.#", ".##"],
-      R: ["##.", "#.#", "##.", "#.#", "#.#"],
-      S: [".##", "#..", ".#.", "..#", "##."],
-      T: ["###", ".#.", ".#.", ".#.", ".#."],
-      U: ["#.#", "#.#", "#.#", "#.#", "###"],
-      V: ["#.#", "#.#", "#.#", "#.#", ".#."],
-      W: ["#...#", "#...#", "#.#.#", "##.##", "#...#"],
-      X: ["#.#", "#.#", ".#.", "#.#", "#.#"],
-      Y: ["#.#", "#.#", ".#.", ".#.", ".#."],
-      Z: ["###", "..#", ".#.", "#..", "###"]
+      A: ["\u250F\u2501\u2513", "\u2523\u2501\u252B", "\u2579 \u2579"],
+      B: ["\u250F\u2513 ", "\u2523\u253B\u2513", "\u2517\u2501\u251B"],
+      C: ["\u250F\u2501\u2578", "\u2503  ", "\u2517\u2501\u2578"],
+      D: ["\u250F\u2501\u2513", "\u2503 \u2503", "\u2517\u2501\u251B"],
+      E: ["\u250F\u2501\u2578", "\u2523\u2578 ", "\u2517\u2501\u2578"],
+      F: ["\u250F\u2501\u2578", "\u2523\u2578 ", "\u2579  "],
+      G: ["\u250F\u2501\u2578", "\u2503\u257A\u2513", "\u2517\u2501\u251B"],
+      H: ["\u257B \u257B", "\u2523\u2501\u252B", "\u2579 \u2579"],
+      I: ["\u257B", "\u2503", "\u2579"],
+      J: ["  \u257B", "  \u2503", "\u2517\u2501\u251B"],
+      K: ["\u257B\u250F ", "\u2523\u253B\u2513", "\u2579 \u2579"],
+      L: ["\u257B  ", "\u2503  ", "\u2517\u2501\u2578"],
+      M: ["\u250F\u2533\u2513", "\u2503\u2579\u2503", "\u2579 \u2579"],
+      N: ["\u250F\u2513\u257B", "\u2503\u2517\u252B", "\u2579 \u2579"],
+      O: ["\u250F\u2501\u2513", "\u2503 \u2503", "\u2517\u2501\u251B"],
+      P: ["\u250F\u2501\u2513", "\u2523\u2501\u251B", "\u2579  "],
+      Q: ["\u250F\u2501\u2513", "\u2503\u2513\u2503", "\u2517\u253B\u251B"],
+      R: ["\u250F\u2501\u2513", "\u2523\u2533\u251B", "\u2579\u2517\u2578"],
+      S: ["\u250F\u2501\u2578", "\u2517\u2501\u2513", "\u257A\u2501\u251B"],
+      T: ["\u257A\u2533\u2578", " \u2503 ", " \u2579 "],
+      U: ["\u257B \u257B", "\u2503 \u2503", "\u2517\u2501\u251B"],
+      V: ["\u257B \u257B", "\u2503\u250F\u251B", "\u2517\u251B "],
+      W: ["\u257B \u257B", "\u2503\u257B\u2503", "\u2517\u253B\u251B"],
+      X: ["\u257B \u257B", "\u250F\u254B\u251B", "\u2579 \u2579"],
+      Y: ["\u257B \u257B", "\u2517\u2533\u251B", " \u2579 "],
+      Z: ["\u257A\u2501\u2513", "\u250F\u2501\u251B", "\u2517\u2501\u2578"],
+      "0": ["\u250F\u2501\u2513", "\u2503 \u2503", "\u2517\u2501\u251B"],
+      "1": ["\u257A\u2513 ", " \u2503 ", "\u257A\u253B\u2578"],
+      "2": ["\u257A\u2501\u2513", "\u250F\u2501\u251B", "\u2517\u2501\u2578"],
+      "3": ["\u257A\u2501\u2513", "\u257A\u2501\u252B", "\u257A\u2501\u251B"],
+      "4": ["\u257B \u257B", "\u2517\u2501\u252B", "  \u2579"],
+      "5": ["\u250F\u2501\u2578", "\u2517\u2501\u2513", "\u257A\u2501\u251B"],
+      "6": ["\u250F\u2501\u2578", "\u2523\u2501\u2513", "\u2517\u2501\u251B"],
+      "7": ["\u257A\u2501\u2513", "  \u2503", "  \u2579"],
+      "8": ["\u250F\u2501\u2513", "\u2523\u2501\u252B", "\u2517\u2501\u251B"],
+      "9": ["\u250F\u2501\u2513", "\u2517\u2501\u252B", "\u257A\u2501\u251B"],
+      ",": [" ", " ", "\u257B"],
+      ".": [" ", " ", "\u2578"],
+      "'": ["\u257B", " ", " "],
+      "\u2019": ["\u257B", " ", " "],
+      "-": ["  ", "\u257A\u2578", "  "],
+      "&": ["\u250F\u2513 ", "\u2523\u254B\u2578", "\u2517\u251B "],
+      "%": ["\u257B \u257B", "\u250F\u2501\u251B", "\u2579 \u2579"],
+      ":": [" ", "\u2579", "\u2579"],
+      " ": ["  ", "  ", "  "]
     };
-    glyph = (ch) => G[ch] ?? G[ch.toUpperCase()] ?? null;
-    bigHeight = (scale2 = 1) => Math.ceil(5 * scale2 / 2);
+    ARMS = {
+      "\u2501": [false, false, true, true],
+      "\u2503": [true, true, false, false],
+      "\u250F": [false, true, false, true],
+      "\u2513": [false, true, true, false],
+      "\u2517": [true, false, false, true],
+      "\u251B": [true, false, true, false],
+      "\u2523": [true, true, false, true],
+      "\u252B": [true, true, true, false],
+      "\u2533": [false, true, true, true],
+      "\u253B": [true, false, true, true],
+      "\u254B": [true, true, true, true],
+      "\u2578": [false, false, true, false],
+      "\u257A": [false, false, false, true],
+      "\u2579": [true, false, false, false],
+      "\u257B": [false, true, false, false]
+    };
+    key2 = (a) => a.map((v) => v ? 1 : 0).join("");
+    HEAVY = new Map(Object.entries(ARMS).map(([ch, a]) => [key2(a), ch]));
+    glyphOf = (ch) => G[ch] ?? G[ch.toUpperCase()] ?? null;
+    MARKS = /* @__PURE__ */ new Set(["$", "\xD7"]);
+    displaySupported = (text2) => [...text2].every((ch) => MARKS.has(ch) || glyphOf(ch) !== null);
+    colsOf = (g2, face) => face === "solid" ? g2[0].length * 2 - 1 : g2[0].length;
+    gapOf = (face) => face === "solid" ? 2 : 1;
   }
 });
 
-// packages/cli/src/audit-ui/cards/models.ts
-function guessBody(s, data, r3) {
-  const { c, t, state } = s;
-  const n2 = data.options.length;
-  const guessed = state.guess !== void 0;
-  if (!guessed) {
-    const cols = r3.w >= 70 ? 2 : 1;
-    const tall = r3.h >= 16 && s.caps.color !== "none";
-    const chipW = Math.min(cols === 2 ? 44 : r3.w, Math.floor((r3.w - (cols - 1) * 4) / cols));
-    const chipH = tall ? 5 : r3.h >= 11 ? 3 : 1;
-    const gridW = cols * chipW + (cols - 1) * 4;
-    const gx = r3.x + Math.max(0, Math.floor((r3.w - gridW) / 2) - (s.tier.id === "L" ? 0 : 0));
-    const rowsN = Math.ceil(n2 / cols);
-    const gridH = rowsN * chipH + (rowsN - 1);
-    const gy = r3.y + Math.max(0, Math.floor((r3.h - gridH - 2) * 0.3));
-    let busy2 = false;
-    data.options.forEach((option, i) => {
-      const col3 = i % cols, row2 = Math.floor(i / cols);
-      const x = gx + col3 * (chipW + 4);
-      const k = seg2(t, 80 + i * 90, 380, easeOutBack);
-      busy2 ||= k < 1;
-      const y = gy + row2 * (chipH + 1) + Math.round((1 - Math.min(1, k)) * 2);
-      const a = Math.min(1, Math.max(0, k));
-      if (chipH >= 3) box(c, { x, y, w: chipW, h: chipH }, fade(i % 2 ? C.slate : C.rust, a), { ascii: !s.caps.unicode });
-      if (tall) {
-        for (let yy = y + 1; yy < y + chipH - 1; yy++) for (let xx = x + 2; xx < x + 8; xx++) c.put(xx, yy, " ", C.cream, fade(C.orange, a));
-        c.text(x + 4, y + 2, String(i + 1), { fg: C.ink, bg: fade(C.orange, a), bold: true });
-        c.text(x + 12, y + 2, option.name, { fg: C.cream, bold: true, alpha: a }, chipW - 14);
-      } else {
-        const ty = chipH === 3 ? y + 1 : y;
-        c.text(x + 2, ty, ` ${i + 1} `, { fg: C.ink, bg: fade(C.orange, a), bold: true });
-        c.text(x + 7, ty, option.name, { fg: C.cream, bold: true, alpha: a }, chipW - 9);
+// packages/cli/src/audit-ui/theme/title.ts
+function planTitle(k, title, maxW, maxLines) {
+  const faces = k.tk.face === "solid" ? ["solid", "heavy"] : [k.tk.face];
+  if (k.uni && displaySupported(title)) for (let n2 = 1; n2 <= maxLines; n2++) for (const face of faces) {
+    const words8 = title.toUpperCase().split(/\s+/);
+    const lines = [];
+    let line2 = "";
+    let ok = true;
+    for (const word of words8) {
+      const next = line2 ? `${line2} ${word}` : word;
+      if (displayWidth(next, { face }) <= maxW) line2 = next;
+      else {
+        if (line2) lines.push(line2);
+        line2 = word;
+        if (displayWidth(word, { face }) > maxW) ok = false;
       }
-    });
-    const hy = gy + gridH + 2;
-    if (hy < r3.y + r3.h) {
-      const a = seg2(t, 600, 400);
-      const hint = s.caps.unicode ? "  \xB7 or \u2192 to just tell me" : "  - or > to just tell me";
-      const total2 = 6 + 3 + hint.length;
-      let hx2 = gx + Math.max(0, Math.floor((gridW - total2) / 2));
-      hx2 += c.text(hx2, hy, "press ", { fg: C.gray, alpha: a });
-      hx2 += c.text(hx2, hy, n2 > 1 ? `1\u2013${n2}` : "1", { fg: C.orange, bold: true, alpha: a });
-      c.text(hx2, hy, hint, { fg: C.slate, alpha: a });
     }
-    return busy2 || t < 1e3;
-  }
-  const tg = Math.max(0, t - (state.guessAt ?? 0));
-  const max2 = Math.max(...data.options.map((o) => o.share));
-  const nameW = Math.min(22, Math.max(...data.options.map((o) => textWidth(o.name))) + 1);
-  const barW = Math.max(6, r3.w - nameW - 20);
-  const rowGap = r3.h >= 12 ? 2 : 1;
-  let busy = tg < 1600;
-  const order = data.options.map((o, i) => [o.share, i]).sort((a, b2) => b2[0] - a[0] || a[1] - b2[1]).map(([, i]) => i);
-  const rank = data.options.map((_, i) => order.indexOf(i));
-  const sortK = s.caps.motion ? seg2(tg, 950, 450, easeOutCubic) : 1;
-  busy ||= sortK < 1;
-  data.options.forEach((option, i) => {
-    const y = r3.y + Math.round((i + (rank[i] - i) * sortK) * rowGap);
-    const correct = i === data.answer;
-    const mine = i === state.guess;
-    const k = s.caps.motion ? Math.min(1.08, spring((tg - i * 60) / 1e3, 2.2, 0.5)) : 1;
-    c.text(r3.x, y, option.name, { fg: correct ? C.cream : C.gray, bold: correct }, nameW);
-    hbar(c, r3.x + nameW + 1, y, barW, option.share / max2 * Math.max(0, k), correct ? C.orange : mine ? C.slate : C.coal, !s.caps.unicode);
-    const done = seg2(tg, 700, 300);
-    const pct3 = `${Math.round(option.share * 100)}%`;
-    c.text(r3.x + nameW + 2 + barW, y, pct3, { fg: correct ? C.orange : C.gray, bold: correct, alpha: done });
-    const tag = correct ? s.caps.unicode ? " \u2713 #1" : " #1" : mine ? s.caps.unicode ? " \u2717 your pick" : " x your pick" : "";
-    if (tag) c.text(r3.x + nameW + 2 + barW + textWidth(pct3), y, tag, { fg: correct ? C.orange : C.slate, alpha: done, bold: correct });
-  });
-  const qy = r3.y + n2 * rowGap + 1;
-  const right = state.guess === data.answer;
-  const winner = data.options[data.answer];
-  const quip = state.guess === -1 ? `It was ${winner.name}.` : right ? "Nailed it. You know yourself." : `Not quite. It was ${winner.name}.`;
-  const qa = seg2(tg, 800, 300);
-  if (qy < r3.y + r3.h) c.text(r3.x, qy, quip, { fg: right ? C.orange : C.cream, bold: true, alpha: qa });
-  if (data.after && qy + 2 < r3.y + r3.h) {
-    const aa = seg2(tg, 1100, 400);
-    wrapText(data.after, r3.w, 2).forEach((line, i) => {
-      if (qy + 2 + i < r3.y + r3.h) c.text(r3.x, qy + 2 + i, line, { fg: C.peach, alpha: aa });
-    });
-    busy ||= aa < 1;
-  }
-  return busy;
-}
-function gaugeRow(s, g2, x, y, w, color, k, unit) {
-  const { c } = s;
-  const max2 = Math.max(g2.per100, g2.expected ?? 0) * 1.25 || 1;
-  const barW = Math.max(8, w);
-  c.text(x, y - 1, g2.per100.toFixed(1), { fg: C.cream, bold: true, alpha: Math.min(1, k) });
-  c.text(x + g2.per100.toFixed(1).length + 1, y - 1, unit, { fg: C.gray, alpha: Math.min(1, k) });
-  for (let i = 0; i < barW; i++) c.put(x + i, y, s.caps.unicode ? "\u2501" : "-", C.coal);
-  const fill = Math.round(barW * Math.min(1, g2.per100 / max2 * k));
-  for (let i = 0; i < fill; i++) c.put(x + i, y, s.caps.unicode ? "\u2501" : "=", color);
-  if (g2.expected !== null) {
-    const ex = x + Math.min(barW - 1, Math.round(g2.expected / max2 * barW));
-    const done = k > 0.9 ? 1 : 0;
-    c.put(ex, y, s.caps.unicode ? "\u254B" : "+", done ? C.cream : C.coal);
-    c.text(ex, y + 1, `${s.caps.unicode ? "\u25B2" : "^"} others ${g2.expected.toFixed(1)}`, { fg: C.slate, alpha: done });
-  }
-}
-function panel(s, g2, side, r3, delay) {
-  const { c, t, tier } = s;
-  const a = seg2(t, delay, 350);
-  const k = s.caps.motion ? Math.max(0, Math.min(1.1, spring((t - delay - 250) / 1e3, 2, 0.55))) : 1;
-  const color = side === "best" ? C.peach : C.ember;
-  const label4 = side === "best" ? "FAVOURITE" : "NEMESIS";
-  const unit = side === "best" ? "thank-yous / 100 prompts" : "swears / 100 prompts";
-  const face = side === "best" ? "heart-eyes" : "side-eye";
-  let tx = r3.x;
-  const pixel = s.caps.color === "truecolor" || s.caps.color === "256";
-  if (tier.id === "L" && pixel && r3.w >= 44) {
-    drawMascot(c, r3.x - 2, r3.y + Math.round((1 - a) * 2), face, { bob: t - delay < 400 ? Math.sin(Math.PI * Math.min(1, (t - delay) / 400)) * 2 : 0 });
-    tx = r3.x + 18;
-  } else if (tier.id !== "S" && pixel && r3.w >= 32) {
-    drawMascot(c, r3.x, r3.y + 1, face, { size: "compact" });
-    tx = r3.x + 11;
-  }
-  const tw = r3.x + r3.w - tx;
-  c.text(tx, r3.y, tier.id === "L" ? spaced(label4) : label4, { fg: color, bold: true, alpha: a });
-  if (tier.id === "S" || tx === r3.x) c.text(tx + textWidth(label4) + 1, r3.y, mascotLine(face, !s.caps.unicode), { fg: C.orange, alpha: a });
-  c.text(tx, r3.y + 1, g2.label, { fg: C.cream, bold: true, alpha: a }, tw);
-  gaugeRow(s, g2, tx, r3.y + 4, Math.min(tw - 2, 40), color, Math.max(0, k), unit);
-  if (g2.ratio !== null && r3.h >= 9) {
-    const ra = seg2(t, delay + 700, 350);
-    const ratio2 = `${g2.ratio.toFixed(1)}\xD7`;
-    drawBig(c, tx, r3.y + 6, ratio2, { color: (_x, py) => fade(mix(C.cream, color, py / 4), ra) });
-    c.text(tx + bigWidth(ratio2) + 2, r3.y + 7, side === "best" ? "nicer than" : "harsher than", { fg: C.gray, alpha: ra }, tw - bigWidth(ratio2) - 2);
-    c.text(tx + bigWidth(ratio2) + 2, r3.y + 8, "to the others", { fg: C.gray, alpha: ra }, tw - bigWidth(ratio2) - 2);
-  } else if (g2.ratio !== null) {
-    c.text(tx, r3.y + 6, `${g2.ratio.toFixed(1)}\xD7 vs the others`, { fg: color, bold: true, alpha: seg2(t, delay + 700, 350) });
-  }
-  return t < delay + 1700;
-}
-function compareChart(s, data, r3) {
-  const { c, t } = s;
-  const a = seg2(t, 400, 350);
-  c.text(r3.x, r3.y, data.compareUnit.toUpperCase(), { fg: C.gray, alpha: a }, r3.w);
-  const max2 = Math.max(1e-9, ...data.compare.flatMap((m) => [m.observed, m.expected ?? 0]));
-  const nameW = Math.min(16, Math.max(...data.compare.map((m) => textWidth(m.label))) + 2);
-  const barW = Math.max(8, r3.w - nameW - 7);
-  let busy = a < 1;
-  data.compare.forEach((m, i) => {
-    const y = r3.y + 2 + i * 2;
-    if (y >= r3.y + r3.h + 4) return;
-    const k = seg2(t, 500 + i * 90, 600, easeOutCubic);
-    busy ||= k < 1;
-    c.text(r3.x, y, m.label, { fg: m.highlight ? C.cream : C.gray, bold: m.highlight, alpha: a }, nameW - 1);
-    const fill = Math.round(barW * (m.observed / max2) * k);
-    for (let x = 0; x < barW; x++) c.put(r3.x + nameW + x, y, s.caps.unicode ? "\u2501" : "-", x < fill ? m.highlight ? C.ember : fade(C.orange, 0.55) : C.coal);
-    if (m.expected !== null) {
-      const ex = r3.x + nameW + Math.min(barW - 1, Math.round(barW * (m.expected / max2)));
-      c.put(ex, y, s.caps.unicode ? "\u2503" : "|", k >= 1 ? C.cream : C.coal);
+    if (line2) lines.push(line2);
+    if (ok && lines.length <= n2) {
+      const h = lines.length * displayHeight({ face }) + (lines.length - 1);
+      return { lines, big: true, h, w: Math.max(...lines.map((l) => displayWidth(l, { face }))), face };
     }
-    c.text(r3.x + nameW + barW + 1, y, m.observed.toFixed(1), { fg: m.highlight ? C.cream : C.gray, alpha: k });
-  });
-  const ly = r3.y + 3 + data.compare.length * 2;
-  if (ly < r3.y + r3.h) c.text(r3.x, ly, `${s.caps.unicode ? "\u2503" : "|"} = what the other models got in the same months`, { fg: C.slate, alpha: seg2(t, 1e3, 300) }, r3.w);
-  return busy;
-}
-function faceoffBody(s, data, r3) {
-  const { c, t } = s;
-  const both = data.best && data.worst;
-  const compare = !both && data.compare.length >= 2 && r3.w >= 90;
-  const gap2 = both || compare ? s.tier.id === "L" ? 10 : 6 : 0;
-  const pw = both || compare ? Math.floor((r3.w - gap2) / 2) : r3.w;
-  const y = r3.y + Math.max(0, Math.floor((r3.h - 10) * 0.3));
-  const ph = Math.min(r3.h, 10);
-  let busy = false;
-  if (data.best) busy = panel(s, data.best, "best", { x: r3.x, y, w: pw, h: ph }, 80) || busy;
-  if (data.worst) busy = panel(s, data.worst, "worst", { x: r3.x + (both ? pw + gap2 : 0), y, w: pw, h: ph }, both ? 260 : 80) || busy;
-  if (compare) busy = compareChart(s, data, { x: r3.x + pw + gap2, y, w: r3.w - pw - gap2, h: ph }) || busy;
-  if (both) {
-    const k = seg2(t, 450, 400, easeOutCubic);
-    const vx = r3.x + pw + Math.floor(gap2 / 2) - 1;
-    if (s.tier.id === "L") drawBig(c, vx - 2, y + 3, "VS", { color: () => fade(C.slate, k) });
-    else c.text(vx, y + 4, "vs", { fg: C.slate, bold: true, alpha: k });
-    busy ||= k < 1;
   }
-  return busy;
+  return { lines: [title], big: false, h: 1, w: textWidth(title), face: k.tk.face };
 }
-var init_models = __esm({
-  "packages/cli/src/audit-ui/cards/models.ts"() {
+function titleBars(k, plan) {
+  const out = [];
+  const face = plan.face;
+  plan.lines.forEach((line2, li) => {
+    const words8 = line2.split(" ");
+    words8.forEach((word, wi) => {
+      const x = !wi ? 0 : plan.big ? displayWidth(words8.slice(0, wi).join(" ") + " ", { face }) + gapOf(face) : textWidth(words8.slice(0, wi).join(" ") + " ");
+      const w = plan.big ? displayWidth(word, { face }) : textWidth(word);
+      out.push({ x, y: li * (displayHeight({ face }) + 1), w });
+    });
+  });
+  return out;
+}
+function drawTitle(k, x, y, plan, color, a = 1) {
+  const face = plan.face;
+  const fg = fadeIn(k.tk, color, a);
+  if (!plan.big) {
+    txt(k, x, y, plan.lines[0], color, { bold: true, a });
+    return;
+  }
+  plan.lines.forEach((line2, i) => drawDisplay(k.c, x, y + i * (displayHeight({ face }) + 1), line2, fg, k.tk.bg, { face }));
+}
+function drawGhost(k, x, y, plan, a = 1) {
+  const rows = plan.big ? displayHeight({ face: plan.face }) : 1;
+  const color = fadeIn(k.tk, k.tk.ghost, a);
+  for (const b2 of titleBars(k, plan)) for (let yy = 0; yy < rows; yy++) for (let xx = 0; xx < b2.w; xx++) k.c.put(x + b2.x + xx, y + b2.y + yy, k.uni ? "\u2588" : "#", color, k.tk.bg, 0);
+}
+var init_title = __esm({
+  "packages/cli/src/audit-ui/theme/title.ts"() {
     "use strict";
+    init_display();
+    init_kit();
+    init_tokens();
+  }
+});
+
+// packages/cli/src/audit-ui/cards/poster.ts
+function countUp2(value, k) {
+  if (k >= 1 || !/^\$[\d,]+$/.test(value)) return value;
+  const target = Number(value.replace(/[^\d]/g, ""));
+  if (!(target > 0)) return value;
+  const n2 = Math.max(1, Math.round(target * (COUNT_FROM + (1 - COUNT_FROM) * clamp012(k))));
+  return `$${n2.toLocaleString("en-US")}`;
+}
+function posterBody(s, d) {
+  const k = begin(s);
+  const meta = [d.range, d.code].filter(Boolean).join("  \xB7  ");
+  const top = header(k, textWidth(meta) + 14 <= k.iw ? meta : d.code ?? "");
+  const footY = boardFooter(k, d);
+  const avail = footY - 2 - top;
+  const plan = { label: true, bigTitle: true, tagline: true, bigPrice: true, day: true, diagrams: true, nFacts: 6, factGap: true, awards: true, memory: true, ticker: !!d.sinceLast && !s.share };
+  let pieces = build2(k, d, plan);
+  for (const step of STEPS) {
+    if (height(pieces, k.L) <= avail) break;
+    step(plan);
+    pieces = build2(k, d, plan);
+  }
+  const RESTORE = ["bigTitle", "ticker", "bigPrice", "tagline", "awards", "day", "diagrams", "factGap", "label", "memory"];
+  for (const key4 of RESTORE) {
+    if (plan[key4] === true || key4 === "ticker" && (!d.sinceLast || s.share)) continue;
+    const next = { ...plan, [key4]: true };
+    const tried3 = build2(k, d, next);
+    if (height(tried3, k.L) <= avail) {
+      Object.assign(plan, next);
+      pieces = tried3;
+    }
+  }
+  let spare = Math.max(0, avail - height(pieces, k.L));
+  const extra = new Array(pieces.length).fill(0);
+  for (let pass = 0; pass < 2 && spare > 0; pass++) for (let i = 1; i < pieces.length && spare > 0; i++) if (pieces[i].rule || pieces[i - 1].rule) {
+    extra[i]++;
+    spare--;
+  }
+  let y = top + 1 + Math.floor(spare / 3);
+  pieces.forEach((p, i) => {
+    if (i) y += (k.L ? 1 : gapOf2(p, pieces[i - 1])) + extra[i];
+    p.draw(y);
+    y += p.h;
+  });
+  printIn(k);
+  return k.busy;
+}
+function printIn(k) {
+  if (!k.s.caps.motion || k.s.t >= PRINT_MS + 220) return;
+  k.busy = true;
+  const { c } = k;
+  for (let y = 0; y < c.h; y++) {
+    const a = seg2(k.s.t, y / c.h * PRINT_MS, 220, easeOutCubic);
+    if (a >= 1) continue;
+    for (let x = 0; x < c.w; x++) {
+      const i = y * c.w + x;
+      if (a <= 0) {
+        c.ch[i] = " ";
+        c.fg[i] = k.tk.text;
+        c.bg[i] = k.tk.bg;
+        c.at[i] = 0;
+        continue;
+      }
+      if (c.fg[i] >= 0) c.fg[i] = mix(k.tk.bg, c.fg[i], a);
+      if (c.bg[i] >= 0 && c.bg[i] !== k.tk.bg) c.bg[i] = mix(k.tk.bg, c.bg[i], a);
+    }
+  }
+}
+function grow2(k, i) {
+  if (!k.s.caps.motion) return 1;
+  const g2 = seg2(k.s.t, DIAG_AT + i * DIAG_STEP, DIAG_DUR, easeOutCubic);
+  if (g2 < 1) k.busy = true;
+  return g2;
+}
+function height(ps, L) {
+  return ps.reduce((a, p, i) => a + p.h + (i ? L ? 1 : gapOf2(p, ps[i - 1]) : 0), 0);
+}
+function build2(k, d, p) {
+  const out = [];
+  const hr = () => ({ h: 1, rule: true, draw: (y) => rule(k, k.mx, y, k.iw) });
+  out.push(...identity3(k, d, p));
+  out.push(hr());
+  out.push(heroBand(k, d, p));
+  const facts = factsPiece(k, d, p);
+  if (facts) {
+    out.push(hr());
+    out.push(facts);
+  }
+  const awards3 = p.awards ? awardsPiece(k, d, facts?.shown ?? []) : null;
+  if (awards3) {
+    out.push(hr());
+    out.push(awards3);
+  }
+  if (p.ticker && d.sinceLast) {
+    const line2 = tickerPiece(k, d.sinceLast);
+    if (line2) out.push({ ...line2, air: true });
+  }
+  if (p.memory) out.push({ ...memoryPiece(k), air: !(p.ticker && d.sinceLast) });
+  return out;
+}
+function identity3(k, d, p) {
+  const { tk, mx, iw } = k;
+  const out = [];
+  const title = d.archetype ?? "Your year with agents";
+  if (p.label) out.push({ h: 1, draw: (y) => label4(k, mx, y, "this year you\u2019ve been") });
+  const plan = p.bigTitle ? planTitle(k, title, iw, 1) : { lines: [title], big: false, h: 1, w: textWidth(title), face: tk.face };
+  out.push({ h: plan.h, draw: (y) => drawTitle(k, mx, y, plan, tk.text) });
+  const tag = p.tagline && d.tagline && (!k.s.share || d.taglinePublic) ? `\u201C${d.tagline}\u201D` : null;
+  const tier = d.tier ? TIER[d.tier] : null;
+  const sub = d.subRole;
+  const lineW = (tier ? textWidth(tier) + 2 : 0) + (sub ? textWidth(sub) : 0);
+  const tagRight = !!tag && lineW + 4 + textWidth(tag) <= iw;
+  out.push({
+    air: plan.big,
+    h: tag && !tagRight && textWidth(tag) <= iw ? 2 : 1,
+    draw: (y) => {
+      let x = mx;
+      if (tier) x += txt(k, x, y, tier, tk.accent, { bold: true }) + 2;
+      if (sub && x + textWidth(sub) <= mx + iw) txt(k, x, y, sub, tk.text2);
+      if (tag && tagRight) txtRight(k, mx + iw, y, tag, tk.text2, { italic: true });
+      else if (tag && textWidth(tag) <= iw) txt(k, mx, y + 1, tag, tk.text2, { italic: true });
+    }
+  });
+  return out;
+}
+function heroBand(k, d, p) {
+  const { tk, mx, iw, L } = k;
+  const price = d.heroes.find((h) => h.label === "at API prices");
+  const half = Math.floor(iw / 2);
+  const fit2 = price && k.uni ? fitDisplay(price.value, (L ? 40 : half) - 2, { face: tk.face, tall: L, currency: tk.text2 }) : null;
+  const opts = fit2 ?? { face: tk.face };
+  const leftW = L ? 40 : Math.max(30, Math.min(half, (fit2 ? displayWidth(price.value, fit2) : 26) + 4));
+  const big = p.bigPrice && !!fit2;
+  const priceH = big ? 1 + displayHeight(opts) : 2;
+  const stats2 = [];
+  for (const key4 of ["prompts", "days"]) {
+    const h = d.heroes.find((x) => key4 === "days" ? x.label === "days" || x.label === "day" : x.label === "prompts");
+    if (h) stats2.push({ label: key4 === "days" ? "Days" : "Prompts", value: h.value });
+  }
+  if (d.catchphrase && !k.s.share) stats2.push({ label: "Catchphrase", value: `\u201C${d.catchphrase.phrase}\u201D \xD7${count4(d.catchphrase.count)}`, quote: true });
+  const rx = mx + leftW;
+  const rw = iw - leftW;
+  const widths = stats2.map((st) => Math.max(textWidth(st.value), textWidth(st.label)));
+  let fits = stats2;
+  while (fits.length && widths.slice(0, fits.length).reduce((a, b2) => a + b2, 0) + 4 * (fits.length - 1) > rw) fits = fits.slice(0, -1);
+  const used = widths.slice(0, fits.length).reduce((a, b2) => a + b2, 0);
+  const gapW = fits.length > 1 ? Math.min(12, Math.floor((rw - used) / (fits.length - 1))) : 0;
+  const xs = fits.map((_, i) => rx + widths.slice(0, i).reduce((a, b2) => a + b2, 0) + gapW * i);
+  const clock3 = d.viz.clock;
+  const dayOk = p.day && !!clock3 && k.uni && rw >= 30;
+  const rightH = 2 + (dayOk ? 3 : 0);
+  return {
+    h: Math.max(priceH, rightH),
+    draw: (y) => {
+      if (price) {
+        txt(k, mx, y, "At API prices", tk.text3);
+        const shown = countUp2(price.value, grow2(k, 0));
+        if (big) drawDisplay(k.c, mx + displayWidth(price.value, opts) - displayWidth(shown, opts), y + 1, shown, tk.text, tk.bg, opts);
+        else txt(k, mx + textWidth(price.value) - textWidth(shown), y + 1, shown, tk.text, { bold: true });
+      }
+      fits.forEach((st, i) => {
+        const x = xs[i];
+        txt(k, x, y, st.label, tk.text3);
+        txt(k, x, y + 1, st.value, tk.text, { bold: !st.quote, italic: st.quote });
+      });
+      if (dayOk && clock3) {
+        const yy = y + (big ? priceH - 2 : 3);
+        const per = rw >= 70 ? 2 : 1;
+        txt(k, rx, yy - 1, "Your day", tk.text3);
+        const w = spark(k, rx, yy, clock3.hours, per, tk.bar, clock3.angry, DIAG_AT + DIAG_STEP);
+        for (const [h, l] of [[0, "12a"], [6, "6a"], [12, "12p"], [18, "6p"]]) txt(k, rx + h * per, yy + 1, l, tk.text3);
+        const lx = rx + w + 3;
+        if (lx + 18 <= mx + iw) {
+          const aw = txt(k, lx, yy, hourLabel(clock3.angry), tk.text);
+          txt(k, lx + aw + 1, yy, "angriest", tk.text2);
+          const sw = txt(k, lx, yy + 1, hourLabel(clock3.saint), tk.text);
+          txt(k, lx + sw + 1, yy + 1, "calmest", tk.text2);
+        }
+      }
+    }
+  };
+}
+function partsFit(f, w) {
+  return textWidth(factText(f.parts)) <= w ? f.parts : f.short && textWidth(factText(f.short)) <= w ? f.short : null;
+}
+function drawParts(k, x, y, parts) {
+  let cx = x;
+  for (const part of parts) cx += txt(k, cx, y, part.text, part.tone ? k.tk.text : k.tk.text2, { italic: part.tone === "quote" });
+}
+function factsPiece(k, d, p) {
+  const { mx, iw } = k;
+  if (p.nFacts <= 0) return null;
+  const cols = iw >= 100 ? 3 : iw >= 60 ? 2 : 1;
+  const gap2 = 3;
+  const colW = Math.floor((iw - gap2 * (cols - 1)) / cols);
+  const exclude = [...d.catchphrase ? ["catchphrase"] : [], ...d.viz.clock ? ["mood_hours"] : []];
+  const picks = [];
+  const fam = /* @__PURE__ */ new Map();
+  for (const f of posterOrder(d.facts, exclude)) {
+    if (picks.length >= p.nFacts) break;
+    if ((fam.get(f.family) ?? 0) >= 2) continue;
+    const parts = partsFit(f, colW);
+    if (!parts || textWidth(f.label) > colW) continue;
+    fam.set(f.family, (fam.get(f.family) ?? 0) + 1);
+    picks.push({ f, parts });
+  }
+  if (!picks.length) return null;
+  const rows = Math.ceil(picks.length / cols);
+  const cellH = p.diagrams ? 3 : 2;
+  const rowGap = p.factGap ? 1 : 0;
+  return {
+    shown: picks.map((x) => x.f),
+    h: rows * cellH + (rows - 1) * rowGap,
+    draw: (y0) => picks.forEach(({ f, parts }, i) => {
+      const x = mx + i % cols * (colW + gap2);
+      const y = y0 + Math.floor(i / cols) * (cellH + rowGap);
+      txt(k, x, y, f.label, k.tk.text3);
+      drawParts(k, x, y + 1, parts);
+      if (p.diagrams) diagram(k, d, f, x, y + 2, colW, 2 + i);
+    })
+  };
+}
+function diagram(k, d, f, x, y, w, i) {
+  const { tk } = k;
+  const v = d.viz;
+  if (!k.uni) return;
+  const start = DIAG_AT + i * DIAG_STEP;
+  switch (f.id) {
+    case "manners": {
+      const m = v.manners;
+      if (!m) return;
+      const l = count4(m.thanks), r3 = count4(m.rude);
+      const bw = Math.min(w - textWidth(l) - textWidth(r3) - 2, 28);
+      if (bw < 6) return;
+      txt(k, x, y, l, tk.text2);
+      const nice = Math.max(1, Math.round(bw * m.thanks / (m.thanks + m.rude)));
+      meter(k, x + textWidth(l) + 1, y, nice, 1, tk.text, start);
+      meter(k, x + textWidth(l) + 1 + nice, y, bw - nice, 1, tk.text3, start + 150);
+      txt(k, x + textWidth(l) + 1 + bw + 1, y, r3, tk.text2);
+      return;
+    }
+    case "mood_drift": {
+      const a = v.arc;
+      if (!a) return;
+      const per = Math.max(1, Math.min(2, Math.floor((w - textWidth(a.from) - textWidth(a.to) - 2) / a.pcts.length)));
+      if (textWidth(a.from) + textWidth(a.to) + 2 + per * a.pcts.length > w) return;
+      txt(k, x, y, a.from, tk.text3);
+      const max2 = a.pcts.indexOf(Math.max(...a.pcts));
+      const sw = spark(k, x + textWidth(a.from) + 1, y, a.pcts, per, tk.bar, max2, start, tk.text2);
+      txt(k, x + textWidth(a.from) + 1 + sw + 1, y, a.to, tk.text3);
+      return;
+    }
+    case "longest_sit": {
+      const h = v.sit;
+      if (!h) return;
+      const bw = Math.min(w - 4, 24);
+      meter(k, x, y, bw, Math.min(1, h / 12), tk.bar, start);
+      txt(k, x + bw + 1, y, "12h", tk.text3);
+      return;
+    }
+    default:
+      return;
+  }
+}
+function awardsPiece(k, d, shown) {
+  const { tk, mx, iw } = k;
+  const covered = /* @__PURE__ */ new Set([...shown.flatMap((f) => f.awards), ...d.catchphrase ? ["verbal_tics", "catchphrase"] : []]);
+  const cols = iw >= 100 ? 3 : 2;
+  const gap2 = 3;
+  const colW = Math.floor((iw - gap2 * (cols - 1)) / cols);
+  const list3 = d.awards.filter((a) => !a.id || !covered.has(a.id)).filter((a) => textWidth(a.title) <= colW).slice(0, cols);
+  if (!list3.length) return null;
+  return {
+    h: 2,
+    draw: (y) => list3.forEach((aw, i) => {
+      const x = mx + i * (colW + gap2);
+      const value = k.s.share ? aw.publicValue : aw.value;
+      const sub = (k.s.share ? aw.publicSub : aw.sub) ?? "";
+      txt(k, x, y, aw.title, tk.text, { bold: true });
+      const line2 = sub && textWidth(`${value}  \xB7  ${sub}`) <= colW ? `${value}  \xB7  ${sub}` : value;
+      if (textWidth(line2) <= colW) txt(k, x, y + 1, line2, tk.text2);
+    })
+  };
+}
+function tickerPiece(k, since) {
+  const lead = "SINCE LAST RUN  ";
+  if (textWidth(lead + since) > k.iw) return null;
+  return {
+    h: 1,
+    draw: (y) => {
+      const w = txt(k, k.mx, y, lead, k.tk.text3);
+      txt(k, k.mx + w, y, since, k.tk.text2);
+    }
+  };
+}
+function memoryPiece(k) {
+  const { tk, mx } = k;
+  return {
+    h: 1,
+    draw: (y) => {
+      const w = txt(k, mx, y, `${MEMORY_LINE}. `, tk.text3);
+      txt(k, mx + w, y, `${k.uni ? "\u2192" : "->"} slopie setup`, tk.text2);
+    }
+  };
+}
+function boardFooter(k, d) {
+  const { tk, s } = k;
+  const local = s.online ? "online \xB7 Jev" : "all local";
+  const right = [[INSTALL, tk.text], ["   ", tk.text3], [k.uni ? "\u25CF" : "*", tk.accent], [" " + local, tk.text3]];
+  if (s.share) return footer3(k, { keys: [["slopie", "audit"]], right });
+  return footer3(k, { keys: [[k.uni ? "\u2190" : "<", d.replay ? "replay your story" : "story"], ["s", "share"], ["?", "how"], ["q", "quit"]], right });
+}
+var INSTALL, MEMORY_LINE, PRINT_MS, DIAG_AT, DIAG_STEP, DIAG_DUR, SETTLED_MS, COUNT_FROM, TIER, STEPS, gapOf2;
+var init_poster = __esm({
+  "packages/cli/src/audit-ui/cards/poster.ts"() {
+    "use strict";
+    init_format3();
     init_color();
-    init_draw();
-    init_font();
     init_motion();
-    init_mascot();
+    init_fun_facts();
+    init_charts();
+    init_display();
+    init_kit();
+    init_title();
+    INSTALL = "npx slopie audit";
+    MEMORY_LINE = "your agents forget. slopie remembers";
+    PRINT_MS = 900;
+    DIAG_AT = 950;
+    DIAG_STEP = 110;
+    DIAG_DUR = 650;
+    SETTLED_MS = DIAG_AT + DIAG_STEP * 8 + DIAG_DUR;
+    COUNT_FROM = 0.8;
+    TIER = { common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary" };
+    STEPS = [
+      (p) => {
+        p.factGap = false;
+      },
+      (p) => {
+        p.memory = false;
+      },
+      (p) => {
+        p.label = false;
+      },
+      (p) => {
+        p.diagrams = false;
+      },
+      (p) => {
+        p.day = false;
+      },
+      (p) => {
+        p.tagline = false;
+      },
+      (p) => {
+        p.awards = false;
+      },
+      (p) => {
+        p.ticker = false;
+      },
+      (p) => {
+        p.bigPrice = false;
+      },
+      (p) => {
+        p.bigTitle = false;
+      },
+      // The six core facts are the poster: they go last, two at a time.
+      (p) => {
+        p.nFacts = 4;
+      },
+      (p) => {
+        p.nFacts = 2;
+      }
+    ];
+    gapOf2 = (p, prev) => p.rule || prev.rule || p.air ? 1 : 0;
+  }
+});
+
+// packages/cli/src/audit-ui/cards/board.ts
+function boardBody(s, data) {
+  return posterBody(s, data);
+}
+var init_board = __esm({
+  "packages/cli/src/audit-ui/cards/board.ts"() {
+    "use strict";
+    init_poster();
+    init_poster();
+  }
+});
+
+// packages/cli/src/audit-ui/cards/cover.ts
+function coverBody(k, data, r3) {
+  const { tk, L } = k;
+  const nums = data.numbers;
+  const cols = Math.max(1, nums.length);
+  const colW = Math.floor((r3.w + 3) / cols);
+  const base3 = { face: tk.face, tall: L && r3.h >= 20, currency: tk.text2 };
+  const widest = nums.reduce((a, n2) => n2.value.length > a.length ? n2.value : a, "");
+  const fit2 = k.uni && nums.length ? fitDisplay(widest, colW - 4, base3) : null;
+  const opts = fit2 && nums.every((n2) => fitDisplay(n2.value, colW - 4, fit2)) ? fit2 : null;
+  const numH = opts ? displayHeight(opts) + 2 : 2;
+  const letter = 7;
+  const silW = data.words.reduce((a, n2) => a + n2 * letter, 0) + (data.words.length - 1) * 3;
+  const silBig = k.uni && silW <= r3.w && r3.h >= numH + 9;
+  const silH = silBig ? 3 : 1;
+  const block2 = 2 + silH + (L ? 4 : 2) + numH;
+  let y = r3.y + Math.max(0, Math.floor((r3.h - block2) / 2));
+  const a1 = fade2(k, 300, 500);
+  let x = r3.x + txt(k, r3.x, y, "Archetype", tk.text3, { a: a1 }) + 2;
+  if (data.tier) {
+    x += txt(k, x, y, TIER2[data.tier], tk.accent, { bold: true, a: a1 });
+    txt(k, x, y, " \xB7 unlocks at the end", tk.text3, { a: a1 });
+  } else txt(k, x, y, "unlocks at the end", tk.text3, { a: a1 });
+  y += 2;
+  x = r3.x;
+  data.words.forEach((n2, wi) => {
+    const w = silBig ? n2 * letter - 2 : n2;
+    const la = fade2(k, 380 + wi * 120, 420);
+    for (let yy = 0; yy < silH; yy++) for (let xx = 0; xx < w; xx++) k.c.put(x + xx, y + yy, k.uni ? "\u2588" : "#", fadeIn(tk, tk.ghost, la), tk.bg, 0);
+    x += w + (silBig ? 3 : 1);
+  });
+  y += silH + (L ? 4 : 2);
+  nums.forEach((n2, i) => {
+    const cx = r3.x + i * colW;
+    const a = fade2(k, 700 + i * 140, 420);
+    if (i) vrule(k, cx - 3, y, numH, a);
+    if (opts) {
+      drawDisplay(k.c, cx, y, n2.value, fadeIn(tk, tk.text, a), tk.bg, opts);
+      txt(k, cx, y + displayHeight(opts) + 1, cap2(n2.label), tk.text2, { a });
+    } else {
+      txt(k, cx, y, n2.value, tk.text, { bold: true, a });
+      txt(k, cx, y + 1, cap2(n2.label), tk.text2, { a });
+    }
+  });
+}
+var TIER2, cap2;
+var init_cover = __esm({
+  "packages/cli/src/audit-ui/cards/cover.ts"() {
+    "use strict";
+    init_display();
+    init_kit();
+    init_tokens();
+    TIER2 = { common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary" };
+    cap2 = (t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
   }
 });
 
@@ -47917,1696 +48038,326 @@ function valueLabel(y, unit) {
   if (unit === "hours") return `${v}h`;
   return v;
 }
-function columns(s, points, r3, highlight, unit) {
-  const { c, t } = s;
+function columns(k, points, r3, highlight, unit) {
+  const { tk, L, s } = k;
   const max2 = Math.max(1e-9, ...points.map((p) => p.y));
-  const h = Math.max(3, Math.min(r3.h - 3, s.tier.id === "L" ? 14 : 9));
-  const top = r3.y + 1;
-  const bottom = top + h - 1;
+  const h = Math.max(3, Math.min(r3.h - 3, L ? 13 : 9));
+  const base3 = r3.y + 1 + h;
   const dense = points.length * 3 > r3.w;
-  let busy = false;
   if (dense) {
     const width = Math.min(r3.w, points.length >= r3.w ? r3.w : points.length * 2);
     const per = points.length / width;
+    rule(k, r3.x, base3, width);
     for (let col3 = 0; col3 < width; col3++) {
       const slice2 = points.slice(Math.floor(col3 * per), Math.max(Math.floor(col3 * per) + 1, Math.floor((col3 + 1) * per)));
       const v = Math.max(...slice2.map((p) => p.y));
-      const hi = slice2.some((p) => highlight !== void 0 && highlight !== null && String(p.x) === String(highlight));
-      const k = seg2(t, 100 + col3 * 12, 300, easeOutCubic);
-      busy ||= k < 1;
-      if (v <= 0) {
-        c.put(r3.x + col3, bottom, s.caps.unicode ? "\u2581" : "_", C.coal);
-        continue;
-      }
-      vbar(c, r3.x + col3, bottom, h, Math.max(0.06, v / max2) * k, hi ? C.orange : v === max2 ? C.peach : fade(C.orange, 0.5), 1, !s.caps.unicode);
+      const g2 = s.caps.motion ? seg2(s.t, 100 + col3 * 12, 300, easeOutCubic) : 1;
+      if (g2 < 1) k.busy = true;
+      if (v > 0) vbar(k.c, r3.x + col3, base3 - 1, h, Math.max(0.06, v / max2) * g2, slice2.some((p) => isHi(p, highlight)) ? tk.accent : tk.bar, 1, !k.uni);
     }
-    c.text(r3.x, bottom + 1, axisLabel(points[0].x), { fg: C.slate });
-    const last2 = axisLabel(points.at(-1).x);
-    textRight(c, r3.x + width, bottom + 1, last2, { fg: C.slate });
+    txt(k, r3.x, base3 + 1, axisLabel(points[0].x), tk.text3);
+    txtRight(k, r3.x + width, base3 + 1, axisLabel(points.at(-1).x), tk.text3);
     const peak = points.reduce((best, p) => p.y > best.y ? p : best, points[0]);
-    const pi = points.indexOf(peak);
-    const px = r3.x + Math.floor(pi / per);
-    const la = seg2(t, 600, 300);
-    const label4 = `${valueLabel(peak.y, unit)} \xB7 ${axisLabel(peak.x)}`;
-    c.text(Math.min(px, r3.x + r3.w - textWidth(label4)), Math.max(r3.y, top - 1), label4, { fg: C.cream, bold: true, alpha: la });
-    return busy || la < 1;
+    const px = r3.x + Math.floor(points.indexOf(peak) / per);
+    const lab = `${valueLabel(peak.y, unit)} \xB7 ${axisLabel(peak.x)}`;
+    txt(k, Math.min(px, r3.x + r3.w - textWidth(lab)), Math.max(r3.y, base3 - h - 1), lab, tk.text, { bold: true, a: fade2(k, 600, 300) });
+    return;
   }
   const colW = Math.max(3, Math.min(9, Math.floor(r3.w / points.length)));
   const barW = Math.max(1, colW - (colW >= 5 ? 2 : 1));
   const maxIndex = points.findIndex((p) => p.y === max2);
+  rule(k, r3.x, base3, points.length * colW - (colW - barW));
   points.forEach((p, i) => {
-    const hi = highlight !== void 0 && highlight !== null ? String(p.x) === String(highlight) : i === maxIndex;
-    const k = s.caps.motion ? Math.min(1, spring((t - i * 50) / 1e3, 2, 0.7)) : 1;
-    busy ||= t < i * 50 + 900;
+    const hi = highlight !== void 0 && highlight !== null ? isHi(p, highlight) : i === maxIndex;
+    const g2 = s.caps.motion ? Math.max(0, Math.min(1, spring((s.t - i * 50) / 1e3, 2, 0.8))) : 1;
+    if (s.caps.motion && s.t < i * 50 + 900) k.busy = true;
     const x = r3.x + i * colW;
-    vbar(c, x, bottom, h - 1, p.y / max2 * Math.max(0, k), hi ? C.orange : fade(C.orange, 0.45), barW, !s.caps.unicode);
-    const label4 = axisLabel(p.x);
-    if (colW >= 4 || i % 2 === 0) c.text(x, bottom + 1, label4.slice(0, colW), { fg: hi ? C.orange : C.slate, bold: hi });
-    const va = seg2(t, 500 + i * 50, 250);
-    const vy = bottom - Math.ceil(p.y / max2 * (h - 1)) - 1;
+    vbar(k.c, x, base3 - 1, h, p.y / max2 * g2, hi ? tk.accent : tk.bar, barW, !k.uni);
+    const lab = axisLabel(p.x);
+    if (colW >= 4 || i % 2 === 0) txt(k, x, base3 + 1, lab, hi ? tk.text : tk.text3, {}, colW);
     const text2 = valueLabel(p.y, unit);
-    if (textWidth(text2) <= colW) c.text(x, Math.max(r3.y, vy), text2, { fg: hi ? C.cream : C.gray, bold: hi, alpha: va });
+    const vy = base3 - 2 - Math.ceil(p.y / max2 * (h - 1));
+    if (textWidth(text2) <= colW) txt(k, x, Math.max(r3.y, vy), text2, hi ? tk.text : tk.text2, { bold: hi, a: fade2(k, 500 + i * 50, 250) });
   });
-  return busy;
 }
-function area(s, points, r3, highlight, unit) {
-  const { c, t } = s;
+function line(k, points, r3, highlight, unit) {
+  const { tk, L, s } = k;
   const max2 = Math.max(1e-9, ...points.map((p) => p.y));
-  const plotH = Math.max(4, Math.min(r3.h - 3, s.tier.id === "L" ? 12 : 8));
-  const x0 = r3.x + 6;
-  const plotW = Math.min(r3.w - 8, points.length * (s.tier.id === "L" ? 9 : 6));
-  const yTop = r3.y + 1;
-  const pxH = plotH * 2;
+  const plotH = Math.max(4, Math.min(r3.h - 3, L ? 12 : 8));
+  const x0 = r3.x + 7;
+  const plotW = Math.min(r3.w - 9, points.length * (L ? 9 : 6));
+  const base3 = r3.y + 1 + plotH;
   const step = plotW / Math.max(1, points.length - 1);
-  const draw = s.caps.motion ? seg2(t, 100, 1e3, easeOutCubic) : 1;
+  const draw = s.caps.motion ? seg2(s.t, 100, 1e3, easeOutCubic) : 1;
+  if (draw < 1) k.busy = true;
   const at = (x) => {
     const f = x / step;
     const i = Math.min(points.length - 2, Math.max(0, Math.floor(f)));
-    const k = Math.max(0, Math.min(1, f - i));
+    const t = Math.max(0, Math.min(1, f - i));
     const a = points[i].y, b2 = points[Math.min(points.length - 1, i + 1)].y;
-    return a + (b2 - a) * (k * k * (3 - 2 * k));
+    return a + (b2 - a) * (t * t * (3 - 2 * t));
   };
-  for (let x = 0; x <= Math.round(plotW * draw); x++) {
-    const top = Math.round(pxH - at(x) / max2 * (pxH - 1)) - 1;
-    for (let py = Math.max(0, top); py < pxH; py++) {
-      const depth = (py - top) / Math.max(1, pxH - top);
-      c.px(x0 + x, yTop * 2 + py, py === top ? C.orange : mix(mix(C.ember, C.ink, 0.35), C.ink, Math.min(0.92, depth * 1.1)));
-    }
-  }
-  textRight(c, x0 - 1, yTop, valueLabel(max2, unit), { fg: C.slate });
-  textRight(c, x0 - 1, yTop + plotH - 1, unit === "pct" ? "0%" : "0", { fg: C.slate });
+  rule(k, x0, base3, plotW + 1);
+  for (let x = 0; x <= Math.round(plotW * draw); x++) vbar(k.c, x0 + x, base3 - 1, plotH, Math.max(0.02, at(x) / max2), tk.bar, 1, !k.uni);
+  txtRight(k, x0 - 2, r3.y + 1, valueLabel(max2, unit), tk.text3);
+  txtRight(k, x0 - 2, base3 - 1, unit === "pct" ? "0%" : "0", tk.text3);
   let lastEnd = -10;
   points.forEach((p, i) => {
     const x = x0 + Math.round(i * step);
-    const label4 = axisLabel(p.x);
-    if (x - lastEnd < 2 || x + textWidth(label4) > r3.x + r3.w) return;
-    const hi = highlight !== void 0 && highlight !== null && String(p.x) === String(highlight);
-    c.text(x, yTop + plotH, label4, { fg: hi ? C.orange : C.slate });
-    lastEnd = x + textWidth(label4);
+    const lab = axisLabel(p.x);
+    if (x - lastEnd < 2 || x + textWidth(lab) > r3.x + r3.w) return;
+    txt(k, x, base3 + 1, lab, isHi(p, highlight) ? tk.text : tk.text3);
+    lastEnd = x + textWidth(lab);
   });
-  const ea = seg2(t, 1e3, 300);
-  const first = points[0], last2 = points.at(-1);
-  c.text(x0 + 1, Math.max(r3.y, yTop + Math.floor((pxH - first.y / max2 * (pxH - 1)) / 2) - 1), valueLabel(first.y, unit), { fg: C.gray, alpha: ea });
-  const lastText = valueLabel(last2.y, unit);
-  c.text(x0 + plotW - textWidth(lastText), Math.max(r3.y, yTop + Math.floor((pxH - last2.y / max2 * (pxH - 1)) / 2) - 2), lastText, { fg: C.orange, bold: true, alpha: ea });
-  return t < 1400;
+  const last2 = points.at(-1);
+  txt(k, x0 + plotW + 2, Math.max(r3.y, base3 - 1 - Math.ceil(last2.y / max2 * plotH)), valueLabel(last2.y, unit), tk.text, { bold: true, a: fade2(k, 1e3, 300) });
 }
-function list2(s, points, r3, unit) {
-  const { c, t } = s;
+function list2(k, points, r3, unit) {
+  const { tk, s } = k;
   const rows = points.slice(0, Math.min(8, Math.max(1, Math.floor(r3.h / (r3.h >= 12 ? 2 : 1)))));
   const step = rows.length * 2 <= r3.h ? 2 : 1;
   const max2 = Math.max(1e-9, ...rows.map((p) => p.y));
   const nameW = Math.min(26, Math.max(...rows.map((p) => textWidth(String(p.x)))) + 2);
-  const barW = Math.max(6, Math.min(50, r3.w - nameW - 30));
+  const barW = Math.max(6, Math.min(48, r3.w - nameW - 30));
   rows.forEach((p, i) => {
     const y = r3.y + i * step;
-    const k = seg2(t, i * 80, 600, easeOutCubic);
-    c.text(r3.x, y, String(p.x), { fg: i === 0 ? C.cream : C.gray, bold: i === 0 }, nameW - 1);
-    hbar(c, r3.x + nameW, y, barW, p.y / max2 * k, i === 0 ? C.orange : fade(C.orange, 0.5), !s.caps.unicode);
-    const value = valueLabel(p.y, unit);
-    const vw = c.text(r3.x + nameW + barW + 2, y, value, { fg: C.cream, alpha: k });
-    if (p.label) c.text(r3.x + nameW + barW + 3 + vw, y, `\xB7 ${p.label}`, { fg: C.slate, alpha: k }, r3.x + r3.w - (r3.x + nameW + barW + 3 + vw));
+    const a = fade2(k, i * 80, 300);
+    txt(k, r3.x, y, String(p.x), i === 0 ? tk.text : tk.text2, { bold: i === 0, a }, nameW - 2);
+    meter(k, r3.x + nameW, y, barW, p.y / max2, i === 0 ? tk.text : tk.bar, i * 80);
+    const vx = r3.x + nameW + barW + 2;
+    const vw = txt(k, vx, y, valueLabel(p.y, unit), tk.text, { a });
+    if (p.label && vx + vw + 3 + textWidth(p.label) <= r3.x + r3.w) txt(k, vx + vw + 3, y, p.label, tk.text3, { a });
   });
-  return t < rows.length * 80 + 600;
+  if (s.caps.motion && s.t < rows.length * 80 + 600) k.busy = true;
 }
-function stacked(s, series, r3, highlight) {
-  const { c, t } = s;
+function stacked(k, series, r3, highlight) {
+  const { tk, L, s } = k;
   const n2 = series[0]?.points.length ?? 0;
   const colW = Math.max(1, Math.min(3, Math.floor(r3.w / Math.max(1, n2))));
-  const h = Math.max(3, Math.min(r3.h - 4, s.tier.id === "L" ? 12 : 8));
+  const h = Math.max(3, Math.min(r3.h - 4, L ? 12 : 8));
   const bottom = r3.y + h;
   const totals2 = Array.from({ length: n2 }, (_, i) => series.reduce((sum2, sr) => sum2 + (sr.points[i]?.y ?? 0), 0));
   const max2 = Math.max(1, ...totals2);
-  const palette = [C.slate, C.orange, C.peach, C.cream];
+  const inks = [tk.bar, tk.text3, tk.text2, tk.text];
   for (let i = 0; i < n2; i++) {
-    const k = seg2(t, i * 15, 300);
+    const g2 = s.caps.motion ? seg2(s.t, i * 15, 300) : 1;
+    if (g2 < 1) k.busy = true;
     let acc = 0;
     series.forEach((sr, si) => {
       const v = sr.points[i]?.y ?? 0;
-      const from = Math.round(acc / max2 * h * 2 * k), to = Math.round((acc + v) / max2 * h * 2 * k);
-      for (let py = from; py < to; py++) for (let k2 = 0; k2 < Math.max(1, colW - (colW > 1 ? 1 : 0)); k2++) c.px(r3.x + i * colW + k2, bottom * 2 + 1 - py, palette[si % palette.length]);
+      const from = Math.round(acc / max2 * h * 2 * g2), to = Math.round((acc + v) / max2 * h * 2 * g2);
+      for (let py = from; py < to; py++) for (let j = 0; j < Math.max(1, colW - (colW > 1 ? 1 : 0)); j++) k.c.px(r3.x + i * colW + j, bottom * 2 + 1 - py, inks[si % inks.length]);
       acc += v;
     });
-    if (highlight !== void 0 && highlight !== null && String(series[0].points[i]?.x) === String(highlight)) {
-      c.put(r3.x + i * colW, r3.y, s.caps.unicode ? "\u25BC" : "v", C.cream);
-      c.text(r3.x + i * colW + 2, r3.y, axisLabel(series[0].points[i].x), { fg: C.cream, bold: true });
+    const p0 = series[0].points[i];
+    if (p0 && isHi(p0, highlight)) {
+      k.c.put(r3.x + i * colW, r3.y, k.uni ? "\u2502" : "|", tk.accent, tk.bg, 0);
+      txt(k, r3.x + i * colW + 2, r3.y, axisLabel(p0.x), tk.text, { bold: true });
     }
   }
   let lx = r3.x;
   series.forEach((sr, si) => {
-    lx += c.text(lx, bottom + 2, s.caps.unicode ? "\u25A0 " : "# ", { fg: palette[si % palette.length] });
-    lx += c.text(lx, bottom + 2, sr.name, { fg: C.gray }) + 3;
+    lx += txt(k, lx, bottom + 2, k.uni ? "\u25A0 " : "# ", inks[si % inks.length]);
+    lx += txt(k, lx, bottom + 2, sr.name, tk.text2) + 3;
   });
-  return t < n2 * 15 + 300;
 }
-function insightBody(s, data, r3) {
-  const { c, t } = s;
+function insightBody(k, data, r3) {
+  const { tk, L, s } = k;
   const chart2 = data.chart;
   const points = chart2.series[0]?.points ?? [];
   if (chart2.type === "slope" && chart2.series.length >= 1) {
     const ser = chart2.series.slice(0, 2);
     const max2 = Math.max(1, ...ser.flatMap((sr) => sr.points.map((p) => p.y)));
-    const x0 = r3.x + 18, x1 = Math.min(r3.x + r3.w - 18, x0 + 56);
-    const top = r3.y + 1, bottom = r3.y + Math.min(r3.h - 2, s.tier.id === "L" ? 12 : 8);
-    const k = seg2(t, 200, 900, easeOutCubic);
+    const x0 = r3.x + 20, x1 = Math.min(r3.x + r3.w - 20, x0 + 56);
+    const top = r3.y + 1, bottom = r3.y + Math.min(r3.h - 2, L ? 12 : 8);
+    const g2 = s.caps.motion ? seg2(s.t, 200, 900, easeOutCubic) : 1;
+    if (g2 < 1) k.busy = true;
     ser.forEach((sr, i) => {
-      const color = i === 0 ? C.peach : C.ember;
+      const ink = i === 0 ? tk.text : tk.text3;
       const [a, b2] = [sr.points[0]?.y ?? 0, sr.points[1]?.y ?? 0];
       const ya = bottom * 2 - Math.round(a / max2 * (bottom - top) * 2), yb = bottom * 2 - Math.round(b2 / max2 * (bottom - top) * 2);
-      const steps = Math.round((x1 - x0) * k);
-      for (let sx = 0; sx <= steps; sx++) c.px(x0 + sx, Math.round(ya + (yb - ya) * (sx / (x1 - x0))), color);
+      pxLine(k.c, x0, ya, x0 + Math.round((x1 - x0) * g2), Math.round(ya + (yb - ya) * g2), ink);
       const name = sr.name.replace(/\s*%$/, "");
-      textRight(c, x0 - 2, Math.floor(ya / 2), `${name} ${valueLabel(a, chart2.unit)}`, { fg: color });
-      if (k >= 1) c.text(x1 + 2, Math.floor(yb / 2), `${valueLabel(b2, chart2.unit)} ${name}`, { fg: color, bold: true });
+      txtRight(k, x0 - 2, Math.floor(ya / 2), `${name} ${valueLabel(a, chart2.unit)}`, i === 0 ? tk.text : tk.text2);
+      if (g2 >= 1) txt(k, x1 + 2, Math.floor(yb / 2), `${valueLabel(b2, chart2.unit)} ${name}`, i === 0 ? tk.text : tk.text2, { bold: i === 0 });
     });
     const labels3 = ser[0].points.map((p) => String(p.x));
-    c.text(x0 - 2, bottom + 1, labels3[0] ?? "", { fg: C.slate });
-    textRight(c, x1 + 2, bottom + 1, labels3[1] ?? "", { fg: C.slate });
-    return k < 1;
+    txt(k, x0 - 2, bottom + 1, labels3[0] ?? "", tk.text3);
+    txtRight(k, x1 + 2, bottom + 1, labels3[1] ?? "", tk.text3);
+    return;
   }
   if (chart2.type === "big_number" && points[0]) {
-    const a = seg2(t, 0, 400);
-    const text2 = valueLabel(points[0].y, chart2.unit);
-    const glyphs = text2.replace(/[^0-9.,%$h×]/g, "");
-    drawBig(c, r3.x, r3.y + 1, glyphs, { scale: s.tier.id === "L" ? 2 : 1, color: (_x, py) => fade(mix(C.cream, C.orange, py / (s.tier.id === "L" ? 9 : 4)), a) });
-    c.text(r3.x, r3.y + (s.tier.id === "L" ? 7 : 5), chart2.series[0].name, { fg: C.gray, alpha: a });
-    return a < 1;
+    const a = fade2(k, 0, 400);
+    const text2 = valueLabel(points[0].y, chart2.unit).replace(/h$/, "");
+    const opts = k.uni ? fitDisplay(text2, r3.w, { face: tk.face, tall: L }) : null;
+    if (opts) drawDisplay(k.c, r3.x, r3.y + 1, text2, fadeIn(tk, tk.text, a), tk.bg, opts);
+    else txt(k, r3.x, r3.y + 1, text2, tk.text, { bold: true, a });
+    txt(k, r3.x, r3.y + 2 + (opts ? displayHeight(opts) : 1), chart2.unit === "hours" ? `hours \xB7 ${chart2.series[0].name}` : chart2.series[0].name, tk.text2, { a });
+    return;
   }
-  if (chart2.type === "stacked_area" && chart2.series.length > 1) return stacked(s, chart2.series, r3, chart2.highlight);
-  if (!points.length) return false;
-  if (["hbar", "words", "autocomplete", "keyboard", "tally", "bubbles", "grid"].includes(chart2.type)) return list2(s, points, r3, chart2.unit);
-  if (chart2.type === "line" && points.length >= 3 && typeof points[0].x === "string" && /^\d{4}-\d{2}$/.test(points[0].x)) return area(s, points, r3, chart2.highlight, chart2.unit);
-  return columns(s, points, r3, chart2.highlight, chart2.unit);
+  if (chart2.type === "stacked_area" && chart2.series.length > 1) return stacked(k, chart2.series, r3, chart2.highlight);
+  if (!points.length) return;
+  if (["hbar", "words", "autocomplete", "keyboard", "tally", "bubbles", "grid"].includes(chart2.type)) return list2(k, points, r3, chart2.unit);
+  if (chart2.type === "line" && points.length >= 3 && typeof points[0].x === "string" && /^\d{4}-\d{2}$/.test(points[0].x)) return line(k, points, r3, chart2.highlight, chart2.unit);
+  columns(k, points, r3, chart2.highlight, chart2.unit);
 }
-var MONTHS8;
+var MONTHS8, isHi;
 var init_finale = __esm({
   "packages/cli/src/audit-ui/cards/finale.ts"() {
     "use strict";
-    init_color();
-    init_draw();
-    init_font();
-    init_motion();
     init_format3();
+    init_draw();
+    init_motion();
+    init_charts();
+    init_display();
+    init_kit();
+    init_tokens();
     MONTHS8 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    isHi = (p, highlight) => highlight !== void 0 && highlight !== null && String(p.x) === String(highlight);
   }
 });
 
-// packages/cli/src/audit-ui/cards/cover.ts
-function coverBody(s, data, r3) {
-  const { c, t } = s;
-  let busy = t < 1600;
-  const glowColor = data.tier === "legendary" ? GOLD : data.tier === "epic" ? C.orange : data.tier === "rare" ? C.peach : C.slate;
-  const big = s.tier.id !== "S" && s.caps.unicode;
-  const letterW = big ? 4 : 1;
-  const silW = data.words.reduce((a2, n2) => a2 + n2 * letterW, 0) + (data.words.length - 1) * (big ? 2 : 1);
-  const width = Math.min(r3.w, silW + 8);
-  const h = big ? 7 : 3;
-  const x0 = r3.x + Math.max(0, Math.floor((r3.w - width) / 2));
-  const total2 = h + 3 + (big ? 5 : 2);
-  const y0 = r3.y + Math.max(0, Math.floor((r3.h - total2) / 2) - 1);
-  const pulse = s.caps.motion ? 0.55 + 0.45 * Math.sin(Math.min(t, 1600) / 1600 * Math.PI * 2.5) : 1;
-  const a = seg2(t, 100, 400, easeOutCubic);
-  box(c, { x: x0, y: y0, w: width, h }, fade(mix(C.coal, glowColor, pulse), a), { rounded: false, ascii: !s.caps.unicode });
-  let x = x0 + 4;
-  const rows = big ? 3 : 1;
-  const sy = y0 + Math.floor((h - rows) / 2);
-  data.words.forEach((n2, wi) => {
-    for (let i = 0; i < n2; i++) {
-      const k = seg2(t, 200 + (wi * 4 + i) * 35, 200);
-      for (let yy = 0; yy < rows; yy++) for (let xx = 0; xx < letterW - (big ? 1 : 0); xx++) c.put(x + xx, sy + yy, s.caps.unicode ? "\u2593" : "#", fade(mix(C.coal, glowColor, 0.25), k));
-      x += letterW;
-    }
-    x += big ? 2 : 1;
-  });
-  const label4 = data.tier ? `${data.tier.toUpperCase()} \xB7 LOCKED` : "LOCKED";
-  const la = seg2(t, 700, 300);
-  textCenter(c, x0 + width / 2, y0 + h, ` ${s.caps.unicode ? "\u25C6" : "*"} ${label4} `, { fg: glowColor, bold: true, alpha: la });
-  const ny = y0 + h + 3;
-  if (ny + 4 <= r3.y + r3.h && data.numbers.length) {
-    const n2 = data.numbers.length;
-    const colW = Math.floor(r3.w / n2);
-    data.numbers.forEach((num7, i) => {
-      const k = seg2(t, 600 + i * 180, 450, easeOutBack);
-      busy ||= k < 1;
-      const cx = r3.x + colW * i + colW / 2;
-      const pixel = s.caps.color !== "none" && s.caps.unicode && bigSupported(num7.value) && bigWidth(num7.value) <= colW - 2 && s.tier.id !== "S";
-      if (pixel) {
-        const w = bigWidth(num7.value);
-        drawBig(c, Math.round(cx - w / 2), ny, num7.value, { color: (_x, py) => fade(mix(C.cream, C.orange, py / 4), Math.min(1, k)), dy: () => Math.round((1 - Math.min(1, k)) * 2) });
-        textCenter(c, cx, ny + 4, s.tier.id === "L" ? spaced(num7.label) : num7.label.toUpperCase(), { fg: C.gray, alpha: Math.min(1, k) });
-      } else {
-        textCenter(c, cx, ny, num7.value, { fg: C.orange, bold: true, alpha: Math.min(1, k) });
-        textCenter(c, cx, ny + 1, num7.label, { fg: C.gray, alpha: Math.min(1, k) });
-      }
+// packages/cli/src/audit-ui/cards/models.ts
+function key3(k, x, y, text2, a) {
+  return k.c.text(x, y, ` ${text2} `, { fg: fadeIn(k.tk, k.tk.text, a), bg: fadeIn(k.tk, k.tk.rule, a), bold: true });
+}
+function guessBody(k, data, r3) {
+  const { tk, s } = k;
+  const n2 = data.options.length;
+  if (s.state.guess === void 0) {
+    const cols = r3.w >= 70 && n2 > 2 ? 2 : 1;
+    const gap2 = 6;
+    const colW = Math.min(44, Math.floor((r3.w - gap2 * (cols - 1)) / cols));
+    const rowH = r3.h >= 12 ? 3 : 2;
+    const rows = Math.ceil(n2 / cols);
+    data.options.forEach((option, i) => {
+      const col3 = i % cols, row2 = Math.floor(i / cols);
+      const x = r3.x + col3 * (colW + gap2);
+      const y = r3.y + row2 * rowH;
+      const a = fade2(k, 80 + i * 90, 300);
+      if (row2) rule(k, x, y - 1, colW, tk.rule, a);
+      const kw = key3(k, x, y, String(i + 1), a);
+      txt(k, x + kw + 2, y, option.name, tk.text, { bold: true, a }, colW - kw - 2);
     });
-  }
-  return busy;
-}
-var GOLD;
-var init_cover = __esm({
-  "packages/cli/src/audit-ui/cards/cover.ts"() {
-    "use strict";
-    init_color();
-    init_draw();
-    init_font();
-    init_motion();
-    GOLD = hx("ffd27a");
-  }
-});
-
-// packages/cli/src/audit-ui/cards/spend.ts
-function spendBody(s, sp, r3) {
-  const { c, t, tier } = s;
-  let busy = t < 1800;
-  const pixel = s.caps.color !== "none" && s.caps.unicode;
-  const side = r3.w >= 90;
-  const leftW = side ? Math.min(44, Math.floor(r3.w * 0.4)) : r3.w;
-  let y = r3.y;
-  const value = "$" + count4(Math.round(countUp(sp.measured, t, 100, 1100)));
-  const final = "$" + count4(Math.round(sp.measured));
-  const scale2 = tier.id === "L" && bigWidth(final, 2) <= leftW && r3.h >= 18 ? 2 : 1;
-  if (pixel && bigWidth(final, scale2) <= leftW) {
-    drawBig(c, r3.x, y, value, { scale: scale2, color: (_x, py) => mix(C.cream, C.orange, py / (5 * scale2 - 1)) });
-    y += scale2 === 2 ? 6 : 4;
-  } else {
-    c.text(r3.x, y, final, { fg: C.orange, bold: true });
-    y += 2;
-  }
-  const a = seg2(t, 600, 400);
-  c.text(r3.x, y++, "lifetime, measured \xB7 API list prices", { fg: C.gray, alpha: a }, leftW);
-  y++;
-  const line = (label4, v, extra = "", color = C.cream) => {
-    if (y >= r3.y + r3.h) return;
-    c.text(r3.x, y, label4, { fg: C.gray, alpha: a });
-    const w = c.text(r3.x + 16, y, v, { fg: color, bold: true, alpha: a });
-    const room2 = leftW - 17 - w;
-    const fit2 = (Array.isArray(extra) ? extra : [extra]).find((e) => e && e.length <= room2);
-    if (fit2) c.text(r3.x + 17 + w, y, fit2, { fg: C.slate, alpha: a }, room2);
-    y++;
-  };
-  if (sp.recovered) line("+ recovered", money2(sp.recovered), "from usage counters", C.peach);
-  if (sp.estimated) line("\u2248 older prompts", `${money2(sp.estimated.low)}\u2013${money2(sp.estimated.high).slice(1)}`, [`est., ${count4(sp.estimated.prompts)} prompts`, `est., ${count4(sp.estimated.prompts)}`, "est."], C.peach);
-  if (sp.recovered || sp.estimated) y++;
-  if (sp.thisMonth !== null) line("this month", money2(sp.thisMonth));
-  if (sp.perDay !== null) line("per active day", money2(sp.perDay));
-  if (sp.priciestDay) line("priciest day", money2(sp.priciestDay.usd), shortDate2(sp.priciestDay.day, true));
-  const hundred = sp.days.filter((d) => d.usd >= 100).length;
-  if (hundred) line("$100+ days", count4(hundred));
-  const cx = side ? r3.x + leftW + 4 : r3.x;
-  const cw = side ? r3.x + r3.w - cx : r3.w;
-  let cy = side ? r3.y : y + 1;
-  const room = r3.y + r3.h - cy;
-  if (sp.months.length >= 2 && room >= 6) {
-    const barH = Math.max(3, Math.min(side ? 12 : 6, room - (sp.days.length ? 8 : 3)));
-    busy = monthBars(s, sp, { x: cx, y: cy, w: cw, h: barH + 2 }) || busy;
-    cy += barH + 3;
-  }
-  if (sp.days.length && r3.y + r3.h - cy >= 6) busy = heatStrip(s, sp.days, { x: cx, y: cy, w: cw, h: r3.y + r3.h - cy }) || busy;
-  return busy;
-}
-function monthBars(s, sp, r3) {
-  const { c, t } = s;
-  const months = sp.months.slice(-12);
-  const n2 = months.length;
-  const colW = Math.max(2, Math.min(7, Math.floor(r3.w / n2)));
-  const barW = Math.max(1, colW - 1);
-  const h = r3.h - 2;
-  const bottom = r3.y + 1 + h;
-  const max2 = Math.max(...months.map((m) => m.measured + m.extra), 1e-9);
-  const pixel = s.caps.color === "truecolor" || s.caps.color === "256";
-  c.text(r3.x, r3.y, s.tier.id === "L" ? spaced("by month") : "BY MONTH", { fg: C.gray });
-  const legend = months.some((m) => m.extra > 0) ? s.caps.unicode ? "\u2588 measured  \u2591 recovered / est." : "# measured  : recovered / est." : "";
-  if (legend) textRight(c, r3.x + Math.min(r3.w, n2 * colW), r3.y, legend, { fg: C.slate });
-  const peak = months.reduce((a, m, i) => m.measured > months[a].measured ? i : a, 0);
-  let busy = false;
-  months.forEach((m, i) => {
-    const k = seg2(t, 400 + i * 60, 500, easeOutCubic);
-    busy ||= k < 1;
-    const x = r3.x + i * colW;
-    const total2 = (m.measured + m.extra) / max2 * h * 2 * k;
-    const solid = m.measured / max2 * h * 2 * k;
-    const color = i === peak ? C.cream : C.orange;
-    if (pixel) {
-      for (let py = 0; py < Math.round(total2); py++) for (let b2 = 0; b2 < barW; b2++) c.px(x + b2, (bottom + 1) * 2 - 1 - py, py < Math.max(1, Math.round(solid)) ? color : mix(C.ink, C.peach, 0.35));
-    } else {
-      const cells = Math.round(total2 / 2), solidCells = Math.max(m.measured > 0 ? 1 : 0, Math.round(solid / 2));
-      for (let cy = 0; cy < cells; cy++) for (let b2 = 0; b2 < barW; b2++) c.put(x + b2, bottom - cy, cy < solidCells ? s.caps.unicode ? "\u2588" : "#" : s.caps.unicode ? "\u2591" : ":", cy < solidCells ? color : C.peach);
+    const hy = r3.y + rows * rowH + 1;
+    if (hy < r3.y + r3.h) {
+      const a = fade2(k, 600, 400);
+      txt(k, r3.x, hy, k.uni ? "or \u2192 to just tell me" : "or > to just tell me", tk.text3, { a });
     }
-    if (colW >= 4 || i % 2 === 0 || i === n2 - 1) c.text(x, bottom + 1, monthLabel(m.month), { fg: i === peak ? C.orange : C.slate }, colW);
-  });
-  const pk = months[peak];
-  const la = seg2(t, 1200, 300);
-  const label4 = money2(pk.measured);
-  const px = Math.min(r3.x + peak * colW, r3.x + n2 * colW - textWidth(label4));
-  const ty = bottom - Math.ceil((pk.measured + pk.extra) / max2 * h) - 1;
-  if (ty > r3.y) c.text(px, ty, label4, { fg: C.cream, bold: true, alpha: la });
-  return busy || la < 1;
-}
-function heatStrip(s, days, r3) {
-  const { c, t } = s;
-  const byDay = new Map(days.map((d) => [d.day, d.usd]));
-  const last2 = /* @__PURE__ */ new Date(days.at(-1).day + "T12:00:00Z");
-  const weeks = Math.min(53, Math.max(4, r3.w - 4));
-  const start = new Date(last2);
-  start.setUTCDate(start.getUTCDate() - (last2.getUTCDay() + 6) % 7 - (weeks - 1) * 7);
-  const max2 = Math.max(...days.map((d) => d.usd), 1e-9);
-  c.text(r3.x, r3.y, s.tier.id === "L" ? spaced("every day") : "EVERY DAY", { fg: C.gray });
-  const pixel = s.caps.color === "truecolor" || s.caps.color === "256";
-  const gy = r3.y + 1;
-  const k = seg2(t, 700, 900, easeOutCubic);
-  for (let w = 0; w < weeks; w++) {
-    if (w / weeks > k) break;
-    for (let d = 0; d < 7; d++) {
-      const day = new Date(start);
-      day.setUTCDate(start.getUTCDate() + w * 7 + d);
-      if (day > last2) continue;
-      const iso3 = day.toISOString().slice(0, 10);
-      const usd3 = byDay.get(iso3) ?? 0;
-      const v = usd3 > 0 ? Math.sqrt(usd3 / max2) : 0;
-      if (pixel) c.px(r3.x + 4 + w, gy * 2 + d, usd3 > 0 ? heat(0.2 + v * 0.8) : mix(C.ink, C.coal, 0.6));
-      else if (d % 2 === 0) {
-        const ch = usd3 <= 0 ? "\xB7" : v > 0.66 ? "\u2588" : v > 0.33 ? "\u2593" : "\u2591";
-        c.put(r3.x + 4 + w, gy + d / 2, s.caps.unicode ? ch : usd3 <= 0 ? "." : v > 0.5 ? "#" : "+", C.orange);
-      }
-    }
-  }
-  c.text(r3.x, gy, "Mon", { fg: C.slate });
-  c.text(r3.x, gy + 3, "Sun", { fg: C.slate });
-  const busiest = [...days].sort((a, b2) => b2.usd - a.usd)[0];
-  const la = seg2(t, 1500, 300);
-  if (r3.h >= 6) c.text(r3.x + 4, gy + 4, `brightest: ${shortDate2(busiest.day, true)} \xB7 ${money2(busiest.usd)}`, { fg: C.slate, alpha: la }, r3.w - 4);
-  return k < 1 || la < 1;
-}
-function erasBody(s, eras2, r3) {
-  const { c, t } = s;
-  if (!eras2.length) return false;
-  const labels3 = [...new Set(eras2.map((e) => e.label))];
-  const colW = Math.max(2, Math.min(8, Math.floor(r3.w / eras2.length)));
-  const y = r3.y + 1;
-  const k = seg2(t, 200, 900, easeOutCubic);
-  eras2.forEach((e, i) => {
-    if (i / eras2.length > k) return;
-    const color = ERA_COLORS[labels3.indexOf(e.label) % ERA_COLORS.length];
-    for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < colW - 1; xx++) c.put(r3.x + i * colW + xx, y + yy, s.caps.unicode ? "\u2588" : "#", color);
-    if (colW >= 4 || i % 2 === 0) c.text(r3.x + i * colW, y + 3, monthLabel(e.month), { fg: C.slate }, colW);
-  });
-  let lx = r3.x;
-  const la = seg2(t, 1100, 300);
-  labels3.forEach((label4, i) => {
-    lx += c.text(lx, y + 5, s.caps.unicode ? "\u25A0 " : "# ", { fg: ERA_COLORS[i % ERA_COLORS.length], alpha: la });
-    lx += c.text(lx, y + 5, label4, { fg: C.cream, alpha: la }) + 3;
-  });
-  return k < 1 || la < 1;
-}
-var ERA_COLORS;
-var init_spend = __esm({
-  "packages/cli/src/audit-ui/cards/spend.ts"() {
-    "use strict";
-    init_color();
-    init_draw();
-    init_font();
-    init_motion();
-    init_format3();
-    init_deck();
-    ERA_COLORS = [C.orange, C.peach, C.cream, C.ember, C.gray];
-  }
-});
-
-// packages/cli/src/audit-ui/cards/reveal.ts
-function revealDone(t) {
-  return t >= T2.settle;
-}
-function revealExpression(t) {
-  if (t < T2.slam) return Math.floor(t / 180) % 2 === 0 ? "blink" : "idle";
-  if (t < T2.slam + 600) return "shocked";
-  return "proud";
-}
-function bandWord(band2) {
-  return band2 >= 0.95 ? "off the chart" : band2 >= 0.8 ? "very high" : band2 >= 0.6 ? "high" : "notable";
-}
-function titleLines(title, width, scale2 = 1) {
-  const words8 = title.toUpperCase().split(/\s+/);
-  const lines = [];
-  let line = "";
-  for (const word of words8) {
-    const next = line ? `${line} ${word}` : word;
-    if (bigWidth(next, scale2) <= width) line = next;
-    else {
-      if (line) lines.push(line);
-      line = word;
-      if (bigWidth(word, scale2) > width) return null;
-    }
-  }
-  if (line) lines.push(line);
-  return lines;
-}
-function archetypeBody(s, data, r3, mascot) {
-  const { c, tier } = s;
-  const t = s.t;
-  const L = tier.id === "L";
-  const uni = s.caps.unicode;
-  const pixel = s.caps.color !== "none" && s.caps.unicode;
-  let busy = t < T2.settle;
-  const end = r3.y + r3.h;
-  let y = r3.y;
-  const ev = data.deciding;
-  if (ev.length) {
-    const head = seg2(t, 0, 250);
-    c.text(r3.x, y, "the evidence", { fg: C.gray, italic: true, alpha: head });
-    y += 1;
-    const maxCol = Math.floor(r3.w * 0.45);
-    const labelW = Math.min(maxCol, Math.max(...ev.map((m) => textWidth(m.display))) + 2);
-    const rightLimit = Math.min(r3.x + r3.w, mascot.y + mascot.h > y ? mascot.x - 2 : r3.x + r3.w);
-    const barW = Math.max(8, Math.min(32, rightLimit - r3.x - labelW - 16));
-    const step = L && r3.h >= 24 ? 2 : 1;
-    ev.forEach((m, i) => {
-      if (y >= end) return;
-      const start = T2.evidence + i * 450;
-      const k = seg2(t, start, 450, easeOutCubic);
-      const la = seg2(t, start - 100, 200);
-      const wraps = textWidth(m.display) > labelW - 2;
-      if (wraps) {
-        c.text(r3.x, y, m.display, { fg: C.cream, alpha: la }, r3.w);
-        y += 1;
-        if (y >= end) return;
-      } else c.text(r3.x, y, m.display, { fg: C.cream, alpha: la });
-      const bx = r3.x + (wraps ? 2 : labelW);
-      const color = i === 0 ? C.orange : fade(C.orange, 0.7);
-      bar8(c, bx, y, barW, m.band * k, s.caps.color === "none" ? C.cream : color, !uni, la > 0 ? fade(C.coal, la) : void 0);
-      const wa = seg2(t, start + 380, 200);
-      const pct3 = `${Math.round(countUp(m.band * 100, t, start, 450))}`;
-      if (wa > 0) c.text(bx + barW + 2, y, bandWord(m.band), { fg: m.band >= 0.8 ? C.peach : C.gray, bold: m.band >= 0.95, alpha: wa });
-      else if (k > 0 && k < 1) c.text(bx + barW + 2, y, pct3, { fg: C.slate });
-      y += step;
-    });
-    if (step === 1) y += 1;
-  }
-  const frameStyle = data.tier === "epic" || data.tier === "legendary" ? "double" : data.tier === "rare" ? "single" : "none";
-  const padX = 3;
-  const avoidMascot = (yy) => mascot.w > 0 && yy < mascot.y + mascot.h ? mascot.x - 2 : r3.x + r3.w;
-  const slotW = avoidMascot(y) - r3.x - padX * 2 - 2;
-  const titleW = Math.min(slotW, r3.w - padX * 2 - 2);
-  const big2 = L && pixel && bigSupported(data.title) ? titleLines(data.title, titleW, 2) : null;
-  const scale2 = big2 && big2.length === 1 && bigHeight(2) + 4 <= end - y - 10 ? 2 : 1;
-  const lines = pixel && bigSupported(data.title) ? titleLines(data.title, titleW, scale2) : null;
-  const useBig = !!lines && lines.length <= 2 && lines.length * (bigHeight(scale2) + 1) + 1 + 2 <= end - y - 4;
-  const titleRows = useBig ? lines.length * (bigHeight(scale2) + 1) - 1 : 1;
-  const padY = L && end - y >= 26 ? 1 : 0;
-  const innerW = useBig ? Math.max(...lines.map((l) => bigWidth(l, scale2))) : textWidth(spacedTitle(data.title, uni));
-  const frame = { x: r3.x, y: y + 1, w: Math.min(r3.w, innerW + padX * 2 + 2), h: titleRows + 2 + padY * 2 };
-  const ty = frame.y + 1 + padY;
-  const tx = frame.x + 1 + padX;
-  const rollT = t - T2.roll;
-  const runners = data.runners;
-  if (t < T2.slam && runners.length && s.caps.motion) {
-    const steps = runners.slice(0, 3).reverse();
-    const durs = steps.map((_, i) => i === steps.length - 1 ? 350 : 220);
-    let acc = 0, idx = -1, local = 0;
-    for (let i = 0; i < steps.length; i++) {
-      if (rollT >= acc && rollT < acc + durs[i]) {
-        idx = i;
-        local = (rollT - acc) / durs[i];
-      }
-      acc += durs[i];
-    }
-    if (rollT >= 0 && idx < 0) {
-      idx = steps.length - 1;
-      local = 1;
-    }
-    if (idx >= 0) {
-      const name = steps[idx].title;
-      const lift = Math.round((1 - easeOutCubic(local)) * 2);
-      const alpha = 0.35 + 0.25 * Math.sin(Math.PI * local);
-      drawTitle(s, tx, ty, name, useBig ? scale2 : 0, titleW, (_px, py) => fade(mix(C.slate, C.gray, py / 4), alpha), lift);
-      c.text(tx, frame.y + frame.h, idx === steps.length - 1 ? "so close\u2026" : "maybe\u2026", { fg: C.slate, alpha });
-    }
-  } else if (t >= T2.slam || !s.caps.motion) {
-    const slam = s.caps.motion ? seg2(t, T2.slam, 380, easeOutBack) : 1;
-    const drop = Math.round((1 - Math.min(1, slam)) * -6);
-    const impact = s.caps.motion && t >= T2.slam + 80 && t < T2.slam + 150;
-    if (impact && (s.caps.color === "truecolor" || s.caps.color === "256")) {
-      for (let yy = frame.y; yy < frame.y + frame.h; yy++) for (let xx = frame.x; xx < frame.x + frame.w; xx++) c.put(xx, yy, " ", C.cream, mix(C.ink, C.cream, 0.14));
-    }
-    const n2 = passes(data.tier);
-    const passDur = 400;
-    let sweep = -1;
-    for (let p = 0; p < n2; p++) {
-      const k = (t - T2.shimmer - p * passDur) / passDur;
-      if (k >= 0 && k < 1) sweep = k;
-    }
-    const w = innerW;
-    const goldShift = data.tier === "legendary" ? clamp012((t - T2.shimmer) / (n2 * passDur)) : 0;
-    drawTitle(s, tx, ty, data.title, useBig ? scale2 : 0, titleW, (px, py) => {
-      let base3 = mix(C.cream, C.orange, py / 4);
-      if (data.tier === "legendary") base3 = mix(base3, mix(GOLD2, C.cream, py / 8), s.caps.motion ? goldShift : 1);
-      if (sweep >= 0 && s.caps.color !== "16") {
-        const band2 = Math.abs(px + py * 2 - sweep * (w * 2 + 20) + 10);
-        if (band2 < 4) return mix(base3, C.white, 0.72 * (1 - band2 / 4));
-      }
-      return base3;
-    }, drop, sweep >= 0 && s.caps.color === "16" ? sweep * (w + 10) : null);
-    if (frameStyle !== "none") {
-      const fk = s.caps.motion ? seg2(t, T2.slam + 60, 300, (k) => k) : 1;
-      const color = data.tier === "legendary" ? GOLD2 : data.tier === "epic" ? C.orange : C.peach;
-      drawFrame(s, frame, frameStyle, color, fk);
-    }
-    sparkles(s, frame, data.tier, t, r3);
-  }
-  y = frame.y + frame.h + 1;
-  if (y < end && data.tier) {
-    const k = s.caps.motion ? spring((t - T2.stamp) / 1e3, 7, 0.5) : 1;
-    if (t >= T2.stamp || !s.caps.motion) {
-      const label4 = `${uni ? "\u2605" : "*"} ${TIER_LABEL[data.tier]} ${uni ? "\u2605" : "*"}`;
-      const pad4 = Math.max(1, Math.round(3 - 2 * Math.min(1, k)));
-      const flash = s.caps.motion && t - T2.stamp < 60;
-      const bg = flash ? C.cream : data.tier === "legendary" ? GOLD2 : data.tier === "epic" ? C.orange : data.tier === "rare" ? C.peach : C.slate;
-      const text2 = " ".repeat(pad4) + label4 + " ".repeat(pad4);
-      const bw = c.text(r3.x, y, text2, { fg: C.ink, bg, bold: true });
-      const sa = seg2(t, T2.stamp + 150, 300);
-      let x = r3.x + bw + 3;
-      if (data.subRole) x += c.text(x, y, data.subRole, { fg: C.peach, italic: true, alpha: sa }, r3.x + r3.w - x) + 3;
-      const [first, second] = data.runners;
-      const named2 = !!first && !!data.subRole?.includes(first.title);
-      const almost = named2 ? second ? `also close: ${second.title}` : "" : first ? `runner-up: ${first.title}` : "";
-      if (almost && x + 10 < r3.x + r3.w) {
-        const text22 = almost;
-        if (x + textWidth(text22) <= r3.x + r3.w) textRight(c, r3.x + r3.w, y, text22, { fg: C.slate, alpha: sa });
-      }
-    }
-    y += 2;
-  }
-  const lineAt = (i) => seg2(t, T2.profile + i * 120, 260);
-  let li = 0;
-  if (data.tagline && y < end) {
-    c.text(r3.x, y, `\u201C${data.tagline}\u201D`, { fg: C.peach, italic: true, alpha: lineAt(li++) }, r3.w);
-    y += 2;
-  }
-  if (y < end) {
-    const room = Math.max(1, Math.min(L ? 3 : 2, end - y - 2));
-    for (const line of wrapText(data.profile, Math.min(r3.w, 96), room)) {
-      if (y >= end) break;
-      c.text(r3.x, y++, line, { fg: C.cream, alpha: lineAt(li++) });
-    }
-    y += 1;
-  }
-  if (data.code && y < end) {
-    const ca = seg2(t, T2.profile + 450, 300);
-    const letters = [...data.code];
-    const shown = s.caps.motion ? Math.min(letters.length, Math.max(0, Math.floor((t - T2.profile - 450) / 110) + 1)) : letters.length;
-    let x = r3.x + c.text(r3.x, y, "your code  ", { fg: C.slate, alpha: ca });
-    const dot = uni ? " \xB7 " : " ";
-    x += c.text(x, y, letters.slice(0, shown).join(dot), { fg: C.orange, bold: true, alpha: ca }) + 3;
-    if (data.codeWords.length && shown === letters.length) x += c.text(x, y, data.codeWords.join(uni ? " \xB7 " : ", "), { fg: C.gray, alpha: ca }, r3.x + r3.w - x) + 4;
-    const note = data.tier ? `${data.tier} = ${data.tier === "common" ? "your deciding numbers sit mid-scale" : "your deciding numbers sit near the top of their fixed scales"}` : "";
-    if (note && L && x + textWidth(note) <= r3.x + r3.w) c.text(x, y, note, { fg: C.slate, alpha: ca });
-  }
-  return busy;
-}
-function spacedTitle(title, uni) {
-  return title.toUpperCase().split(" ").map((w) => [...w].join(" ")).join("   ");
-}
-function drawTitle(s, x, y, title, scale2, width, colorAt, dyPx, glint16 = null) {
-  const { c } = s;
-  if (scale2 > 0) {
-    const color = (px, py) => colorAt(Math.floor(px / scale2), Math.floor(py / scale2));
-    const lines = titleLines(title, width, scale2) ?? titleLines(title, width) ?? [title.toUpperCase()];
-    const k = titleLines(title, width, scale2) ? scale2 : 1;
-    lines.forEach((line, i) => drawBig(c, x, y + i * (bigHeight(k) + 1), line, { scale: k, color, dy: () => dyPx * k }));
-    if (glint16 !== null) {
-      const col3 = Math.round(x + glint16 - 5);
-      for (let yy = y; yy < y + lines.length * (bigHeight(k) + 1) - 1; yy++) for (let xx = col3; xx < col3 + 2 * k; xx++) {
-        if (!c.inside(xx, yy)) continue;
-        const i = yy * c.w + xx;
-        if (c.ch[i] === " ") continue;
-        c.fg[i] = C.white;
-      }
-    }
+    if (s.caps.motion && s.t < 1e3) k.busy = true;
     return;
   }
-  const text2 = spacedTitle(title, s.caps.unicode);
-  c.text(x, y, text2, { fg: colorAt(0, 0), bold: true }, width + 8);
-}
-function drawFrame(s, r3, style, color, k) {
-  const { c } = s;
-  const uni = s.caps.unicode;
-  const [tl, tr, bl, br, hz, vt] = !uni ? ["+", "+", "+", "+", style === "double" ? "=" : "-", "|"] : style === "double" ? ["\u2554", "\u2557", "\u255A", "\u255D", "\u2550", "\u2551"] : ["\u250C", "\u2510", "\u2514", "\u2518", "\u2500", "\u2502"];
-  const cells = [[r3.x, r3.y, tl]];
-  for (let x = r3.x + 1; x < r3.x + r3.w - 1; x++) cells.push([x, r3.y, hz]);
-  cells.push([r3.x + r3.w - 1, r3.y, tr]);
-  for (let y = r3.y + 1; y < r3.y + r3.h - 1; y++) cells.push([r3.x + r3.w - 1, y, vt]);
-  cells.push([r3.x + r3.w - 1, r3.y + r3.h - 1, br]);
-  for (let x = r3.x + r3.w - 2; x > r3.x; x--) cells.push([x, r3.y + r3.h - 1, hz]);
-  cells.push([r3.x, r3.y + r3.h - 1, bl]);
-  for (let y = r3.y + r3.h - 2; y > r3.y; y--) cells.push([r3.x, y, vt]);
-  const n2 = Math.round(cells.length * clamp012(k));
-  for (let i = 0; i < n2; i++) {
-    const [x, y, ch] = cells[i];
-    const head = n2 < cells.length && i >= n2 - 3;
-    c.put(x, y, ch, head ? C.white : color);
-  }
-}
-function sparkles(s, frame, tier, t, area2) {
-  const n2 = sparkleCount(tier);
-  if (!n2) return;
-  const { c } = s;
-  const glyphs = s.caps.unicode ? TWINKLE_UNI : TWINKLE_ASCII;
-  const color = tier === "legendary" ? GOLD2 : C.peach;
-  for (let i = 0; i < n2; i++) {
-    const side = Math.floor(hash01(i * 7 + 3) * 4);
-    let x, y;
-    if (side < 2) {
-      x = frame.x - 2 + Math.floor(hash01(i * 13 + 1) * (frame.w + 4));
-      y = side === 0 ? frame.y - 1 - Math.floor(hash01(i * 5 + 2) * 2) : frame.y + frame.h + Math.floor(hash01(i * 5 + 2) * 1);
-    } else {
-      y = frame.y + Math.floor(hash01(i * 11 + 4) * frame.h);
-      x = side === 2 ? frame.x - 2 - Math.floor(hash01(i * 3 + 5) * 3) : frame.x + frame.w + 1 + Math.floor(hash01(i * 3 + 5) * 3);
-    }
-    if (x < area2.x || x >= area2.x + area2.w || y < area2.y - 1) continue;
-    if (c.ch[y * c.w + x] !== " ") continue;
-    let glyph2;
-    if (!s.caps.motion || t >= T2.settle) {
-      glyph2 = i % 3 === 0 ? glyphs[2] : null;
-    } else {
-      const born = T2.shimmer + i * 90;
-      const life = (t - born) / 400;
-      glyph2 = life >= 0 && life < 1 ? glyphs[Math.min(4, Math.floor(life * 5))] : null;
-      if (life >= 1 && i % 3 === 0 && t > T2.stamp) glyph2 = glyphs[2];
-    }
-    if (glyph2) c.put(x, y, glyph2, s.caps.color === "16" ? C.cream : color);
-  }
-}
-var GOLD2, TIER_LABEL, T2, passes, sparkleCount, TWINKLE_UNI, TWINKLE_ASCII;
-var init_reveal = __esm({
-  "packages/cli/src/audit-ui/cards/reveal.ts"() {
-    "use strict";
-    init_color();
-    init_draw();
-    init_font();
-    init_motion();
-    GOLD2 = hx("ffd27a");
-    TIER_LABEL = { common: "COMMON", rare: "RARE", epic: "EPIC", legendary: "LEGENDARY" };
-    T2 = {
-      evidence: 300,
-      roll: 1950,
-      slam: 2850,
-      shimmer: 3250,
-      stamp: 4450,
-      profile: 4800,
-      settle: 5800
-    };
-    passes = (tier) => tier === "legendary" ? 3 : tier === "epic" ? 2 : tier === "rare" ? 1 : 0;
-    sparkleCount = (tier) => tier === "legendary" ? 16 : tier === "epic" ? 10 : tier === "rare" ? 6 : 0;
-    TWINKLE_UNI = ["\xB7", "*", "\u2726", "*", "\xB7"];
-    TWINKLE_ASCII = [".", "+", "*", "+", "."];
-  }
-});
-
-// packages/cli/src/audit-ui/cards/poster.ts
-function metalGlyph(tier, uni) {
-  return uni ? tier === "gold" ? "\u2605" : tier === "silver" ? "\u2606" : "\u2727" : tier === "gold" ? "*" : tier === "silver" ? "+" : "-";
-}
-function countUp2(value, k) {
-  if (k >= 1 || !/^\$[\d,]+$/.test(value)) return value;
-  const target = Number(value.replace(/[^\d]/g, ""));
-  if (!(target > 0)) return value;
-  const n2 = Math.max(1, Math.round(target * (COUNT_FROM + (1 - COUNT_FROM) * clamp012(k))));
-  return `$${n2.toLocaleString("en-US")}`;
-}
-function context(s, d) {
-  const ctx = {
-    s,
-    c: s.c,
-    d,
-    th: THEME,
-    uni: s.caps.unicode,
-    pixel: s.caps.color === "truecolor" || s.caps.color === "256",
-    busy: false,
-    grow: (i) => {
-      const k = seg2(s.t, DIAG_AT + i * DIAG_STEP, DIAG_DUR, easeOutCubic);
-      if (k < 1) ctx.busy = true;
-      return k;
-    }
-  };
-  return ctx;
-}
-function drawParts(ctx, x, y, parts) {
-  let cx = x;
-  for (const p of parts) {
-    const style = p.tone === "num" ? { fg: ctx.th.num, bold: true } : p.tone === "name" ? { fg: ctx.th.name, bold: true } : p.tone === "quote" ? { fg: ctx.th.quote, italic: true } : { fg: ctx.th.body };
-    cx += T3(ctx, cx, y, p.text, style);
-  }
-  return cx - x;
-}
-function wrapWords(text2, width) {
-  const out = [];
-  let line = "";
-  for (const word of text2.split(/\s+/)) {
-    const next = line ? `${line} ${word}` : word;
-    if (textWidth(next) <= width) line = next;
-    else {
-      if (line) out.push(line);
-      line = word;
-      if (textWidth(word) > width) return null;
-    }
-  }
-  if (line) out.push(line);
-  return out;
-}
-function titleLines2(title, width, maxLines) {
-  const words8 = title.toUpperCase().split(/\s+/);
-  const lines = [];
-  let line = "";
-  for (const word of words8) {
-    const next = line ? `${line} ${word}` : word;
-    if (bigWidth(next) <= width) line = next;
-    else {
-      if (line) lines.push(line);
-      line = word;
-      if (bigWidth(word) > width) return null;
-    }
-  }
-  if (line) lines.push(line);
-  return lines.length <= maxLines ? lines : null;
-}
-function textTitle(title, width) {
-  const sp = (t) => spaced(t);
-  for (const fmt of [sp, (t) => t.toUpperCase()]) {
-    const words8 = title.split(/\s+/);
-    const lines = [];
-    let line = "";
-    let ok = true;
-    for (const word of words8) {
-      const next = line ? `${line} ${word}` : word;
-      if (textWidth(fmt(next)) <= width) line = next;
-      else {
-        if (line) lines.push(line);
-        line = word;
-        if (textWidth(fmt(word)) > width) {
-          ok = false;
-          break;
-        }
-      }
-    }
-    if (line) lines.push(line);
-    if (ok && lines.length <= 2) return lines.map(fmt);
-  }
-  return wrapWords(title.toUpperCase(), width) ?? [title.toUpperCase()];
-}
-function header(ctx, w) {
-  const { d } = ctx;
-  const brand = w >= 70 ? "S L O P I E   A U D I T" : "SLOPIE AUDIT";
-  const right = [d.range, d.code ? `#${d.code}` : null].filter(Boolean).join("  \xB7  ");
-  return {
-    h: 2,
-    draw: (x, y, ww) => {
-      T3(ctx, x, y, brand, { fg: ctx.th.label, bold: true });
-      const rx = x + ww;
-      if (right && textWidth(brand) + 4 + textWidth(right) <= rx - x) T3(ctx, rx - textWidth(right), y, right, { fg: ctx.th.faint });
-      for (let i = x; i < x + ww; i++) put2(ctx, i, y + 1, ctx.uni ? "\u2504" : "-", C.slate);
-    }
-  };
-}
-function taglineOf(ctx) {
-  const t = ctx.d.tagline;
-  if (!t || ctx.s.share && !ctx.d.taglinePublic) return null;
-  return t;
-}
-function identity3(ctx, w, p) {
-  const { d, th } = ctx;
-  const title = d.archetype ?? "your year with agents";
-  const canBig = p.big && ctx.pixel && bigSupported(title);
-  const big = canBig ? titleLines2(title, w, 2) : null;
-  const tLines = big ? null : textTitle(title, w);
-  const titleH = big ? big.length * bigHeight() + (big.length - 1) : tLines.length;
-  const badge = p.badge ? badgeText(ctx) : null;
-  const sub = p.subRole && d.subRole ? d.subRole : null;
-  const badgeLineW = (badge ? textWidth(badge) + 2 : 0) + (badge && sub ? 3 : 0) + (sub ? textWidth(sub) : 0);
-  const subFits = !!sub && badgeLineW <= w;
-  const tag = p.tagline ? taglineOf(ctx) : null;
-  const tagLines = tag ? wrapWords(tag, Math.min(w, 72)) : null;
-  const tagOk = !!tagLines && tagLines.length <= 2;
-  const hasBadgeLine = !!badge || subFits;
-  const h = (p.kicker ? 2 : 0) + titleH + (hasBadgeLine ? 2 : 0) + (tagOk ? tagLines.length + (hasBadgeLine ? 0 : 1) : 0);
-  return {
-    h,
-    draw: (x, y0, ww) => {
-      const cx = x + Math.floor(ww / 2);
-      let y = y0;
-      if (p.kicker) {
-        const k = ww >= 60 ? spaced("this year you've been") : "THIS YEAR YOU'VE BEEN";
-        T3(ctx, cx - Math.floor(textWidth(k) / 2), y, k, { fg: th.faint });
-        y += 2;
-      }
-      if (big) {
-        for (const line of big) {
-          const lw = bigWidth(line);
-          drawBig(ctx.c, cx - Math.floor(lw / 2), y, line, { color: (px, py) => th.title(px, py, lw, d.tier === "legendary") });
-          y += bigHeight() + 1;
-        }
-        y -= 1;
-      } else {
-        for (const line of tLines) {
-          T3(ctx, cx - Math.floor(textWidth(line) / 2), y, line, { fg: C.orange, bold: true });
-          y++;
-        }
-      }
-      if (hasBadgeLine) {
-        y += 1;
-        const lw = subFits ? badgeLineW : badge ? textWidth(badge) + 2 : 0;
-        let bx = cx - Math.floor(lw / 2);
-        if (badge) {
-          ctx.c.text(bx, y, ` ${badge} `, { fg: C.ink, bg: tierColor(d.tier), bold: true });
-          bx += textWidth(badge) + 2 + 3;
-        }
-        if (subFits) T3(ctx, bx, y, sub, { fg: th.quote, italic: true });
-        y += 1;
-      } else y += tagOk ? 1 : 0;
-      if (tagOk) for (const line of tagLines) {
-        T3(ctx, cx - Math.floor(textWidth(line) / 2), y, line, { fg: th.faint, italic: true });
-        y++;
-      }
-    }
-  };
-}
-function price(ctx, w, big) {
-  const hero = ctx.d.heroes.find((h) => h.label === "at API prices");
-  if (!hero) return null;
-  const okBig = big && ctx.pixel && bigSupported(hero.value) && bigWidth(hero.value) <= w;
-  const shown = () => countUp2(hero.value, ctx.grow(0));
-  if (okBig) {
-    return {
-      h: bigHeight() + 1,
-      draw: (x, y, ww) => {
-        const cx = x + Math.floor(ww / 2);
-        const fw = bigWidth(hero.value);
-        const v = shown();
-        const vw = bigWidth(v);
-        drawBig(ctx.c, cx - Math.floor(fw / 2) + (fw - vw), y, v, { color: (_px, py) => mix(C.cream, C.orange, py / 5) });
-        const label4 = "at API prices";
-        T3(ctx, cx - Math.floor(textWidth(label4) / 2), y + bigHeight(), label4, { fg: ctx.th.faint });
-      }
-    };
-  }
-  const line = `${hero.value} at API prices`;
-  if (textWidth(line) > w) return null;
-  return {
-    h: 1,
-    draw: (x, y, ww) => {
-      const lx = x + Math.floor((ww - textWidth(line)) / 2);
-      const v = shown();
-      T3(ctx, lx + textWidth(hero.value) - textWidth(v), y, v, { fg: ctx.th.num, bold: true });
-      T3(ctx, lx + textWidth(hero.value) + 1, y, "at API prices", { fg: ctx.th.faint });
-    }
-  };
-}
-function statCells2(ctx, opts) {
-  const { d, th } = ctx;
-  const cells = [];
-  for (const key2 of ["prompts", "days"]) {
-    const h = d.heroes.find((x) => key2 === "days" ? x.label === "days" || x.label === "day" : x.label === "prompts");
-    if (!h) continue;
-    cells.push({ w: Math.max(textWidth(h.value), textWidth(h.label)), rows: [(x, y) => T3(ctx, x, y, h.value, { fg: th.ink, bold: true }), (x, y) => T3(ctx, x, y, h.label, { fg: th.faint })] });
-  }
-  const cp = opts.catchphrase && !ctx.s.share ? d.catchphrase : null;
-  if (cp) {
-    const q2 = `\u201C${cp.phrase}\u201D`;
-    const n2 = ` \xD7${count4(cp.count)}`;
-    const label4 = "your catchphrase";
-    cells.push({
-      w: Math.max(textWidth(q2 + n2), textWidth(label4)),
-      rows: [
-        (x, y) => {
-          const qw = T3(ctx, x, y, q2, { fg: th.quote, italic: true, bold: true });
-          T3(ctx, x + qw, y, n2, { fg: th.num, bold: true });
-        },
-        (x, y) => T3(ctx, x, y, label4, { fg: th.faint })
-      ]
-    });
-  }
-  const clock3 = opts.clock ? d.viz.clock : null;
-  if (clock3 && ctx.uni) {
-    const angry = `${ctx.uni ? "\u2620" : "x"} ${hourLabel(clock3.angry)} angriest`;
-    const saint = `${ctx.uni ? "\u273F" : "o"} ${hourLabel(clock3.saint)} saint`;
-    const legend = `${angry}  ${saint}`;
-    const max2 = Math.max(...clock3.hours);
-    cells.push({
-      w: Math.max(24, textWidth(legend)),
-      rows: [
-        (x, y) => {
-          const k = ctx.grow(2);
-          for (let h = 0; h < 24; h++) {
-            const v = max2 > 0 ? clock3.hours[h] / max2 : 0;
-            const shownH = clamp012(k * 24 - h);
-            const lvl = Math.max(0, Math.min(7, Math.round(v * shownH * 7)));
-            const ch = "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588"[lvl];
-            const fg = h === clock3.angry ? th.hot : h === clock3.saint ? C.cream : th.dim;
-            put2(ctx, x + h, y, shownH > 0 ? ch : " ", fg);
-          }
-        },
-        // The hour axis, inside the box: each label starts under its own hour column.
-        (x, y) => {
-          for (const [h, l] of [[0, "12a"], [6, "6a"], [12, "12p"], [18, "6p"]]) T3(ctx, x + h, y, l, { fg: th.faint });
-        },
-        (x, y) => {
-          const aw = T3(ctx, x, y, angry, { fg: th.hot, bold: true });
-          T3(ctx, x + aw + 2, y, saint, { fg: C.cream });
-        }
-      ]
-    });
-  }
-  return cells;
-}
-function statBox(ctx, w, opts) {
-  let cells = statCells2(ctx, opts);
-  const natural = (cs) => cs.reduce((s, c) => s + c.w + CELL_PAD * 2, 0) + cs.length + 1;
-  while (cells.length && natural(cells) > w) cells = cells.slice(0, -1);
-  if (!cells.length) return null;
-  const inner = Math.max(...cells.map((c) => c.rows.length));
-  const H = inner + 2;
-  return {
-    h: H,
-    draw: (x, y, ww) => {
-      const { th, uni } = ctx;
-      const spare = Math.max(0, Math.min(ww, Math.max(natural(cells), Math.floor(ww * 0.86))) - natural(cells));
-      const widths = cells.map((c, i) => c.w + CELL_PAD * 2 + Math.floor(spare / cells.length) + (i < spare % cells.length ? 1 : 0));
-      const total2 = widths.reduce((s, v) => s + v, 0) + cells.length + 1;
-      let cx = x + Math.floor((ww - total2) / 2);
-      const hz = uni ? "\u2500" : "-";
-      const col3 = th.boxRule;
-      const side = (sx) => {
-        for (let j = 1; j <= inner; j++) put2(ctx, sx, y + j, uni ? "\u2502" : "|", col3);
-      };
-      put2(ctx, cx, y, uni ? "\u256D" : "+", col3);
-      put2(ctx, cx, y + H - 1, uni ? "\u2570" : "+", col3);
-      side(cx);
-      cells.forEach((cell, i) => {
-        const cw = widths[i];
-        for (let k = 1; k <= cw; k++) {
-          put2(ctx, cx + k, y, hz, col3);
-          put2(ctx, cx + k, y + H - 1, hz, col3);
-        }
-        const ix = cx + 1 + Math.floor((cw - cell.w) / 2);
-        const top = y + 1 + Math.floor((inner - cell.rows.length) / 2);
-        cell.rows.forEach((row2, j) => row2(ix, top + j));
-        cx += cw + 1;
-        const last2 = i === cells.length - 1;
-        put2(ctx, cx, y, uni ? last2 ? "\u256E" : "\u252C" : "+", col3);
-        put2(ctx, cx, y + H - 1, uni ? last2 ? "\u256F" : "\u2534" : "+", col3);
-        side(cx);
-      });
-    }
-  };
-}
-function hbarCells(ctx, x, y, width, frac, color) {
-  const eighths = Math.round(clamp012(frac) * width * 8);
-  const full = Math.floor(eighths / 8), rest = eighths % 8;
-  for (let i = 0; i < full; i++) put2(ctx, x + i, y, ctx.uni ? "\u2588" : "#", color);
-  if (rest && full < width) put2(ctx, x + full, y, ctx.uni ? ["", "\u258F", "\u258E", "\u258D", "\u258C", "\u258B", "\u258A", "\u2589"][rest] : "#", color);
-}
-function diagramFor(ctx, fact, w) {
-  const { d, th, uni } = ctx;
-  const v = d.viz;
-  if (!uni) return null;
-  switch (fact.id) {
-    case "manners": {
-      const m = v.manners;
-      if (!m) return null;
-      const left = `\u2665 ${count4(m.thanks)}`, right = `${count4(m.rude)} ${m.word}`;
-      const bw = w - textWidth(left) - textWidth(right) - 2;
-      if (bw < 6) return null;
-      return {
-        rows: 1,
-        draw: (x, y, _w, k) => {
-          T3(ctx, x, y, left, { fg: th.soft, bold: true });
-          const bx = x + textWidth(left) + 1;
-          const nice = Math.max(1, Math.round(bw * m.thanks / (m.thanks + m.rude)));
-          hbarCells(ctx, bx, y, nice, clamp012(k * 3), th.soft);
-          hbarCells(ctx, bx + nice, y, bw - nice, clamp012(k * 1.25 - 0.2), th.hot);
-          T3(ctx, bx + bw + 1, y, right, { fg: th.hot, bold: true });
-        }
-      };
-    }
-    case "mood_drift": {
-      const a = v.arc;
-      if (!a) return null;
-      const per = Math.max(1, Math.min(3, Math.floor((w - textWidth(a.from) - textWidth(a.to) - 2) / a.pcts.length)));
-      const sw = per * a.pcts.length;
-      if (textWidth(a.from) + textWidth(a.to) + 2 + sw > w) return null;
-      const max2 = Math.max(...a.pcts);
-      return {
-        rows: 1,
-        draw: (x, y, _w, k) => {
-          T3(ctx, x, y, a.from, { fg: th.faint });
-          const sx = x + textWidth(a.from) + 1;
-          a.pcts.forEach((p, i) => {
-            if (k * a.pcts.length < i + 0.5) return;
-            const lvl = Math.max(0, Math.min(7, Math.round(p / max2 * 7)));
-            const fg = mix(th.dim, th.hot, p / max2);
-            for (let j = 0; j < per; j++) put2(ctx, sx + i * per + j, y, "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588"[lvl], fg);
-          });
-          T3(ctx, sx + sw + 1, y, a.to, { fg: th.faint });
-        }
-      };
-    }
-    case "priciest_sentence": {
-      const p = v.priciest;
-      if (!p) return null;
-      const lead = "median \u258E  priciest ";
-      const bw = w - textWidth(lead);
-      if (bw < 6) return null;
-      return {
-        rows: 1,
-        draw: (x, y, _w, k) => {
-          T3(ctx, x, y, "median", { fg: th.faint });
-          put2(ctx, x + 7, y, "\u258E", C.cream);
-          T3(ctx, x + 10, y, "priciest", { fg: th.faint });
-          hbarCells(ctx, x + textWidth(lead), y, bw, k, th.num);
-        }
-      };
-    }
-    case "longest_sit": {
-      const h = v.sit;
-      if (!h) return null;
-      const n2 = Math.ceil(h);
-      const step = n2 * 2 + 6 <= w ? 2 : n2 + 6 <= w ? 1 : 0;
-      if (!step) return null;
-      return {
-        rows: 1,
-        draw: (x, y, _w, k) => {
-          for (let i = 0; i < n2; i++) {
-            if (k * n2 < i + 0.3) break;
-            const half = i === n2 - 1 && h - Math.floor(h) > 0 && h - Math.floor(h) < 0.75;
-            put2(ctx, x + i * step, y, half ? "\u258C" : "\u2588", mix(th.num, th.hot, i / Math.max(1, n2 - 1)));
-          }
-          T3(ctx, x + n2 * step + (step === 2 ? 0 : 1), y, "hours", { fg: th.faint });
-        }
-      };
-    }
-    case "pet_name": {
-      const name = fact.parts.find((p) => p.tone === "quote")?.text;
-      const times3 = fact.parts.find((p) => p.tone === "num")?.text;
-      if (!name || !times3) return null;
-      const said = ` ${name} `;
-      const bubbleW = textWidth(said) + 2;
-      if (bubbleW + 1 + textWidth(times3) > w) return null;
-      const cap2 = ["what you call your agent", "what you call it", "you call it"].find((t) => 2 + textWidth(t) <= w) ?? "";
-      return {
-        rows: 2,
-        replacesText: true,
-        draw: (x, y, _w, k) => {
-          if (k <= 0) return;
-          put2(ctx, x, y, "\u2590", BUBBLE);
-          ctx.c.text(x + 1, y, said, { fg: C.cream, bg: BUBBLE, bold: true, italic: true });
-          put2(ctx, x + bubbleW - 1, y, "\u258C", BUBBLE);
-          put2(ctx, x + 1, y + 1, "\u25E5", BUBBLE);
-          if (cap2) T3(ctx, x + 3, y + 1, cap2, { fg: th.faint });
-          if (k >= 0.5) T3(ctx, x + bubbleW + 1, y, times3, { fg: th.num, bold: true });
-        }
-      };
-    }
-    case "nemesis": {
-      const f = v.faceoff;
-      if (!f.nemesis) return null;
-      const rows = [
-        { icon: "\u2620", name: shortModel2(f.nemesis.label), ratio: f.nemesis.ratio, word: "swears", fg: th.hot },
-        f.fav ? { icon: "\u2665", name: shortModel2(f.fav.label), ratio: f.fav.ratio, word: "thanks", fg: th.soft } : { icon: " ", name: "the rest", ratio: 1, word: "swears", fg: th.faint }
-      ];
-      const nw = Math.max(...rows.map((r3) => textWidth(r3.name)));
-      const room = (words9) => w - 2 - nw - 1 - 1 - Math.max(...rows.map((r3) => textWidth(words9 ? `${times2(r3.ratio)} ${r3.word}` : times2(r3.ratio))));
-      const words8 = room(true) >= 4;
-      const bw = room(words8);
-      if (bw < 4) return null;
-      const max2 = Math.max(...rows.map((r3) => r3.ratio));
-      return {
-        rows: 2,
-        replacesText: true,
-        label: words8 ? void 0 : f.fav ? "NEMESIS vs SOFT SPOT" : "NEMESIS \xB7 SWEARS",
-        draw: (x, y, _w, k) => {
-          rows.forEach((r3, i) => {
-            T3(ctx, x, y + i, r3.icon, { fg: r3.fg, bold: true });
-            T3(ctx, x + 2, y + i, r3.name, { fg: th.name, bold: true });
-            hbarCells(ctx, x + 2 + nw + 1, y + i, bw, r3.ratio / max2 * k, r3.fg);
-            const tx = x + 2 + nw + 1 + bw + 1;
-            const n2 = T3(ctx, tx, y + i, times2(r3.ratio), { fg: r3.fg === th.faint ? th.faint : th.num, bold: true });
-            if (words8) T3(ctx, tx + n2 + 1, y + i, r3.word, { fg: th.body });
-          });
-        }
-      };
-    }
-    case "fuse": {
-      const turn = Number(fact.parts.find((p) => p.tone === "num")?.text.replace(/[^\d]/g, "") ?? 0);
-      if (!(turn >= 1) || turn * 2 + 2 > w) return null;
-      return {
-        rows: 1,
-        draw: (x, y, _w, k) => {
-          const lit = Math.round(turn * k);
-          for (let i = 0; i < turn; i++) T3(ctx, x + i * 2, y, i < turn - lit ? "\u2501\u2501" : "  ", { fg: th.faint });
-          put2(ctx, x + (turn - lit) * 2, y, "\u2738", th.hot);
-        }
-      };
-    }
-    default:
-      return null;
-  }
-}
-function wrapParts(parts, width, max2) {
-  const words8 = [];
-  for (const p of parts) {
-    const bits = p.text.split(/(\s+)/);
-    for (const b2 of bits) if (b2) words8.push({ text: b2, tone: p.tone });
-  }
-  const lines = [[]];
-  let w = 0;
-  for (const word of words8) {
-    const ww = textWidth(word.text);
-    const blank = /^\s+$/.test(word.text);
-    if (w + ww > width) {
-      if (blank) continue;
-      if (lines.length >= max2 || ww > width) return null;
-      lines.push([]);
-      w = 0;
-    }
-    if (blank && w === 0) continue;
-    lines.at(-1).push(word);
-    w += ww;
-  }
-  for (const l of lines) while (l.length && /^\s+$/.test(l.at(-1).text)) l.pop();
-  return lines;
-}
-function pickTiles(ctx, n2, inner, exclude, full) {
-  const out = [];
-  const fam = /* @__PURE__ */ new Map();
-  for (const fact of posterOrder(ctx.d.facts, exclude)) {
-    if (out.length >= n2) break;
-    if ((fam.get(fact.family) ?? 0) >= 2) continue;
-    if (textWidth(fact.label) + 4 > inner + 2) continue;
-    let diagram = full ? diagramFor(ctx, fact, inner) : null;
-    const parts = fitParts(fact, inner);
-    let lines;
-    if (!parts && !diagram?.replacesText) {
-      const wrapped = full ? wrapParts(fact.parts, inner, 2) : null;
-      if (!wrapped) continue;
-      lines = wrapped;
-      diagram = null;
-    }
-    fam.set(fact.family, (fam.get(fact.family) ?? 0) + 1);
-    out.push({ fact, parts: parts ?? fact.parts, diagram, lines });
-  }
-  return out;
-}
-function bestGrid(ctx, w, n2, mode, maxCols, exclude) {
-  let best = null;
-  for (let cols = maxCols; cols >= 1; cols--) {
-    const grid = tileGrid(w, mode === "full" ? 28 : 24, cols);
-    if (!grid || grid.cols !== cols) continue;
-    const picks = pickTiles(ctx, n2, grid.tileW - 4, exclude, mode === "full");
-    if (!picks.length) continue;
-    const score = picks.filter((p) => CORE.has(p.fact.id)).length * 1e3 + picks.length * 10 - Math.ceil(picks.length / cols);
-    if (!best || score > best.score) best = { grid, picks, score };
-  }
-  return best;
-}
-function tile(ctx, t, x, y, w, bodyRows, k) {
-  const { th, uni } = ctx;
-  const col3 = th.rule;
-  const hz = uni ? "\u2500" : "-";
-  const h = bodyRows + 2;
-  put2(ctx, x, y, uni ? "\u256D" : "+", col3);
-  put2(ctx, x + w - 1, y, uni ? "\u256E" : "+", col3);
-  put2(ctx, x, y + h - 1, uni ? "\u2570" : "+", col3);
-  put2(ctx, x + w - 1, y + h - 1, uni ? "\u256F" : "+", col3);
-  for (let i = x + 1; i < x + w - 1; i++) {
-    put2(ctx, i, y, hz, col3);
-    put2(ctx, i, y + h - 1, hz, col3);
-  }
-  for (let j = y + 1; j < y + h - 1; j++) {
-    put2(ctx, x, j, uni ? "\u2502" : "|", col3);
-    put2(ctx, x + w - 1, j, uni ? "\u2502" : "|", col3);
-  }
-  const label4 = t.diagram?.label && textWidth(t.diagram.label) + 4 <= w ? t.diagram.label : t.fact.label;
-  T3(ctx, x + 2, y, ` ${label4} `, { fg: th.label, bold: true });
-  const ix = x + 2, iw = w - 4;
-  if (bodyRows === 2 && t.lines) t.lines.forEach((l, i) => drawParts(ctx, ix, y + 1 + i + (t.lines.length === 1 ? 1 : 0), l));
-  else if (bodyRows === 2 && t.diagram) {
-    t.diagram.draw(ix, y + 1, iw, k);
-    if (!t.diagram.replacesText) drawParts(ctx, ix, y + 2, t.parts);
-  } else drawParts(ctx, ix, y + 1, t.parts);
-}
-function tileGrid(w, minTile, maxCols) {
-  for (let cols = maxCols; cols >= 1; cols--) {
-    const gap2 = cols > 1 ? 2 : 0;
-    const tileW = Math.floor((w - gap2 * (cols - 1)) / cols);
-    if (tileW >= minTile) return { cols, tileW: Math.min(tileW, 52), gap: gap2 };
-  }
-  return null;
-}
-function factsBlock(ctx, w, opts) {
-  const { th } = ctx;
-  if (opts.mode === "lines") {
-    const picks2 = pickTiles(ctx, opts.n, w, opts.exclude, false).filter((t) => textWidth(t.fact.label) + 3 + textWidth(factText(t.parts)) <= w);
-    if (!picks2.length) return null;
-    return {
-      h: picks2.length,
-      draw: (x, y) => picks2.forEach((t, i) => {
-        T3(ctx, x, y + i, t.fact.label, { fg: th.label, bold: true });
-        const vw = textWidth(factText(t.parts));
-        for (let px = x + textWidth(t.fact.label) + 1; px < x + w - vw - 1; px++) put2(ctx, px, y + i, ".", th.faint);
-        drawParts(ctx, x + w - vw, y + i, t.parts);
-      })
-    };
-  }
-  const best = bestGrid(ctx, w, opts.n, opts.mode, opts.maxCols, opts.exclude);
-  if (!best) return null;
-  const { grid, picks } = best;
-  const bodyRows = opts.mode === "full" ? 2 : 1;
-  const rows = Math.ceil(picks.length / grid.cols);
-  const th1 = bodyRows + 2;
-  return {
-    h: rows * th1 + (rows - 1) * opts.rowGap,
-    draw: (x, y) => {
-      const total2 = grid.cols * grid.tileW + (grid.cols - 1) * grid.gap;
-      const x0 = x + Math.floor((w - total2) / 2);
-      picks.forEach((t, i) => {
-        const r3 = Math.floor(i / grid.cols), cI = i % grid.cols;
-        const pick4 = bodyRows === 2 && !t.diagram ? { ...t, diagram: { rows: 1, draw: () => void 0 } } : t;
-        tile(ctx, pick4, x0 + cI * (grid.tileW + grid.gap), y + r3 * (th1 + opts.rowGap), grid.tileW, bodyRows, ctx.grow(3 + i));
-      });
-    }
-  };
-}
-function drawCup(ctx, x, y, metal) {
-  const bg = ctx.th.bg ?? C.ink;
-  for (let ry = 0; ry < 3; ry++) for (let rx = 0; rx < 7; rx++) ctx.c.put(x + rx, y + ry, " ", ctx.th.ink, bg);
-  CUP.forEach((row2, py) => {
-    for (let px = 0; px < row2.length; px++) {
-      if (row2[px] !== "#") continue;
-      const shade = px === 2 && py >= 1 && py <= 2 || px === 3 && py === 3 ? mix(metal, C.white, 0.45) : metal;
-      ctx.c.px(x + px, y * 2 + py, shade);
-    }
+  const tg = Math.max(0, s.t - (s.state.guessAt ?? 0));
+  const max2 = Math.max(...data.options.map((o) => o.share));
+  const nameW = Math.min(22, Math.max(...data.options.map((o) => textWidth(o.name))) + 2);
+  const tagW = 12;
+  const barW = Math.max(6, Math.min(48, r3.w - nameW - 7 - tagW));
+  const rowGap = r3.h >= 12 ? 2 : 1;
+  if (s.caps.motion && tg < 1600) k.busy = true;
+  const order = data.options.map((o, i) => [o.share, i]).sort((a, b2) => b2[0] - a[0] || a[1] - b2[1]).map(([, i]) => i);
+  const rank = data.options.map((_, i) => order.indexOf(i));
+  const sortK = s.caps.motion ? seg2(tg, 950, 450, easeOutCubic) : 1;
+  if (sortK < 1) k.busy = true;
+  data.options.forEach((option, i) => {
+    const y = r3.y + Math.round((i + (rank[i] - i) * sortK) * rowGap);
+    const correct = i === data.answer;
+    const mine = i === s.state.guess;
+    const g2 = s.caps.motion ? Math.max(0, Math.min(1, spring((tg - i * 60) / 1e3, 2.2, 0.7))) : 1;
+    txt(k, r3.x, y, option.name, correct ? tk.text : tk.text2, { bold: correct }, nameW - 1);
+    meter(k, r3.x + nameW, y, barW, option.share / max2 * g2, correct ? tk.accent : mine ? tk.text2 : tk.bar);
+    const done = s.caps.motion ? seg2(tg, 700, 300) : 1;
+    const pct3 = `${Math.round(option.share * 100)}%`;
+    const px = r3.x + nameW + barW + 2;
+    const pw = txt(k, px, y, pct3, correct ? tk.text : tk.text2, { bold: correct, a: done });
+    const tag = correct ? "#1" : mine ? "your pick" : "";
+    if (tag) txt(k, px + pw + 2, y, tag, correct ? tk.text : tk.text3, { a: done });
   });
-}
-function pickTrophies(d, shown, extraCovered, n2) {
-  const covered = /* @__PURE__ */ new Set([...shown.flatMap((f) => f.awards), ...extraCovered]);
-  return d.awards.filter((a) => !a.id || !covered.has(a.id)).slice(0, n2);
-}
-function trophyDiagram(ctx, t, w) {
-  const { d, th, uni } = ctx;
-  if (!uni) return null;
-  if (t.id === "streak" && d.viz.streak && d.viz.streak <= w) {
-    const n2 = d.viz.streak;
-    return { side: false, w: n2, draw: (x, y, k) => {
-      for (let i = 0; i < n2; i++) if (k * n2 >= i + 0.5) put2(ctx, x + i, y, "\u25A0", mix(th.num, th.hot, i / n2));
-    } };
-  }
-  if (t.id === "orchestrator" && d.viz.subagents) {
-    const all = d.viz.subagents.months;
-    if (all.filter((m) => m > 0).length < 2) return null;
-    const first = all.findIndex((m) => m > 0), last2 = all.length - 1 - [...all].reverse().findIndex((m) => m > 0);
-    const months = all.slice(first, last2 + 1);
-    const third = Math.ceil(months.length / 3);
-    const groups = [0, 1, 2].map((i) => months.slice(i * third, (i + 1) * third).reduce((s, m) => s + m, 0));
-    const max2 = Math.max(...groups);
-    const leaves = groups.map((g2) => g2 > 0 ? Math.max(1, Math.round(g2 / max2 * LEAVES)) : 0);
-    const treeW = "you\u2500\u253C\u2500\u2500".length + LEAVES * 2 - 1;
-    return {
-      side: true,
-      w: treeW,
-      draw: (x, y, k) => {
-        if (k <= 0) return;
-        T3(ctx, x, y + 1, "you", { fg: C.cream, bold: true });
-        const jx = x + 4;
-        put2(ctx, x + 3, y + 1, "\u2500", th.faint);
-        put2(ctx, jx, y, "\u256D", th.faint);
-        put2(ctx, jx, y + 1, "\u253C", th.faint);
-        put2(ctx, jx, y + 2, "\u2570", th.faint);
-        leaves.forEach((n2, row2) => {
-          put2(ctx, jx + 1, y + row2, "\u2500", th.faint);
-          put2(ctx, jx + 2, y + row2, "\u2500", th.faint);
-          const shown = Math.round(n2 * clamp012(k * 1.4 - row2 * 0.15));
-          for (let i = 0; i < shown; i++) put2(ctx, jx + 3 + i * 2, y + row2, "\u25CF", mix(th.num, th.hot, i / LEAVES));
-        });
-      }
-    };
-  }
-  return null;
-}
-function trophiesBlock(ctx, w, list3, mode, leftAlign = false) {
-  if (!list3.length) return null;
-  const { th } = ctx;
-  if (mode === "line") {
-    const items = list3.map((t) => ({ t, text: `${t.title}  ${tValue(ctx, t)}` }));
-    const total2 = items.reduce((s, it) => s + 2 + textWidth(it.text), 0) + (items.length - 1) * 6;
-    if (total2 > w) return items.length > 1 ? trophiesBlock(ctx, w, list3.slice(0, 1), "line") : null;
-    return {
-      h: 1,
-      draw: (x, y, ww) => {
-        let cx = x + Math.floor((ww - total2) / 2);
-        for (const { t } of items) {
-          const metal = metalColor(t.tier);
-          put2(ctx, cx, y, ctx.uni ? "\u2605" : "*", metal);
-          cx += 2;
-          cx += T3(ctx, cx, y, t.title, { fg: th.ink, bold: true }) + 2;
-          cx += T3(ctx, cx, y, tValue(ctx, t), { fg: metal }) + 6;
-        }
-      }
-    };
-  }
-  if (!ctx.pixel) return trophiesBlock(ctx, w, list3, "line");
-  const colW = Math.floor((w - (list3.length - 1) * 4) / list3.length);
-  const textW = colW - 9;
-  const fits = (t) => textWidth(t.title) <= textW && textWidth(tValue(ctx, t)) <= textW;
-  const keep = list3.filter(fits);
-  if (!keep.length) return trophiesBlock(ctx, w, list3, "line");
-  if (keep.length < list3.length) return trophiesBlock(ctx, w, keep, "big");
-  return {
-    h: 3,
-    draw: (x, y, ww) => {
-      const n2 = list3.length;
-      const natural = list3.map((t) => {
-        const dg = trophyDiagram(ctx, t, textW);
-        const sub = tSub(ctx, t);
-        const line2 = sub && textWidth(`${tValue(ctx, t)}  \xB7  ${sub}`) <= textW ? `${tValue(ctx, t)}  \xB7  ${sub}` : tValue(ctx, t);
-        const textCol = Math.max(textWidth(t.title), textWidth(line2));
-        const fitDg = dg && (dg.side ? textCol + 3 + dg.w : dg.w) <= textW ? dg : null;
-        return { t, dg: fitDg, line2, textCol, w: 9 + (fitDg?.side ? textCol + 3 + fitDg.w : Math.max(textCol, fitDg?.w ?? 0)) };
-      });
-      const gap2 = n2 > 1 ? Math.min(12, Math.floor((ww - natural.reduce((s, v) => s + v.w, 0)) / (n2 - 1))) : 0;
-      const total2 = natural.reduce((s, v) => s + v.w, 0) + gap2 * (n2 - 1);
-      let cx = leftAlign ? x : x + Math.floor((ww - total2) / 2);
-      natural.forEach(({ t, dg, line2, textCol, w: tw }, i) => {
-        const metal = metalColor(t.tier);
-        drawCup(ctx, cx, y, metal);
-        const tx = cx + 9;
-        T3(ctx, tx, y, t.title, { fg: th.ink, bold: true });
-        T3(ctx, tx, y + 1, line2, { fg: metal });
-        if (dg?.side) dg.draw(tx + textCol + 3, y, ctx.grow(10 + i));
-        else if (dg) dg.draw(tx, y + 2, ctx.grow(10 + i));
-        cx += tw + gap2;
-      });
-    }
-  };
-}
-function memoryLine(ctx, y, cx, bg) {
-  const text2 = memoryText(ctx.uni);
-  const x = cx - Math.floor(textWidth(text2) / 2);
-  const w = ctx.c.text(x, y, MEMORY_LINE + " ", { fg: C.gray, italic: true, bg });
-  ctx.c.text(x + w, y, (ctx.uni ? "\u2192" : "->") + " slopie setup", { fg: C.peach, bg });
-}
-function footer3(ctx, y, mx) {
-  const { c, s, d, uni } = ctx;
-  const local = s.online ? "online \xB7 Jev" : "all local";
-  const dot = uni ? "\u25CF" : "*";
-  const right = `${INSTALL}  \xB7  ${dot} ${local}`;
-  const rx = s.w - mx - textWidth(right);
-  let x = mx;
-  if (!s.share) {
-    const keys5 = [[uni ? "\u2190" : "<", d.replay ? "replay your story" : "story"], ["s", "share"], ["?", "how"], ["q", "quit"]];
-    for (const [k, label4] of keys5) {
-      if (x + textWidth(k) + 1 + textWidth(label4) + 3 > rx - 2) break;
-      x += c.text(x, y, k, { fg: C.gray, bold: true });
-      x += 1 + c.text(x + 1, y, label4, { fg: C.slate }) + 3;
-    }
-  } else {
-    c.text(mx, y, "slopie audit", { fg: C.orange, bold: true });
-    x = mx + 14;
-  }
-  if (rx > x) {
-    c.text(rx, y, INSTALL, { fg: C.orange, bold: true });
-    c.text(rx + textWidth(INSTALL) + 2, y, "\xB7", { fg: C.slate });
-    c.text(s.w - mx - textWidth(local) - 2, y, dot, { fg: s.online ? C.peach : fade(C.orange, 0.7) });
-    c.text(s.w - mx - textWidth(local), y, local, { fg: C.slate });
-  } else if (textWidth(INSTALL) <= s.w - mx * 2) {
-    c.fill(mx, y, s.w - mx * 2, 1, " ", { bg: C.ink });
-    c.text(s.w - mx - textWidth(INSTALL), y, INSTALL, { fg: C.orange, bold: true });
+  const qy = r3.y + n2 * rowGap + 1;
+  const right = s.state.guess === data.answer;
+  const winner = data.options[data.answer];
+  const quip = s.state.guess === -1 ? `It was ${winner.name}.` : right ? "Nailed it. You know yourself." : `Not quite. It was ${winner.name}.`;
+  const qa = s.caps.motion ? seg2(tg, 800, 300) : 1;
+  if (qy < r3.y + r3.h) txt(k, r3.x, qy, quip, tk.text, { bold: true, a: qa });
+  if (data.after && qy + 2 < r3.y + r3.h) {
+    const aa = s.caps.motion ? seg2(tg, 1100, 400) : 1;
+    if (aa < 1) k.busy = true;
+    const lines = wrapText(data.after, r3.w);
+    if (lines.length <= Math.min(2, r3.y + r3.h - qy - 2)) lines.forEach((line2, i) => txt(k, r3.x, qy + 2 + i, line2, tk.text2, { a: aa }));
   }
 }
-function barcode(ctx, w) {
-  return {
-    h: 3,
-    draw: (x, y, ww) => {
-      const seed = [...ctx.d.code ?? "SLOP"].map((ch) => ch.charCodeAt(0));
-      const bw = Math.min(w - 8, 40);
-      const bx = x + Math.floor((ww - bw) / 2);
-      for (let i = 0; i < bw; i++) {
-        const v = seed[i % seed.length] * (i + 7) % 5;
-        const glyph2 = ctx.uni ? ["\u258C", "\u258D", "\u258E", "\u258A", "\u2588"][v] : "|";
-        put2(ctx, bx + i, y, glyph2, ctx.th.ink);
-      }
-      const thanks = "THANK YOU. COME AGAIN.";
-      T3(ctx, x + Math.floor((ww - textWidth(thanks)) / 2), y + 2, thanks, { fg: ctx.th.ink, bold: true });
-    }
-  };
-}
-function build2(ctx, p, iw) {
-  const pieces = [];
-  const add = (key2, piece) => {
-    if (piece && piece.h > 0) pieces.push({ key: key2, piece });
-  };
-  if (p.header) add("header", header(ctx, iw));
-  add("identity", identity3(ctx, iw, { kicker: p.kicker, big: p.bigTitle, subRole: p.subRole, tagline: p.tagline, badge: true }));
-  add("price", price(ctx, iw, p.bigPrice));
-  const box3 = statBox(ctx, iw, { clock: p.clock, catchphrase: true });
-  add("box", box3);
-  const exclude = [...ctx.d.catchphrase ? ["catchphrase"] : [], ...p.clock && ctx.d.viz.clock ? ["mood_hours"] : []];
-  const factsPiece = factsBlock(ctx, iw, { n: p.nFacts, mode: p.tiles, rowGap: p.tileGap, maxCols: 3, exclude });
-  const shown = factsPiece ? shownFacts(ctx, iw, p, exclude) : [];
-  add("facts", factsPiece);
-  if (p.trophies !== "none") {
-    const covered = ctx.d.catchphrase ? ["verbal_tics", "catchphrase"] : [];
-    add("trophies", trophiesBlock(ctx, iw, pickTrophies(ctx.d, shown, covered, 2), p.trophies));
+function panel(k, g2, side, r3, delay) {
+  const { tk, L, s } = k;
+  const a = fade2(k, delay, 350);
+  const unit = side === "best" ? "thank-yous / 100 prompts" : "swears / 100 prompts";
+  label4(k, r3.x, r3.y, side === "best" ? "favourite" : "nemesis", a);
+  txt(k, r3.x, r3.y + 1, g2.label, tk.text, { bold: true, a }, r3.w);
+  const vw = txt(k, r3.x, r3.y + 3, g2.per100.toFixed(1), tk.text, { bold: true, a });
+  txt(k, r3.x + vw + 1, r3.y + 3, unit, tk.text2, { a }, r3.w - vw - 1);
+  const max2 = Math.max(g2.per100, g2.expected ?? 0) * 1.25 || 1;
+  const bw = Math.max(8, Math.min(r3.w - 2, 40));
+  meter(k, r3.x, r3.y + 4, bw, g2.per100 / max2, tk.text, delay + 250);
+  if (g2.expected !== null) {
+    const ex = r3.x + Math.min(bw - 1, Math.round(g2.expected / max2 * bw));
+    const done = s.caps.motion ? s.t > delay + 900 ? 1 : 0 : 1;
+    if (done) {
+      k.c.put(ex, r3.y + 4, k.uni ? "\u2503" : "|", tk.text2, tk.bg, 0);
+      const t = `others ${g2.expected.toFixed(1)}`;
+      txt(k, Math.min(ex, r3.x + r3.w - textWidth(t)), r3.y + 5, t, tk.text3);
+    } else k.busy = true;
   }
-  if (p.tail) add("tail", barcode(ctx, iw));
-  return { pieces, facts: shown };
+  if (g2.ratio === null || r3.h < 8) return;
+  const ra = fade2(k, delay + 700, 350);
+  const ratio2 = `${g2.ratio.toFixed(1)}\xD7`;
+  const opts = k.uni ? fitDisplay(ratio2, Math.floor(r3.w / 2), { face: tk.face, tall: L && r3.h >= 13 }) : null;
+  const ry = r3.y + 7;
+  if (opts && ry + displayHeight(opts) <= r3.y + r3.h + 1) {
+    drawDisplay(k.c, r3.x, ry, ratio2, fadeIn(tk, tk.text, ra), tk.bg, opts);
+    const tx = r3.x + displayWidth(ratio2, opts) + 3;
+    txt(k, tx, ry, side === "best" ? "nicer than" : "harsher than", tk.text2, { a: ra }, r3.x + r3.w - tx);
+    txt(k, tx, ry + 1, "to the others", tk.text2, { a: ra }, r3.x + r3.w - tx);
+  } else txt(k, r3.x, ry, `${ratio2} vs the others`, tk.text, { bold: true, a: ra });
 }
-function shownFacts(ctx, iw, p, exclude) {
-  if (p.tiles === "lines") return pickTiles(ctx, p.nFacts, iw, exclude, false).filter((t) => textWidth(t.fact.label) + 3 + textWidth(factText(t.parts)) <= iw).map((t) => t.fact);
-  return bestGrid(ctx, iw, p.nFacts, p.tiles, 3, exclude)?.picks.map((t) => t.fact) ?? [];
-}
-function stack(b2, x, w, top, bottom, maxGap) {
-  const n2 = b2.pieces.length;
-  const extra = new Array(n2).fill(0);
-  let spare = Math.max(0, bottom - top - heightOf(b2));
-  for (let pass = 0; spare > 0 && pass < maxGap; pass++) for (let i = 1; i < n2 && spare > 0; i++) {
-    extra[i]++;
-    spare--;
-  }
-  let y = top + Math.floor(spare / 2);
-  b2.pieces.forEach(({ piece }, i) => {
-    if (i) y += 1 + extra[i];
-    piece.draw(x, y, w);
-    y += piece.h;
+function compareChart(k, data, r3) {
+  const { tk } = k;
+  const a = fade2(k, 400, 350);
+  label4(k, r3.x, r3.y, data.compareUnit, a, r3.w);
+  const max2 = Math.max(1e-9, ...data.compare.flatMap((m) => [m.observed, m.expected ?? 0]));
+  const nameW = Math.min(16, Math.max(...data.compare.map((m) => textWidth(m.label))) + 2);
+  const barW = Math.max(8, r3.w - nameW - 7);
+  data.compare.forEach((m, i) => {
+    const y = r3.y + 2 + i * 2;
+    if (y >= r3.y + r3.h) return;
+    txt(k, r3.x, y, m.label, m.highlight ? tk.text : tk.text2, { bold: m.highlight, a }, nameW - 1);
+    meter(k, r3.x + nameW, y, barW, m.observed / max2, m.highlight ? tk.text : tk.bar, 500 + i * 90);
+    if (m.expected !== null) k.c.put(r3.x + nameW + Math.min(barW - 1, Math.round(barW * (m.expected / max2))), y, k.uni ? "\u2503" : "|", tk.text2, tk.bg, 0);
+    txt(k, r3.x + nameW + barW + 1, y, m.observed.toFixed(1), m.highlight ? tk.text : tk.text2, { a });
   });
+  const ly = r3.y + 3 + data.compare.length * 2;
+  if (ly < r3.y + r3.h) txt(k, r3.x, ly, `${k.uni ? "\u2503" : "|"} what the other models got in the same months`, tk.text3, { a: fade2(k, 1e3, 300) }, r3.w);
 }
-function printReveal(c, x0, w, top, bottom, k) {
-  const rows = bottom - top + 1;
-  const shift = rows - k;
-  if (shift <= 0) return;
-  const W = c.w;
-  for (let y = bottom; y >= top; y--) {
-    const src = y - shift;
-    for (let x = x0; x < x0 + w; x++) {
-      const di = y * W + x;
-      if (src >= top) {
-        const si = src * W + x;
-        c.ch[di] = c.ch[si];
-        c.fg[di] = c.fg[si];
-        c.bg[di] = c.bg[si];
-        c.at[di] = c.at[si];
-      } else {
-        c.ch[di] = " ";
-        c.fg[di] = C.cream;
-        c.bg[di] = C.ink;
-        c.at[di] = 0;
-      }
-    }
-  }
+function faceoffBody(k, data, r3) {
+  const { L, s } = k;
+  const both = data.best && data.worst;
+  const compare = !both && data.compare.length >= 2 && r3.w >= 90;
+  const gap2 = both || compare ? L ? 10 : 6 : 0;
+  const pw = both || compare ? Math.floor((r3.w - gap2) / 2) : r3.w;
+  const y = r3.y + Math.max(0, Math.floor((r3.h - 12) / 3));
+  const ph = Math.min(r3.h - (y - r3.y), 13);
+  if (data.best) panel(k, data.best, "best", { x: r3.x, y, w: pw, h: ph }, 80);
+  if (data.worst) panel(k, data.worst, "worst", { x: r3.x + (both ? pw + gap2 : 0), y, w: pw, h: ph }, both ? 260 : 80);
+  if (compare) compareChart(k, data, { x: r3.x + pw + gap2, y, w: r3.w - pw - gap2, h: ph });
+  if (both || compare) vrule(k, r3.x + pw + Math.floor(gap2 / 2), y, Math.min(ph, 10), fade2(k, 450, 400));
+  if (s.caps.motion && s.t < 1900) k.busy = true;
 }
-function tickerLine(ctx, y, W) {
-  const t = ctx.d.sinceLast;
-  if (!t || ctx.s.share) return;
-  const lead = "SINCE LAST RUN  ";
-  if (textWidth(lead + t) > W - 4) return;
-  const x = Math.floor((W - textWidth(lead + t)) / 2);
-  ctx.c.text(x, y, lead, { fg: C.orange, bold: true });
-  ctx.c.text(x + textWidth(lead), y, t, { fg: C.gray });
-}
-function drawUnder(ctx, p) {
-  const { s } = ctx;
-  let y = s.h - underRows(p);
-  if (p.ticker) tickerLine(ctx, y++, s.w);
-  if (p.memory) memoryLine(ctx, y++, Math.floor(s.w / 2));
-  footer3(ctx, s.h - 1, 2);
-}
-function basePlan(s, d) {
-  return {
-    kicker: true,
-    bigTitle: true,
-    subRole: true,
-    tagline: true,
-    bigPrice: true,
-    clock: true,
-    tiles: "full",
-    nFacts: 6,
-    tileGap: 1,
-    trophies: "big",
-    tail: true,
-    memory: true,
-    header: true,
-    ticker: !!d.sinceLast && !s.share
-  };
-}
-function posterBody(s, d) {
-  const ctx = context(s, d);
-  const W = s.w, H = s.h;
-  const pw = Math.min(W - (W >= 110 ? 8 : 4), 112);
-  const x0 = Math.floor((W - pw) / 2);
-  const pad4 = pw >= 100 ? 4 : 3;
-  const ix = x0 + pad4, iw = pw - pad4 * 2;
-  const plan = basePlan(s, d);
-  const avail = (p) => H - underRows(p) - 3;
-  let built = build2(ctx, plan, iw);
-  for (const step of STEPS) {
-    if (heightOf(built) <= avail(plan)) break;
-    step(plan);
-    built = build2(ctx, plan, iw);
-  }
-  const bottom = H - 1 - underRows(plan);
-  for (let x = x0; x < x0 + pw; x++) ctx.c.put(x, bottom, ctx.uni ? (x - x0) % 2 ? "\u2572" : "\u2571" : (x - x0) % 2 ? "\\" : "/", TORN);
-  stack(built, ix, iw, 1, bottom - 1, H >= 36 ? 2 : 1);
-  const k = Math.floor(clamp012(s.t / PRINT_MS) * (bottom + 1));
-  if (k < bottom + 1) {
-    ctx.busy = true;
-    printReveal(ctx.c, x0, pw, 0, bottom, k);
-  }
-  drawUnder(ctx, plan);
-  return ctx.busy;
-}
-var INSTALL, MEMORY_LINE, GOLD3, SILVER, BRONZE, TIER_LABEL2, PRINT_MS, DIAG_AT, DIAG_STEP, DIAG_DUR, SETTLED_MS, COUNT_FROM, tierColor, metalColor, BUBBLE, THEME, T3, put2, fitParts, times2, shortModel2, badgeText, CELL_PAD, CORE, CUP, tValue, tSub, LEAVES, memoryText, STEPS, heightOf, underRows, TORN;
-var init_poster = __esm({
-  "packages/cli/src/audit-ui/cards/poster.ts"() {
+var init_models = __esm({
+  "packages/cli/src/audit-ui/cards/models.ts"() {
     "use strict";
-    init_color();
     init_draw();
-    init_font();
     init_motion();
-    init_format3();
-    init_fun_facts();
-    INSTALL = "npx slopie audit";
-    MEMORY_LINE = "your agents forget. slopie remembers";
-    GOLD3 = hx("ffd27a");
-    SILVER = hx("c8ccd2");
-    BRONZE = hx("d08a4e");
-    TIER_LABEL2 = { common: "COMMON", rare: "RARE", epic: "EPIC", legendary: "LEGENDARY" };
-    PRINT_MS = 950;
-    DIAG_AT = 1050;
-    DIAG_STEP = 130;
-    DIAG_DUR = 650;
-    SETTLED_MS = DIAG_AT + DIAG_STEP * 16 + DIAG_DUR;
-    COUNT_FROM = 0.8;
-    tierColor = (tier) => tier === "legendary" ? GOLD3 : tier === "epic" ? C.orange : tier === "rare" ? C.peach : C.gray;
-    metalColor = (tier) => tier === "gold" ? GOLD3 : tier === "silver" ? SILVER : BRONZE;
-    BUBBLE = hx("4a3022");
-    THEME = {
-      bg: void 0,
-      ink: C.white,
-      body: hx("d6d0c8"),
-      faint: C.gray,
-      rule: hx("3a3431"),
-      boxRule: mix(C.rust, C.ink, 0.3),
-      label: C.orange,
-      num: C.orange,
-      name: C.white,
-      quote: C.orange,
-      hot: C.ember,
-      soft: C.peach,
-      dim: hx("6e6660"),
-      // 1.8's title: cream at the top of each glyph row, orange at the bottom (a gold sweep for legendary).
-      title: (px, py, w, legendary) => legendary ? mix(mix(C.cream, GOLD3, px / Math.max(1, w)), C.orange, py / 8) : mix(C.cream, C.orange, py / 4)
-    };
-    T3 = (ctx, x, y, text2, style = {}) => ctx.c.text(x, y, text2, { fg: style.fg ?? ctx.th.body, bold: style.bold, italic: style.italic, bg: style.bg ?? ctx.th.bg });
-    put2 = (ctx, x, y, ch, fg, bg) => ctx.c.put(x, y, ch, fg, bg ?? ctx.th.bg);
-    fitParts = (f, w) => textWidth(factText(f.parts)) <= w ? f.parts : f.short && textWidth(factText(f.short)) <= w ? f.short : null;
-    times2 = (ratio2) => `${ratio2 >= 9.95 ? Math.round(ratio2) : ratio2.toFixed(1).replace(/\.0$/, "")}\xD7`;
-    shortModel2 = (label4) => label4.replace(/^(Claude|Gemini)\s+/, "");
-    badgeText = (ctx) => ctx.d.tier ? `${ctx.uni ? "\u2605" : "*"} ${TIER_LABEL2[ctx.d.tier]} ${ctx.uni ? "\u2605" : "*"}` : null;
-    CELL_PAD = 2;
-    CORE = /* @__PURE__ */ new Set(["manners", "mood_drift", "priciest_sentence", "longest_sit", "pet_name", "nemesis"]);
-    CUP = ["#######", "#.###.#", ".#####.", "..###..", "...#...", "..###.."];
-    tValue = (ctx, t) => ctx.s.share ? t.publicValue : t.value;
-    tSub = (ctx, t) => (ctx.s.share ? t.publicSub : t.sub) ?? null;
-    LEAVES = 5;
-    memoryText = (uni) => `${MEMORY_LINE} ${uni ? "\u2192" : "->"} slopie setup`;
-    STEPS = [
-      (p) => {
-        p.tail = false;
-      },
-      (p) => {
-        p.ticker = false;
-      },
-      (p) => {
-        p.tileGap = 0;
-      },
-      (p) => {
-        p.kicker = false;
-      },
-      (p) => {
-        if (p.trophies === "big") p.trophies = "line";
-      },
-      (p) => {
-        p.memory = false;
-      },
-      (p) => {
-        p.bigTitle = false;
-      },
-      (p) => {
-        p.clock = false;
-      },
-      (p) => {
-        if (p.tiles === "full") p.tiles = "compact";
-      },
-      (p) => {
-        p.subRole = false;
-      },
-      (p) => {
-        p.tiles = "lines";
-      },
-      (p) => {
-        p.tagline = false;
-      },
-      (p) => {
-        p.trophies = "none";
-      },
-      (p) => {
-        p.header = false;
-      },
-      (p) => {
-        p.bigPrice = false;
-      },
-      (p) => {
-        p.nFacts = 5;
-      },
-      (p) => {
-        p.nFacts = 4;
-      },
-      (p) => {
-        p.nFacts = 3;
-      }
-    ];
-    heightOf = (b2) => b2.pieces.reduce((s, x) => s + x.piece.h, 0) + Math.max(0, b2.pieces.length - 1);
-    underRows = (p) => 1 + (p.memory ? 1 : 0) + (p.ticker ? 1 : 0);
-    TORN = hx("4a3f39");
-  }
-});
-
-// packages/cli/src/audit-ui/cards/board.ts
-function boardBody(s, data) {
-  return posterBody(s, data);
-}
-var init_board = __esm({
-  "packages/cli/src/audit-ui/cards/board.ts"() {
-    "use strict";
-    init_poster();
-    init_poster();
+    init_charts();
+    init_display();
+    init_kit();
+    init_tokens();
   }
 });
 
@@ -49615,604 +48366,668 @@ function counterText(counter2, value) {
   if (counter2.style === "compact") return compact2(value).replace("\u2014", "0");
   return count4(Math.round(value));
 }
-function scaleBody(s, data, r3) {
-  const { c, t } = s;
-  const counters = r3.h < 9 && data.counters.length > 2 && s.tier.id === "S" ? data.counters.slice(0, 2) : data.counters;
-  const finals = counters.map((k) => counterText(k, k.value));
-  const gap2 = 4;
-  const label4 = (text2) => s.tier.id === "L" ? spaced(text2) : text2;
-  const rowFits = (scale3) => finals.reduce((sum2, f, i) => sum2 + Math.max(bigWidth(f, scale3), textWidth(label4(counters[i].label))), 0) + (gap2 + 2) * (counters.length - 1) <= r3.w;
-  let layout;
-  if (s.tier.id === "L" && r3.h >= 16 && counters.length >= 3) layout = { scale: 2, cols: 2 };
-  else if (rowFits(1) && r3.h >= 5) layout = { scale: 1, cols: counters.length };
-  else layout = { scale: 1, cols: 2 };
-  const { scale: scale2, cols } = layout;
-  const cellW = Math.floor((r3.w + gap2) / cols) - gap2;
-  const blockH = bigHeight(scale2) + 2;
+function scaleBody(k, data, r3) {
+  const { tk, L, s } = k;
+  const counters = data.counters;
+  const finals = counters.map((c) => counterText(c, c.value));
+  const tryLayout = (cols2, tall, face) => {
+    if (!k.uni) return null;
+    const colW2 = Math.floor((r3.w + 4) / cols2) - 4;
+    const o = { face, tall };
+    return finals.every((f) => displayWidth(f.replace(/[KMBT]$/, ""), o) + (/[KMBT]$/.test(f) ? 2 : 0) <= colW2 - 2) ? o : null;
+  };
+  let cols = counters.length;
+  let opts = tryLayout(cols, L && r3.h >= 12, "solid") ?? tryLayout(cols, false, "solid");
+  if (!opts && counters.length > 2) {
+    cols = 2;
+    opts = tryLayout(2, L && r3.h >= 16, "solid") ?? tryLayout(2, false, "solid");
+  }
+  if (!opts) {
+    cols = counters.length;
+    opts = tryLayout(cols, false, "heavy");
+  }
+  if (!opts) cols = Math.min(counters.length, 2);
+  const colW = Math.floor((r3.w + 4) / cols);
+  const numH = opts ? displayHeight(opts) : 1;
+  const blockH = numH + 2;
   const rows = Math.ceil(counters.length / cols);
-  const rowGap = layout.scale === 2 ? 2 : 1;
+  const rowGap = L ? 2 : 1;
   const totalH = rows * blockH + (rows - 1) * rowGap;
-  const y0 = r3.y + Math.max(0, Math.floor((r3.h - totalH) / 2) - (s.tier.id === "L" ? 1 : 0));
-  let busy = false;
-  const widths = finals.map((f, i) => Math.max(bigWidth(f, scale2), textWidth(label4(counters[i].label))));
-  const slack = cols === counters.length && cols > 1 ? Math.max(3, Math.floor((r3.w - widths.reduce((a, b2) => a + b2, 0)) / (cols - 1))) : 0;
-  const xs = widths.map((_, i) => r3.x + widths.slice(0, i).reduce((a, b2) => a + b2, 0) + slack * i);
+  const y0 = r3.y + Math.max(0, Math.floor((r3.h - totalH) / 3));
   counters.forEach((counter2, i) => {
     const col3 = i % cols, row2 = Math.floor(i / cols);
-    const x = cols === counters.length && cols > 1 ? xs[i] : r3.x + col3 * (cellW + gap2);
+    const x = r3.x + col3 * colW;
     const y = y0 + row2 * (blockH + rowGap);
-    const start = i * 170;
-    const k = seg2(t, start, 950);
-    busy ||= k < 1;
-    const value = s.caps.motion ? countUp(counter2.value, t, start, 950) : counter2.value;
+    const start = i * 150;
+    const a = fade2(k, start, 260);
+    if (col3) vrule(k, x - 3, y, blockH, a);
+    const value = s.caps.motion ? countUp(counter2.value, s.t, start, 950) : counter2.value;
+    if (s.caps.motion && s.t < start + 950) k.busy = true;
     const text2 = counterText(counter2, value);
-    const a = seg2(t, start, 200);
-    if (a <= 0) return;
-    const glow = k < 1 ? 0.25 * (1 - k) : 0;
-    drawBig(c, x, y, text2, { scale: scale2, color: (px, py) => fade(mix(warmGradient(scale2)(px, py), C.cream, glow), a) });
-    c.text(x, y + bigHeight(scale2) + (scale2 === 2 ? 1 : 0), label4(counter2.label), { fg: C.gray, alpha: a }, cellW);
+    if (opts) {
+      const [, digits, unit] = /^(.*?)([KMBT]?)$/.exec(text2);
+      const dw = drawDisplay(k.c, x, y, digits, fadeIn(tk, tk.text, a), tk.bg, opts);
+      if (unit) txt(k, x + dw + 1, y + displayHeight(opts) - 1, unit, tk.text2, { bold: true, a });
+    } else txt(k, x, y, text2, tk.text, { bold: true, a });
+    txt(k, x, y + numH + 1, cap3(counter2.label), tk.text2, { a }, colW - 4);
   });
-  return busy;
 }
-function billBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const paper = s.caps.color === "truecolor" || s.caps.color === "256";
-  const RW = Math.min(r3.w, tier.id === "L" ? 46 : tier.id === "M" ? 40 : 42);
-  const side = r3.w - RW - 4 >= 26 && tier.id !== "S";
-  const x0 = side ? r3.x : r3.x + Math.floor((r3.w - RW) / 2);
-  const bigScale = 1;
-  const fixed = [{ kind: "title" }, { kind: "sub" }, { kind: "sep" }];
-  const tail2 = [{ kind: "sep" }, { kind: "total" }, { kind: "sep" }];
-  const optional = [];
-  if (data.priciest) optional.push({ kind: "pricey" });
-  optional.push({ kind: "thanks" });
-  const totalRows = (rows2) => rows2.reduce((sum2, row2) => sum2 + (row2.kind === "total" ? bigHeight(bigScale) : 1), 0) + 2;
-  let items = data.lines.map((line2) => ({ kind: "item", text: line2.name, value: money2(line2.value) }));
-  if (data.more > 0) items.push({ kind: "item", text: "everything else", value: money2(data.more) });
-  let rows = [...fixed, ...items, ...tail2, ...optional];
-  while (totalRows(rows) > r3.h && optional.length) {
-    optional.pop();
-    rows = [...fixed, ...items, ...tail2, ...optional];
-  }
-  if (totalRows(rows) > r3.h) {
-    fixed.splice(1, 1);
-    rows = [...fixed, ...items, ...tail2, ...optional];
-  }
-  while (totalRows(rows) > r3.h && items.length > 1) {
-    items = items.slice(0, -1);
-    rows = [...fixed, ...items, ...tail2, ...optional];
-  }
-  if (totalRows(rows) > r3.h) rows = rows.filter((row2) => row2.kind !== "title");
-  while (totalRows(rows) > r3.h && rows.some((row2) => row2.kind === "sep")) rows.splice(rows.findIndex((row2) => row2.kind === "sep"), 1);
-  const height = totalRows(rows);
-  const y0 = r3.y + Math.max(0, Math.floor((r3.h - height) / 2));
-  const perRow = 60;
-  const revealed = s.caps.motion ? Math.floor(t / perRow) : Infinity;
-  const busy = revealed < height + 14;
-  const ink = paper ? INK : C.cream;
-  const faint = paper ? FAINT : C.gray;
-  const bg = paper ? PAPER : void 0;
-  if (tier.id !== "S" && y0 > r3.y) for (let x = -1; x <= RW; x++) c.put(x0 + x, y0 - 1, s.caps.unicode ? "\u2584" : "_", C.coal);
-  const edge = (y2, top) => {
-    for (let x = 0; x < RW; x++) {
-      if (!paper) {
-        c.put(x0 + x, y2, s.caps.unicode ? "\u2504" : "-", C.slate);
-        continue;
-      }
-      const tooth = x % 2 === 0;
-      c.put(x0 + x, y2, top ? tooth ? "\u2588" : "\u2584" : tooth ? "\u2580" : " ", PAPER, void 0);
-    }
-  };
-  let y = y0;
-  let shown = 0;
-  const show2 = () => shown++ < revealed;
-  if (show2()) edge(y, true);
+function billBody(k, data, r3) {
+  const { tk, L, s } = k;
+  const side = r3.w >= 80;
+  const lw = side ? Math.min(52, Math.floor(r3.w * 0.5)) : r3.w;
+  const a = fade2(k, 100, 400);
+  let y = r3.y;
+  txt(k, r3.x, y, "At API list prices \xB7 not a bill", tk.text3, { a });
+  y += 2;
+  const rows = data.lines.map((l) => [l.name, money2(l.value)]);
+  if (data.more > 0) rows.push(["everything else", money2(data.more)]);
+  const room = Math.max(1, r3.y + r3.h - y - (L ? 8 : 5));
+  rows.slice(0, room).forEach(([name, value], i) => {
+    const ra = fade2(k, 150 + i * 60, 260);
+    const nw = txt(k, r3.x, y, name, tk.text2, { a: ra }, lw - textWidth(value) - 2);
+    txtRight(k, r3.x + lw, y, value, tk.text, { a: ra });
+    y++;
+  });
   y++;
-  const line = (text2) => {
-    c.fill(x0, y, RW, 1, " ", { bg: bg ?? -1 });
-    return text2;
-  };
-  for (const row2 of rows) {
-    const h = row2.kind === "total" ? bigHeight(bigScale) : 1;
-    if (!(shown < revealed)) break;
-    shown += h;
-    for (let k = 0; k < h; k++) c.fill(x0, y + k, RW, 1, " ", { bg: bg ?? -1 });
-    const pad4 = 3;
-    const inner = RW - pad4 * 2;
-    switch (row2.kind) {
-      case "title":
-        textCenter(c, x0 + RW / 2, y, line(s.caps.unicode ? "\u2726 SLOPIE AGENT CO. \u2726" : "* SLOPIE AGENT CO. *"), { fg: ink, bold: true, bg });
-        break;
-      case "sub":
-        textCenter(c, x0 + RW / 2, y, "at API list prices \xB7 not a bill", { fg: faint, bg });
-        break;
-      case "sep":
-        for (let x = 0; x < inner; x++) c.put(x0 + pad4 + x, y, x % 2 ? " " : "-", faint, bg);
-        break;
-      case "item": {
-        const value = row2.value;
-        const nameMax = inner - textWidth(value) - 2;
-        const name = c.text(x0 + pad4, y, row2.text, { fg: ink, bg }, nameMax);
-        for (let x = x0 + pad4 + name + 1; x < x0 + pad4 + inner - textWidth(value) - 1; x++) c.put(x, y, ".", faint, bg);
-        textRight(c, x0 + pad4 + inner, y, value, { fg: ink, bold: true, bg });
-        break;
-      }
-      case "total": {
-        c.text(x0 + pad4, y + 1, "TOTAL", { fg: ink, bold: true, bg });
-        const begin = (shown - h) * perRow;
-        const value = s.caps.motion ? countUp(data.total, t, begin, 750) : data.total;
-        const text2 = money2(value);
-        drawBig(c, x0 + pad4 + inner - bigWidth(text2, bigScale), y, text2, { scale: bigScale, color: () => paper ? C.ember : C.orange });
-        break;
-      }
-      case "pricey": {
-        const p = data.priciest;
-        c.text(x0 + pad4, y, "priciest sentence", { fg: faint, bg });
-        textRight(c, x0 + pad4 + inner, y, `${shortDate2(p.day)}  ${money2(p.cost)}`, { fg: ink, bold: true, bg });
-        break;
-      }
-      case "thanks":
-        textCenter(c, x0 + RW / 2, y, "thank you for prompting", { fg: faint, italic: true, bg });
-        break;
-    }
-    y += h;
+  rule(k, r3.x, y, lw);
+  y += 1;
+  const total2 = money2(s.caps.motion ? countUp(data.total, s.t, 400, 800) : data.total);
+  if (s.caps.motion && s.t < 1200) k.busy = true;
+  const fit2 = k.uni ? fitDisplay(money2(data.total), lw - 8, { face: tk.face, tall: L && r3.h >= 18 }) : null;
+  txt(k, r3.x, y + (fit2 ? 1 : 0), "Total", tk.text2, { a });
+  if (fit2) {
+    drawDisplay(k.c, r3.x + lw - displayWidth(total2, fit2), y, total2, tk.text, tk.bg, fit2);
+    y += displayHeight(fit2) + 1;
+  } else {
+    txtRight(k, r3.x + lw, y, total2, tk.text, { bold: true });
+    y += 2;
   }
-  if (shown < revealed) edge(y, false);
-  if (side) {
-    const sx = x0 + RW + 5;
-    const sw = r3.x + r3.w - sx;
-    const a = seg2(t, 500, 400);
-    let sy = y0 + 1;
-    if (data.byAgent.length) {
-      c.text(sx, sy, s.tier.id === "L" ? spaced("by agent") : "BY AGENT", { fg: C.gray, alpha: a });
-      sy += 2;
-      const nameW = Math.max(...data.byAgent.map((row2) => textWidth(row2.name)));
-      for (const [i, row2] of data.byAgent.slice(0, 4).entries()) {
-        const k = seg2(t, 600 + i * 120, 600, easeOutCubic);
-        c.text(sx, sy, row2.name, { fg: C.cream, alpha: a });
-        const pct3 = `${Math.round(row2.share * 100)}%`;
-        const barW = Math.max(4, sw - nameW - 8);
-        hbar(c, sx + nameW + 2, sy, barW, row2.share * k, i === 0 ? C.orange : fade(C.orange, 0.6), !s.caps.unicode);
-        textRight(c, sx + sw, sy, row2.share < 0.01 ? "<1%" : pct3, { fg: C.gray, alpha: a });
-        sy += 2;
-      }
-      sy += 1;
-    }
-    if (data.priciest && sy + 4 < r3.y + r3.h) {
-      const b2 = seg2(t, 900, 400);
-      c.text(sx, sy, s.tier.id === "L" ? spaced("one sentence") : "ONE SENTENCE", { fg: C.gray, alpha: b2 });
-      drawBig(c, sx, sy + 2, money2(data.priciest.cost).replace(/\.\d+$/, ""), { color: (_x, py) => fade(mix(C.peach, C.ember, py / 4), b2) });
-      c.text(sx, sy + 6, `${shortDate2(data.priciest.day)}${data.priciest.model ? ` \xB7 ${data.priciest.model}` : ""}`, { fg: C.slate, alpha: b2 }, sw);
-    }
-    return busy || a < 1;
+  if (data.priciest && y < r3.y + r3.h) {
+    const pa = fade2(k, 900);
+    txt(k, r3.x, y, "Priciest sentence", tk.text2, { a: pa });
+    txtRight(k, r3.x + lw, y, `${shortDate2(data.priciest.day)}  ${money2(data.priciest.cost)}`, tk.text, { a: pa });
   }
-  return busy;
+  if (!side || !data.byAgent.length) return;
+  const sx = r3.x + lw + 6;
+  const sw = r3.x + r3.w - sx;
+  vrule(k, sx - 3, r3.y, Math.min(r3.h, 2 + data.byAgent.length * 2 + 1));
+  txt(k, sx, r3.y, "By agent", tk.text3, { a });
+  const nameW = Math.max(...data.byAgent.map((row2) => textWidth(row2.name))) + 2;
+  data.byAgent.slice(0, 4).forEach((row2, i) => {
+    const yy = r3.y + 2 + i * 2;
+    const pct3 = row2.share < 0.01 ? "<1%" : `${Math.round(row2.share * 100)}%`;
+    txt(k, sx, yy, row2.name, i === 0 ? tk.text : tk.text2, { a });
+    const bw = Math.max(4, sw - nameW - 6);
+    meter(k, sx + nameW, yy, bw, row2.share, i === 0 ? tk.text : tk.bar, 500 + i * 120);
+    txtRight(k, sx + sw, yy, pct3, tk.text2, { a });
+  });
 }
-var warmGradient, PAPER, INK, FAINT;
+var cap3;
 var init_numbers = __esm({
   "packages/cli/src/audit-ui/cards/numbers.ts"() {
     "use strict";
-    init_color();
-    init_draw();
-    init_font();
-    init_motion();
     init_format3();
-    warmGradient = (scale2) => (_x, py) => mix(C.cream, C.orange, Math.min(1, py / (5 * scale2 - 1)));
-    PAPER = hx("fbf1e4");
-    INK = hx("2a2522");
-    FAINT = hx("8c8279");
+    init_draw();
+    init_motion();
+    init_charts();
+    init_display();
+    init_kit();
+    init_tokens();
+    cap3 = (t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
   }
 });
 
 // packages/cli/src/audit-ui/cards/places.ts
-function postcard(s, away, r3, delay) {
-  const { c, t } = s;
-  const appear = seg2(t, delay, 400);
-  const age = seg2(t, delay + 900, 1600, easeOutCubic);
-  const a = appear * (1 - age * 0.45);
-  const border = fade(mix(C.peach, C.gray, age), appear);
-  box(c, r3, border, { dashed: true, ascii: !s.caps.unicode });
-  const ix = r3.x + 2, iw = r3.w - 4;
-  c.text(ix, r3.y + 1, "WISH YOU WERE HERE", { fg: mix(C.peach, C.gray, age), alpha: appear, bold: true }, iw - 6);
-  const stamp = `${away.idle}d`;
-  c.text(r3.x + r3.w - 3 - textWidth(stamp), r3.y + 1, stamp, { fg: C.ink, bg: fade(mix(C.orange, C.slate, age), appear), bold: true });
-  let y = r3.y + 3;
-  c.text(ix, y++, s.share ? "a project" : away.name, { fg: mix(C.cream, C.gray, age), bold: true, alpha: appear }, iw);
-  c.text(ix, y++, `${count4(away.prompts)} prompts in ${away.days} days`, { fg: C.gray, alpha: a }, iw);
-  c.text(ix, y++, `then silence for ${away.idle} days`, { fg: mix(C.orange, C.slate, age), alpha: appear }, iw);
-  if (away.lastWords && !s.share && y + 2 < r3.y + r3.h - 1) {
+function gotAway2(k, away, r3, delay) {
+  const { tk, s } = k;
+  const a = fade2(k, delay, 400);
+  let y = r3.y;
+  label4(k, r3.x, y++, "the one that got away", a, r3.w);
+  y++;
+  txt(k, r3.x, y++, s.share ? "a project" : away.name, tk.text, { bold: true, a }, r3.w);
+  txt(k, r3.x, y++, `${count4(away.prompts)} prompts in ${away.days} days`, tk.text2, { a }, r3.w);
+  txt(k, r3.x, y++, `then silence for ${away.idle} days`, tk.text, { a }, r3.w);
+  if (away.lastWords && !s.share && y + 3 <= r3.y + r3.h) {
     y++;
-    c.text(ix, y++, "your last words to it:", { fg: C.slate, alpha: a }, iw);
-    for (const line of wrapText(`\u201C${away.lastWords}\u201D`, iw, Math.max(1, r3.y + r3.h - 2 - y))) c.text(ix, y++, line, { fg: mix(C.cream, C.gray, age), italic: true, alpha: a });
+    txt(k, r3.x, y++, "your last words to it", tk.text3, { a }, r3.w);
+    const lines = wrapText(`\u201C${away.lastWords}\u201D`, r3.w);
+    if (lines.length <= Math.max(1, r3.y + r3.h - y - 2)) for (const line2 of lines) txt(k, r3.x, y++, line2, tk.text2, { italic: true, a });
   }
-  if (y < r3.y + r3.h - 1) textRight(c, r3.x + r3.w - 2, r3.y + r3.h - 2, shortDate2(away.lastDay, true), { fg: C.slate, alpha: a });
-  return t < delay + 2500;
+  if (y + 1 < r3.y + r3.h) txt(k, r3.x, y + 1, shortDate2(away.lastDay, true), tk.text3, { a });
 }
-function projectsBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const cardW = tier.id === "L" ? 42 : 34;
-  const side = data.gotAway && r3.w - cardW - 4 >= 34;
-  const below = data.gotAway && !side && r3.h >= 12;
-  const barsW = side ? r3.w - cardW - 4 : r3.w;
-  const maxRows = below ? Math.max(2, r3.h - 8) : r3.h;
-  const rows = data.rows.slice(0, Math.min(6, Math.ceil(maxRows / (r3.h >= 12 && !below ? 2 : 1))));
-  const step = rows.length * 2 <= maxRows ? 2 : 1;
+function projectsBody(k, data, r3) {
+  const { tk, L, s } = k;
+  const cardW = L ? 36 : 30;
+  const side = !!data.gotAway && r3.w - cardW - 6 >= 34;
+  const barsW = side ? r3.w - cardW - 6 : r3.w;
+  const rows = data.rows.slice(0, Math.min(6, Math.max(1, Math.floor(r3.h / (r3.h >= 12 ? 2 : 1)))));
+  const step = rows.length * 2 <= r3.h ? 2 : 1;
   const max2 = Math.max(...rows.map((p) => p.prompts));
-  const nameW = Math.min(20, Math.max(...rows.map((p) => textWidth(s.share ? "Project A" : p.name))) + 1);
-  const valW = 6;
+  const nameW = Math.min(20, Math.max(...rows.map((p) => textWidth(s.share ? "Project A" : p.name))) + 2);
+  const valW = 7;
   const costW = rows.some((p) => p.cost !== null) && barsW >= 50 ? 8 : 0;
-  const barW = Math.max(6, barsW - nameW - valW - costW - 3);
-  let busy = false;
+  const barW = Math.max(6, barsW - nameW - valW - costW - 2);
   rows.forEach((p, i) => {
     const y = r3.y + i * step;
-    const k = s.caps.motion ? Math.min(1, spring((t - 100 - i * 90) / 1e3, 2, 0.7)) : 1;
-    busy ||= t < 100 + i * 90 + 900;
+    const start = 100 + i * 90;
+    const a = fade2(k, start, 260);
     const name = s.share ? `Project ${String.fromCharCode(65 + i)}` : p.name;
-    const away = data.gotAway && p.name === data.gotAway.name;
-    c.text(r3.x, y, name, { fg: i === 0 ? C.cream : away ? C.peach : C.gray, bold: i === 0 }, nameW - 1);
-    hbar(c, r3.x + nameW, y, barW, p.prompts / max2 * Math.max(0, k), i === 0 ? C.orange : away ? fade(C.peach, 0.7) : fade(C.orange, 0.55), !s.caps.unicode);
-    textRight(c, r3.x + nameW + barW + 1 + valW, y, count4(Math.round(p.prompts * Math.min(1, Math.max(0, k)))), { fg: C.cream });
-    if (costW && p.cost !== null) textRight(c, r3.x + nameW + barW + 1 + valW + costW, y, "$" + count4(Math.round(p.cost)), { fg: C.slate });
+    const away = !!data.gotAway && p.name === data.gotAway.name;
+    txt(k, r3.x, y, name, i === 0 ? tk.text : tk.text2, { bold: i === 0, a }, nameW - 2);
+    meter(k, r3.x + nameW, y, barW, p.prompts / max2, i === 0 ? tk.text : away ? tk.text3 : tk.bar, start);
+    const g2 = s.caps.motion ? seg2(s.t, start, 600, easeOutCubic) : 1;
+    txtRight(k, r3.x + nameW + barW + valW, y, count4(Math.round(p.prompts * g2)), tk.text, { a });
+    if (costW && p.cost !== null) txtRight(k, r3.x + nameW + barW + valW + costW, y, "$" + count4(Math.round(p.cost)), tk.text3, { a });
   });
-  if (data.gotAway) {
-    if (side) busy = postcard(s, data.gotAway, { x: r3.x + barsW + 4, y: r3.y, w: cardW, h: Math.min(r3.h, 13) }, 500) || busy;
-    else if (below) busy = postcard(s, data.gotAway, { x: r3.x, y: r3.y + rows.length * step + 1, w: Math.min(r3.w, 56), h: Math.min(7, r3.y + r3.h - (r3.y + rows.length * step + 1)) }, 500) || busy;
+  if (data.gotAway && side) {
+    const gx = r3.x + barsW + 6;
+    vrule(k, gx - 3, r3.y, Math.min(r3.h, 12), fade2(k, 500));
+    gotAway2(k, data.gotAway, { x: gx, y: r3.y, w: cardW, h: r3.h }, 500);
+  } else if (data.gotAway && r3.h - rows.length * step >= 8) {
+    const gy = r3.y + rows.length * step + 1;
+    rule(k, r3.x, gy, Math.min(r3.w, 56), tk.rule, fade2(k, 500));
+    gotAway2(k, data.gotAway, { x: r3.x, y: gy + 2, w: Math.min(r3.w, 56), h: r3.y + r3.h - gy - 2 }, 500);
   }
-  return busy;
+  if (s.caps.motion && s.t < 1600) k.busy = true;
 }
-function clone(s, x, y, pop) {
-  const { c } = s;
-  if (s.caps.color === "none" || s.caps.color === "16") {
-    c.text(x, y, s.caps.unicode ? "(\u2022\u1D17\u2022)" : "(o_o)", { fg: C.orange });
-    return;
-  }
-  const flash = pop < 1 ? 1 - pop : 0;
-  MINI.forEach((row2, py) => {
-    for (let px = 0; px < row2.length; px++) {
-      const ch = row2[px];
-      if (ch === ".") continue;
-      const base3 = ch === "e" ? C.pupil : ch === "r" ? C.rust : px === 1 && py === 0 ? C.peach : C.orange;
-      c.px(x + px, y * 2 + py, mix(base3, C.cream, flash * 0.8));
-    }
-  });
-}
-function delegationBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const total2 = `${count4(data.total)}`;
-  const a = seg2(t, 0, 300);
-  const scale2 = tier.id === "L" ? 2 : 1;
-  drawBig(c, r3.x, r3.y, total2, { scale: scale2, color: (_x, py) => fade(mix(C.cream, C.orange, py / (5 * scale2 - 1)), a) });
-  const tw = bigWidth(total2, scale2);
-  c.text(r3.x, r3.y + (scale2 === 2 ? 6 : 4), "subagents launched", { fg: C.gray, alpha: a });
-  if (!data.months.length) return a < 1;
-  const colW = 6;
+function delegationBody(k, data, r3) {
+  const { tk, L, s } = k;
+  const total2 = count4(data.total);
+  const a = fade2(k, 0, 300);
+  const opts = k.uni ? fitDisplay(total2, 30, { face: tk.face, tall: L }) : null;
+  const numH = opts ? displayHeight(opts) : 1;
+  if (opts) drawDisplay(k.c, r3.x, r3.y, total2, fadeIn(tk, tk.text, a), tk.bg, opts);
+  else txt(k, r3.x, r3.y, total2, tk.text, { bold: true, a });
+  txt(k, r3.x, r3.y + numH + 1, "subagents launched", tk.text2, { a });
+  if (!data.months.length) return;
   let months = data.months;
   const firstUsed = months.findIndex((m) => m.n > 0);
   if (firstUsed > 1) months = months.slice(firstUsed - 1);
-  const room = Math.floor((r3.w - Math.max(tw, 20) - 6) / colW);
-  const sideBySide = room >= Math.min(months.length, 5);
-  const fit2 = sideBySide ? room : Math.floor(r3.w / colW);
+  const leftW = Math.max(opts ? displayWidth(total2, opts) : textWidth(total2), 20) + 8;
+  const colW = 5;
+  const sideBySide = r3.w - leftW >= Math.min(months.length, 5) * colW;
+  const gx = sideBySide ? r3.x + leftW : r3.x;
+  const fit2 = Math.floor((sideBySide ? r3.w - leftW : r3.w) / colW);
   if (months.length > fit2) months = months.slice(months.length - fit2);
-  const gx = sideBySide ? r3.x + Math.max(tw, 20) + 6 : r3.x;
-  const gy = sideBySide ? r3.y : r3.y + (scale2 === 2 ? 8 : 6);
-  const gh = Math.max(2, r3.y + r3.h - gy - 2);
-  const perCol = Math.max(1, Math.floor(gh / 2));
+  const gy = sideBySide ? r3.y : r3.y + numH + 3;
+  const gh = Math.max(3, Math.min(L ? 12 : 8, r3.y + r3.h - gy - 2));
   const max2 = Math.max(1, ...months.map((m) => m.n));
-  const unit = Math.max(1, Math.ceil(max2 / perCol));
-  let order = 0;
-  let busy = false;
+  if (sideBySide) vrule(k, gx - 4, r3.y, gh + 2, fade2(k, 200));
+  const peak = months.reduce((b2, m, i) => m.n > months[b2].n ? i : b2, 0);
+  rule(k, gx, gy + gh, months.length * colW - 2);
   months.forEach((m, i) => {
     const x = gx + i * colW;
-    const stack2 = Math.ceil(m.n / unit);
-    for (let k = 0; k < stack2; k++) {
-      const at = 250 + order++ * 28;
-      const pop = seg2(t, at, 260);
-      busy ||= pop < 1;
-      if (pop <= 0) continue;
-      const hop = pop < 1 ? Math.round(Math.sin(Math.PI * pop) * 1) : 0;
-      clone(s, x, gy + gh - 2 - k * 2 - hop, pop);
-    }
-    if (!m.n) c.put(x + 2, gy + gh - 1, "\xB7", C.slate);
-    c.text(x, gy + gh, monthLabel(m.month), { fg: data.firstMonth === m.month ? C.orange : C.slate });
+    const g2 = s.caps.motion ? seg2(s.t, 250 + i * 60, 600, easeOutCubic) : 1;
+    if (g2 < 1) k.busy = true;
+    if (m.n > 0) vbar(k.c, x, gy + gh - 1, gh - 1, Math.max(0.04, m.n / max2 * g2), i === peak ? tk.text : tk.bar, 3, !k.uni);
+    txt(k, x, gy + gh + 1, monthLabel(m.month), data.firstMonth === m.month ? tk.text : tk.text3);
   });
-  const la = seg2(t, 400 + order * 28, 300);
-  const legend = `each slopie = ${unit} subagent${unit === 1 ? "" : "s"}`;
-  if (gy + gh + 1 <= r3.y + r3.h) c.text(gx, gy + gh + 1, legend, { fg: C.slate, alpha: la });
-  return busy || la < 1;
+  const pk = months[peak];
+  const la = fade2(k, 300 + months.length * 60 + 400);
+  const ty = gy + gh - 2 - Math.ceil(pk.n / max2 * (gh - 1));
+  if (ty >= r3.y) txt(k, gx + peak * colW, ty, count4(pk.n), tk.text, { bold: true, a: la });
 }
 function metalOf(tier, rank) {
   return tier ?? (rank === 0 ? "gold" : rank < 3 ? "silver" : "bronze");
 }
-function trophy(s, x, y, dy, a, metal, scale2 = 1) {
-  const { c } = s;
-  if (s.caps.color === "none" || s.caps.color === "16") {
-    const fg = metal === "gold" ? C.orange : metal === "silver" ? C.gray : C.rust;
-    c.text(x + 1, y + 1, "\\_/", { fg });
-    c.text(x + 2, y + 2, metal === "gold" ? "*" : metal === "silver" ? "+" : "|", { fg });
-    c.text(x + 1, y + 3, "/_\\", { fg });
-    return;
-  }
-  const [top, bottom, bowlTop, bowlBottom] = METAL[metal];
-  CUP2.forEach((row2, py) => {
-    for (let px = 0; px < row2.length; px++) {
-      if (row2[px] === ".") continue;
-      const color = row2[px] === "#" ? mix(top, bottom, py / 7) : mix(bowlTop, bowlBottom, py / 7);
-      const shine = metal !== "bronze" && px === 2 && py < 4 && row2[px] === "o";
-      const col3 = fade(shine ? C.white : color, a);
-      for (let sy = 0; sy < scale2; sy++) for (let sx = 0; sx < scale2; sx++) c.px(x + px * scale2 + sx, y * 2 + py * scale2 + sy + dy, col3);
-    }
+function awardsBody(k, data, r3) {
+  const { tk, L, s } = k;
+  const cols = r3.w >= 96 ? 3 : 2;
+  const gap2 = 6;
+  const colW = Math.floor((r3.w - gap2 * (cols - 1)) / cols);
+  const cellH = L ? 5 : 4;
+  const rows = Math.min(Math.ceil(data.trophies.length / cols), Math.max(1, Math.floor((r3.h + 1) / (cellH + 1))));
+  data.trophies.slice(0, rows * cols).forEach((award, i) => {
+    const col3 = i % cols, row2 = Math.floor(i / cols);
+    const x = r3.x + col3 * (colW + gap2);
+    const y = r3.y + row2 * (cellH + 1);
+    const a = fade2(k, 150 + i * 140, 360);
+    if (row2) rule(k, x, y - 1, colW, tk.rule, a);
+    const metal = metalOf(award.tier, i);
+    label4(k, x, y, metal, a);
+    if (i === 0) txt(k, x, y, metal.toUpperCase(), tk.accent, { a });
+    const title = wrapText(award.title, colW);
+    if (title.length > 2) return;
+    title.forEach((line2, li) => txt(k, x, y + 1 + li, line2, tk.text, { bold: true, a }));
+    const value = s.share && award.publicValue ? award.publicValue : award.value;
+    const vy = y + 1 + title.length;
+    if (textWidth(value) <= colW && vy < y + cellH) txt(k, x, vy, value, tk.text2, { a });
+    if (award.sub && vy + 1 < y + cellH && textWidth(award.sub) <= colW) txt(k, x, vy + 1, award.sub, tk.text3, { a });
   });
+  if (s.caps.motion && s.t < 150 + data.trophies.length * 140 + 360) k.busy = true;
 }
-function awardsBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const perRow = tier.id === "L" ? Math.min(6, data.trophies.length) : 3;
-  const rowsNeeded = Math.ceil(data.trophies.length / perRow);
-  const big = tier.id === "L" && r3.h >= 14 && s.caps.color !== "none" && s.caps.color !== "16";
-  const cupH = big ? 8 : 4;
-  const rowH = cupH + 7;
-  const shelves = Math.min(rowsNeeded, Math.max(1, Math.floor((r3.h + 1) / rowH)));
-  const colW = Math.floor(r3.w / perRow);
-  let busy = false;
-  for (let row2 = 0; row2 < shelves; row2++) {
-    const y = r3.y + row2 * rowH;
-    const shelfY = y + cupH;
-    const items = data.trophies.slice(row2 * perRow, (row2 + 1) * perRow);
-    const sa = seg2(t, row2 * 300, 300);
-    for (let x = r3.x; x < r3.x + Math.min(r3.w, items.length * colW); x++) c.put(x, shelfY, s.caps.unicode ? "\u2580" : "=", fade(C.rust, sa));
-    items.forEach((award, i) => {
-      const index = row2 * perRow + i;
-      const delay = 150 + index * 160;
-      const fall = s.caps.motion ? spring((t - delay) / 1e3, 2.6, 0.45) : 1;
-      busy ||= t < delay + 900;
-      if (t < delay) return;
-      const cx = r3.x + i * colW + Math.floor(colW / 2);
-      const dropRows = Math.min(6, Math.max(1, y - r3.y + 2));
-      const dy = Math.round((1 - Math.min(1.15, fall)) * -dropRows);
-      const metal = metalOf(award.tier, index);
-      trophy(s, cx - (big ? 7 : 3), y, dy * 2, Math.min(1, fall * 1.5), metal, big ? 2 : 1);
-      if (metal === "gold" && s.caps.unicode && fall >= 1) c.put(cx + (big ? 7 : 4), y + (big ? 0 : 0), "\u2726", fade(GOLD3, seg2(t, delay + 500, 300)));
-      const la = seg2(t, delay + 300, 300);
-      const w = colW - 2;
-      const title = wrapText(award.title, w - 2, 2);
-      title.forEach((line, li) => textCenter(c, cx, shelfY + 1 + li, li === 0 ? `${metalGlyph(metal, s.caps.unicode)} ${line}` : line, { fg: C.gray, alpha: la }));
-      const valueY = shelfY + 1 + title.length;
-      const value = wrapText(s.share && award.publicValue ? award.publicValue : award.value, w, 2);
-      const ink = metal === "gold" ? GOLD3 : metal === "silver" ? SILVER : BRONZE;
-      value.forEach((line, li) => textCenter(c, cx, valueY + li, line, { fg: ink, bold: metal !== "bronze", alpha: la }));
-      if (award.sub) textCenter(c, cx, valueY + value.length, wrapText(award.sub, w, 1)[0] ?? "", { fg: C.slate, alpha: la });
-    });
-  }
-  return busy;
-}
-var MINI, CUP2, METAL;
 var init_places = __esm({
   "packages/cli/src/audit-ui/cards/places.ts"() {
     "use strict";
-    init_color();
-    init_draw();
-    init_font();
-    init_motion();
     init_format3();
+    init_draw();
+    init_motion();
     init_deck();
-    init_poster();
-    MINI = [".ooo.", "oeoeo", "rrrrr"];
-    CUP2 = [".#####.", "##ooo##", "#.ooo.#", ".#ooo#.", "..ooo..", "...o...", "..ooo..", ".ooooo."];
-    METAL = {
-      gold: [C.cream, GOLD3, GOLD3, C.orange],
-      silver: [C.white, SILVER, SILVER, C.slate],
-      bronze: [C.peach, BRONZE, BRONZE, C.deep]
+    init_charts();
+    init_display();
+    init_kit();
+    init_tokens();
+  }
+});
+
+// packages/cli/src/audit-ui/cards/reveal.ts
+function revealDone(t) {
+  return t >= T2.settle;
+}
+function band2(b2) {
+  return b2 >= 0.95 ? "off the chart" : b2 >= 0.8 ? "very high" : b2 >= 0.6 ? "high" : "notable";
+}
+function archetypeBody(k, d, r3) {
+  const { tk, s } = k;
+  const mx = r3.x, iw = r3.w;
+  const bottom = r3.y + r3.h - 1;
+  const copyW = Math.min(iw, 92);
+  const tag = d.tagline ? wrapText(`\u201C${d.tagline}\u201D`, copyW) : [];
+  const prof = d.profile ? wrapText(d.profile, copyW) : [];
+  const metaW = iw >= 80 ? 22 : 16;
+  const cx = mx + metaW;
+  const cw = iw - metaW;
+  const labelW = Math.min(Math.floor(cw * 0.42), Math.max(...d.deciding.map((m) => textWidth(m.display)), 0) + 3);
+  const wordW = 13;
+  const barW = Math.max(8, Math.min(44, cw - labelW - wordW - 2));
+  const own = (m) => textWidth(m.display) > labelW - 2;
+  const heights = (f) => {
+    const plan2 = f.bigTitle ? planTitle(k, d.title, iw, f.titleLines) : { lines: [d.title], big: false, h: 1, w: textWidth(d.title), face: tk.face };
+    let h = plan2.h + f.air + (d.tier ? 2 : 0);
+    if (f.tagline && tag.length <= 2 && tag.length) h += tag.length;
+    if (f.profile && prof.length && prof.length <= 2) h += prof.length;
+    h += f.air;
+    if (d.deciding.length) h += 1 + f.air + d.deciding.reduce((a, m) => a + (own(m) ? 1 : 0) + f.step, 0) + (f.step === 1 ? 1 : 0);
+    if (f.code && d.code) h += 1 + f.air + 1 + (f.note ? 2 : 0);
+    return { h, plan: plan2 };
+  };
+  const fit2 = { titleLines: 2, bigTitle: true, tagline: true, profile: true, code: true, note: true, step: 2, air: 2 };
+  const drops = [
+    (f) => {
+      f.titleLines = 1;
+    },
+    (f) => {
+      f.note = false;
+    },
+    (f) => {
+      f.step = 1;
+    },
+    (f) => {
+      f.air = 1;
+    },
+    (f) => {
+      f.profile = false;
+    },
+    (f) => {
+      f.code = false;
+    },
+    (f) => {
+      f.tagline = false;
+    },
+    (f) => {
+      f.bigTitle = false;
+    }
+  ];
+  let laid = heights(fit2);
+  for (const drop of drops) {
+    if (laid.h <= r3.h) break;
+    drop(fit2);
+    laid = heights(fit2);
+  }
+  const { plan } = laid;
+  let y = r3.y;
+  const ta = fade2(k, T2.title, 600);
+  if (ta < 1) drawGhost(k, mx, y, plan, 1 - ta);
+  drawTitle(k, mx, y, plan, tk.text, ta);
+  y += plan.h + fit2.air;
+  const sa = fade2(k, T2.tier);
+  if (d.tier) {
+    let x = mx + txt(k, mx, y, TIER3[d.tier], tk.accent, { bold: true, a: sa });
+    if (d.subRole && x + 2 + textWidth(d.subRole) <= mx + iw) x += txt(k, x + 2, y, d.subRole, tk.text2, { a: sa }) + 2;
+    const [first, second] = d.runners;
+    const named2 = !!first && !!d.subRole?.includes(first.title);
+    const almost = named2 ? second?.title : first?.title;
+    const lead = named2 ? "Also close" : "Runner-up";
+    if (almost && x + 4 + textWidth(`${lead}  ${almost}`) <= mx + iw) {
+      const w = txtRight(k, mx + iw, y, almost, tk.text2, { a: sa });
+      txtRight(k, mx + iw - w - 2, y, lead, tk.text3, { a: sa });
+    }
+    y += 2;
+  }
+  const ca = fade2(k, T2.copy);
+  if (fit2.tagline && tag.length && tag.length <= 2) for (const line2 of tag) txt(k, mx, y++, line2, tk.text, { italic: true, a: ca });
+  if (fit2.profile && prof.length && prof.length <= 2) for (const line2 of prof) txt(k, mx, y++, line2, tk.text2, { a: ca });
+  y += fit2.air;
+  if (d.deciding.length) {
+    rule(k, mx, y, iw);
+    y += fit2.air;
+    label4(k, mx, y, "the evidence", fade2(k, 0));
+    d.deciding.forEach((m, i) => {
+      if (y > bottom) return;
+      const start = T2.evidence + i * 380;
+      const la = fade2(k, start - 120, 240);
+      const alone = own(m);
+      txt(k, cx, y, m.display, tk.text, { a: la });
+      if (alone) y += 1;
+      const bx = cx + (alone ? 0 : labelW);
+      const bw = alone ? Math.max(8, Math.min(44, cw - wordW - 2)) : barW;
+      meter(k, bx, y, bw, m.band, i === 0 ? tk.text : tk.text2, start);
+      txt(k, bx + bw + 2, y, band2(m.band), m.band >= 0.8 ? tk.text : tk.text2, { a: fade2(k, start + 420) });
+      y += fit2.step;
+    });
+    if (fit2.step === 1) y++;
+  }
+  if (fit2.code && d.code && y + 1 <= bottom) {
+    rule(k, mx, y, iw);
+    y += fit2.air;
+    const a = fade2(k, T2.copy + 200);
+    label4(k, mx, y, "your code", a);
+    let x = cx + txt(k, cx, y, d.code, tk.text, { bold: true, a });
+    const words8 = d.codeWords.join(k.uni ? " \xB7 " : ", ");
+    if (words8 && x + 3 + textWidth(words8) <= mx + iw) x += txt(k, x + 3, y, words8, tk.text2, { a }) + 3;
+    if (fit2.note && d.tier && textWidth(NOTE[d.tier]) <= cw) txt(k, cx, y + 2, NOTE[d.tier], tk.text3, { a });
+  }
+  if (s.caps.motion && s.t < T2.settle) k.busy = true;
+}
+var TIER3, NOTE, T2;
+var init_reveal = __esm({
+  "packages/cli/src/audit-ui/cards/reveal.ts"() {
+    "use strict";
+    init_draw();
+    init_charts();
+    init_kit();
+    init_title();
+    TIER3 = { common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary" };
+    NOTE = {
+      common: "Common: your deciding numbers sit mid-scale.",
+      rare: "Rare: your deciding numbers sit high on their fixed scales.",
+      epic: "Epic: your deciding numbers sit near the top of their fixed scales.",
+      legendary: "Legendary: your deciding numbers sit at the very top of their fixed scales."
     };
+    T2 = { evidence: 250, title: 1700, tier: 2300, copy: 2550, settle: 3300 };
+  }
+});
+
+// packages/cli/src/audit-ui/cards/spend.ts
+function spendBody(k, sp, r3) {
+  const { tk, L, s } = k;
+  const bottom = r3.y + r3.h - 1;
+  let y = r3.y;
+  const side = r3.w >= 70;
+  const lw = side ? L ? 40 : 32 : r3.w;
+  const cx = r3.x + lw + (L ? 6 : 4);
+  const cw = r3.x + r3.w - cx;
+  const final = "$" + count4(Math.round(sp.measured));
+  const shown = "$" + count4(Math.round(countUp(sp.measured, s.caps.motion ? s.t : Infinity, 100, 1e3)));
+  if (s.caps.motion && s.t < 1100) k.busy = true;
+  const fit2 = k.uni ? fitDisplay(final, lw, { face: tk.face, tall: L && r3.h >= 20, currency: tk.text2 }) : null;
+  const a0 = fade2(k, 100, 400);
+  txt(k, r3.x, y, "Lifetime", tk.text3, { a: a0 });
+  y += 1;
+  if (fit2) {
+    drawDisplay(k.c, r3.x + displayWidth(final, fit2) - displayWidth(shown, fit2), y, shown, fadeIn(tk, tk.text, a0), tk.bg, fit2);
+    y += displayHeight(fit2) + 1;
+  } else {
+    txt(k, r3.x + textWidth(final) - textWidth(shown), y, shown, tk.text, { bold: true, a: a0 });
+    y += 2;
+  }
+  const a1 = fade2(k, 500);
+  txt(k, r3.x, y, "measured at API list prices", tk.text2, { a: a1 }, lw);
+  y += L && r3.h >= 20 ? 2 : 1;
+  const valX = r3.x + (L ? 26 : 24);
+  const lines = [];
+  if (sp.recovered) lines.push(["Recovered", money2(sp.recovered), "usage counters"]);
+  if (sp.estimated) lines.push(["Older prompts", `${money2(sp.estimated.low)}\u2013${money2(sp.estimated.high).slice(1)}`, "est."]);
+  if (lines.length) lines.push(null);
+  if (sp.thisMonth !== null) lines.push(["This month", money2(sp.thisMonth), ""]);
+  if (sp.perDay !== null) lines.push(["Per active day", money2(sp.perDay), ""]);
+  if (sp.priciestDay) lines.push(["Priciest day", money2(sp.priciestDay.usd), shortDate2(sp.priciestDay.day)]);
+  const hundred = sp.days.filter((d) => d.usd >= 100).length;
+  if (hundred) lines.push(["$100+ days", count4(hundred), ""]);
+  for (const line2 of lines) {
+    if (y > bottom) break;
+    if (!line2) {
+      if (L && r3.h >= 20) {
+        rule(k, r3.x, y, Math.min(lw, valX - r3.x + 16), tk.rule, a1);
+        y++;
+      }
+      continue;
+    }
+    const [name, value, note] = line2;
+    txt(k, r3.x, y, name, tk.text2, { a: a1 });
+    txtRight(k, valX, y, value, tk.text, { a: a1 });
+    if (note && valX + 2 + textWidth(note) <= r3.x + lw) txt(k, valX + 2, y, note, tk.text3, { a: a1 });
+    y++;
+  }
+  if (!side) return;
+  vrule(k, cx - (L ? 3 : 2), r3.y, r3.h);
+  let cy = r3.y;
+  const room = bottom - cy + 1;
+  const wantGrid = sp.days.length > 0 && room >= 16;
+  const barsH = Math.max(4, Math.min(L ? 13 : 10, room - (wantGrid ? 8 : 2)));
+  if (sp.months.length >= 2 && room >= 7) {
+    txt(k, cx, cy, "By month", tk.text3);
+    if (sp.months.some((m) => m.extra > 0)) {
+      const legend = [[k.uni ? "\u25A0" : "#", tk.bar], [" measured   ", tk.text3], [k.uni ? "\u25A0" : ":", tk.barSoft], [" recovered, est.", tk.text3]];
+      let lx = r3.x + r3.w - legend.reduce((a, [t]) => a + textWidth(t), 0);
+      if (lx >= cx + textWidth("By month") + 4) for (const [t, col3] of legend) lx += txt(k, lx, cy, t, col3);
+    }
+    cy += 2;
+    monthBars(k, { x: cx, y: cy, w: cw, h: barsH }, sp.months);
+    cy += barsH + 1;
+  }
+  if (wantGrid && bottom - cy >= 5) {
+    txt(k, cx, cy, "Every day", tk.text3);
+    dayGrid(k, { x: cx, y: cy + 1, w: cw, h: 5 }, sp.days);
+  }
+}
+function erasBody(k, eras2, r3) {
+  const { tk } = k;
+  if (!eras2.length) return;
+  const labels3 = [...new Set(eras2.map((e) => e.label))];
+  const latest = eras2.at(-1).label;
+  const inks = [tk.text2, tk.text3, tk.bar, tk.barSoft];
+  const inkOf = (lab) => lab === latest ? tk.text : inks[labels3.filter((l) => l !== latest).indexOf(lab) % inks.length];
+  const colW = Math.max(2, Math.min(8, Math.floor(r3.w / eras2.length)));
+  const y = r3.y + 1;
+  const g2 = k.s.caps.motion ? seg2(k.s.t, 200, 900, easeOutCubic) : 1;
+  if (g2 < 1) k.busy = true;
+  eras2.forEach((e, i) => {
+    if (i / eras2.length > g2) return;
+    for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < colW - 1; xx++) k.c.put(r3.x + i * colW + xx, y + yy, k.uni ? "\u2588" : "#", inkOf(e.label), tk.bg, 0);
+    if (colW >= 4 || i % 2 === 0) txt(k, r3.x + i * colW, y + 3, monthLabel(e.month), tk.text3, {}, colW * 2);
+  });
+  let lx = r3.x;
+  const la = fade2(k, 1100, 300);
+  for (const lab of labels3) {
+    if (lx + textWidth(lab) + 2 > r3.x + r3.w) break;
+    lx += txt(k, lx, y + 5, k.uni ? "\u25A0 " : "# ", inkOf(lab), { a: la });
+    lx += txt(k, lx, y + 5, lab, lab === latest ? tk.text : tk.text2, { a: la }) + 3;
+  }
+}
+var init_spend = __esm({
+  "packages/cli/src/audit-ui/cards/spend.ts"() {
+    "use strict";
+    init_format3();
+    init_motion();
+    init_deck();
+    init_charts();
+    init_display();
+    init_kit();
+    init_tokens();
   }
 });
 
 // packages/cli/src/audit-ui/cards/time.ts
-function drawHeatmap(s, grid, x, y, cellW, options) {
-  const { c } = s;
+function drawHeatmap(k, grid, x, y, cellW, peak, start = 0) {
+  const { tk, s } = k;
   const max2 = Math.max(1, ...grid.flat());
-  const labelW = options.labels === false ? 0 : options.short ? 2 : 4;
-  const t = options.t;
-  let busy = false;
-  const rowStep = options.tall ? 2 : 1;
+  const labelW = 4;
+  const none = s.caps.color === "none";
   for (let d = 0; d < 7; d++) {
-    const ry = y + d * rowStep;
-    if (options.labels !== false) c.text(x, ry, options.short ? DAYS[d][0] : DAYS[d], { fg: d >= 5 ? C.slate : C.gray });
+    txt(k, x, y + d, DAYS[d], d >= 5 ? tk.text3 : tk.text2);
     for (let h = 0; h < 24; h++) {
-      const a = seg2(t, 120 + h * 38, 260);
-      busy ||= a < 1;
-      const v = Math.sqrt((grid[d]?.[h] ?? 0) / max2);
-      let color = heat(0.12 + v * 0.88);
-      const isPeak = options.peak && options.peak[0] === d && options.peak[1] === h;
-      if (isPeak) {
-        const p = seg2(t, 120 + 24 * 38 + 150, 650, (k) => k);
-        busy ||= p < 1;
-        color = mix(color, C.white, Math.sin(Math.PI * p) * 0.8);
-      }
+      const a = s.caps.motion ? seg2(s.t, start + 120 + h * 30, 260) : 1;
+      if (a < 1) k.busy = true;
+      const raw = grid[d]?.[h] ?? 0;
+      const v = Math.sqrt(raw / max2);
+      const isPeak = !!peak && peak[0] === d && peak[1] === h;
+      const color = raw <= 0 ? mix(tk.bg, tk.text, 0.06) : isPeak ? tk.accent : heat(0.15 + v * 0.85);
       const cx = x + labelW + h * cellW;
-      const glyph2 = s.caps.unicode ? options.tall ? "\u2588" : "\u2580" : "#";
-      const fg = s.caps.color === "none" ? C.cream : fade(color, a);
-      for (let k = 0; k < cellW - 1; k++) {
-        if (s.caps.color === "none") c.put(cx + k, ry, v > 0.75 ? "\u2588" : v > 0.5 ? "\u2593" : v > 0.25 ? "\u2592" : v > 0 ? "\u2591" : "\xB7", C.cream);
-        else c.put(cx + k, ry, glyph2, fg);
+      for (let j = 0; j < Math.max(1, cellW - 1); j++) {
+        if (none) k.c.put(cx + j, y + d, v > 0.75 ? "\u2588" : v > 0.5 ? "\u2593" : v > 0.25 ? "\u2592" : v > 0 ? "\u2591" : "\xB7", tk.text, tk.bg, 0);
+        else if (!k.uni) k.c.put(cx + j, y + d, v > 0.5 ? "#" : v > 0 ? "+" : ".", fadeIn(tk, color, a), tk.bg, 0);
+        else k.c.put(cx + j, y + d, "\u2580", fadeIn(tk, color, a), tk.bg, 0);
       }
-      if (cellW === 1) c.put(cx, ry, s.caps.color === "none" ? v > 0.5 ? "\u2588" : v > 0 ? "\u2591" : "\xB7" : glyph2, fg);
     }
   }
-  if (options.axis !== false) {
-    const ticks = cellW >= 3 ? [0, 3, 6, 9, 12, 15, 18, 21] : [0, 6, 12, 18];
-    for (const h of ticks) c.text(x + labelW + h * cellW, y + 7 * rowStep, h === 0 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`, { fg: C.slate });
-  }
-  return { w: labelW + 24 * cellW, busy };
+  const ticks = cellW >= 3 ? [0, 3, 6, 9, 12, 15, 18, 21] : [0, 6, 12, 18];
+  for (const h of ticks) txt(k, x + labelW + h * cellW, y + 7, h === 0 ? "12a" : h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`, tk.text3);
+  return labelW + 24 * cellW;
 }
-function clockBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const cellW = r3.w >= 4 + 72 + 30 ? 3 : r3.w >= 4 + 48 + 24 || tier.id === "S" ? 2 : 2;
+function clockBody(k, data, r3) {
+  const { tk } = k;
+  const cellW = r3.w >= 4 + 72 + 32 ? 3 : 2;
   const gridW = 4 + 24 * cellW;
-  const side = r3.w - gridW - 4 >= 22;
-  const tall = tier.id === "L" && r3.h >= 18 && cellW === 3;
-  const gridH = tall ? 15 : 8;
-  const calloutRows = side ? 0 : 2;
-  const y0 = r3.y + Math.max(0, Math.min(Math.floor((r3.h - gridH - calloutRows - (side ? 0 : 1)) * 0.3), r3.h - gridH - 2));
+  const side = r3.w - gridW - 6 >= 22;
+  const y0 = r3.y + Math.max(0, Math.min(Math.floor((r3.h - 8 - (side ? 0 : 3)) / 3), r3.h - 9));
   const peak = data.peakWeekday !== null && data.peakHour !== null ? [data.peakWeekday, data.peakHour] : null;
-  const { busy } = drawHeatmap(s, data.grid, r3.x, y0, cellW, { t, peak, tall });
-  const callA = seg2(t, 1200, 400);
+  drawHeatmap(k, data.grid, r3.x, y0, cellW, peak);
   if (side) {
-    const sx = r3.x + gridW + 4;
+    const sx = r3.x + gridW + 6;
+    vrule(k, sx - 3, y0, Math.min(r3.h - (y0 - r3.y), data.callouts.length * (r3.h >= 16 ? 4 : 3) - 1), fade2(k, 900));
     data.callouts.forEach((call, i) => {
-      const a = seg2(t, 1e3 + i * 140, 350);
-      const cy = y0 + i * (tall ? 4 : 2);
-      if (cy + 1 >= r3.y + r3.h) return;
-      c.text(sx, cy, call.label, { fg: C.gray, alpha: a });
-      c.text(sx + Math.max(15, textWidth(call.label) + 2), cy, call.value, { fg: i === 0 ? C.orange : C.cream, bold: true, alpha: a });
-      c.text(sx, cy + 1, call.sub, { fg: C.slate, alpha: a }, r3.x + r3.w - sx);
+      const a = fade2(k, 1e3 + i * 140, 350);
+      const cy = y0 + i * (r3.h >= 16 ? 4 : 3);
+      if (cy + 2 > r3.y + r3.h) return;
+      label4(k, sx, cy, call.label, a, r3.x + r3.w - sx);
+      txt(k, sx, cy + 1, call.value, tk.text, { bold: true, a }, r3.x + r3.w - sx);
+      if (textWidth(call.sub) <= r3.x + r3.w - sx) txt(k, sx, cy + 2, call.sub, tk.text2, { a });
     });
-  } else if (y0 + gridH + 1 < r3.y + r3.h) {
+  } else if (y0 + 9 < r3.y + r3.h) {
     let x = r3.x;
-    const cy = y0 + gridH + 1;
-    for (const call of data.callouts.slice(0, tier.id === "S" ? 2 : 3)) {
+    const cy = y0 + 9;
+    const a = fade2(k, 1200, 400);
+    for (const call of data.callouts.slice(0, 3)) {
       const text2 = `${call.label.toLowerCase()} `;
       if (x + textWidth(text2) + textWidth(call.value) > r3.x + r3.w) break;
-      x += c.text(x, cy, text2, { fg: C.gray, alpha: callA });
-      x += c.text(x, cy, call.value, { fg: C.orange, bold: true, alpha: callA }) + 3;
+      x += txt(k, x, cy, text2, tk.text2, { a });
+      x += txt(k, x, cy, call.value, tk.text, { bold: true, a }) + 3;
     }
   }
-  return busy || callA < 1;
 }
-function moodBody(s, data, r3) {
-  const { c, t } = s;
+function moodBody(k, data, r3) {
+  const { tk, L, s } = k;
   const months = data.months;
   const max2 = Math.max(1, ...months.map((m) => m.pct));
-  const axisW = 5;
-  const plotW = Math.min(r3.w - axisW - 2, months.length * (s.tier.id === "L" ? 9 : 7));
-  const plotH = Math.max(3, Math.min(r3.h - 4, s.tier.id === "L" ? 14 : 10));
+  const axisW = 6;
+  const plotW = Math.min(r3.w - axisW - 2, months.length * (L ? 9 : 6));
+  const plotH = Math.max(3, Math.min(r3.h - 4, L ? 12 : 8));
   const x0 = r3.x + axisW;
   const yTop = r3.y + 2;
-  const yBottom = yTop + plotH - 1;
-  const pxH = plotH * 2;
+  const base3 = yTop + plotH;
   const step = plotW / Math.max(1, months.length - 1);
-  const draw = s.caps.motion ? seg2(t, 100, 1100, easeOutCubic) : 1;
+  const draw = s.caps.motion ? seg2(s.t, 100, 1100, easeOutCubic) : 1;
+  if (draw < 1) k.busy = true;
   const valueAt = (x) => {
     const f = x / step;
     const i = Math.min(months.length - 2, Math.max(0, Math.floor(f)));
-    const k = clamp012(f - i);
+    const t = clamp012(f - i);
     const a = months[i].pct, b2 = months[Math.min(months.length - 1, i + 1)].pct;
-    return a + (b2 - a) * (k * k * (3 - 2 * k));
+    return a + (b2 - a) * (t * t * (3 - 2 * t));
   };
-  textRight(c, x0 - 1, yTop, `${Math.round(max2)}%`, { fg: C.slate });
-  textRight(c, x0 - 1, yBottom, "0%", { fg: C.slate });
-  for (let x = 0; x <= plotW; x++) c.put(x0 + x, yBottom + 1, s.caps.unicode ? "\u2500" : "-", C.coal);
+  txtRight(k, x0 - 2, yTop, `${Math.round(max2)}%`, tk.text3);
+  txtRight(k, x0 - 2, base3 - 1, "0%", tk.text3);
+  rule(k, x0, base3, plotW + 1);
   const tipX = Math.round(data.tip * step);
   for (let x = 0; x <= Math.round(plotW * draw); x++) {
-    const v = valueAt(x);
-    const top = Math.round(pxH - v / max2 * (pxH - 1)) - 1;
-    const afterTip = x >= tipX;
-    for (let py = Math.max(0, top); py < pxH; py++) {
-      const depth = (py - top) / Math.max(1, pxH - top);
-      const base3 = afterTip ? C.ember : C.slate;
-      const color = py === top ? afterTip ? C.orange : C.gray : mix(mix(base3, C.ink, 0.35), C.ink, Math.min(0.92, depth * 1.1));
-      c.px(x0 + x, yTop * 2 + py, color);
-    }
+    const v = valueAt(x) / max2;
+    vbar(k.c, x0 + x, base3 - 1, plotH, Math.max(0.02, v), x >= tipX ? tk.text3 : tk.bar, 1, !k.uni);
   }
   let lastEnd = -10;
   months.forEach((m, i) => {
     const x = x0 + Math.round(i * step);
-    const label4 = monthLabel(m.month);
-    if (x - lastEnd < 2 || x + textWidth(label4) > r3.x + r3.w) return;
-    const a = seg2(t, 100 + i / months.length * 1100, 200);
-    c.text(x - (i === months.length - 1 ? textWidth(label4) - 1 : 0), yBottom + 2, label4, { fg: i === data.tip ? C.orange : C.slate, alpha: a });
-    lastEnd = x + textWidth(label4);
+    const lab = monthLabel(m.month);
+    if (x - lastEnd < 2 || x + textWidth(lab) > r3.x + r3.w) return;
+    txt(k, x - (i === months.length - 1 ? textWidth(lab) - 1 : 0), base3 + 1, lab, i === data.tip ? tk.text : tk.text3, { a: fade2(k, 100 + i / months.length * 1100, 200) });
+    lastEnd = x + textWidth(lab);
   });
-  const drop = seg2(t, 1250, 600, (k) => spring(k * 0.6, 3, 0.45));
-  if (drop > 0) {
+  const ta = fade2(k, 1250, 500);
+  if (ta > 0) {
     const v = months[data.tip].pct;
-    const pointRow = yTop + Math.floor((pxH - v / max2 * (pxH - 1) - 1) / 2);
-    const markX = x0 + tipX;
-    const landing = Math.max(r3.y, pointRow - 2);
-    const yNow = Math.round(r3.y + (landing - r3.y) * drop);
-    for (let y = yNow + 1; y < pointRow; y++) c.put(markX, y, s.caps.unicode ? "\u250A" : ":", C.gray);
-    c.put(markX, yNow, s.caps.unicode ? "\u25BC" : "v", C.cream, void 0, 1);
-    const label4 = `it tipped in ${monthLabel(months[data.tip].month)}`;
-    const rising = (months.at(-1).pct ?? 0) >= v;
-    const lx = rising && markX - textWidth(label4) - 2 >= r3.x ? markX - textWidth(label4) - 2 : markX + textWidth(label4) + 3 > r3.x + r3.w ? markX - textWidth(label4) - 2 : markX + 2;
-    c.text(lx, yNow, label4, { fg: C.cream, bold: true, alpha: drop });
+    const vy = base3 - 1 - Math.ceil(v / max2 * plotH);
+    const mx = x0 + tipX;
+    for (let y = yTop - 1; y < vy; y++) k.c.put(mx, y, k.uni ? "\u2502" : "|", fadeIn(tk, tk.text3, ta), tk.bg, 0);
+    const text2 = `it tipped in ${monthLabel(months[data.tip].month)}`;
+    const lx = mx + 2 + textWidth(text2) <= r3.x + r3.w ? mx + 2 : mx - 1 - textWidth(text2);
+    txt(k, lx, yTop - 1, text2, tk.text, { bold: true, a: ta });
   }
-  const ends = seg2(t, 1200, 300);
+  const ea = fade2(k, 1200, 300);
   const first = months[0], last2 = months.at(-1);
-  c.text(x0 + 1, yTop + Math.floor((pxH - first.pct / max2 * (pxH - 1)) / 2) - 1, `${first.pct.toFixed(1)}%`, { fg: C.gray, alpha: ends });
+  const fy = base3 - 2 - Math.ceil(first.pct / max2 * plotH);
+  if (fy > yTop) txt(k, x0, fy, `${first.pct.toFixed(1)}%`, tk.text2, { a: ea });
   const lastLabel = `${last2.pct.toFixed(0)}%`;
-  c.text(x0 + plotW - textWidth(lastLabel), Math.max(r3.y, yTop + Math.floor((pxH - last2.pct / max2 * (pxH - 1)) / 2) - 2), lastLabel, { fg: C.orange, bold: true, alpha: ends });
-  return t < 1900;
+  txt(k, x0 + plotW + 2, Math.max(yTop, base3 - 1 - Math.ceil(last2.pct / max2 * plotH)), lastLabel, tk.text, { bold: true, a: ea });
+  if (s.caps.motion && s.t < 1900) k.busy = true;
 }
-function fuseBody(s, data, r3) {
-  const { c, t } = s;
+function fuseBody(k, data, r3) {
+  const { tk, L, s } = k;
   const n2 = Math.max(data.median + 4, Math.min(20, Math.max(10, data.hist.length)));
-  const len = Math.min(r3.w - 6, s.tier.id === "L" ? 96 : 70);
-  const x0 = r3.x + 2;
-  const histH = data.hist.length && r3.h >= 13 ? Math.min(s.tier.id === "L" ? 7 : 4, r3.h - 10) : 0;
-  const y = r3.y + histH + 1;
+  const full = Math.min(r3.w - 2, L ? 96 : 70);
+  const colW0 = Math.max(1, Math.floor(full / n2) - 1);
+  const x0 = r3.x + Math.floor(colW0 / 2);
+  const len = full - Math.floor(colW0 / 2);
+  const histH = data.hist.length && r3.h >= 13 ? Math.min(L ? 7 : 4, r3.h - 10) : 0;
+  const axisY = r3.y + histH + (histH ? 1 : 0);
   const posOf = (turn) => x0 + Math.round((turn - 1) / (n2 - 1) * (len - 1));
   const target = posOf(data.median);
-  const burn = s.caps.motion ? seg2(t, 200, 1300, (k) => k * (2 - k)) : 1;
-  const sparkX = Math.round(x0 + (target - x0) * burn);
   if (histH) {
     const max2 = Math.max(1, ...data.hist);
     const colW = Math.max(1, Math.floor(len / n2) - 1);
     data.hist.slice(0, n2).forEach((v, i) => {
       const x = posOf(i + 1) - Math.floor(colW / 2);
-      const k = seg2(t, 1400 + i * 30, 400, easeOutCubic);
-      const color = i + 1 === data.median ? C.orange : i + 1 < data.median ? fade(C.peach, 0.55) : fade(C.slate, 0.9);
-      vbar(c, x, y - 1, histH, v / max2 * k, color, colW, !s.caps.unicode);
+      const g2 = s.caps.motion ? seg2(s.t, 200 + i * 30, 500, easeOutCubic) : 1;
+      if (g2 < 1) k.busy = true;
+      vbar(k.c, x, axisY - 1, histH, v / max2 * g2, i + 1 === data.median ? tk.accent : tk.bar, colW, !k.uni);
     });
-    const la = seg2(t, 1700, 300);
-    c.text(x0 + len + 1 - 22, r3.y, "sessions by first swear", { fg: C.slate, alpha: la });
+    const la = fade2(k, 700, 300);
+    txtRight(k, x0 + len, r3.y, "sessions by first swear", tk.text3, { a: la });
   }
-  for (let x = x0; x < x0 + len; x++) {
-    if (x < sparkX) c.put(x, y, s.caps.unicode ? "\xB7" : ".", C.slate);
-    else if (x > sparkX) c.put(x, y, x % 2 ? "~" : "-", x > target ? fade(C.peach, 0.45) : C.peach);
-  }
-  const flick = Math.floor(t / 70) % 3;
-  if (burn < 1) {
-    c.put(sparkX, y, s.caps.unicode ? ["\u2726", "\u2727", "\u2736"][flick] : "*", [C.cream, C.peach, C.orange][flick], void 0, 1);
-  } else {
-    const b2 = seg2(t, 1500, 500);
-    const radius = 1 + Math.round(b2 * 2);
-    for (let k = -radius; k <= radius; k++) {
-      const col3 = k === 0 ? C.white : Math.abs(k) < radius ? C.peach : C.ember;
-      c.px(target + k, y * 2 + 1, col3);
-      c.px(target, y * 2 + 1 + k, col3);
-      if (Math.abs(k) < radius - 1) {
-        c.px(target + k, y * 2 + 1 + k, C.orange);
-        c.px(target + k, y * 2 + 1 - k, C.orange);
-      }
-    }
-  }
+  const burn = s.caps.motion ? seg2(s.t, 300, 1100, (t) => t * (2 - t)) : 1;
+  if (burn < 1) k.busy = true;
+  const lit = Math.round(x0 + (target - x0) * burn);
+  for (let x = x0; x < x0 + len; x++) k.c.put(x, axisY, k.uni ? x <= lit ? "\u2501" : "\u2500" : x <= lit ? "=" : "-", x <= lit ? tk.text2 : tk.rule, tk.bg, 0);
+  if (burn >= 1) k.c.put(target, axisY, k.uni ? "\u2503" : "|", tk.text, tk.bg, 1);
   for (let turn = 1; turn <= n2; turn++) {
     const x = posOf(turn);
     const show2 = turn === 1 || turn === data.median || turn === n2 || turn % (len / n2 >= 4 ? 1 : 5) === 0;
     if (!show2) continue;
-    c.text(x - (turn >= 10 ? 1 : 0), y + 1, `#${turn}`, { fg: turn === data.median ? C.orange : C.slate, bold: turn === data.median });
+    txt(k, x - (turn >= 10 ? 1 : 0), axisY + 1, `#${turn}`, turn === data.median ? tk.text : tk.text3, { bold: turn === data.median });
   }
-  const by = y + 3;
-  if (by + 3 <= r3.y + r3.h) {
-    const a = seg2(t, 1400, 400);
-    const text2 = `PROMPT #${data.median}`;
-    const bw = bigWidth(text2, 1);
-    drawBig(c, x0, by, text2, { color: (_x, py) => fade(mix(C.cream, C.orange, py / 4), a) });
-    const sx = x0 + bw + 4;
-    const lines = [
-      [`${data.sessions} of ${data.of}`, " sessions had a snap"],
-      [`${data.firstPrompt}`, " times you came in swinging on prompt #1"]
-    ];
-    const inline = lines.every(([strong, rest]) => sx + textWidth(strong + rest) <= r3.x + r3.w);
-    lines.forEach(([strong, rest], i) => {
-      const la = seg2(t, 1600 + i * 150, 300);
-      const lx = inline ? sx : x0;
-      const ly = inline ? by + i * 2 : by + 4 + i;
-      if (ly >= r3.y + r3.h) return;
-      const w = c.text(lx, ly, strong, { fg: C.orange, bold: true, alpha: la });
-      c.text(lx + w, ly, rest, { fg: C.gray, alpha: la }, r3.x + r3.w - lx - w);
-    });
+  const by = axisY + 3;
+  const a = fade2(k, 1400, 400);
+  const num7 = String(data.median);
+  const opts = k.uni ? fitDisplay(num7, 20, { face: tk.face, tall: L && r3.h - (by - r3.y) >= 7 }) : null;
+  if (by + (opts ? displayHeight(opts) : 1) > r3.y + r3.h) return;
+  txt(k, x0, by, "Your first swear lands at prompt", tk.text3, { a });
+  let nx = x0;
+  if (opts) {
+    drawDisplay(k.c, x0, by + 1, num7, fadeIn(tk, tk.text, a), tk.bg, opts);
+    nx = x0 + displayWidth(num7, opts) + 4;
+  } else {
+    txt(k, x0, by + 1, `#${num7}`, tk.text, { bold: true, a });
+    nx = x0 + num7.length + 5;
   }
-  return t < 2300;
+  const lines = [[`${data.sessions} of ${data.of}`, " sessions had a snap"], [`${data.firstPrompt}`, " times you came in swinging on prompt #1"]];
+  lines.forEach(([strong, rest], i) => {
+    const la = fade2(k, 1600 + i * 150, 300);
+    const ly = by + 1 + i * 2;
+    if (nx + textWidth(strong + rest) > r3.x + r3.w || ly >= r3.y + r3.h) return;
+    const w = txt(k, nx, ly, strong, tk.text, { bold: true, a: la });
+    txt(k, nx + w, ly, rest, tk.text2, { a: la });
+  });
+  if (s.caps.motion && s.t < 2300) k.busy = true;
 }
 var DAYS;
 var init_time = __esm({
@@ -50220,314 +49035,232 @@ var init_time = __esm({
     "use strict";
     init_color();
     init_draw();
-    init_font();
     init_motion();
     init_deck();
+    init_display();
+    init_kit();
+    init_tokens();
     DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   }
 });
 
 // packages/cli/src/audit-ui/cards/words.ts
-function coldOpenBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const width = Math.min(r3.w - 12, tier.id === "L" ? 56 : 48);
-  const lines = wrapSpans(rich(data.quote, { fg: C.cream, bold: true, italic: true }, { fg: C.cream, bold: true, italic: true }), width).slice(0, 4);
-  const chars = lines.reduce((sum2, line) => sum2 + line.reduce((n2, sp) => n2 + [...sp.text].length, 0), 0);
+function coldOpenBody(k, data, r3) {
+  const { tk, L, s } = k;
+  const width = Math.min(r3.w, L ? 64 : 56);
+  const lines = wrapText(`\u201C${data.quote}\u201D`, width, 4);
+  const chars = lines.reduce((n2, l) => n2 + [...l].length, 0);
   const perChar = Math.min(32, 1500 / Math.max(1, chars));
-  const typed = s.caps.motion ? Math.floor(Math.max(0, t - 350) / perChar) : Infinity;
-  const blockH = lines.length + 4;
-  const y0 = r3.y + Math.max(0, Math.floor((r3.h - blockH) / 2) - 1);
-  const x0 = r3.x + Math.floor((r3.w - width) / 2);
-  const qa = seg2(t, 0, 300);
-  if (x0 - 9 < 0) {
-  } else if (s.caps.color !== "none" && s.caps.color !== "16") {
-    const mark = [".##..##", "#...#..", "##..##.", "##..##."];
-    mark.forEach((row2, py) => {
-      for (let px = 0; px < row2.length; px++) if (row2[px] === "#") c.px(x0 - 9 + px, y0 * 2 - 1 + py, fade(C.orange, qa));
-    });
-  } else c.text(x0 - 3, y0, "\u201C", { fg: C.orange, bold: true });
+  const typed = s.caps.motion ? Math.floor(Math.max(0, s.t - 350) / perChar) : Infinity;
+  const caption2 = data.caption ? wrapText(data.caption, width) : [];
+  const blockH = lines.length + 2 + (caption2.length <= 2 ? caption2.length + 1 : 0);
+  const y0 = r3.y + Math.max(0, Math.floor((r3.h - blockH) / 3));
   let left = typed;
   let cursor = null;
-  lines.forEach((line, i) => {
-    const n2 = line.reduce((sum2, sp) => sum2 + [...sp.text].length, 0);
-    const w = drawSpans(c, x0, y0 + i, line, 1, left);
-    if (left < n2 && cursor === null) cursor = [x0 + w, y0 + i];
+  lines.forEach((line2, i) => {
+    const n2 = [...line2].length;
+    const shown = [...line2].slice(0, Math.max(0, left)).join("");
+    const w = txt(k, r3.x, y0 + i, shown, tk.text, { bold: true });
+    if (left < n2 && cursor === null) cursor = [r3.x + w, y0 + i];
     left -= n2;
   });
   const doneAt = 350 + chars * perChar;
-  if (cursor && Math.floor(t / 280) % 2 === 0) c.put(cursor[0], cursor[1], s.caps.unicode ? "\u258C" : "_", C.orange);
-  const sa = seg2(t, doneAt + 150, 400);
-  c.text(x0, y0 + lines.length + 1, `\u2014 ${data.stamp}`, { fg: C.gray, alpha: sa });
-  const ca = seg2(t, doneAt + 550, 500);
-  wrapText(data.caption, width, 2).forEach((line, i) => c.text(x0, y0 + lines.length + 3 + i, line, { fg: C.peach, italic: true, alpha: ca }));
-  return t < doneAt + 1100;
+  if (s.caps.motion && s.t < doneAt + 1100) k.busy = true;
+  if (cursor && Math.floor(s.t / 280) % 2 === 0) k.c.put(cursor[0], cursor[1], k.uni ? "\u258C" : "_", tk.text2, tk.bg, 0);
+  const sa = fade2(k, doneAt + 150, 400);
+  txt(k, r3.x, y0 + lines.length + 1, data.stamp, tk.text3, { a: sa });
+  if (caption2.length && caption2.length <= 2) {
+    const ca = fade2(k, doneAt + 550, 500);
+    caption2.forEach((line2, i) => txt(k, r3.x, y0 + lines.length + 3 + i, line2, tk.text2, { a: ca }));
+  }
 }
-function talkBody(s, data, r3) {
-  const { c, t, tier } = s;
+function talkBody(k, data, r3) {
+  const { tk, L, s } = k;
   const tiles = data.tiles;
-  const cols = tier.id === "S" ? 1 : 2;
+  const cols = r3.w >= 60 ? 2 : 1;
+  const gap2 = 6;
+  const colW = Math.floor((r3.w - gap2 * (cols - 1)) / cols);
   const rows = Math.ceil(tiles.length / cols);
-  const gap2 = 2;
-  const tileW = Math.floor((r3.w - (cols - 1) * gap2) / cols);
-  const tileH = Math.max(3, Math.min(tier.id === "L" ? 8 : 5, Math.floor((r3.h - (rows - 1)) / rows)));
-  let busy = false;
-  tiles.forEach((tile2, i) => {
+  const cellH = Math.max(3, Math.min(L ? 6 : 4, Math.floor((r3.h + 1) / rows) - 1));
+  tiles.forEach((tile, i) => {
     const col3 = i % cols, row2 = Math.floor(i / cols);
-    const x = r3.x + col3 * (tileW + gap2);
-    const yBase = r3.y + row2 * (tileH + 1);
-    if (yBase + tileH > r3.y + r3.h + 1) return;
-    const k = seg2(t, 80 + i * 140, 420, easeOutCubic);
-    busy ||= k < 1;
-    const y = yBase + Math.round((1 - k) * 1);
-    const a = k;
-    const big = tileH >= 7;
-    if (tileH >= 5) box(c, { x, y, w: tileW, h: tileH }, fade(i === 0 ? C.rust : C.coal, a), { ascii: !s.caps.unicode });
-    const ix = tileH >= 5 ? x + 2 : x;
-    const iw = tileW - (tileH >= 5 ? 4 : 0);
-    const ly = tileH >= 5 ? y + 1 : y;
-    c.text(ix, ly, tier.id === "L" ? spaced(tile2.label) : tile2.label, { fg: C.gray, alpha: a }, iw);
-    const countText = tile2.count !== null ? `\xD7${count4(tile2.count)}` : "";
-    const countW = big ? bigWidth(countText) : textWidth(countText);
-    const phraseW = iw - countW - 3;
-    const phrase = tile2.quoted ? `\u201C${tile2.text}\u201D` : tile2.text;
-    const py = big ? y + 3 : ly + 1;
-    const lines = wrapText(phrase, phraseW, big ? 2 : 1);
-    lines.forEach((line, li) => {
-      let cx = ix;
-      for (const ch of line) cx += c.text(cx, py + li, ch, { fg: ch === "\u201C" || ch === "\u201D" ? C.orange : C.cream, bold: true, alpha: a });
-    });
-    if (tile2.sub && tileH >= 6) c.text(ix, y + tileH - 2, tile2.sub, { fg: C.slate, alpha: a }, iw);
-    if (countText) {
-      const value = tile2.count !== null && s.caps.motion ? `\xD7${count4(Math.round(countUp(tile2.count, t, 80 + i * 140, 800)))}` : countText;
-      if (big) drawBig(c, ix + iw - bigWidth(value), y + 3, value, { color: (_x, py2) => fade(mix(C.peach, C.orange, py2 / 4), a) });
-      else textRight(c, ix + iw, py, value, { fg: C.orange, bold: true, alpha: a });
-    }
+    const x = r3.x + col3 * (colW + gap2);
+    const y = r3.y + row2 * (cellH + 1);
+    if (y + 2 > r3.y + r3.h) return;
+    const start = 80 + i * 120;
+    const a = fade2(k, start, 360);
+    if (row2) rule(k, x, y - 1, colW, tk.rule, a);
+    if (col3) vrule(k, x - Math.ceil(gap2 / 2), y, cellH - 1, a);
+    label4(k, x, y, tile.label, a, colW);
+    const countText = tile.count !== null ? `\xD7${count4(s.caps.motion ? Math.round(countUp(tile.count, s.t, start, 800)) : tile.count)}` : "";
+    if (tile.count !== null && s.caps.motion && s.t < start + 800) k.busy = true;
+    const finalCount = tile.count !== null ? `\xD7${count4(tile.count)}` : "";
+    const phraseW = colW - (finalCount ? textWidth(finalCount) + 3 : 0);
+    const phrase = tile.quoted ? `\u201C${tile.text}\u201D` : tile.text;
+    const lines = wrapText(phrase, phraseW, cellH >= 5 ? 2 : 1);
+    lines.forEach((line2, li) => txt(k, x, y + 1 + li, line2, tk.text, { bold: !tile.quoted, italic: tile.quoted, a }));
+    if (countText) txtRight(k, x + colW, y + 1, countText, tk.text, { bold: true, a });
+    if (tile.sub && cellH >= 4 && textWidth(tile.sub) <= colW) txt(k, x, y + 1 + lines.length, tile.sub, tk.text3, { a });
   });
-  return busy || t < 1100;
+  if (s.caps.motion && s.t < 1100) k.busy = true;
 }
-function mannersBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const pixel = s.caps.color !== "none";
-  const cx = r3.x + Math.floor(r3.w / 2);
-  const arm = Math.min(tier.id === "L" ? 28 : 20, Math.floor(r3.w / 2) - 10);
+function mannersBody(k, data, r3) {
+  const { tk, L, s } = k;
   const total2 = data.kind + data.rude || 1;
-  const lean = (data.rude - data.kind) / total2;
-  const swing = s.caps.motion ? spring(Math.max(0, t - 450) / 1e3, 1.4, 0.32) : 1;
-  const tilt = Math.round(lean * 5 * swing);
-  const small = r3.h < 17;
-  const top = r3.y + (small ? 0 : 1);
-  const beamY = top * 2 + 3;
-  const strings2 = small ? 5 : 9;
-  const floorY = beamY + strings2 + (small ? 7 : 11);
-  if (pixel) {
-    for (let py = beamY; py <= floorY; py++) {
-      c.px(cx, py, C.slate);
-    }
-    for (let k = -5; k <= 5; k++) c.px(cx + k, floorY, C.slate);
-    for (let k = -3; k <= 3; k++) c.px(cx + k, floorY - 1, C.slate);
-    pxLine(c, cx - arm, beamY - tilt, cx + arm, beamY + tilt, C.gray);
-    c.px(cx, beamY - 1, C.cream);
-    c.px(cx, beamY - 2, C.peach);
-  }
-  const pan = (side, value, label4, color, delay) => {
-    const ex = cx + side * arm;
-    const ey = beamY + side * tilt;
-    const plateY = ey + strings2;
-    if (pixel) {
-      pxLine(c, ex, ey, ex - 7, plateY - 1, C.slate);
-      pxLine(c, ex, ey, ex + 7, plateY - 1, C.slate);
-      for (let k = -8; k <= 8; k++) c.px(ex + k, plateY, color);
-      for (let k = -6; k <= 6; k++) c.px(ex + k, plateY + 1, mix(color, C.ink, 0.45));
-      const pile = Math.max(1, Math.min(small ? 3 : 5, Math.round(Math.log2(value + 1) * (small ? 0.5 : 0.75))));
-      const grown = s.caps.motion ? Math.round(pile * seg2(t, delay, 700)) : pile;
-      for (let level = 0; level < grown; level++) {
-        const half = Math.max(1, 6 - level * 1.3);
-        for (let k = -Math.floor(half); k <= Math.floor(half); k++) {
-          const tone2 = (k + level) % 3 === 0 ? C.cream : (k + level) % 3 === 1 ? color : mix(color, C.cream, 0.4);
-          c.px(ex + k, plateY - 1 - level, tone2);
-        }
-      }
-    }
-    const a = seg2(t, delay, 300);
-    const shown = s.caps.motion ? Math.round(countUp(value, t, delay, 900)) : value;
-    const text2 = count4(shown);
-    const ny = Math.floor(plateY / 2) + 2;
-    if (!small) drawBig(c, ex - Math.floor(bigWidth(count4(value)) / 2), ny, text2, { color: (_x, py) => fade(mix(C.cream, color, py / 4), a) });
-    else textCenter(c, ex, ny, text2, { fg: color, bold: true, alpha: a });
-    textCenter(c, ex, ny + (small ? 1 : bigHeight() + 1), label4, { fg: C.gray, alpha: a });
+  const colW = Math.floor((Math.min(r3.w, L ? 96 : r3.w) + 4) / 2);
+  const opts = k.uni ? fitDisplay(count4(Math.max(data.kind, data.rude)), colW - 6, { face: tk.face, tall: L && r3.h >= 14 }) : null;
+  const numH = opts ? displayHeight(opts) : 1;
+  const y0 = r3.y + Math.max(0, Math.floor((r3.h - numH - 7) / 3));
+  const side = (i, value, word) => {
+    const x = r3.x + i * colW;
+    const start = 150 + i * 150;
+    const a = fade2(k, start, 300);
+    if (i) vrule(k, x - 3, y0, numH + 2, a);
+    const shown = count4(s.caps.motion ? Math.round(countUp(value, s.t, start, 900)) : value);
+    if (s.caps.motion && s.t < start + 900) k.busy = true;
+    if (opts) drawDisplay(k.c, x, y0, shown, fadeIn(tk, tk.text, a), tk.bg, opts);
+    else txt(k, x, y0, shown, tk.text, { bold: true, a });
+    txt(k, x, y0 + numH + 1, word, tk.text2, { a }, colW - 4);
   };
-  pan(-1, data.kind, data.kindLabel, C.peach, 150);
-  pan(1, data.rude, data.rudeLabel, C.ember, 300);
-  const ratio2 = data.kind > 0 ? data.rude / data.kind : null;
-  const ry = Math.floor(floorY / 2) + 2;
-  if (ratio2 !== null && ry < r3.y + r3.h) {
-    const a = seg2(t, 1300, 400);
-    const text2 = ratio2 >= 1 ? `${ratio2.toFixed(ratio2 >= 10 ? 0 : 1)} swears for every kind word` : `${(1 / ratio2).toFixed(1)} kind words for every swear`;
-    textCenter(c, cx, Math.min(r3.y + r3.h - 1, ry), text2, { fg: ratio2 >= 1 ? C.orange : C.peach, bold: true, alpha: a });
+  side(0, data.kind, data.kindLabel);
+  side(1, data.rude, data.rudeLabel);
+  const by = y0 + numH + 4;
+  const bw = Math.min(colW * 2 - 4, r3.w);
+  if (by < r3.y + r3.h) {
+    const kindW = Math.max(data.kind > 0 ? 1 : 0, Math.round(bw * data.kind / total2));
+    meter(k, r3.x, by, kindW, 1, tk.text, 500);
+    meter(k, r3.x + kindW, by, bw - kindW, 1, tk.text3, 700);
   }
-  return t < 2300;
+  const ratio2 = data.kind > 0 ? data.rude / data.kind : null;
+  if (ratio2 !== null && by + 2 < r3.y + r3.h) {
+    const a = fade2(k, 1300, 400);
+    const text2 = ratio2 >= 1 ? `${ratio2.toFixed(ratio2 >= 10 ? 0 : 1)} swears for every kind word` : `${(1 / ratio2).toFixed(1)} kind words for every swear`;
+    txt(k, r3.x, by + 2, text2, tk.text, { bold: true, a });
+  }
+  if (s.caps.motion && s.t < 2300) k.busy = true;
 }
-function thenNowBody(s, data, r3) {
-  const { c, t, tier } = s;
-  const gap2 = tier.id === "S" ? 2 : 8;
+function thenNowBody(k, data, r3) {
+  const { tk, L, s } = k;
+  const gap2 = 6;
   const bw = Math.floor((r3.w - gap2) / 2);
   const maxWords = Math.max(data.then.words, data.now.words, 1);
-  const gridRows = Math.max(1, Math.min(tier.id === "L" ? 8 : 4, r3.h - 9));
-  const bubble = (x, label4, day, words8, quote2, shell, color, accent, a, start) => {
-    c.text(x, r3.y, tier.id === "L" ? spaced(label4) : label4, { fg: accent, bold: true, alpha: a });
-    c.text(x + (tier.id === "L" ? textWidth(spaced(label4)) : textWidth(label4)) + 2, r3.y, shortDate2(day, true), { fg: C.slate, alpha: a });
-    const text2 = quote2 ? `\u201C${quote2}\u201D` : shell ? "a terminal command, typed into a chat box" : `${count4(words8)} words`;
-    const lines = wrapText(text2, bw - 4, 3);
-    const h = lines.length + 2;
-    box(c, { x, y: r3.y + 2, w: bw, h }, fade(accent, a * 0.8), { ascii: !s.caps.unicode });
-    if (r3.y + 2 + h < r3.y + r3.h) c.put(x + 3, r3.y + 2 + h, s.caps.unicode ? "\u2572" : "\\", fade(accent, a * 0.8));
-    lines.forEach((line, i) => c.text(x + 2, r3.y + 3 + i, line, { fg: color, italic: Boolean(quote2), alpha: a }));
-    const gy = r3.y + 3 + h;
-    if (gy >= r3.y + r3.h) return;
-    const wordsW = c.text(x + 5, gy, `${count4(words8)} words`, { fg: accent, bold: true, alpha: a });
-    const capacity = bw * gridRows;
-    const per = Math.max(1, Math.ceil(maxWords / capacity));
-    const dots = Math.ceil(words8 / per);
-    const shown = s.caps.motion ? Math.round(dots * seg2(t, start, 900, easeOutCubic)) : dots;
-    if (gy + 1 + gridRows <= r3.y + r3.h) {
-      for (let i = 0; i < shown; i++) {
-        const px = i % bw, py = Math.floor(i / bw);
-        c.put(x + px, gy + 1 + py, s.caps.unicode ? "\u25AA" : ".", (i * 7 + py) % 9 === 0 ? mix(accent, C.cream, 0.4) : accent);
-      }
-      if (per > 1) c.text(x + 5 + wordsW + 2, gy, `(each ${s.caps.unicode ? "\u25AA" : "."} = ${per} words)`, { fg: C.slate, alpha: a });
-    }
+  const column = (x, name, side, shell, now, start) => {
+    const a = fade2(k, start, 400);
+    const lw = label4(k, x, r3.y, name, a);
+    txt(k, x + lw + 2, r3.y, shortDate2(side.day, true), tk.text3, { a });
+    const text2 = side.quote ? `\u201C${side.quote}\u201D` : shell ? "a terminal command, typed into a chat box" : `${count4(side.words)} words`;
+    const lines = wrapText(text2, bw, L ? 4 : 3);
+    lines.forEach((line2, i) => txt(k, x, r3.y + 2 + i, line2, now ? tk.text : tk.text2, { italic: Boolean(side.quote), a }));
+    const my = r3.y + 2 + (L ? 5 : 4);
+    if (my + 1 >= r3.y + r3.h) return;
+    const ww = txt(k, x, my, count4(side.words), tk.text, { bold: true, a });
+    txt(k, x + ww + 1, my, "words", tk.text2, { a });
+    meter(k, x, my + 1, Math.max(4, bw - 2), side.words / maxWords, now ? tk.text : tk.bar, start + 200);
   };
-  const la = seg2(t, 0, 350);
-  bubble(r3.x, "THEN", data.then.day, data.then.words, data.then.quote, data.then.shell, C.gray, C.slate, la, 200);
-  const ra = seg2(t, 550, 450, easeOutCubic);
-  const slide = Math.round((1 - ra) * 6);
-  bubble(r3.x + bw + gap2 + slide, "NOW", data.now.day, data.now.words, data.now.quote, false, C.cream, C.orange, ra, 700);
-  const ma = seg2(t, 300, 400);
-  const mid = r3.x + bw + Math.floor(gap2 / 2) - 1;
-  if (gap2 >= 6) c.text(mid - 1, r3.y + 3, s.caps.unicode ? "\u2500\u2500\u25B6" : "-->", { fg: C.slate, alpha: ma });
-  const fy = r3.y + r3.h - 1;
-  if (fy > r3.y + 9 + gridRows) {
-    const ga = seg2(t, 1200, 400);
-    textCenter(c, r3.x + r3.w / 2, fy, `${count4(data.spanDays)} days and ${count4(data.prompts)} prompts apart \xB7 ${(data.now.words / Math.max(1, data.then.words)).toFixed(1)}\xD7 the words`, { fg: C.gray, alpha: ga });
+  column(r3.x, "then", data.then, data.then.shell, false, 0);
+  vrule(k, r3.x + bw + Math.floor(gap2 / 2), r3.y, Math.min(r3.h, L ? 9 : 8), fade2(k, 300));
+  column(r3.x + bw + gap2, "now", data.now, false, true, 500);
+  const fy = r3.y + (L ? 11 : 9);
+  if (fy < r3.y + r3.h) {
+    const ga = fade2(k, 1200, 400);
+    const line2 = `${count4(data.spanDays)} days and ${count4(data.prompts)} prompts apart \xB7 ${(data.now.words / Math.max(1, data.then.words)).toFixed(1)}\xD7 the words`;
+    if (textWidth(line2) <= r3.w) txt(k, r3.x, fy, line2, tk.text2, { a: ga });
   }
-  return t < 1700;
+  if (s.caps.motion && s.t < 1700) k.busy = true;
 }
 var init_words = __esm({
   "packages/cli/src/audit-ui/cards/words.ts"() {
     "use strict";
-    init_color();
-    init_draw();
-    init_font();
-    init_motion();
     init_format3();
+    init_draw();
+    init_motion();
+    init_charts();
+    init_display();
+    init_kit();
+    init_tokens();
   }
 });
 
 // packages/cli/src/audit-ui/cards/index.ts
 function renderCard(s, card) {
   if (card.kind === "board") return boardBody(s, card.data);
-  const options = {};
-  if (card.kind === "cold_open" || card.kind === "archetype") options.headline = false;
-  if (card.kind === "faceoff") options.mascot = false;
-  if (card.kind === "archetype") {
-    options.bodyUnderKicker = true;
-    options.expression = s.caps.motion ? revealExpression(s.t) : "proud";
-  }
+  const o = {};
+  if (card.kind === "cold_open" || card.kind === "archetype") o.headline = false;
   if (card.kind === "guess") {
-    options.hint = s.state.guess === void 0 ? `1\u2013${card.data.options.length} guess` : void 0;
-    if (s.state.guess !== void 0) options.expression = s.state.guess === card.data.answer ? "proud" : "shocked";
+    if (s.state.guess === void 0) o.hint = [`1\u2013${card.data.options.length}`, "guess"];
+    else o.support = `Ranked by ${card.data.basis}.`;
   }
-  const shown = card.kind === "guess" && s.state.guess !== void 0 ? { ...card, support: `Ranked by ${card.data.basis}.` } : card;
-  const { body, busy: chromeBusy, mascot } = drawChrome(s, shown, options);
-  let busy = chromeBusy;
-  if (body.h <= 0 || body.w <= 0) return busy;
-  const callouts = (card.callouts ?? []).filter(Boolean);
-  if (callouts.length && body.h >= 10) {
-    const room = Math.min(callouts.length, Math.max(1, Math.floor((body.h - 8) / 2)));
-    const lines = callouts.slice(0, room).map((text2) => wrapText(text2, body.w - 2, 1)[0] ?? "");
-    const top = body.y + body.h - lines.length;
-    const ca = seg2(s.t, 1100, 400);
-    busy ||= ca < 1;
-    lines.forEach((line, i) => {
-      c2(s, body.x, top + i, line, ca);
-    });
-    body.h -= lines.length + 1;
-  }
-  let bodyBusy = false;
+  const { k, body } = chrome(s, card, o);
+  if (body.h <= 0 || body.w <= 0) return k.busy;
   switch (card.kind) {
     case "cover":
-      bodyBusy = coverBody(s, card.data, body);
+      coverBody(k, card.data, body);
       break;
     case "cold_open":
-      bodyBusy = coldOpenBody(s, card.data, body);
+      coldOpenBody(k, card.data, body);
       break;
     case "scale":
-      bodyBusy = scaleBody(s, card.data, body);
+      scaleBody(k, card.data, body);
       break;
     case "bill":
-      bodyBusy = card.data.spend ? spendBody(s, card.data.spend, body) : billBody(s, card.data, body);
+      if (card.data.spend) spendBody(k, card.data.spend, body);
+      else billBody(k, card.data, body);
       break;
     case "clock":
-      bodyBusy = clockBody(s, card.data, body);
+      clockBody(k, card.data, body);
       break;
     case "guess":
-      bodyBusy = guessBody(s, card.data, body);
+      guessBody(k, card.data, body);
       break;
     case "faceoff":
-      bodyBusy = card.data.best || card.data.worst ? faceoffBody(s, card.data, body) : erasBody(s, card.data.eras, body);
+      if (card.data.best || card.data.worst) faceoffBody(k, card.data, body);
+      else erasBody(k, card.data.eras, body);
       break;
     case "mood":
-      bodyBusy = moodBody(s, card.data, body);
+      moodBody(k, card.data, body);
       break;
     case "fuse":
-      bodyBusy = fuseBody(s, card.data, body);
+      fuseBody(k, card.data, body);
       break;
     case "talk":
-      bodyBusy = talkBody(s, card.data, body);
+      talkBody(k, card.data, body);
       break;
     case "manners":
-      bodyBusy = mannersBody(s, card.data, body);
+      mannersBody(k, card.data, body);
       break;
     case "projects":
-      bodyBusy = projectsBody(s, card.data, body);
+      projectsBody(k, card.data, body);
       break;
     case "delegation":
-      bodyBusy = delegationBody(s, card.data, body);
+      delegationBody(k, card.data, body);
       break;
     case "then_now":
-      bodyBusy = thenNowBody(s, card.data, body);
+      thenNowBody(k, card.data, body);
       break;
     case "archetype":
-      bodyBusy = archetypeBody(s, card.data, body, mascot);
+      archetypeBody(k, card.data, body);
       break;
     case "awards":
-      bodyBusy = awardsBody(s, card.data, body);
+      awardsBody(k, card.data, body);
       break;
     case "insight":
-      bodyBusy = insightBody(s, card.data, body);
+      insightBody(k, card.data, body);
       break;
   }
-  return busy || bodyBusy;
-}
-function c2(s, x, y, text2, alpha) {
-  s.c.text(x, y, s.caps.unicode ? "\u25B8 " : "> ", { fg: C.orange, alpha });
-  s.c.text(x + 2, y, text2, { fg: C.gray, alpha });
+  return k.busy;
 }
 var init_cards = __esm({
   "packages/cli/src/audit-ui/cards/index.ts"() {
     "use strict";
     init_chrome();
-    init_models();
-    init_finale();
-    init_cover();
-    init_spend();
-    init_color();
-    init_draw();
-    init_motion();
-    init_reveal();
     init_board();
+    init_cover();
+    init_finale();
+    init_models();
     init_numbers();
     init_places();
+    init_reveal();
+    init_spend();
     init_time();
     init_words();
   }
@@ -50536,9 +49269,9 @@ var init_cards = __esm({
 // packages/cli/src/audit-ui/cards/scene.ts
 function tierFor(w, h) {
   if (w < MIN_COLS || h < MIN_ROWS2) return null;
-  if (w >= 100 && h >= 30) return { id: "L", mx: 4, mascot: "big" };
-  if (w >= 76 && h >= 23) return { id: "M", mx: 3, mascot: "compact" };
-  return { id: "S", mx: 2, mascot: "line" };
+  if (w >= 100 && h >= 30) return { id: "L", mx: 4 };
+  if (w >= 76 && h >= 23) return { id: "M", mx: 3 };
+  return { id: "S", mx: 2 };
 }
 var MIN_COLS, MIN_ROWS2;
 var init_scene = __esm({
@@ -50571,13 +49304,13 @@ function bgCode(color, depth) {
   if (color < 0 || depth === "none") return "";
   if (depth === "truecolor") return `;48;2;${channels(color).join(";")}`;
   if (depth === "256") return `;48;5;${to256(color)}`;
-  if (color === C.ink) return "";
+  if (color === C.bg) return "";
   return `;${to16(color) + 10}`;
 }
 function sgrFor(fg, bg, attr, depth) {
   let codes = "0";
   if (attr & BOLD) codes += ";1";
-  if (attr & DIM) codes += ";2";
+  if (attr & DIM || depth === "none" && fg >= 0 && luminance(fg) < 0.45) codes += ";2";
   if (attr & ITALIC) codes += ";3";
   if (attr & UNDERLINE) codes += ";4";
   codes += fgCode(fg, depth) + bgCode(bg, depth);
@@ -50711,17 +49444,20 @@ function caption(model, shownPrompts) {
 function loadingGeometry(w, h) {
   const L = w >= 100 && h >= 30;
   const S = w < 76 || h < 23;
-  const mx = L ? 4 : S ? 2 : 3;
-  const scale2 = L ? 2 : 1;
-  const mascotW = S ? 10 : 18 * scale2;
-  const mascotH = S ? 4 : 8 * scale2;
-  const panelX = S ? mx : Math.max(mx + mascotW + 6, Math.floor(w * (L ? 0.46 : 0.42)));
-  const sx = S ? Math.floor((w - 10) / 2) : Math.max(mx, Math.floor((panelX - mascotW) / 2) - 1);
-  const sy = S ? 2 : Math.max(2, Math.floor((h - mascotH) / 2) - 2);
-  const rowsY = S ? sy + mascotH + 2 : Math.max(3, Math.floor(h / 2) - (L ? 6 : 5));
-  return { L, S, mx, scale: scale2, mascotW, mascotH, panelX, sx, sy, rowsY };
+  const mx = L ? 6 : 3;
+  const top = L ? 1 : 0;
+  const footY = L ? h - 2 : h - 1;
+  const rowStep = L ? 2 : 1;
+  const numH = L ? 5 : 3;
+  const blockH = 2 + SLOTS * rowStep + 1 + numH + 2 + 2 + 1;
+  const labelY = Math.max(top + 3, top + 2 + Math.floor((footY - top - 2 - blockH) / 2));
+  const rowsY = labelY + 2;
+  const numY = rowsY + SLOTS * rowStep + 1;
+  const barY = numY + numH + 2;
+  const captionY = barY + 2;
+  return { L, S, mx, top, footY, rowStep, numH, labelY, rowsY, numY, barY, captionY };
 }
-var MIN_STORY_MS, OUTRO_MS, ORDER, NAMES, LoadingStory;
+var MIN_STORY_MS, OUTRO_MS, ORDER, NAMES, PRIVACY_LINE, FIRST_CAPTION, SLOTS, SPIN, LoadingStory;
 var init_loading = __esm({
   "packages/cli/src/audit-ui/loading.ts"() {
     "use strict";
@@ -50729,27 +49465,27 @@ var init_loading = __esm({
     init_draw();
     init_motion();
     init_format3();
-    init_mascot();
+    init_display();
     init_source4();
     init_view_model();
     MIN_STORY_MS = 2400;
     OUTRO_MS = 950;
     ORDER = ["claude", "codex", "pi", "opencode"];
     NAMES = { claude: "Claude Code", codex: "Codex", pi: "pi", opencode: "OpenCode" };
+    PRIVACY_LINE = "all local \xB7 nothing leaves this machine";
+    FIRST_CAPTION = "finding your agents";
+    SLOTS = ORDER.length;
+    SPIN = ["\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F"];
     LoadingStory = class {
       constructor(started) {
         this.started = started;
       }
-      particles = [];
-      lastSpawn = /* @__PURE__ */ new Map();
       shown = { messages: 0, chats: 0, prompts: 0 };
-      lastArrival = -Infinity;
       lastCaption = "";
       captionAt = 0;
       readyAt = null;
-      seed = 1;
       litAt = /* @__PURE__ */ new Map();
-      privacyLine = "all local \xB7 nothing leaves this machine";
+      privacyLine = PRIVACY_LINE;
       /** True once the outro has played and the deck may start. */
       done(now) {
         return this.readyAt !== null && now - this.readyAt >= OUTRO_MS && now - this.started >= MIN_STORY_MS;
@@ -50773,130 +49509,87 @@ var init_loading = __esm({
         }
         const { w, h } = c;
         const motion = caps.motion;
-        const L = w >= 100 && h >= 30;
-        const S = w < 76 || h < 23;
+        const uni = caps.unicode;
         if (model.ready && this.readyAt === null && (t >= MIN_STORY_MS - OUTRO_MS || !motion)) this.readyAt = now;
-        const outro = this.readyAt !== null ? clamp012((now - this.readyAt) / OUTRO_MS) : 0;
-        const k = motion ? 0.22 : 1;
-        for (const key2 of ["messages", "chats", "prompts"]) {
-          const target = model.counts[key2] ?? 0;
-          this.shown[key2] += (target - this.shown[key2]) * k;
-          if (Math.abs(target - this.shown[key2]) < 0.5) this.shown[key2] = target;
-        }
-        const { mx, scale: mascotScale, mascotH, panelX, sx, sy, rowsY } = loadingGeometry(w, h);
-        c.text(mx, L ? 1 : 0, "slopie", { fg: C.orange, bold: true });
-        c.text(mx + 7, L ? 1 : 0, "audit", { fg: C.slate });
-        const mouth2 = S ? { x: sx + 4, y: sy + 3 } : { x: sx + (2 + 7) * mascotScale, y: sy + Math.round((10 + 2) * mascotScale / 2) };
         let busy = false;
-        const nameW = 13;
-        model.rows.forEach((row2, i) => {
-          const y = rowsY + (L ? i * 2 : i);
+        const k = motion ? 0.22 : 1;
+        for (const key4 of ["messages", "chats", "prompts"]) {
+          const target = model.counts[key4] ?? 0;
+          this.shown[key4] += (target - this.shown[key4]) * k;
+          if (Math.abs(target - this.shown[key4]) < 0.5) this.shown[key4] = target;
+          if (this.shown[key4] !== target) busy = true;
+        }
+        const g2 = loadingGeometry(w, h);
+        const iw = w - g2.mx * 2;
+        const put2 = (x, y, text3, fg, bold = false, italic = false) => c.text(x, y, text3, { fg, bg: C.bg, bold, italic });
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) c.put(x, y, " ", C.text, C.bg, 0);
+        put2(g2.mx, g2.top, "slopie", C.text, true);
+        put2(g2.mx + 7, g2.top, "audit", C.text3);
+        for (let x = 0; x < iw; x++) c.put(g2.mx + x, g2.top + 1, uni ? "\u2500" : "-", C.rule, C.bg, 0);
+        put2(g2.mx, g2.labelY, "YOUR AGENTS", C.text3);
+        const nameW = 14;
+        model.rows.slice(0, SLOTS).forEach((row2, i) => {
+          const y = g2.rowsY + i * g2.rowStep;
           if (row2.state !== "searching" && !this.litAt.has(row2.id)) this.litAt.set(row2.id, now);
           const lit = this.litAt.get(row2.id);
           const a = lit === void 0 ? 1 : motion ? clamp012((now - lit) / 350) : 1;
-          busy ||= a < 1;
-          let dot;
-          let dotColor;
+          if (a < 1) busy = true;
+          let dot, dotColor;
           if (row2.state === "found") {
-            dot = caps.unicode ? "\u25CF" : "*";
-            dotColor = mix(C.cream, C.orange, a);
+            dot = uni ? "\u25CF" : "*";
+            dotColor = mix(C.text3, C.text, a);
           } else if (row2.state === "absent") {
-            dot = caps.unicode ? "\u25CB" : "o";
-            dotColor = C.slate;
+            dot = uni ? "\u25CB" : "o";
+            dotColor = C.text3;
           } else {
-            dot = caps.unicode ? ["\u25DC", "\u25DD", "\u25DE", "\u25DF"][Math.floor(t / 120) % 4] : "-";
-            dotColor = C.gray;
+            dot = uni ? SPIN[Math.floor(t / 90) % SPIN.length] : "-";
+            dotColor = C.text2;
             busy = true;
           }
-          c.text(panelX, y, dot, { fg: dotColor, bold: true });
-          c.text(panelX + 2, y, row2.name, { fg: row2.state === "found" ? mix(C.gray, C.cream, a) : C.slate, bold: row2.state === "found" });
-          c.text(panelX + 2 + nameW, y, row2.info, { fg: row2.state === "found" ? fade(C.gray, Math.max(0.3, a)) : C.slate, italic: row2.state === "absent" }, w - panelX - nameW - 4);
-          if (row2.state === "found" && a < 1 && motion) c.text(panelX - 2, y, caps.unicode ? "\u203A" : ">", { fg: fade(C.orange, 1 - a) });
+          put2(g2.mx, y, dot, dotColor);
+          put2(g2.mx + 2, y, row2.name, row2.state === "found" ? mix(C.text2, C.text, a) : C.text3, row2.state === "found");
+          c.text(g2.mx + 2 + nameW, y, row2.info, { fg: row2.state === "found" ? C.text2 : C.text3, bg: C.bg, italic: row2.state === "absent" }, w - g2.mx * 2 - nameW - 2);
         });
-        const cy = rowsY + (L ? model.rows.length * 2 + 1 : model.rows.length + 1);
-        let cx = panelX;
-        const counters = [[model.counts.messages !== null ? this.shown.messages : null, "messages"], [model.counts.chats !== null ? this.shown.chats : null, "chats"], [model.counts.prompts !== null ? this.shown.prompts : null, "prompts"]];
-        for (const [value, label4] of counters) {
-          if (value === null || value <= 0) continue;
-          const text3 = count4(Math.round(value));
-          if (cx + textWidth(text3) + textWidth(label4) + 2 > w - 2) break;
-          cx += c.text(cx, cy, text3, { fg: C.cream, bold: true });
-          cx += c.text(cx + 1, cy, label4, { fg: C.gray }) + 4;
-        }
-        if (this.shown.messages !== (model.counts.messages ?? 0)) busy = true;
-        const barW = Math.min(44, w - panelX - 4);
-        const p = model.ready ? 1 : model.progress;
-        if (barW > 8) {
-          for (let i = 0; i < barW; i++) {
-            const filled = p !== null ? i < Math.round(barW * p) : false;
-            const shimmer = p === null && motion ? Math.max(0, 1 - Math.abs(t / 18 % (barW + 16) - 8 - i) / 6) : 0;
-            c.put(panelX + i, cy + 2, caps.unicode ? filled ? "\u2501" : "\u2500" : filled ? "=" : "-", filled ? C.orange : mix(C.coal, C.peach, shimmer));
+        const counters = [
+          [model.counts.prompts, this.shown.prompts, "prompts"],
+          [model.counts.messages, this.shown.messages, "messages"],
+          [model.counts.chats, this.shown.chats, "chats"]
+        ];
+        const known3 = counters.filter(([v]) => v !== null && v > 0);
+        if (known3.length) {
+          const [, shown, label5] = known3[0];
+          const text3 = count4(Math.round(shown));
+          const final = count4(Math.round(known3[0][0]));
+          const opts = uni ? fitDisplay(final, iw, { face: "solid", tall: g2.L }) : null;
+          if (opts && displayHeight(opts) <= g2.numH) drawDisplay(c, g2.mx, g2.numY + (g2.numH - displayHeight(opts)), text3, C.text, C.bg, opts);
+          else put2(g2.mx, g2.numY + g2.numH - 1, text3, C.text, true);
+          let x = g2.mx + put2(g2.mx, g2.numY + g2.numH, label5, C.text2);
+          for (const [, v, l] of known3.slice(1)) {
+            const part = `${count4(Math.round(v))} ${l}`;
+            if (x + 5 + textWidth(part) > g2.mx + iw) break;
+            x += put2(x, g2.numY + g2.numH, "  \xB7  ", C.text3);
+            x += put2(x, g2.numY + g2.numH, count4(Math.round(v)), C.text) + put2(x + textWidth(count4(Math.round(v))), g2.numY + g2.numH, ` ${l}`, C.text2);
           }
-          if (p === null) busy = true;
         }
+        const barW = Math.min(64, iw);
+        const p = model.ready ? 1 : model.progress;
+        for (let i = 0; i < barW; i++) {
+          const filled = p !== null && i < Math.round(barW * p);
+          const head = p === null && motion ? Math.abs(t / 22 % (barW + 12) - 6 - i) < 6 : false;
+          c.put(g2.mx + i, g2.barY, uni ? filled || head ? "\u2501" : "\u2500" : filled || head ? "=" : "-", filled ? C.accent : head ? C.text3 : C.rule, C.bg, 0);
+        }
+        if (p === null) busy = true;
         const text2 = caption(model, this.shown.prompts);
         if (text2 !== this.lastCaption) {
           this.lastCaption = text2;
           this.captionAt = now;
         }
-        const ca = motion ? clamp012((now - this.captionAt) / 260) : 1;
-        busy ||= ca < 1;
-        c.text(panelX, cy + 4, text2, { fg: model.ready && !model.failure ? C.orange : C.peach, bold: model.ready, alpha: ca }, w - panelX - 2);
-        const flowing = model.rows.map((row2, i) => row2.flowing ? i : -1).filter((i) => i >= 0);
-        if (motion && !S) {
-          for (const i of flowing) {
-            const last2 = this.lastSpawn.get(i) ?? -Infinity;
-            const period = 70 + i * 25;
-            if (now - last2 >= period) {
-              this.lastSpawn.set(i, now);
-              this.particles.push({ row: i, born: now, life: 650 + hash01(this.seed) * 350, seed: this.seed++ });
-            }
-          }
-          const alive = [];
-          for (const part of this.particles) {
-            const k2 = (now - part.born) / part.life;
-            if (k2 >= 1) {
-              this.lastArrival = now;
-              continue;
-            }
-            alive.push(part);
-            const y0 = rowsY + (L ? part.row * 2 : part.row);
-            const x0 = panelX - 3;
-            const e = easeInOutCubic(k2);
-            const lift = (L ? 4 : 2) * (0.3 + hash01(part.seed * 3));
-            const ctrlX = (x0 + mouth2.x) / 2;
-            const ctrlY = Math.min(y0, mouth2.y) - lift;
-            const px = (1 - e) * (1 - e) * x0 + 2 * (1 - e) * e * ctrlX + e * e * mouth2.x;
-            const py = (1 - e) * (1 - e) * y0 + 2 * (1 - e) * e * ctrlY + e * e * mouth2.y;
-            const glyphs = caps.unicode ? ["\u25AA", "\u2022", "\u2022", "\xB7"] : ["o", "o", ".", "."];
-            const glyph2 = glyphs[Math.min(3, Math.floor(k2 * 4))];
-            const tone2 = k2 > 0.7 ? C.cream : hash01(part.seed * 7) < 0.5 ? C.peach : C.orange;
-            c.text(Math.round(px), Math.round(py), glyph2, { fg: tone2, bold: true });
-          }
-          this.particles = alive;
-          if (alive.length) busy = true;
-        }
-        const chewing = motion && (now - this.lastArrival < 260 || flowing.length > 0 && this.particles.length > 0);
-        let face = "idle";
-        if (model.ready && model.failure) face = "sad";
-        else if (outro > 0) face = "proud";
-        else if (chewing) face = Math.floor(t / 150) % 2 ? "chewing" : "chewing2";
-        else if (blink) face = "blink";
-        const bob = motion ? outro > 0 ? Math.sin(Math.PI * Math.min(1, outro * 1.6)) * 3 : (1 - Math.cos(t / 380)) * 0.8 : 0;
-        const fullness = model.ready ? 1 : (model.progress ?? 0) > 0.5 ? 1 : 0;
-        if (caps.color === "none" || caps.color === "16") {
-          c.text(sx + 4, sy + Math.floor(mascotH / 2), mascotLine(face, !caps.unicode), { fg: C.orange, bold: true });
-        } else if (S) {
-          drawMascot(c, sx, sy, face, { size: "compact", bob: bob > 1 ? 1 : 0 });
-        } else {
-          drawMascot(c, sx, sy, face, { bob, fullness, scale: mascotScale });
-        }
-        if (motion && (chewing || outro > 0 || flowing.length)) busy = true;
-        const privacy = this.privacyLine;
-        textCenter(c, w / 2, h - (L ? 2 : 1), `${caps.unicode ? "\u25CF" : "*"} ${privacy}`, { fg: C.slate });
-        c.text(Math.round(w / 2 - textWidth(privacy) / 2 - 1), h - (L ? 2 : 1), caps.unicode ? "\u25CF" : "*", { fg: C.orange });
+        const ca = motion && this.lastCaption !== FIRST_CAPTION ? clamp012((now - this.captionAt) / 260) : 1;
+        if (ca < 1) busy = true;
+        c.text(g2.mx, g2.captionY, text2, { fg: mix(C.bg, model.ready && !model.failure ? C.text : C.text2, ca), bg: C.bg, bold: model.ready && !model.failure }, iw);
+        put2(g2.mx, g2.footY, uni ? "\u25CF" : "*", C.accent);
+        put2(g2.mx + 2, g2.footY, this.privacyLine, C.text3);
         if (model.ready && !this.done(now)) busy = true;
-        if (outro > 0 && outro < 1) busy = true;
         return busy;
       }
     };
@@ -50935,9 +49628,9 @@ function applyPrivacyEvent(view, event) {
 }
 function clearedSnapshot(source, code) {
   const metrics = { ...source.metrics };
-  for (const key2 of Object.keys(metrics)) {
-    const metric2 = metrics[key2];
-    if (metric2) metrics[key2] = { ...metric2, value: null, numerator: null, denominator: null, state: "unavailable" };
+  for (const key4 of Object.keys(metrics)) {
+    const metric2 = metrics[key4];
+    if (metric2) metrics[key4] = { ...metric2, value: null, numerator: null, denominator: null, state: "unavailable" };
   }
   const launch = source.launch;
   return {
@@ -50991,8 +49684,8 @@ function shareCanvas(snapshot2, columns2 = 120, rows = 40) {
   const deck = buildDeck(snapshot2);
   const board = deck.at(-1);
   if (!board || board.kind !== "board") return null;
-  const c = new Canvas(columns2, rows, C.ink);
-  c.fill(0, 0, columns2, rows, " ", { bg: C.ink });
+  const c = new Canvas(columns2, rows, C.bg);
+  c.fill(0, 0, columns2, rows, " ", { bg: C.bg });
   renderCard({
     c,
     w: columns2,
@@ -51013,7 +49706,7 @@ function canvasToSvg(c, title = "slopie audit") {
   const parts = [];
   for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) {
     const bg = c.bg[y * c.w + x];
-    if (bg >= 0 && bg !== C.ink) parts.push(`<rect x="${x * CW}" y="${y * CH}" width="${CW}" height="${CH}" fill="${hex(bg)}"/>`);
+    if (bg >= 0 && bg !== C.bg) parts.push(`<rect x="${x * CW}" y="${y * CH}" width="${CW}" height="${CH}" fill="${hex(bg)}"/>`);
   }
   for (let y = 0; y < c.h; y++) {
     let x = 0;
@@ -51057,11 +49750,11 @@ function canvasToSvg(c, title = "slopie audit") {
       x++;
     }
   }
-  const width = c.w * CW, height = c.h * CH;
+  const width = c.w * CW, height2 = c.h * CH;
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height2}" viewBox="0 0 ${width} ${height2}">`,
     `<title>${esc4(title)}</title>`,
-    `<rect width="100%" height="100%" rx="14" fill="${hex(C.ink)}"/>`,
+    `<rect width="100%" height="100%" rx="14" fill="${hex(C.bg)}"/>`,
     `<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">`,
     ...parts,
     "</g>",
@@ -51141,10 +49834,10 @@ function readHistory3(snapshot2, dir = historyDir()) {
   try {
     const text2 = fs61.readFileSync(path50.join(dir, `${scopeKey(snapshot2)}.jsonl`), "utf8");
     const out = [];
-    for (const line of text2.split("\n")) {
-      if (!line.trim()) continue;
+    for (const line2 of text2.split("\n")) {
+      if (!line2.trim()) continue;
       try {
-        const d = JSON.parse(line);
+        const d = JSON.parse(line2);
         if (isDigest(d)) out.push(d);
       } catch {
       }
@@ -51185,10 +49878,10 @@ function sinceLast(prev, now, all = [prev]) {
     parts.push(`swearing ${prev.swearPct.toFixed(1)}% \u2192 ${now.swearPct.toFixed(1)}% ${now.swearPct < prev.swearPct ? "\u2193" : "\u2191"}`);
   }
   const records = [];
-  const best = (key2) => Math.max(...all.map((d) => d.records[key2] ?? 0));
-  const check = (key2, label4, fmt) => {
-    const before = best(key2), after = now.records[key2];
-    if (after > before && before > 0) records.push({ metric: label4, from: fmt(before), to: fmt(after) });
+  const best = (key4) => Math.max(...all.map((d) => d.records[key4] ?? 0));
+  const check = (key4, label5, fmt) => {
+    const before = best(key4), after = now.records[key4];
+    if (after > before && before > 0) records.push({ metric: label5, from: fmt(before), to: fmt(after) });
   };
   check("busiestDayPrompts", "busiest day", (n2) => `${count4(n2)} prompts`);
   check("priciestDayUsd", "priciest day", (n2) => money2(n2));
@@ -51292,10 +49985,9 @@ async function runWallboard(session, options = {}) {
   const states = /* @__PURE__ */ new Map();
   const story = new LoadingStory(started);
   let toast = null;
-  let blink = false;
+  const blink = false;
   let needsClear = true;
   let ticker = null;
-  let blinkTimer = null;
   let toastTimer = null;
   let scheduled = null;
   let resolveDone = () => {
@@ -51357,13 +50049,12 @@ async function runWallboard(session, options = {}) {
     return state;
   }
   function drawTooSmall(c, w, h) {
-    const msg = `Slopie needs ${MIN_COLS}\xD7${MIN_ROWS2}. You're at ${w}\xD7${h}.`;
-    const y = Math.max(0, Math.floor(h / 2) - 3);
-    if (w >= 12 && h >= 8 && caps.color !== "none" && caps.color !== "16") drawMascot(c, Math.floor((w - 10) / 2), y, blink ? "blink" : "sad", { size: "compact" });
-    else textCenter(c, w / 2, y + 1, mascotLine("sad", !caps.unicode), { fg: C.orange, bold: true });
-    const lines = wrapText("make me bigger", w - 2, 1);
-    textCenter(c, w / 2, y + 5, lines[0] ?? "", { fg: C.cream, bold: true });
-    wrapText(msg, w - 2, 2).forEach((line, i) => textCenter(c, w / 2, y + 6 + i, line, { fg: C.gray }));
+    const msg = `slopie needs ${MIN_COLS}\xD7${MIN_ROWS2}. You're at ${w}\xD7${h}.`;
+    const y = Math.max(0, Math.floor(h / 2) - 1);
+    const head = wrapText("Make the window bigger.", w - 2);
+    const body = wrapText(msg, w - 2);
+    if (head.length === 1) textCenter(c, w / 2, y, head[0], { fg: C.text, bold: true });
+    if (body.length <= 2) body.forEach((line2, i) => textCenter(c, w / 2, y + 1 + i, line2, { fg: C.text2 }));
   }
   function drawBanner(c, w, h) {
     const event = queue[0] ?? lingering;
@@ -51371,9 +50062,9 @@ async function runWallboard(session, options = {}) {
     const text2 = sanitize(event.notice);
     const lines = wrapText(text2, Math.max(10, w - 6), 99);
     if (lines.length > 4 || lines.length + 2 > h) return false;
-    const height = lines.length + 2;
-    for (let y = 0; y < height; y++) for (let x = 0; x < w; x++) c.put(x, y, " ", C.cream, C.coal);
-    lines.forEach((line, i) => c.text(3, 1 + i, line, { fg: C.cream, bg: C.coal, bold: i === 0 }));
+    const height2 = lines.length + 2;
+    for (let y = 0; y < height2; y++) for (let x = 0; x < w; x++) c.put(x, y, y === height2 - 1 ? caps.unicode ? "\u2500" : "-" : " ", C.text3, C.rule);
+    lines.forEach((line2, i) => c.text(3, 1 + i, line2, { fg: C.text, bg: C.rule, bold: i === 0 }));
     return true;
   }
   function drawNotes(c, card, w, h) {
@@ -51386,25 +50077,30 @@ async function runWallboard(session, options = {}) {
     for (const section of sections2) {
       if (all.length) all.push({ text: "", title: false });
       all.push({ text: section.title, title: true });
-      for (const line of section.lines) for (const row2 of wrapText(sanitize(line), pw - 4)) all.push({ text: row2, title: false });
+      for (const line2 of section.lines) for (const row2 of wrapText(sanitize(line2), pw - 4)) all.push({ text: row2, title: false });
     }
     const perPage = Math.max(3, h - 8);
     const pages = Math.max(1, Math.ceil(all.length / perPage));
     const page = Math.min(notes.page, pages - 1);
     notes.page = page;
     const rows = all.slice(page * perPage, (page + 1) * perPage);
+    for (let i = 0; i < c.fg.length; i++) if (c.fg[i] >= 0) c.fg[i] = mix(C.bg, c.fg[i], 0.12);
     const ph = rows.length + 4;
     const px = Math.floor((w - pw) / 2), py = Math.max(1, Math.floor((h - ph) / 2));
-    box(c, { x: px, y: py, w: pw, h: ph }, C.orange, { fill: C.coal, ascii: !caps.unicode });
-    rows.forEach((row2, i) => c.text(px + 2, py + 1 + i, row2.text, { fg: row2.title ? C.orange : C.cream, bold: row2.title, bg: C.coal }, pw - 4));
+    for (let y = py - 1; y < py + ph + 1; y++) for (let x = px - 2; x < px + pw; x++) c.put(x, y, " ", C.text, C.bg);
+    for (let x = px - 2; x < px + pw; x++) {
+      c.put(x, py - 1, caps.unicode ? "\u2500" : "-", C.rule, C.bg);
+      c.put(x, py + ph, caps.unicode ? "\u2500" : "-", C.rule, C.bg);
+    }
+    rows.forEach((row2, i) => c.text(px, py + 1 + i, row2.text, { fg: row2.title ? C.text3 : C.text, bg: C.bg }, pw - 2));
     const foot = pages > 1 ? `${page + 1}/${pages}  ${caps.unicode ? "\u2190 \u2192" : "< >"} page \xB7 ? or esc to close` : "? or esc to close";
-    c.text(px + 2, py + ph - 2, foot, { fg: C.gray, bg: C.coal });
+    c.text(px, py + ph - 1, foot, { fg: C.text2, bg: C.bg });
   }
   function compose(now) {
     const { w, h } = size();
     const paintBg = caps.color === "truecolor" || caps.color === "256";
-    const canvas = new Canvas(w, h, paintBg ? C.ink : -1);
-    if (paintBg) canvas.fill(0, 0, w, h, " ", { bg: C.ink });
+    const canvas = new Canvas(w, h, paintBg ? C.bg : -1);
+    if (paintBg) canvas.fill(0, 0, w, h, " ", { bg: C.bg });
     let busy = false;
     const tier = tierFor(w, h);
     if (!tier) {
@@ -51441,7 +50137,7 @@ async function runWallboard(session, options = {}) {
     if (toast && toast.until > now) {
       const text2 = ` ${toast.text} `;
       const tx = Math.max(0, Math.floor((w - textWidth(text2)) / 2));
-      canvas.text(tx, h - (tier.id === "L" ? 4 : 3), text2, { fg: C.ink, bg: C.peach, bold: true });
+      canvas.text(tx, h - (tier.id === "L" ? 4 : 3), text2, { fg: C.text, bg: C.rule, bold: true });
     }
     const bannerShown = drawBanner(canvas, w, h);
     return { canvas, busy, bannerShown };
@@ -51468,37 +50164,12 @@ async function runWallboard(session, options = {}) {
   function animate(busy) {
     if (busy && caps.motion && !restored) {
       if (!ticker) ticker = setInterval(paint, FRAME_MS);
-      if (blinkTimer) {
-        clearTimeout(blinkTimer);
-        blinkTimer = null;
-      }
       return;
     }
     if (ticker) {
       clearInterval(ticker);
       ticker = null;
     }
-    if (!blinkTimer && caps.motion && !restored) scheduleBlink();
-  }
-  let blinkCount = 0;
-  function scheduleBlink() {
-    const delay = 2600 + blinkCount++ * 977 % 1600;
-    blinkTimer = setTimeout(() => {
-      blink = true;
-      paintStill();
-      blinkTimer = setTimeout(() => {
-        blink = false;
-        blinkTimer = null;
-        paintStill();
-        if (!ticker) scheduleBlink();
-      }, BLINK_MS);
-    }, delay);
-  }
-  function paintStill() {
-    if (restored) return;
-    const { canvas } = compose(clock3());
-    const out = renderer.frame(canvas, false);
-    if (out) stdout.write(out);
   }
   function flash(text2, ms = 1600) {
     toast = { text: text2, until: clock3() + ms };
@@ -51638,9 +50309,9 @@ async function runWallboard(session, options = {}) {
   };
   const onKey = (token) => {
     if (stopping) return;
-    const key2 = decodeKey(token);
-    if (!key2) return;
-    if (key2 === "quit") {
+    const key4 = decodeKey(token);
+    if (!key4) return;
+    if (key4 === "quit") {
       stop();
       return;
     }
@@ -51650,19 +50321,19 @@ async function runWallboard(session, options = {}) {
       if (story.skippable(model, now) && !model.failure) {
         startDeck(now);
         paint();
-      } else if (key2 === "back") stop();
+      } else if (key4 === "back") stop();
       return;
     }
     const card = current();
     if (!card) return;
     if (notes) {
-      if (key2 === "details" || key2 === "back" || key2 === "enter") notes = null;
-      else if (key2 === "left") notes.page = Math.max(0, notes.page - 1);
-      else if (key2 === "right") notes.page += 1;
+      if (key4 === "details" || key4 === "back" || key4 === "enter") notes = null;
+      else if (key4 === "left") notes.page = Math.max(0, notes.page - 1);
+      else if (key4 === "right") notes.page += 1;
       paint();
       return;
     }
-    switch (key2) {
+    switch (key4) {
       case "details":
         notes = { page: 0 };
         paint();
@@ -51704,8 +50375,8 @@ async function runWallboard(session, options = {}) {
         return;
       }
       default: {
-        if (key2.startsWith("guess") && card.kind === "guess") {
-          const choice = Number(key2.slice(5)) - 1;
+        if (key4.startsWith("guess") && card.kind === "guess") {
+          const choice = Number(key4.slice(5)) - 1;
           const state = stateOf(card);
           if (state.guess === void 0 && choice < card.data.options.length) {
             state.guess = choice;
@@ -51775,7 +50446,7 @@ async function runWallboard(session, options = {}) {
   try {
     await done;
   } finally {
-    for (const timer of [scheduled, toastTimer, bannerTimer, blinkTimer, inputTimer]) if (timer) clearTimeout(timer);
+    for (const timer of [scheduled, toastTimer, bannerTimer, inputTimer]) if (timer) clearTimeout(timer);
     if (ticker) clearInterval(ticker);
     stdin.off("data", onData);
     stdout.off("resize", onResize);
@@ -51791,7 +50462,7 @@ async function runWallboard(session, options = {}) {
   await Promise.race([scan2, new Promise((resolve) => setTimeout(resolve, 2e3).unref())]);
   return { snapshot: view.revoked ?? view.snapshot, reason };
 }
-var PASTE_START, PASTE_END, InputParser, FRAME_MS, CARD_SPEED, TRANSFER_LINGER_MS, BLINK_MS;
+var PASTE_START, PASTE_END, InputParser, FRAME_MS, CARD_SPEED, TRANSFER_LINGER_MS;
 var init_terminal = __esm({
   "packages/cli/src/audit-ui/terminal.ts"() {
     "use strict";
@@ -51803,7 +50474,6 @@ var init_terminal = __esm({
     init_draw();
     init_screen();
     init_loading();
-    init_mascot();
     init_session_state();
     init_share();
     init_deck();
@@ -51867,7 +50537,6 @@ var init_terminal = __esm({
     FRAME_MS = 33;
     CARD_SPEED = 1.5;
     TRANSFER_LINGER_MS = 1800;
-    BLINK_MS = 140;
   }
 });
 
@@ -52161,8 +50830,8 @@ function identity4(...parts) {
   return h.digest("hex");
 }
 function spanEmbeddingText2(text2, embeddingContextJson) {
-  const context2 = JSON.parse(embeddingContextJson).context;
-  return context2 ? `${context2}
+  const context = JSON.parse(embeddingContextJson).context;
+  return context ? `${context}
 
 ${text2}` : text2;
 }
@@ -52171,11 +50840,11 @@ function spanWindows2(text2, tokenizer2, recordContext = "") {
     return [];
   const out = [];
   const contextOffsets = tokenizer2 ? tokenizer2.boundaries(recordContext) : [0];
-  const context2 = tokenizer2 ? recordContext.slice(0, contextOffsets[Math.min(64, contextOffsets.length - 1)] ?? 0) : "";
-  const contextTokens = tokenizer2?.count ? tokenizer2.count(context2) : Math.max(0, contextOffsets.length - 1 > 64 ? 64 : contextOffsets.length - 1);
+  const context = tokenizer2 ? recordContext.slice(0, contextOffsets[Math.min(64, contextOffsets.length - 1)] ?? 0) : "";
+  const contextTokens = tokenizer2?.count ? tokenizer2.count(context) : Math.max(0, contextOffsets.length - 1 > 64 ? 64 : contextOffsets.length - 1);
   const payloadTokens = 382 - contextTokens;
   const count5 = tokenizer2?.count ?? ((value) => tokenizer2 ? tokenizer2.boundaries(value).length - 1 : Buffer.byteLength(value));
-  const inputText = (value) => context2 ? `${context2}
+  const inputText = (value) => context ? `${context}
 
 ${value}` : value;
   const policy = tokenizer2 ? `span-v1:${tokenizer2.assetHash}:record-context-v1` : "span-conservative-utf8-v1";
@@ -52203,14 +50872,14 @@ ${value}` : value;
     if (isSplit2(text2, start) || isSplit2(text2, end))
       throw new Error("surrogate split");
     const value = text2.slice(start, end);
-    out.push({ startUtf16: start, endUtf16: end, text: value, chunkPolicy: policy, embeddingInputHash: hash2(inputText(value)), embeddingContextJson: JSON.stringify({ partition: [start, end], tokenizerId: tokenizer2?.id ?? null, tokenizerHash: tokenizer2?.assetHash ?? null, context: context2, contextTokens, recipe: "record-context-v1" }), isPartition: true });
+    out.push({ startUtf16: start, endUtf16: end, text: value, chunkPolicy: policy, embeddingInputHash: hash2(inputText(value)), embeddingContextJson: JSON.stringify({ partition: [start, end], tokenizerId: tokenizer2?.id ?? null, tokenizerHash: tokenizer2?.assetHash ?? null, context, contextTokens, recipe: "record-context-v1" }), isPartition: true });
     if (tokenizer2 && i > 0) {
       const overlapStart = offsets[Math.max(0, i - 32)];
       let overlapIndex = Math.min(j, i + payloadTokens - 32);
       while (overlapIndex > i && count5(inputText(text2.slice(overlapStart, offsets[overlapIndex]))) > 382) overlapIndex--;
       const overlapEnd = offsets[overlapIndex];
       const overlapText = text2.slice(overlapStart, overlapEnd);
-      out.push({ startUtf16: overlapStart, endUtf16: overlapEnd, text: overlapText, chunkPolicy: policy, embeddingInputHash: hash2(inputText(overlapText)), embeddingContextJson: JSON.stringify({ partition: null, neighborOverlap: 32, tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context: context2, contextTokens, recipe: "record-context-v1" }), isPartition: false });
+      out.push({ startUtf16: overlapStart, endUtf16: overlapEnd, text: overlapText, chunkPolicy: policy, embeddingInputHash: hash2(inputText(overlapText)), embeddingContextJson: JSON.stringify({ partition: null, neighborOverlap: 32, tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context, contextTokens, recipe: "record-context-v1" }), isPartition: false });
     }
     i = j;
   }
@@ -52246,13 +50915,13 @@ function buildSpanManifest2(text2, tokenizer2, recordContext = "") {
   }
   if (!tokenizer2.count || !tokenizer2.sourceBoundaries) throw new Error("verified v2 source token coordinates required");
   const count5 = tokenizer2.count, contextBounds = tokenizer2.sourceBoundaries(recordContext);
-  let context2 = "";
+  let context = "";
   for (const b2 of contextBounds) {
     if (b2.tokenEndOrdinal > 64) break;
     const candidate = recordContext.slice(0, b2.offsetUtf16);
-    if (count5(candidate) <= 64) context2 = candidate;
+    if (count5(candidate) <= 64) context = candidate;
   }
-  const contextTokens = count5(context2), input = (value) => context2 ? `${context2}
+  const contextTokens = count5(context), input = (value) => context ? `${context}
 
 ${value}` : value;
   const offsets = tokenizer2.sourceBoundaries(text2);
@@ -52276,7 +50945,7 @@ ${value}` : value;
     if (end.offsetUtf16 <= previousEnd) throw new Error("v2 window must advance");
     const value = text2.slice(start.offsetUtf16, end.offsetUtf16);
     if (count5(input(value)) > 382) throw new Error("v2 wordpiece window exceeds384 including specials");
-    windows2.push({ startUtf16: start.offsetUtf16, endUtf16: end.offsetUtf16, text: value, chunkPolicy: policy, embeddingInputHash: hash2(input(value)), embeddingContextJson: JSON.stringify({ tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context: context2, contextTokens, recipe: SPAN_CONTEXT_RECIPE2, targetSourceOverlap: 32, actualSourceOverlap: actualOverlap, sourceOverlapRounding: Math.max(0, actualOverlap - 32), sourceTokenStart: start.tokenEndOrdinal, sourceTokenEnd: end.tokenEndOrdinal }), isPartition: false });
+    windows2.push({ startUtf16: start.offsetUtf16, endUtf16: end.offsetUtf16, text: value, chunkPolicy: policy, embeddingInputHash: hash2(input(value)), embeddingContextJson: JSON.stringify({ tokenizerId: tokenizer2.id, tokenizerHash: tokenizer2.assetHash, context, contextTokens, recipe: SPAN_CONTEXT_RECIPE2, targetSourceOverlap: 32, actualSourceOverlap: actualOverlap, sourceOverlapRounding: Math.max(0, actualOverlap - 32), sourceTokenStart: start.tokenEndOrdinal, sourceTokenEnd: end.tokenEndOrdinal }), isPartition: false });
     previousEnd = end.offsetUtf16;
     if (endIndex === offsets.length - 1) break;
     const target = end.tokenEndOrdinal - 32;
@@ -52422,17 +51091,17 @@ function unavailableList(status3, ms = 0) {
     relaxed: false
   };
 }
-function unrecognisedStatus(bridge, path55, why2, schema = null, headline4 = SCHEMA_UNAVAILABLE) {
+function unrecognisedStatus(bridge, path55, why2, schema = null, headline5 = SCHEMA_UNAVAILABLE) {
   return {
     bridge,
     presence: "unrecognised",
     path: path55,
     available: false,
-    detail: `${headline4} (${why2})`,
+    detail: `${headline5} (${why2})`,
     // The default headline is the long form, because `detail` reads
     // "bridge unavailable: schema not recognised (no text column)". The one
     // line a footer gets is the short form of the same fact.
-    headline: headline4 === SCHEMA_UNAVAILABLE ? SCHEMA_UNRECOGNISED : headline4,
+    headline: headline5 === SCHEMA_UNAVAILABLE ? SCHEMA_UNRECOGNISED : headline5,
     schema,
     rows: null,
     worker: null
@@ -52696,9 +51365,9 @@ async function searchWorker(query, status3, limit, opts) {
   const base3 = status3.worker?.url;
   if (!base3)
     return null;
-  for (const key2 of ["q", "query"]) {
+  for (const key4 of ["q", "query"]) {
     try {
-      const url = `${base3}/api/search/observations?${key2}=${encodeURIComponent(query)}&limit=${limit}`;
+      const url = `${base3}/api/search/observations?${key4}=${encodeURIComponent(query)}&limit=${limit}`;
       const res = await fetch(url, {
         signal: AbortSignal.timeout(opts.timeoutMs ?? WORKER_TIMEOUT_MS)
       });
@@ -52721,8 +51390,8 @@ function arrayIn(body) {
   if (!body || typeof body !== "object")
     return null;
   const obj = body;
-  for (const key2 of ["results", "observations", "data", "hits", "items", "rows"]) {
-    const value = obj[key2];
+  for (const key4 of ["results", "observations", "data", "hits", "items", "rows"]) {
+    const value = obj[key4];
     if (Array.isArray(value))
       return value;
   }
@@ -52746,8 +51415,8 @@ function rowToHit(row2, rank, source) {
   };
 }
 function firstString(row2, keys5) {
-  for (const key2 of keys5) {
-    const v = row2[key2];
+  for (const key4 of keys5) {
+    const v = row2[key4];
     if (typeof v === "string" && v.trim())
       return v.trim();
     if (typeof v === "number" && Number.isFinite(v))
@@ -53149,11 +51818,11 @@ var StdioClient = class {
     this.buffer += chunk;
     let index = this.buffer.indexOf("\n");
     while (index >= 0) {
-      const line = this.buffer.slice(0, index).trim();
+      const line2 = this.buffer.slice(0, index).trim();
       this.buffer = this.buffer.slice(index + 1);
-      if (line) {
+      if (line2) {
         try {
-          const message2 = JSON.parse(line);
+          const message2 = JSON.parse(line2);
           const resolve = typeof message2.id === "number" ? this.pending.get(message2.id) : void 0;
           if (resolve) {
             this.pending.delete(message2.id);
@@ -53204,12 +51873,12 @@ function rpcError(res) {
 }
 var clients = /* @__PURE__ */ new Map();
 function warmClient(launch) {
-  const key2 = [launch.command, ...launch.args].join(" ");
-  const existing = clients.get(key2);
+  const key4 = [launch.command, ...launch.args].join(" ");
+  const existing = clients.get(key4);
   if (existing)
     return existing;
   const client = new StdioClient(launch);
-  clients.set(key2, client);
+  clients.set(key4, client);
   return client;
 }
 function closeAgentMemoryClients() {
@@ -53339,8 +52008,8 @@ function hit(id, title, text2, ts, rank, source) {
   };
 }
 function pick3(row2, keys5) {
-  for (const key2 of keys5) {
-    const value = row2[key2];
+  for (const key4 of keys5) {
+    const value = row2[key4];
     if (typeof value === "string" && value.trim())
       return value.trim();
     if (typeof value === "number" && Number.isFinite(value))
@@ -53467,15 +52136,15 @@ function sections(file, kind3, content) {
       out.push({ file, kind: kind3, heading: heading3, text: text2, line: start });
     buffer = [];
   };
-  lines.forEach((line, i) => {
-    const m = /^(#{1,6})\s+(.*\S)\s*$/.exec(line);
+  lines.forEach((line2, i) => {
+    const m = /^(#{1,6})\s+(.*\S)\s*$/.exec(line2);
     if (m) {
       flush();
       heading3 = m[2] ?? path45.basename(file);
       start = i + 1;
       return;
     }
-    buffer.push(line);
+    buffer.push(line2);
   });
   flush();
   return out;
@@ -53844,8 +52513,8 @@ function collectCards(root, limit = 1e3) {
   return out;
 }
 function firstHeading(markdown) {
-  for (const line of markdown.split("\n", 40)) {
-    const m = /^#{1,3}\s+(.*\S)\s*$/.exec(line);
+  for (const line2 of markdown.split("\n", 40)) {
+    const m = /^#{1,3}\s+(.*\S)\s*$/.exec(line2);
     if (m?.[1])
       return m[1].slice(0, 160);
   }
@@ -53981,7 +52650,7 @@ async function runRescue(o) {
       extras.settingsSkippedReason = proposal.reason ?? "settings.json cannot be edited safely";
       if (!o.json && !o.quiet) {
         print("");
-        for (const line of consent_exports.manualInstructions(proposal, "cleanup", days)) print(line);
+        for (const line2 of consent_exports.manualInstructions(proposal, "cleanup", days)) print(line2);
         print("");
       }
     } else {
@@ -54020,8 +52689,8 @@ async function askForSettings(diff, days, currentEffective, o) {
   );
   print(`  This is the only change potsherd ever makes outside ${paths_exports.tildify(paths_exports.potsherdDir())}.`);
   print("");
-  for (const line of diff.split("\n")) {
-    const tone2 = line.startsWith("+") && !line.startsWith("+++") ? t.ok(line) : line.startsWith("-") && !line.startsWith("---") ? t.warn(line) : t.dim(line);
+  for (const line2 of diff.split("\n")) {
+    const tone2 = line2.startsWith("+") && !line2.startsWith("+++") ? t.ok(line2) : line2.startsWith("-") && !line2.startsWith("---") ? t.warn(line2) : t.dim(line2);
     print("  " + tone2);
   }
   print("");
@@ -54062,7 +52731,7 @@ async function runGuard(o) {
       printJson({ changed: false, safe: false, reason: proposal.reason });
       return 1;
     }
-    for (const line of consent_exports.manualInstructions(proposal, "guard")) print(line);
+    for (const line2 of consent_exports.manualInstructions(proposal, "guard")) print(line2);
     return 1;
   }
   if (!o.json && !o.quiet) {
@@ -54094,8 +52763,8 @@ async function runGuard(o) {
       }
     }
     print("");
-    for (const line of proposal.diff.split("\n")) {
-      const tone2 = line.startsWith("+") && !line.startsWith("+++") ? t.ok(line) : line.startsWith("-") && !line.startsWith("---") ? t.warn(line) : t.dim(line);
+    for (const line2 of proposal.diff.split("\n")) {
+      const tone2 = line2.startsWith("+") && !line2.startsWith("+++") ? t.ok(line2) : line2.startsWith("-") && !line2.startsWith("---") ? t.warn(line2) : t.dim(line2);
       print("  " + tone2);
     }
     print("");
@@ -54346,8 +53015,8 @@ async function runDoctor(o) {
         card2.raw(`${pad4}${t2.dim(text2)}`);
         return;
       }
-      for (const line of format_exports.wrap(text2, Math.max(20, t2.width - indent - 1))) {
-        card2.raw(`${pad4}${t2.dim(line)}`);
+      for (const line2 of format_exports.wrap(text2, Math.max(20, t2.width - indent - 1))) {
+        card2.raw(`${pad4}${t2.dim(line2)}`);
       }
     };
     card2.text("reads (never modified):");
@@ -54404,8 +53073,8 @@ async function runDoctor(o) {
       const lead = "redacted slices of your transcripts";
       const body = `${lead}, sent to a model as the text of one prompt. redaction runs first, in one place, on every outgoing string \u2014 there is no --no-redact flag. nothing else is ever sent: no file is uploaded, no path, no index, no counts, no identifiers.`;
       const lines = format_exports.wrap(body, Math.max(20, t2.width - 5));
-      lines.forEach((line, i) => {
-        card2.raw(`    ${i === 0 && line.startsWith(lead) ? t2.accent(lead) + line.slice(lead.length) : line}`);
+      lines.forEach((line2, i) => {
+        card2.raw(`    ${i === 0 && line2.startsWith(lead) ? t2.accent(lead) + line2.slice(lead.length) : line2}`);
       });
     }
     card2.blank().text("only these verbs call a model:");
@@ -54427,7 +53096,7 @@ async function runDoctor(o) {
     };
     for (const verb of MODEL_CALL_VERBS) verbRow(verb, verbNote[verb]);
     card2.blank().text("these never do, and open no socket at all:");
-    for (const line of format_exports.wrap(OFFLINE_VERBS.join(", "), pathW)) card2.raw(`    ${line}`);
+    for (const line2 of format_exports.wrap(OFFLINE_VERBS.join(", "), pathW)) card2.raw(`    ${line2}`);
     card2.blank().text("this one calls no model and does reach the network,");
     note("because it acquires what it needs instead of asking you to:", 2);
     for (const verb of RUNTIME_FETCH_VERBS) verbRow(verb, "the embedding runtime, once per machine");
@@ -54438,20 +53107,20 @@ async function runDoctor(o) {
       "claude-mem is read over http://127.0.0.1; agentmemory by launching its mcp server, itself a shim over an http backend on localhost. nothing leaves this machine, and without the flag neither opens anything at all."
     );
     card2.blank().text("who receives them:");
-    for (const line of format_exports.wrap(network.to, pathW)) card2.raw(`    ${line}`);
-    for (const line of network.detail) note(line, 4);
+    for (const line2 of format_exports.wrap(network.to, pathW)) card2.raw(`    ${line2}`);
+    for (const line2 of network.detail) note(line2, 4);
     card2.blank().text("one other download, once per machine: the embedding runtime,").text("fetched by potsherd index without being asked.");
-    for (const line of format_exports.wrap(
+    for (const line2 of format_exports.wrap(
       `The first ${"`"}potsherd index${"`"} on a machine fetches from ${embeddings_exports.runtimeHosts()} \u2014 ${format_exports.bytes(embeddings_exports.ACQUIRE_BYTES)} of WebAssembly runtime and quantized model weights, into ${paths_exports.tildify(paths_exports.modelsDir(root))}. Every file is pinned to a size and a sha256 that ships in the source and is checked before it is kept. They are GET requests for public files: no transcript, no path, no identifier and no count leaves this machine, and nothing is installed into node_modules. It runs in a background process so the verb returns as soon as text search is live, which means ${"`"}--quiet${"`"} and ${"`"}--json${"`"} \u2014 and the plugin's SessionEnd hook, which runs ${"`"}index --quiet${"`"} \u2014 do it silently. ${"`"}potsherd index --no-embed${"`"} does not do it at all, and neither does any run on a machine with ${"`"}POTSHERD_OFFLINE${"`"} set; text search is unaffected either way.`,
       Math.max(20, t2.width - 3)
     )) {
-      card2.raw(`  ${line}`);
+      card2.raw(`  ${line2}`);
     }
-    for (const line of format_exports.wrap(
+    for (const line2 of format_exports.wrap(
       "no telemetry. no account. potsherd stores no credential of its own.",
       Math.max(20, t2.width - 3)
     )) {
-      card2.raw(`  ${line}`);
+      card2.raw(`  ${line2}`);
     }
     print(card2.toString());
     return 0;
@@ -54623,7 +53292,7 @@ async function runDoctor(o) {
   ]);
   if (indexedTypes.length > 0) {
     card.blank().text("record types the parsers did not consume, over the whole index:");
-    for (const line of recordTypeLines(foldRecordTypes(indexedTypes), t)) card.raw(line);
+    for (const line2 of recordTypeLines(foldRecordTypes(indexedTypes), t)) card.raw(line2);
     card.text(t.dim('"new" means no note in research/formats.md describes it yet.'));
   } else {
     card.blank().text("record types seen (head/tail scan \u2014 run potsherd index for exact counts):");
@@ -54633,8 +53302,8 @@ async function runDoctor(o) {
   }
   card.blank().text("adapters:");
   for (const a of adapters) {
-    const line = format_exports.clip(a.line, Math.max(20, t.width - 4), t);
-    card.raw(`    ${a.supported ? line : t.dim(line)}`);
+    const line2 = format_exports.clip(a.line, Math.max(20, t.width - 4), t);
+    card.raw(`    ${a.supported ? line2 : t.dim(line2)}`);
   }
   card.text(t.dim(format_exports.clip(cursor_exports.CURSOR_DOCTOR_NOTE, Math.max(20, t.width - 4), t)));
   card.text(t.dim(format_exports.clip(gemini_exports.GEMINI_DOCTOR_NOTE, Math.max(20, t.width - 4), t)));
@@ -54782,14 +53451,14 @@ function recordTypeLines(rows, t) {
 function foldRecordTypes(rows) {
   const out = /* @__PURE__ */ new Map();
   for (const row2 of rows) {
-    const key2 = `${row2.harness} ${row2.type}`;
-    const at = out.get(key2);
+    const key4 = `${row2.harness} ${row2.type}`;
+    const at = out.get(key4);
     if (at) {
       at.count += row2.count;
       at.versions += 1;
       at.novel = at.novel || row2.novel;
     } else {
-      out.set(key2, {
+      out.set(key4, {
         harness: row2.harness,
         type: row2.type,
         count: row2.count,
@@ -55014,10 +53683,10 @@ function wrap4(db) {
       }
     },
     transaction(fn) {
-      const make = (begin) => (...args) => {
+      const make = (begin2) => (...args) => {
         const parentDepth = depth;
         const name = `potsherd_sp_${parentDepth}`;
-        db.exec(parentDepth === 0 ? begin : `SAVEPOINT ${name}`);
+        db.exec(parentDepth === 0 ? begin2 : `SAVEPOINT ${name}`);
         depth = parentDepth + 1;
         try {
           const out = fn(...args);
@@ -55383,17 +54052,17 @@ function decline2(db, reason) {
   return false;
 }
 function copyVectorsAcross2(db, table2) {
-  const key2 = table2 === "vec_cards" ? "session_id" : "id";
+  const key4 = table2 === "vec_cards" ? "session_id" : "id";
   const blob = `vec_blob_${table2.slice("vec_".length)}`;
-  db.exec(`CREATE TABLE IF NOT EXISTS ${blob} (${key2} TEXT PRIMARY KEY, embedding BLOB NOT NULL);`);
+  db.exec(`CREATE TABLE IF NOT EXISTS ${blob} (${key4} TEXT PRIMARY KEY, embedding BLOB NOT NULL);`);
   let rows;
   try {
-    rows = db.prepare(`SELECT ${key2} AS k, embedding AS e FROM ${table2}`).all();
+    rows = db.prepare(`SELECT ${key4} AS k, embedding AS e FROM ${table2}`).all();
   } catch {
     return false;
   }
   try {
-    const insert = db.prepare(`INSERT OR REPLACE INTO ${blob} (${key2}, embedding) VALUES (?, ?)`);
+    const insert = db.prepare(`INSERT OR REPLACE INTO ${blob} (${key4}, embedding) VALUES (?, ?)`);
     for (const row2 of rows) insert.run(row2.k, row2.e);
     db.exec(`DROP TABLE ${table2};`);
   } catch {
@@ -56890,8 +55559,8 @@ function ambiguous(needle, candidates2) {
 function shortNames(dirs) {
   return [...new Set(dirs.map((d) => last(d)))];
 }
-function nameList(names, cap2 = 12) {
-  const shown = names.slice(0, cap2);
+function nameList(names, cap4 = 12) {
+  const shown = names.slice(0, cap4);
   const rest = names.length - shown.length;
   return shown.join(", ") + (rest > 0 ? `, and ${rest} more` : "");
 }
@@ -56983,10 +55652,10 @@ function legacyMemoryScope(db, o) {
 }
 function legacySourceSelection(db, o) {
   const { project: _project, branch: _branch, since: _since, until: _until, ...filters } = parseFilters(db, o);
-  const active2 = Object.entries(filters).some(([key2, value]) => Boolean(value) && (!["sidechains", "ghosts"].includes(key2) || value !== "include"));
+  const active2 = Object.entries(filters).some(([key4, value]) => Boolean(value) && (!["sidechains", "ghosts"].includes(key4) || value !== "include"));
   if (!active2) return void 0;
   const rows = [];
-  const activeFields = Object.entries(filters).filter(([key2, value]) => Boolean(value) && (!["sidechains", "ghosts"].includes(key2) || value !== "include"));
+  const activeFields = Object.entries(filters).filter(([key4, value]) => Boolean(value) && (!["sidechains", "ghosts"].includes(key4) || value !== "include"));
   const canonical3 = db.prepare(`SELECT m.source_id,m.native_session_id,m.harness,
  EXISTS(SELECT 1 FROM sessions catalog WHERE catalog.id=m.native_session_id AND catalog.harness=m.harness) session_projection,
  EXISTS(SELECT 1 FROM ghosts catalog WHERE catalog.session_id=m.native_session_id AND catalog.harness=m.harness) ghost_projection,
@@ -57016,7 +55685,7 @@ function legacySourceSelection(db, o) {
   const sourceIds = [...new Set(rows.filter((row2) => !blocked.has(row2.source_id)).map((r3) => r3.source_id))];
   sourceIds.sort();
   const identity5 = JSON.stringify({ filters, sourceIds, coverageGaps });
-  return { sourceIds, ...coverageGaps.length ? { coverageGaps } : {}, ...filters.harness ? { harnesses: [filters.harness] } : {}, selectionId: createHash22("sha256").update(identity5).digest("hex"), warning: "Source filters applied: " + Object.entries(filters).filter(([key2, value]) => Boolean(value) && (!["sidechains", "ghosts"].includes(key2) || value !== "include")).map(([key2, value]) => `${key2}=${String(value)}`).join("; ").slice(0, 350) };
+  return { sourceIds, ...coverageGaps.length ? { coverageGaps } : {}, ...filters.harness ? { harnesses: [filters.harness] } : {}, selectionId: createHash22("sha256").update(identity5).digest("hex"), warning: "Source filters applied: " + Object.entries(filters).filter(([key4, value]) => Boolean(value) && (!["sidechains", "ghosts"].includes(key4) || value !== "include")).map(([key4, value]) => `${key4}=${String(value)}`).join("; ").slice(0, 350) };
 }
 function legacyMemoryRef(db, ref3) {
   const exact = db.prepare("SELECT native_session_id FROM memory_sources WHERE native_session_id=? AND availability<>'forgotten'").get(ref3);
@@ -57037,8 +55706,8 @@ function legacyMemoryRef(db, ref3) {
 function checkedPublicInput(o, kind3) {
   if (!o.inputJson) return {};
   try {
-    if (kind3 === "read" && Object.entries(o).some(([key2, value]) => ["from", "to"].includes(key2) && value !== void 0)) throw new MemoryInputError("conflicting_cli_range");
-    if (Object.entries(o).some(([key2, value]) => ["project", "harness", "since", "until", "branch", "file", "tag", "pinned", "linkedTo", "untitled", "status", "sidechains", "ghosts"].includes(key2) && Boolean(value) && (!["sidechains", "ghosts"].includes(key2) || value !== "include"))) throw new MemoryInputError("conflicting_cli_scope");
+    if (kind3 === "read" && Object.entries(o).some(([key4, value]) => ["from", "to"].includes(key4) && value !== void 0)) throw new MemoryInputError("conflicting_cli_range");
+    if (Object.entries(o).some(([key4, value]) => ["project", "harness", "since", "until", "branch", "file", "tag", "pinned", "linkedTo", "untitled", "status", "sidechains", "ghosts"].includes(key4) && Boolean(value) && (!["sidechains", "ghosts"].includes(key4) || value !== "include"))) throw new MemoryInputError("conflicting_cli_scope");
     return { input: parseMemoryInput(o.inputJson, kind3) };
   } catch (error) {
     let requested = defaultBudget();
@@ -57046,9 +55715,9 @@ function checkedPublicInput(o, kind3) {
     try {
       const raw = JSON.parse(o.inputJson);
       if (raw.budget) {
-        for (const key2 of ["maxTokens", "remainingJourneyTokens", "maxBytes"]) {
-          const min2 = key2 === "maxBytes" ? 256 : 64, max2 = key2 === "maxBytes" ? 1048576 : 65536;
-          if (Number.isInteger(raw.budget[key2]) && raw.budget[key2] >= min2 && raw.budget[key2] <= max2) requested[key2] = raw.budget[key2];
+        for (const key4 of ["maxTokens", "remainingJourneyTokens", "maxBytes"]) {
+          const min2 = key4 === "maxBytes" ? 256 : 64, max2 = key4 === "maxBytes" ? 1048576 : 65536;
+          if (Number.isInteger(raw.budget[key4]) && raw.budget[key4] >= min2 && raw.budget[key4] <= max2) requested[key4] = raw.budget[key4];
         }
       }
       if (kind3 !== "write") responseFormat = validateMemoryResponseFormat(raw.responseFormat);
@@ -57389,8 +56058,8 @@ async function runFind(o) {
       })
     );
     if (federated) {
-      for (const line of wrapOnSeparator(federationLine(federated.bridges), Math.max(20, t.width - 2))) {
-        print(`  ${t.dim(line)}`);
+      for (const line2 of wrapOnSeparator(federationLine(federated.bridges), Math.max(20, t.width - 2))) {
+        print(`  ${t.dim(line2)}`);
       }
     }
     return result.sessions.length ? 0 : 1;
@@ -57419,9 +56088,9 @@ function vectorMode(o) {
       return "auto";
   }
 }
-function wrapOnSeparator(line, width, sep = "  \xB7  ") {
-  if (!line) return [];
-  const parts = line.split(sep);
+function wrapOnSeparator(line2, width, sep = "  \xB7  ") {
+  if (!line2) return [];
+  const parts = line2.split(sep);
   const out = [];
   let current = "";
   for (const part of parts) {
@@ -58389,16 +57058,16 @@ function provenance2(t, n2) {
 function fields(t, n2) {
   const out = [];
   const body = Math.max(20, t.width - 2 - LABEL_W2);
-  for (const [label4, text2] of [
+  for (const [label5, text2] of [
     ["decided", n2.decided],
     ["open", n2.open],
     ["next", n2.next]
   ]) {
     if (!text2) continue;
     const lines = format_exports.wrap(text2, body);
-    lines.forEach((line, i) => {
-      const head = i === 0 ? t.dim(label4.padEnd(LABEL_W2)) : " ".repeat(LABEL_W2);
-      out.push(`  ${head}${line}`);
+    lines.forEach((line2, i) => {
+      const head = i === 0 ? t.dim(label5.padEnd(LABEL_W2)) : " ".repeat(LABEL_W2);
+      out.push(`  ${head}${line2}`);
     });
   }
   return out;
@@ -58853,7 +57522,7 @@ async function runLink(o) {
         printJson(result2);
         return 0;
       }
-      for (const line of renderSuggestions(result2, themeFrom(o), format_exports.wrap)) print(line);
+      for (const line2 of renderSuggestions(result2, themeFrom(o), format_exports.wrap)) print(line2);
       return 0;
     }
     if (!o.a || !o.b) {
@@ -59015,7 +57684,7 @@ async function runAsk(o) {
       k,
       cheap,
       strict: Boolean(o.strict),
-      maxUsd: money4(o.maxUsd),
+      maxUsd: money3(o.maxUsd),
       concurrency: positive(o.concurrency, ASK_CONCURRENCY, "--concurrency"),
       // Only when it was typed. `positive()` would substitute the default and
       // core could no longer tell 'unset' from 'five'; today those agree, and
@@ -59032,10 +57701,10 @@ async function runAsk(o) {
     if (synthesisOut) {
       return await recordSynthesis(db, question, base3, synthesisOut, readersIn, o, t, onProgress);
     }
-    const result = filterIn ? await filterHostAnswer(db, question, base3, filterIn, (line) => {
-      if (!o.json && !o.quiet) print(`  ${t.dim(line)}`);
-    }) : readersIn ? await replayReaders(db, question, base3, readersIn, (line) => {
-      if (!o.json && !o.quiet) print(`  ${t.dim(line)}`);
+    const result = filterIn ? await filterHostAnswer(db, question, base3, filterIn, (line2) => {
+      if (!o.json && !o.quiet) print(`  ${t.dim(line2)}`);
+    }) : readersIn ? await replayReaders(db, question, base3, readersIn, (line2) => {
+      if (!o.json && !o.quiet) print(`  ${t.dim(line2)}`);
     }) : await ask(db, question, { ...base3, onProgress });
     if (o.debug) reportDrops(drops);
     if (o.json) {
@@ -59176,7 +57845,7 @@ function readersOutReceipt(file, abs, probe2, t) {
 }
 async function replayReaders(db, question, base3, path55, onNote) {
   const staged = await stageReaders(db, question, base3, path55);
-  for (const line of staged.notes) onNote?.(line);
+  for (const line2 of staged.notes) onNote?.(line2);
   return ask(db, question, { ...base3, pin: staged.pin, readerFn: staged.readerFn });
 }
 async function stageReaders(db, question, base3, path55) {
@@ -59268,7 +57937,7 @@ function synthCapture() {
 }
 async function writeSynthesisFile(db, question, base3, path55, readersPath, onProgress) {
   const staged = readersPath ? await stageReaders(db, question, base3, readersPath) : null;
-  const cap2 = synthCapture();
+  const cap4 = synthCapture();
   const probe2 = await ask(db, question, {
     ...base3,
     // FIX-B D4. The pin belongs on every pass that consumes a recording, not
@@ -59279,13 +57948,13 @@ async function writeSynthesisFile(db, question, base3, path55, readersPath, onPr
     // saying the recording had been half ignored.
     ...staged ? { pin: staged.pin, readerFn: staged.readerFn } : {},
     ...onProgress && !staged ? { onProgress } : {},
-    synthFn: cap2.fn,
+    synthFn: cap4.fn,
     openThreads: false
   });
   const abs = nodePath2.resolve(path55);
   const notes = staged?.notes ?? [];
-  if (!cap2.seen.input) return { file: null, abs, probe: probe2, notes };
-  const input = cap2.seen.input;
+  if (!cap4.seen.input) return { file: null, abs, probe: probe2, notes };
+  const input = cap4.seen.input;
   const q2 = redactOutgoing(question).text;
   const file = {
     kind: SYNTHESIS_FILE_KIND,
@@ -59329,7 +57998,7 @@ async function recordSynthesis(db, question, base3, path55, readersPath, o, t, o
     readersPath,
     onProgress
   );
-  if (!o.json && !o.quiet) for (const line of notes) print(`  ${t.dim(line)}`);
+  if (!o.json && !o.quiet) for (const line2 of notes) print(`  ${t.dim(line2)}`);
   if (o.json) {
     printJson({
       kind: SYNTHESIS_FILE_KIND,
@@ -59754,7 +58423,7 @@ function positive(value, fallback, flag) {
   }
   return Math.floor(n2);
 }
-function money4(value) {
+function money3(value) {
   if (value === void 0 || value === null || value === "") return ASK_MAX_USD;
   const n2 = Number(value);
   if (!Number.isFinite(n2) || n2 <= 0) {
@@ -59954,7 +58623,7 @@ async function runSetup(o) {
   for (const plan of blocked) {
     refused++;
     print("");
-    for (const line of setup_exports.manualSteps(plan)) print("  " + line);
+    for (const line2 of setup_exports.manualSteps(plan)) print("  " + line2);
   }
   for (const plan of absent) {
     print("");
@@ -59963,7 +58632,7 @@ async function runSetup(o) {
     print(`  ${t.dim(`and no ${plan.detection.bins.join(" or ")} on your PATH`)}`);
     if (!o.remove) {
       print(`  ${t.dim("when you install it, this is the stanza:")}`);
-      for (const line of plan.snippet.trimEnd().split("\n")) print("    " + t.dim(line));
+      for (const line2 of plan.snippet.trimEnd().split("\n")) print("    " + t.dim(line2));
     }
   }
   if (!o.dryRun && !refused && (changed > 0 || done.length > 0)) {
@@ -60003,8 +58672,8 @@ function printPlan(plan, o, t, resolution, unbuilt = false) {
   }
   print("");
   for (const raw of plan.diff.split("\n")) {
-    const line = raw.startsWith("--- ") || raw.startsWith("+++ ") ? raw.slice(0, 4) + format_exports.elideMiddle(raw.slice(4), Math.max(24, t.width - 6), t) : raw;
-    const tone2 = line.startsWith("+") && !line.startsWith("+++") ? t.ok(line) : line.startsWith("-") && !line.startsWith("---") ? t.warn(line) : t.dim(line);
+    const line2 = raw.startsWith("--- ") || raw.startsWith("+++ ") ? raw.slice(0, 4) + format_exports.elideMiddle(raw.slice(4), Math.max(24, t.width - 6), t) : raw;
+    const tone2 = line2.startsWith("+") && !line2.startsWith("+++") ? t.ok(line2) : line2.startsWith("-") && !line2.startsWith("---") ? t.warn(line2) : t.dim(line2);
     print("  " + tone2);
   }
   print("");
@@ -60357,7 +59026,7 @@ async function runStack(o) {
     });
     return 0;
   }
-  for (const line of render(r3, t, o)) print(line);
+  for (const line2 of render(r3, t, o)) print(line2);
   return 0;
 }
 function render(r3, t, o = {}) {
@@ -60375,7 +59044,7 @@ function render(r3, t, o = {}) {
     L.push(`    ${f.n}  ${pad3(f.label, 16)}${wide ? pad3(f.when, 26) + state : f.when}`);
   }
   L.push("");
-  for (const line of format_exports.wrap(r3.claimLegend, t.width - 4)) L.push(t.dim(`  ${line}`));
+  for (const line2 of format_exports.wrap(r3.claimLegend, t.width - 4)) L.push(t.dim(`  ${line2}`));
   L.push("");
   const labelW = 15;
   const licW = wide ? 13 : 0;
@@ -60410,7 +59079,7 @@ function render(r3, t, o = {}) {
     ["also", "no knowledge graph. hindsight and greplica do that."],
     ["", "no server, no account, no telemetry. sqlite in ~/.potsherd."]
   ];
-  for (const [label4, text2] of notDone) L.push(...hang(label4, 16, text2, 4, t.width));
+  for (const [label5, text2] of notDone) L.push(...hang(label5, 16, text2, 4, t.width));
   L.push("");
   const here = r3.detections.filter((d) => d.present && d.spec.id !== "potsherd");
   if (here.length) {
@@ -60418,7 +59087,7 @@ function render(r3, t, o = {}) {
     L.push("");
     for (const d of here) {
       L.push(`    ${t.ok(d.spec.label)}  ${t.dim(format_exports.elide(d.found[0] ?? "", Math.max(20, t.width - 8 - d.spec.label.length), t))}`);
-      for (const line of format_exports.wrap(d.spec.note, t.width - 6)) L.push(`      ${line}`);
+      for (const line2 of format_exports.wrap(d.spec.note, t.width - 6)) L.push(`      ${line2}`);
     }
     L.push("");
   } else {
@@ -60428,11 +59097,11 @@ function render(r3, t, o = {}) {
   const absent = r3.detections.filter((d) => !d.present && d.spec.id !== "potsherd");
   if (absent.length) {
     L.push(`  ${t.dim("not installed here")}`);
-    for (const line of format_exports.wrap(absent.map((d) => d.spec.label).join(", "), t.width - 6)) {
-      L.push(t.dim(`    ${line}`));
+    for (const line2 of format_exports.wrap(absent.map((d) => d.spec.label).join(", "), t.width - 6)) {
+      L.push(t.dim(`    ${line2}`));
     }
     const why2 = "potsherd looked for a directory each one creates and found none." + (o.paths ? "" : " potsherd stack --paths shows where it looked.");
-    for (const line of format_exports.wrap(why2, t.width - 4)) L.push(t.dim(`  ${line}`));
+    for (const line2 of format_exports.wrap(why2, t.width - 4)) L.push(t.dim(`  ${line2}`));
     if (o.paths) {
       for (const d of absent) {
         L.push(t.dim(`    ${pad3(d.spec.label, 15)}${format_exports.elideMiddle(d.looked.join("  "), t.width - 22, t)}`));
@@ -60442,23 +59111,23 @@ function render(r3, t, o = {}) {
   }
   for (const ov of r3.overlaps) {
     L.push(`  ${t.warn(ov.kind)}  ${t.dim(ov.tools.join(", "))}`);
-    for (const line of format_exports.wrap(ov.cost, t.width - 6)) L.push(`    ${line}`);
-    for (const line of format_exports.wrap(ov.fix, t.width - 6)) L.push(`    ${t.dim(line)}`);
+    for (const line2 of format_exports.wrap(ov.cost, t.width - 6)) L.push(`    ${line2}`);
+    for (const line2 of format_exports.wrap(ov.fix, t.width - 6)) L.push(`    ${t.dim(line2)}`);
     L.push("");
   }
   L.push(`  ${t.bold("recommended")}`);
   L.push("");
   for (const row2 of r3.recommendation.rows) {
     L.push(`    ${row2.failure.n}  ${pad3(row2.failure.label, 16)}${t.arrow}  ${row2.use}`);
-    for (const line of format_exports.wrap(row2.why, t.width - 12)) L.push(t.dim(`       ${line}`));
+    for (const line2 of format_exports.wrap(row2.why, t.width - 12)) L.push(t.dim(`       ${line2}`));
   }
   L.push("");
   for (const a of r3.recommendation.actions) {
-    for (const line of format_exports.wrap(a, t.width - 6)) L.push(`    ${line}`);
+    for (const line2 of format_exports.wrap(a, t.width - 6)) L.push(`    ${line2}`);
   }
   if (r3.recommendation.actions.length) L.push("");
   const honesty = `${r3.unverified} of these ${r3.detections.length} rows are from the project's own docs, read ${r3.verifiedOn}, and were never exercised here. the rest were read off this machine.`;
-  for (const line of format_exports.wrap(honesty, t.width - 4)) L.push(t.dim(`  ${line}`));
+  for (const line2 of format_exports.wrap(honesty, t.width - 4)) L.push(t.dim(`  ${line2}`));
   if (o.sources) {
     L.push("");
     for (const d of r3.detections) {
@@ -60487,11 +59156,11 @@ function claimLabel(d, t) {
 function coverageObject(c) {
   return { "1": c[0], "2": c[1], "3": c[2], "4": c[3] };
 }
-function hang(label4, labelW, text2, indent, width) {
+function hang(label5, labelW, text2, indent, width) {
   const lead = " ".repeat(indent);
   const body = Math.max(20, width - indent - labelW);
   const lines = format_exports.wrap(text2, body);
-  return lines.map((line, i) => `${lead}${i === 0 ? pad3(label4, labelW) : " ".repeat(labelW)}${line}`);
+  return lines.map((line2, i) => `${lead}${i === 0 ? pad3(label5, labelW) : " ".repeat(labelW)}${line2}`);
 }
 function pad3(s, w) {
   if (w === 0) return "";
@@ -61138,7 +59807,7 @@ of a real config file, or from that project's own docs on a printed date.`);
 }
 function globals(program2, cmd, local) {
   const g2 = program2.opts();
-  const pick4 = (key2) => local[key2] !== void 0 ? local[key2] : g2[key2];
+  const pick4 = (key4) => local[key4] !== void 0 ? local[key4] : g2[key4];
   const width = pick4("width");
   const claudeDir2 = pick4("claudeDir");
   const codexDir2 = pick4("codexDir");
@@ -61216,9 +59885,9 @@ function tour(o = {}) {
   const col3 = Math.max(...names.map((n2) => n2.length));
   const roomy = w >= 9 + col3 + 2 + Math.max(...REST.map(([, g2]) => g2.length));
   REST.forEach(([, gloss], i) => {
-    const label4 = i === 0 ? "  also:  " : "         ";
-    const line = roomy ? `${label4}${names[i]?.padEnd(col3)}  ${gloss}` : `${label4}${names[i]}`;
-    print(t.dim(line));
+    const label5 = i === 0 ? "  also:  " : "         ";
+    const line2 = roomy ? `${label5}${names[i]?.padEnd(col3)}  ${gloss}` : `${label5}${names[i]}`;
+    print(t.dim(line2));
   });
   print(t.dim(`         ${publicCommandName} help <verb> for any of them`));
   print("");

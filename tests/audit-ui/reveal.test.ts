@@ -16,33 +16,34 @@ function reveal(w: number, h: number, t: number, opts: { color?: Color; ascii?: 
   if (opts.display) story.archetype!.deciding = [{ ...story.archetype!.deciding[0]!, display: opts.display }, ...story.archetype!.deciding.slice(1)];
   const deck = buildDeck(snapshot);
   const card = deck.find(c => c.kind === 'archetype')!;
-  const c = new Canvas(w, h, C.ink);
+  const c = new Canvas(w, h, C.bg);
   const busy = renderCard({ c, w, h, t, tier: tierFor(w, h)!, caps: { color: opts.color ?? 'truecolor', motion: opts.motion ?? true, unicode: !opts.ascii }, blink: false, state: {}, index: 0, total: deck.length }, card);
   return { text: c.toText(), busy };
 }
 
-describe('archetype ceremony', () => {
-  it('builds suspense: evidence first, then the runner-up roll, then the slam', () => {
+describe('archetype reveal', () => {
+  it('builds quietly: evidence first, then the redacted title resolves in place, then the tier and copy', () => {
     const early = reveal(120, 40, 900).text;
-    expect(early).toContain('the evidence');
-    expect(early).not.toContain('╔');
-    const roll = reveal(120, 40, T.roll + 500).text;
-    expect(roll).toMatch(/so close…|maybe…/); // the slot spins through real runners-up, no raw scores
-    expect(roll).not.toMatch(/0\.\d\d/);
-    const slam = reveal(120, 40, T.shimmer + 200).text;
-    expect(slam).toContain('╔');
+    expect(early).toContain('THE EVIDENCE');
+    expect(early).toContain('41% after 10pm');
+    expect(early).not.toContain('Epic'); // the tier lands after the title
+    expect(early).toContain('███'); // the title is still the cover's redacted bars
+    const title = reveal(120, 40, T.title + 900).text;
+    expect(title).not.toMatch(/█{8,}/); // resolved into the set title
     const done = reveal(120, 40, T.settle);
     expect(done.busy).toBe(false);
-    expect(done.text).toContain('★ EPIC ★');
-    expect(done.text).toContain('also close: The Model Sommelier'); // the sub-role already names The Architect
-    expect(done.text).not.toMatch(/\b0\.\d\d\b/);
-    expect(done.text).toContain('your code');
+    expect(done.text).toMatch(/Epic {2}with a streak of The Spec Writer/);
+    expect(done.text).toContain('Also close  The Model Sommelier'); // the sub-role already names the runner-up
+    expect(done.text).not.toMatch(/\b0\.\d\d\b/); // words, never raw scores
+    expect(done.text).toContain('YOUR CODE');
     expect(done.text).toContain('night · spec · roaming · hot-headed');
+    // No slot roll, no frame, no sparkles.
+    expect(done.text).not.toMatch(/\bso close…|maybe…|[╔┌✦★]/);
   });
 
   it('with motion off draws only the final frame', () => {
     const { text, busy } = reveal(120, 40, Infinity, { motion: false });
-    expect(text).toContain('★ EPIC ★');
+    expect(text).toMatch(/Epic {2}with a streak/);
     expect(text).toContain('very high');
     expect(busy).toBe(false);
   });
@@ -50,20 +51,25 @@ describe('archetype ceremony', () => {
   it('never clips an evidence label (the "top project only 23% of promp" bug)', () => {
     const label = 'top project only 23% of prompts';
     for (const [w, h] of [[60, 20], [80, 24], [100, 30], [120, 40], [140, 40]] as const) {
-      expect(reveal(w, h, Infinity, { display: label }).text, `${w}×${h}`).toContain(label);
+      const { text } = reveal(w, h, Infinity, { display: label });
+      expect(text, `${w}×${h}`).toContain(label);
+      expect(text, `${w}×${h}`).toContain('notable'); // the last meter still has its word
+      expect(text, `${w}×${h}`).not.toContain('…');
     }
   });
 
-  it('scales the frame with rarity: none for common, single for rare, double for epic/legendary', () => {
-    expect(reveal(120, 40, Infinity, { tier: 'common' }).text).not.toMatch(/[╔┌]/);
-    expect(reveal(120, 40, Infinity, { tier: 'rare' }).text).toContain('┌');
-    expect(reveal(120, 40, Infinity, { tier: 'legendary' }).text).toContain('★ LEGENDARY ★');
+  it('names the rarity in words, one accent, no frame for any tier', () => {
+    for (const tier of ['common', 'rare', 'epic', 'legendary']) {
+      const text = reveal(120, 40, Infinity, { tier }).text;
+      expect(text).toContain(tier[0]!.toUpperCase() + tier.slice(1));
+      expect(text).not.toMatch(/[╔╗┌┐★]/);
+    }
   });
 
-  it('falls back to a spaced text title in ASCII / colourless terminals', () => {
+  it('falls back to a bold text title in ASCII / colourless terminals', () => {
     const { text } = reveal(100, 30, Infinity, { ascii: true, color: 'none' });
-    expect(text).toContain('T H E   2 A M');
-    expect(text).toContain('* EPIC *');
-    for (const ch of text) if (ch !== '\n') expect(ch.charCodeAt(0) < 128 || '…’“”'.includes(ch)).toBe(true);
+    expect(text).toContain('The 2AM Deployer');
+    expect(text).toContain('Epic');
+    for (const ch of text) if (ch !== '\n') expect(ch.charCodeAt(0) < 128 || '…’“”·'.includes(ch), ch).toBe(true);
   });
 });
