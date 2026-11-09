@@ -82,8 +82,9 @@ export function recSession(s: Session, sidecar = false): RecSession {
     turns: s.turns.map(t => recTurn(t, sidecar))};
 }
 
-/** "subagent of <id>", "fork of <id>", or "delegated by <id>" for a task another thread dispatched (records/deleg.ts). */
-export const relation = (kind: string | null, parent: string): string => (kind === 'delegated' ? `delegated by ${parent}` : `${kind ?? 'None'} of ${parent}`);
+/** "subagent of <id>", "fork of <id>", "delegated by <id>" (a task another thread dispatched, records/deleg.ts), or "import of <id>" (a Codex thread continued from an imported Claude session). */
+export const relation = (kind: string | null, parent: string): string => (kind === 'delegated' ? `delegated by ${parent}`
+  : kind === 'import' ? `import of ${parent} (continued in Codex; the turns before the import are in that record)` : `${kind ?? 'None'} of ${parent}`);
 
 export const fmtTs = (ts: string | null): string => (ts ? ts.replace('T', ' ').slice(0, 16) : '?');
 

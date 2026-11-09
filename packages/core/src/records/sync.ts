@@ -2,7 +2,7 @@
  * `slopie sync`: native history -> plain-text records (+ INDEX.tsv) -> lexical search index.
  *
  *   discover (shared with the audit) -> parse changed files on a worker pool -> merge copies per session
- *   (most turns wins) -> drop Codex imports of Claude sessions -> prompt-only records from history.jsonl
+ *   (most turns wins) -> drop Codex imports of Claude sessions (keep turns after the import when continued) -> prompt-only records from history.jsonl
  *   -> drop ignored / forgotten -> write changed records atomically -> INDEX.tsv -> FTS5 index.
  *
  * Incremental per source file (size + mtime). A session whose source files have all gone (deleted by the
@@ -32,6 +32,8 @@ export const FORMAT_VERSION = 3;
 const STATE_VERSION = 1;
 /** Bumped when parsing extracts new metadata (2: delegation hashes): every source is parsed again, kept records stay. */
 const PARSE_VERSION = 2;
+/** Turns this long after a Codex import are new work, not the replayed copy. */
+const IMPORT_SLACK_MS = 10 * 60 * 1000;
 
 export interface SyncOptions {
   recordsDir?: string;
@@ -144,6 +146,8 @@ interface Merged {
   paths: string[];
   archiveOnly: boolean;
   codexTitle?: string | null;
+  /** Continued Codex import: only turns after this time are its own. */
+  importCut?: string;
   /** Prompt-only turns; `rec` is a turn carried over from the previous record as written. */
   history?: {ts: string | null; text: string; ref: string; rec?: RecTurn}[];
   sources: string[];
@@ -252,7 +256,11 @@ const PROMPT_ONLY_TITLE = '(prompt history only; transcript not kept)';
 const promptKey = (ts: string | null, text: string) => JSON.stringify([fmtTs(ts), text.replace(/ …\[\+\d+ chars; raw: [^\]]*\]$/, '').replace(/\s+/g, ' ').trim()]);
 
 /** Codex thread titles, imports, archived flags and spawn edges from each Codex home. */
-function codexMeta(homes: readonly string[], imports: Set<string>): {titles: Map<string, string>; db: Map<string, {title?: string | null; spawnParent?: string}>; imported: Set<string>} {
+/** An import record: when Codex imported the thread, and the Claude session it came from. */
+interface ImportInfo { at: string; source: string | null }
+
+function codexMeta(homes: readonly string[], imports: Set<string>): {titles: Map<string, string>; db: Map<string, {title?: string | null; spawnParent?: string}>; imported: Set<string>; importInfo: Map<string, ImportInfo>} {
+  const importInfo = new Map<string, ImportInfo>();
   const titles = new Map<string, string>();
   const db = new Map<string, {title?: string | null; spawnParent?: string}>();
   const imported = new Set<string>();
@@ -265,8 +273,15 @@ function codexMeta(homes: readonly string[], imports: Set<string>): {titles: Map
       });
     }
     try {
-      const raw = JSON.parse(fs.readFileSync(path.join(home, 'external_agent_session_imports.json'), 'utf8')) as {records?: {imported_thread_id?: string}[]};
-      for (const r of raw.records ?? []) if (r.imported_thread_id) imported.add(r.imported_thread_id);
+      const raw = JSON.parse(fs.readFileSync(path.join(home, 'external_agent_session_imports.json'), 'utf8')) as {records?: {imported_thread_id?: string; imported_at?: number; source_path?: string}[]};
+      for (const r of raw.records ?? []) {
+        if (!r.imported_thread_id) continue;
+        imported.add(r.imported_thread_id);
+        if (typeof r.imported_at === 'number') {
+          const src = typeof r.source_path === 'string' ? /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/i.exec(r.source_path)?.[1]?.toLowerCase() ?? null : null;
+          importInfo.set(r.imported_thread_id, {at: new Date(r.imported_at * 1000).toISOString(), source: src});
+        }
+      }
     } catch { /* absent */ }
     let states: string[] = [];
     try { states = fs.readdirSync(home).filter(f => /^state_\d+\.sqlite$/.test(f)).sort((a, b) => Number(b.match(/\d+/)![0]) - Number(a.match(/\d+/)![0])); } catch { /* none */ }
@@ -286,7 +301,7 @@ function codexMeta(homes: readonly string[], imports: Set<string>): {titles: Map
   }
   // The audit's list is broader (every UUID in the imports file); both are honoured.
   for (const id of imports) imported.add(id);
-  return {titles, db, imported};
+  return {titles, db, imported, importInfo};
 }
 
 /** Every native source the records read: the audit's discovery plus the 1.x rescue archive's per-project copies. */
@@ -487,7 +502,15 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const meta = codexMeta(codexHomes, codexImported);
   const sessions: Merged[] = [];
   for (const b of merged.values()) {
-    if (b.harness === 'codex' && meta.imported.has(b.id)) { result.droppedImports++; continue; }
+    if (b.harness === 'codex' && meta.imported.has(b.id)) {
+      // A Codex import of a Claude session repeats it; drop it unless the user went on working in Codex. Then keep
+      // the turns after the import (the copied prefix stays in the Claude record) as 'import of <claude id>'.
+      const info = meta.importInfo.get(b.id);
+      const cut = info ? new Date(Date.parse(info.at) + IMPORT_SLACK_MS).toISOString() : null;
+      if (!cut || !b.end || b.end <= cut) { result.droppedImports++; continue; }
+      b.importCut = cut;
+      if (!b.parent && info!.source) { b.parent = info!.source; b.parentKind = 'import'; }
+    }
     if (!b.nTurns) continue;
     if (b.harness === 'codex') {
       const m = meta.db.get(b.id);
@@ -514,7 +537,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const promptOnlyPrev = new Map<string, SessionState>();
   for (const [key, ss] of Object.entries(prev.sessions)) {
     if (present.has(key) || presentIds.has(`${ss.harness}:${ss.id}`)) continue;
-    if (ss.harness === 'codex' && meta.imported.has(ss.id)) continue;
+    if (ss.harness === 'codex' && meta.imported.has(ss.id) && ss.parentKind !== 'import') continue;
     if (!fs.existsSync(path.join(dir, ss.rel))) continue;
     if (ss.history) promptOnlyPrev.set(ss.id, ss);
     else kept.push([key, ss]);
@@ -598,9 +621,14 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const indexed = index ? index.keys() : new Map<string, string>();
   const needParse: {s: Merged; sig: string}[] = [];
   const sigOf = (s: Merged) => hash([FORMAT_VERSION, sidecar, s.best, s.best ? next.sources[s.best]?.size : 0, s.best ? next.sources[s.best]?.mtimeMs : 0, s.nTurns, s.sources, s.codexTitle ?? null,
-    s.parent, s.parentKind, (kids.get(s.id) ?? []).map(c => [c.id, c.kind]), s.archiveOnly, s.history ? s.history.length : -1]);
+    s.parent, s.parentKind, (kids.get(s.id) ?? []).map(c => [c.id, c.kind]), s.archiveOnly, s.history ? s.history.length : -1, s.importCut ?? null]);
   const writeOne = (s: Merged, rec: RecSession, sig: string) => {
     rec.parent = s.parent; rec.parentKind = s.parentKind;
+    if (s.importCut) {
+      const i = rec.turns.findIndex(t => !!t.ts && t.ts > s.importCut!);
+      rec.turns = i < 0 ? [] : rec.turns.slice(i);
+      rec.start = rec.turns[0]?.ts ?? rec.start;
+    }
     if (s.harness === 'codex') rec.title = s.codexTitle || rec.title;
     const rel = canonicalRel(recordRelPath(rec));
     const file = path.join(dir, rel);

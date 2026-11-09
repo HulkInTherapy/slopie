@@ -277,3 +277,33 @@ describe('delegation edges (R7)', () => {
     expect([...edges]).toEqual([['child', 'orch-b']]);
   });
 });
+
+describe('Codex imports of Claude sessions (R7)', () => {
+  const CONT = '77777777-7777-7777-8777-777777777777';
+  const line = (o: unknown) => JSON.stringify(o) + '\n';
+  const rollout = [
+    {timestamp: '2026-10-02T12:00:00.000Z', type: 'session_meta', payload: {id: CONT, cwd: PROJECT, originator: 'codex_cli'}},
+    {timestamp: '2026-10-02T12:00:01.000Z', type: 'response_item', payload: {type: 'message', role: 'user', content: [{type: 'input_text', text: 'copied claude prompt'}]}},
+    {timestamp: '2026-10-02T12:00:02.000Z', type: 'response_item', payload: {type: 'message', role: 'assistant', content: [{type: 'output_text', text: 'copied claude answer'}]}},
+    {timestamp: '2026-10-04T09:00:00.000Z', type: 'response_item', payload: {type: 'message', role: 'user', content: [{type: 'input_text', text: 'new work in codex: pick a caption'}]}},
+    {timestamp: '2026-10-04T09:00:30.000Z', type: 'response_item', payload: {type: 'message', role: 'assistant', content: [{type: 'output_text', text: 'Use: missing sock found'}]}},
+  ].map(line).join('');
+
+  it('keeps an imported thread the user continued in Codex, from the import on, as an import of the Claude session', async () => {
+    const f = fixture();
+    fs.writeFileSync(path.join(f.codexDir, 'sessions', '2026', '10', '02', `rollout-2026-10-02T12-00-00-${CONT}.jsonl`), rollout);
+    fs.writeFileSync(path.join(f.codexDir, 'external_agent_session_imports.json'), JSON.stringify({records: [
+      {imported_thread_id: IDS.codexImported},
+      {imported_thread_id: CONT, imported_at: Date.parse('2026-10-02T12:00:00Z') / 1000, source_path: `/Users/me/.claude/projects/-work-demo-app/${IDS.claude}.jsonl`},
+    ]}));
+    await syncRecords(syncOptions(f));
+    expect(rowOf(f, IDS.codexImported)).toBeUndefined();
+    const row = rowOf(f, CONT)!;
+    expect(row[6]).toBe(`import:${IDS.claude}`);
+    expect(row[3]).toBe('2026-10-04T09:00:00Z');
+    const text = record(f, CONT);
+    expect(text).toContain(`## parent: import of ${IDS.claude}`);
+    expect(text).toContain('Use: missing sock found');
+    expect(text).not.toContain('copied claude answer');
+  });
+});
