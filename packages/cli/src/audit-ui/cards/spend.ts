@@ -25,15 +25,18 @@ export function spendBody(s: Scene, sp: SpendView, r: Rect): boolean {
   const a = seg(t, 600, 400);
   c.text(r.x, y++, 'lifetime, measured · API list prices', { fg: C.gray, alpha: a }, leftW);
   y++;
-  const line = (label: string, v: string, extra = '', color: Rgb = C.cream) => {
+  // `extra` may list fallbacks, longest first: the first that fits is drawn whole, never cut mid-word.
+  const line = (label: string, v: string, extra: string | string[] = '', color: Rgb = C.cream) => {
     if (y >= r.y + r.h) return;
     c.text(r.x, y, label, { fg: C.gray, alpha: a });
     const w = c.text(r.x + 16, y, v, { fg: color, bold: true, alpha: a });
-    if (extra) c.text(r.x + 17 + w, y, extra, { fg: C.slate, alpha: a }, leftW - 17 - w);
+    const room = leftW - 17 - w;
+    const fit = (Array.isArray(extra) ? extra : [extra]).find(e => e && e.length <= room);
+    if (fit) c.text(r.x + 17 + w, y, fit, { fg: C.slate, alpha: a }, room);
     y++;
   };
   if (sp.recovered) line('+ recovered', money(sp.recovered), 'from usage counters', C.peach);
-  if (sp.estimated) line('≈ older prompts', `${money(sp.estimated.low)}–${money(sp.estimated.high).slice(1)}`, `est., ${count(sp.estimated.prompts)} prompts`, C.peach);
+  if (sp.estimated) line('≈ older prompts', `${money(sp.estimated.low)}–${money(sp.estimated.high).slice(1)}`, [`est., ${count(sp.estimated.prompts)} prompts`, `est., ${count(sp.estimated.prompts)}`, 'est.'], C.peach);
   if (sp.recovered || sp.estimated) y++;
   if (sp.thisMonth !== null) line('this month', money(sp.thisMonth));
   if (sp.perDay !== null) line('per active day', money(sp.perDay));
