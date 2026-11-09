@@ -10,4 +10,4 @@ The user's agent history (Claude Code, Codex, Pi; all projects; including sessio
 - Tool output is shortened; "full output: <raw path>:<line>" points to the original JSONL line (Codex .zst: use zstdcat).
 - Subagent sessions have "parent: subagent of <id>"; their files are named <date>_<parent-id>__agent-*.txt.
 Search with rg (e.g. rg -n -i 'term' ~/.slopie/records, rg -l, rg 'pattern' INDEX.tsv) and read ranges with sed -n 'a,bp' file. Times are UTC.
-Faster lookups over the same records, if the slopie command is available: slopie search <words> [--project P --since D], slopie read <id> [--from N --to M], slopie threads [--project P --since D --text W], slopie grep <id> <text>; each reply ends with the exact next command.
+If the slopie command is on PATH, start with it rather than rg: it searches these same records faster and more cheaply. slopie search <words> [--project P --since D --session ID]; slopie read <id> --from N [--to M] (--from -30 reads the end); slopie threads [--project P --since D --text W]; slopie grep <id> <text>. Each reply ends with the exact next command. Use rg/sed on the files for anything else.

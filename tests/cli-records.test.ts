@@ -126,7 +126,7 @@ describe('slopie setup', () => {
     const f = setup();
     const note = run(f, ['setup', '--note']).stdout;
     expect(note).toContain(`rg -n -i 'term' ${f.recordsDir}`);
-    expect(note.trimEnd().split('\n').at(-1)).toMatch(/^Faster lookups over the same records/);
+    expect(note.trimEnd().split('\n').at(-1)).toMatch(/^If the slopie command is on PATH, start with it/);
   });
 });
 

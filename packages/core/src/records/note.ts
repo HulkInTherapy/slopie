@@ -4,8 +4,13 @@
  */
 import {NOTE_B_TEMPLATE} from './spec.js';
 
-/** One line on the CLI tools (not part of the evaluated note; appended after it). */
-export const CLI_LINE = 'Faster lookups over the same records, if the slopie command is available: slopie search <words> [--project P --since D], '
+/** One line on the CLI tools (not part of the evaluated R5 note; appended after it, evaluated in R6). */
+export const CLI_LINE = 'If the slopie command is on PATH, start with it rather than rg: it searches these same records faster and more cheaply. '
+  + 'slopie search <words> [--project P --since D --session ID]; slopie read <id> --from N [--to M] (--from -30 reads the end); '
+  + 'slopie threads [--project P --since D --text W]; slopie grep <id> <text>. Each reply ends with the exact next command. Use rg/sed on the files for anything else.';
+
+/** The line R6 first measured (arm P2w): agents rarely used the CLI with it, so it saved nothing. */
+export const CLI_LINE_WEAK = 'Faster lookups over the same records, if the slopie command is available: slopie search <words> [--project P --since D], '
   + 'slopie read <id> [--from N --to M], slopie threads [--project P --since D --text W], slopie grep <id> <text>; each reply ends with the exact next command.';
 
 /** R5 §7 (iii): guidance for roster and latest-decision questions. Evaluated on the hard set; see R6. */
