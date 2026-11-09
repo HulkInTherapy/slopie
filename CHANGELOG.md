@@ -2,6 +2,40 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
+## 1.9.0 — Memory as plain text
+
+Memory is rebuilt around what measured best. Every session is kept as a plain-text record that your agent searches with its own tools. The old memory stack is gone.
+
+- **`slopie sync`** writes one record per session to `~/.slopie/records` (or `SLOPIE_RECORDS_DIR`), plus `INDEX.tsv`. It covers Claude Code (with Desktop agent sessions), Codex (`.jsonl.zst`, archived sessions), pi, and the 1.x rescue archive.
+  - Every line carries its turn tag and time, and tool output is shortened with a pointer to the raw line.
+  - Subagents are named after their parent, and sessions known only from `history.jsonl` get prompt-only records.
+  - Copies of a session are merged, and the one with the most turns wins.
+  - Sync is incremental per source file and writes atomically. Directories are 0700.
+  - Records outlive the harness deleting the transcript.
+  - On a 35 GB history the full build takes about a minute, and a sync with nothing new about 0.3 s.
+
+  Records also sync in the background of `slopie audit` and from the session-start hook.
+- **One source layer.** The audit's discovery and opt-out policy are now shared, so the audit and the records read the same files the same way. The audit's numbers are unchanged: a 1.8.5 and a 1.9.0 snapshot of the same 35 GB history are identical.
+- **`slopie setup`** installs the evaluated nine-line note that teaches the record format, as a Claude Code skill, a marked block in Codex's `AGENTS.md`, and a pi skill and extension. It also installs a session-start hook. After a resume or compaction, the hook prints this session's record path and the exact commands to read it, in at most 10 lines and with no summary. `slopie setup --note` prints the note for any other agent.
+- **`slopie search | read | threads | grep`** are fast lookups over the same records. They use a local SQLite FTS5 index (BM25 with a contextual prefix, plus a session-card lane), and every reply ends with the exact next command. **`slopie mcp`** serves the same four tools for harnesses without a shell.
+- **Privacy.** `slopie forget <session>` (new) and `slopie ignore <project>` remove sessions from the records and the index, and keep them out of the audit. Both lists live in `~/.slopie` and are seeded once, read-only, from the 1.8 lists.
+- **Removed, a clean break:**
+  - the 1.x memory store (capture, ingest, recall, graft, read and write);
+  - the MCP tools `potsherd_recall`, `potsherd_read`, `potsherd_graft` and `potsherd_write`;
+  - embeddings, `sqlite-vec`, ONNX and model assets;
+  - notes, tags, cards, open threads, link suggestions and keyphrases;
+  - the bridges, and the 1.x retention audit (`audit --legacy`, `--sweep`, `--verify`), together with the verbs that served them (`rescue`, `guard`, `maintain`, `index`, `find`, `ask`, `ls`, `show`, `stats`, `card`, `note`, `tag`, `pin`, `link`, `graft`, `export`, `stack`, `reader`).
+
+  The dependencies `@huggingface/transformers`, `sqlite-vec`, `js-tiktoken`, `@anthropic-ai/*`, `@modelcontextprotocol/sdk` and `zod` are removed.
+- **`~/.potsherd` is left untouched.** Only the audit's cache in it is still used. `slopie doctor` says when the rest is safe to remove by hand.
+- **Fix:** `slopie audit --online` now actually turns on the opt-in online wording. In 1.8.5 the flag was parsed but never passed through.
+- **Evaluation (R6), on the real 35 GB history with Claude Haiku and Sonnet:**
+  - The records match the reference exporter's turn for turn.
+  - Records + note + `rg`: 97% / 100% on 31 fresh questions, and 89% / 85% on 33 hard ones. The same agents scored 39% / 64% over the raw files.
+  - With the CLI added: 100% / 100% and 88% / 88%, with Haiku's median cost per question about a quarter lower.
+
+  The optional full-output sidecar (`sync --sidecar`) and extra note guidance were measured, gave mixed results, and are not defaults. See `docs/memory.md`.
+
 ## 1.8.5 — Every session counted, much faster
 
 - **Local by default.** `slopie audit` now makes no network requests. The free hosted model that polishes story wording is opt-in with `--online` (it never received prompts, only aggregates and a few filtered quotes).
