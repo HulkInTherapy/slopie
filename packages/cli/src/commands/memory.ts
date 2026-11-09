@@ -80,8 +80,8 @@ export function runSearch(o: RecordsOptions & {query: string; k?: unknown; proje
   return withEngine(o, e => e.search({query: o.query, k: num(o.k), project: o.project, harness: o.harness, since: o.since, until: o.until, session: o.session}));
 }
 
-export function runRead(o: RecordsOptions & {session: string; from?: unknown; to?: unknown; maxChars?: unknown}): number {
-  return withEngine(o, e => e.read({session: o.session, from_turn: num(o.from) ?? null, to_turn: num(o.to) ?? null, max_chars: num(o.maxChars) ?? null}));
+export function runRead(o: RecordsOptions & {session: string; from?: unknown; to?: unknown; maxChars?: unknown; fromChar?: unknown}): number {
+  return withEngine(o, e => e.read({session: o.session, from_turn: num(o.from) ?? null, to_turn: num(o.to) ?? null, max_chars: num(o.maxChars) ?? null, from_char: num(o.fromChar) ?? null}));
 }
 
 export function runThreads(o: RecordsOptions & {project?: string; harness?: string; since?: string; until?: string; text?: string; subagents?: boolean; parent?: string; limit?: unknown; offset?: unknown}): number {

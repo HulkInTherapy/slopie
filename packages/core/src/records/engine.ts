@@ -81,16 +81,16 @@ export class Engine {
   close(): void { this.db.close(); }
 
   // ------------------------------------------------------------ call syntax
-  private readCall(id: string, from: number, to?: number): string {
-    if (this.style === 'mcp') return `read(session=${q(id)}, from_turn=${from}${to !== undefined ? `, to_turn=${to}` : ''})`;
-    return `slopie read ${id} --from ${from}${to !== undefined ? ` --to ${to}` : ''}`;
+  private readCall(id: string, from: number, to?: number, fromChar?: number): string {
+    if (this.style === 'mcp') return `read(session=${q(id)}, from_turn=${from}${to !== undefined ? `, to_turn=${to}` : ''}${fromChar ? `, from_char=${fromChar}` : ''})`;
+    return `slopie read ${id} --from ${from}${to !== undefined ? ` --to ${to}` : ''}${fromChar ? ` --from-char ${fromChar}` : ''}`;
   }
   private moreThreads(offset: number): string {
     return this.style === 'mcp' ? `threads(..., offset=${offset})` : `slopie threads ... --offset ${offset}`;
   }
-  private grepCall(id: string, pattern: string | null, offset?: number): string {
-    if (this.style === 'mcp') return `grep(session=${q(id)}, pattern=${pattern === null ? '...' : q(pattern)}${offset !== undefined ? `, offset=${offset}` : ''})`;
-    return `slopie grep ${id} ${pattern === null ? '<pattern>' : shq(pattern)}${offset !== undefined ? ` --offset ${offset}` : ''}`;
+  private grepCall(id: string, pattern: string | null, offset?: number, regex = false): string {
+    if (this.style === 'mcp') return `grep(session=${q(id)}, pattern=${pattern === null ? '...' : q(pattern)}${regex ? ', regex=true' : ''}${offset !== undefined ? `, offset=${offset}` : ''})`;
+    return `slopie grep ${id} ${pattern === null ? '<pattern>' : shq(pattern)}${regex ? ' --regex' : ''}${offset !== undefined ? ` --offset ${offset}` : ''}`;
   }
   private name(tool: 'search' | 'threads' | 'read' | 'grep'): string {
     return this.style === 'mcp' ? `${tool}(...)` : `slopie ${tool}`;
@@ -226,7 +226,7 @@ export class Engine {
   }
 
   // ------------------------------------------------------------ read
-  read(o: {session: string; from_turn?: number | null; to_turn?: number | null; max_chars?: number | null}): string {
+  read(o: {session: string; from_turn?: number | null; to_turn?: number | null; max_chars?: number | null; from_char?: number | null}): string {
     const {s, err} = this.resolve(o.session);
     if (err || !s) return err!;
     const N = s.n_turns;
@@ -236,20 +236,35 @@ export class Engine {
     let b = o.to_turn === undefined || o.to_turn === null || Number.isNaN(Number(o.to_turn)) ? Math.min(N, a + 39) : Math.trunc(Number(o.to_turn));
     b = Math.max(a, Math.min(b, N));
     const maxChars = Math.max(2000, Math.min(Math.trunc(Number(o.max_chars ?? 12000)) || 12000, 40000));
+    // Resume inside from_turn (a turn an earlier reply had to cut): the offset into its text.
+    const c0 = Math.max(0, Math.trunc(Number(o.from_char ?? 0)) || 0);
     const rows = this.db.prepare('select n, role, ts, tool, body from turns where skey=? and n between ? and ? order by n').all(s.key, a, b) as Row[];
     const out = [this.head(s)];
     const ch = JSON.parse(s.children || '[]') as {id: string; kind: string}[];
     if (ch.length) out.push('children: ' + ch.slice(0, 20).map(x => `${x.id} (${x.kind})`).join(', ') + (ch.length > 20 ? ` … +${ch.length - 20}` : ''));
-    let used = 0, last = a - 1;
+    // max_chars is the whole reply: header lines, turns and the footer (room for the longest footer is kept).
+    const footerRoom = `[turn ${N} of ${N} cut at character ${99999999} of ${99999999}; turns ${N}-${N} of ${N}. Continue: ${this.readCall(s.id, N, undefined, 99999999)}]`.length + 1;
+    let used = out.reduce((n, l) => n + l.length + 1, 0);
+    let last = a - 1;
+    let cut: {n: number; at: number; of: number} | null = null;
     for (const r of rows) {
-      let block = `t${r.n} ${r.role}${r.tool ? ' ' + r.tool : ''} ${shortTs(r.ts)}\n${r.body}\n`;
-      if (used + block.length > maxChars && r.n > a) break;
-      if (block.length > maxChars) block = block.slice(0, maxChars) + '…[turn truncated]\n';
-      out.push(block);
-      used += block.length;
-      last = r.n;
+      const from = r.n === a ? Math.min(c0, r.body.length) : 0;
+      const head = `t${r.n} ${r.role}${r.tool ? ' ' + r.tool : ''} ${shortTs(r.ts)}${from ? ` (continued from character ${from})` : ''}\n`;
+      const block = `${head}${r.body.slice(from)}\n`;
+      const room = maxChars - footerRoom - used;
+      if (block.length + 1 <= room) { out.push(block); used += block.length + 1; last = r.n; continue; }
+      // A turn that does not fit is cut only when it is the first one; later ones start the next reply.
+      if (r.n > a) break;
+      const mark = '…[turn continues]\n';
+      let take = Math.max(0, room - head.length - mark.length - 1);
+      const code = r.body.charCodeAt(from + take - 1);
+      if (take > 0 && code >= 0xd800 && code <= 0xdbff) take--; // never split a surrogate pair
+      out.push(`${head}${r.body.slice(from, from + take)}${mark}`);
+      cut = {n: r.n, at: from + take, of: r.body.length};
+      break;
     }
-    if (last < N) out.push(`[turns ${a}-${last} of ${N}. Continue: ${this.readCall(s.id, last + 1)}]`);
+    if (cut) out.push(`[turn ${cut.n} cut at character ${cut.at} of ${cut.of}; ${last >= a ? `turns ${a}-${last}, then ` : ''}part of t${cut.n} of ${N}. Continue: ${this.readCall(s.id, cut.n, undefined, cut.at)}]`);
+    else if (last < N) out.push(`[turns ${a}-${last} of ${N}. Continue: ${this.readCall(s.id, last + 1)}]`);
     else out.push(`[turns ${a}-${last} of ${N}; end of thread.]`);
     return out.join('\n');
   }
@@ -268,9 +283,21 @@ export class Engine {
     if (o.text) {
       const fq = ftsQuery(o.text, 'and');
       if (fq) {
-        let hit: {skey: string; n: number}[] = [];
-        try { hit = this.db.prepare('select t.skey as skey, min(t.n) as n from ctx join turns t on t.rid = ctx.rowid where ctx match ? group by t.skey').all(`body : (${fq})`) as {skey: string; n: number}[]; } catch { hit = []; }
-        for (const h of hit) firstHit.set(h.skey, h.n);
+        // Session level: a thread qualifies when every word occurs somewhere in it (in any turns), so each word's
+        // threads are found on their own and intersected. First match: the first turn holding all the words,
+        // else the first turn holding any of them.
+        const perTerm = this.db.prepare('select t.skey as skey, min(t.n) as n from ctx join turns t on t.rid = ctx.rowid where ctx match ? group by t.skey');
+        const hits = (expr: string): Map<string, number> => {
+          try { return new Map((perTerm.all(`body : (${expr})`) as {skey: string; n: number}[]).map(h => [h.skey, h.n])); } catch { return new Map(); }
+        };
+        let both: Map<string, number> | null = null;
+        for (const term of fq.split(' AND ')) {
+          const m = hits(term);
+          if (!both) { both = m; continue; }
+          for (const [k, n] of both) { const x = m.get(k); if (x === undefined) both.delete(k); else if (x < n) both.set(k, x); }
+        }
+        const together = hits(fq);
+        for (const [k, n] of both ?? []) firstHit.set(k, together.get(k) ?? n);
         pool = pool.filter(s => firstHit.has(s.key));
         note = ` containing all of: ${o.text}`;
       }
@@ -297,20 +324,28 @@ export class Engine {
   }
 
   // ------------------------------------------------------------ grep
-  /** Turns with full text and output: re-read from the raw source when it is still there, else the record's text. */
-  private fullTurns(s: S): {role: string; ts: string | null; tool?: string; text: string; output?: string | null}[] {
+  /**
+   * Turns with full text and output: re-read, uncapped, from the raw source when it is still there; else the
+   * record's text, whose long fields are cut, so a scan of it is partial (`partial` says why).
+   */
+  private fullTurns(s: S): {turns: {role: string; ts: string | null; tool?: string; text: string; output?: string | null}[]; partial: string | null} {
+    let why = s.best ? 'its raw source is gone' : 'it has no raw source (prompt history only)';
     if (s.best && fs.existsSync(s.best)) {
       try {
         const sub = s.harness === 'claude' && s.parent_kind === 'subagent' ? s.parent : null;
-        const parsed = readSession(s.best, s.harness as Harness, sub, {text: 200000, output: 200000});
-        if (parsed && parsed.turns.length >= s.n_turns) return parsed.turns;
-      } catch { /* fall back to the record */ }
+        const parsed = readSession(s.best, s.harness as Harness, sub, {text: Number.MAX_SAFE_INTEGER, output: Number.MAX_SAFE_INTEGER});
+        if (parsed && parsed.turns.length >= s.n_turns) return {turns: parsed.turns, partial: null};
+        why = 'its raw source no longer matches the record';
+      } catch (e) {
+        why = `its raw source could not be read (${(e as Error).message.slice(0, 80)})`;
+      }
     }
-    return (this.db.prepare('select role, ts, tool, body from turns where skey=? order by n').all(s.key) as Row[]).map(r => {
+    const turns = (this.db.prepare('select role, ts, tool, body from turns where skey=? order by n').all(s.key) as Row[]).map(r => {
       if (r.role !== 'TOOL') return {role: r.role, ts: r.ts, text: r.body};
       const i = r.body.indexOf('\n→ ');
       return {role: r.role, ts: r.ts, tool: r.tool ?? '', text: i < 0 ? r.body : r.body.slice(0, i), output: i < 0 ? null : r.body.slice(i + 3)};
     });
+    return {turns, partial: `searched the record only (${why}); text the record shortens was not searched`};
   }
 
   grep(o: {session: string; pattern: string; regex?: boolean; offset?: number; max_hits?: number}): string {
@@ -320,7 +355,8 @@ export class Engine {
     let rx: RegExp;
     try { rx = new RegExp(o.regex ? o.pattern : o.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'); } catch (e) { return `bad regex: ${(e as Error).message}`; }
     const hits: string[] = [];
-    this.fullTurns(s).slice(0, s.n_turns).forEach((t, i) => {
+    const {turns, partial} = this.fullTurns(s);
+    turns.slice(0, s.n_turns).forEach((t, i) => {
       for (const field of ['text', 'output'] as const) {
         const v = (field === 'text' ? t.text : t.output) ?? '';
         if (!v) continue;
@@ -338,8 +374,12 @@ export class Engine {
     const page = hits.slice(offset, offset + maxHits);
     const parent = s.parent && this.hitParent ? `, ${s.parent_kind} of ${s.parent}` : '';
     const out = [`${hits.length} matches for ${pyRepr(o.pattern)} in ${s.harness} ${s.id} (${s.n_turns} turns, reading order${parent}):`, ...page];
-    if (offset + page.length < hits.length) out.push(`[more: ${this.grepCall(s.id, o.pattern, offset + page.length)}]`);
-    if (!hits.length) out.push(`No match. This clears only this spelling in this thread; try another spelling or ${this.name('search')}.`);
+    if (offset + page.length < hits.length) out.push(`[more: ${this.grepCall(s.id, o.pattern, offset + page.length, !!o.regex)}]`);
+    if (partial) out.push(`[partial scan: ${partial}.]`);
+    if (!hits.length) {
+      out.push(partial ? `No match in what could be searched. This does not clear the spelling: the full text was not available; try ${this.name('search')} or the raw files.`
+        : `No match. This clears only this spelling in this thread; try another spelling or ${this.name('search')}.`);
+    }
     return out.join('\n');
   }
 }
