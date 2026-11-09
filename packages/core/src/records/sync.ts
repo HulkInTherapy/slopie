@@ -514,6 +514,9 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     mkdirPrivate(path.dirname(file), dir);
     const text = render(rec, {children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly});
     writeAtomic(file, text);
+    // The record's mtime is the session's last activity, so `ls -t` / `rg --sortr modified` list threads newest first.
+    const last = Date.parse(rec.end ?? rec.start ?? '');
+    if (Number.isFinite(last)) { try { fs.utimesSync(file, last / 1000, last / 1000); } catch { /* best effort */ } }
     const side = file.slice(0, -4) + '.out.txt';
     const sideText = sidecar ? renderSidecar(rec, path.basename(file)) : null;
     if (sideText) writeAtomic(side, sideText); else if (fs.existsSync(side)) fs.unlinkSync(side);

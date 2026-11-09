@@ -79,6 +79,13 @@ describe('records: the R5 §11.1 format', () => {
     expect(record(f, IDS.codex)).toContain('t2 TOOL exec_command 10:00 | cat config/pool.toml\nt2 > max_connections = 40');
   });
 
+  it("sets each record's mtime to the session's last activity", async () => {
+    const f = fixture();
+    await syncRecords(syncOptions(f));
+    const row = rowOf(f, IDS.codex)!;
+    expect(fs.statSync(path.join(f.recordsDir, row[9]!)).mtimeMs).toBe(Date.parse(row[4]!));
+  });
+
   it('records directories are private (0700) and files 0600', async () => {
     const f = fixture();
     await syncRecords(syncOptions(f));

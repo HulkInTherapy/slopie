@@ -196,7 +196,10 @@ describe('the agent note', () => {
     const R7_SUB = R5_SUB + ' Tasks another thread dispatched have "parent: delegated by <id>" (that thread briefed, tracked and applied the work, and lists them under children).';
     expect(NOTE_B_TEMPLATE).toContain(R7_INDEX);
     expect(NOTE_B_TEMPLATE).toContain(R7_SUB);
-    const r5Now = NOTE_B_TEMPLATE.split(R7_INDEX).join(R5_INDEX).split(R7_SUB).join(R5_SUB);
+    const R5_END = "Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) and read ranges with sed -n 'a,bp' file. Times are UTC.";
+    const R7_END = R5_END + " A record's modification time is its last activity, so rg -l --sortr modified 'term' {RECORDS} lists the most recently active threads first: decisions often change in a later thread or the other harness.";
+    expect(NOTE_B_TEMPLATE).toContain(R7_END);
+    const r5Now = NOTE_B_TEMPLATE.split(R7_INDEX).join(R5_INDEX).split(R7_SUB).join(R5_SUB).split(R7_END).join(R5_END);
     expect(r5Now.split('{RECORDS}').join('{DATA}/records')).toBe(r5.NOTE_B_template);
     const note = agentNote('/records-root');
     expect(note).toBe(NOTE_B_TEMPLATE.split('{RECORDS}').join('/records-root') + '\n' + CLI_LINE);
