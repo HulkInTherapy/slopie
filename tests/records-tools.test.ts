@@ -272,7 +272,9 @@ describe('the agent note', () => {
     const r5Now = NOTE_B_TEMPLATE.split(R7_INDEX).join(R5_INDEX).split(R7_SUB).join(R5_SUB).split(R7_END).join(R5_END).split(R7_HDR).join(R5_HDR);
     expect(r5Now.split('{RECORDS}').join('{DATA}/records')).toBe(r5.NOTE_B_template);
     const note = agentNote('/records-root');
-    expect(note).toBe(NOTE_B_TEMPLATE.split('{RECORDS}').join('/records-root') + '\n' + PROTOCOL + '\n' + CLI_LINE);
+    expect(note).toBe(CLI_LINE + '\n\n' + NOTE_B_TEMPLATE.split('{RECORDS}').join('/records-root') + '\n' + PROTOCOL);
+    expect(note.indexOf('--latest')).toBeLessThan(note.indexOf('INDEX.tsv'));
+    expect(note).not.toMatch(/\beverything\b/i);
     expect(agentNote('/r', {protocol: false})).not.toContain(PROTOCOL);
     expect(agentNote('/r', {cli: false})).not.toContain('slopie search');
     expect(agentNote('/r', {guidance: true})).toContain(GUIDANCE);
