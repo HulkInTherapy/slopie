@@ -92,7 +92,7 @@ describe('D11: read budgets', () => {
       let text = first, guard = 0, seen = first;
       // Follow the continuation lines until the thread ends.
       while (!text.includes('end of thread') && guard++ < 10) {
-        const m = /Continue: (?:read\(session="[^"]+", from_turn=(\d+)(?:, from_char=(\d+))?\)|slopie read \S+ --from (\d+)(?: --from-char (\d+))?)/.exec(text)!;
+        const m = /Continue: (?:search\(session="[^"]+", turns="(\d+)(?:@(\d+))?(?:-\d+)?"\)|slopie search --session \S+ --turns (\d+)(?:@(\d+))?(?:-\d+)?)/.exec(text)!;
         expect(m, text).toBeTruthy();
         const from = Number(m[1] ?? m[3]), ch = Number(m[2] ?? m[4] ?? 0);
         text = withEngine(style, e => e.read({session: LONG, from_turn: from, from_char: ch, max_chars: 2000}));

@@ -30,15 +30,18 @@ function run(f: Fixture, args: string[], input?: string): { code: number; stdout
   }
 }
 
-describe('slopie sync / search / read / threads / grep', () => {
+describe('slopie sync / search (and the hidden read / threads / grep aliases)', () => {
   it('sync writes the records and the verbs read them', () => {
     const f = setup();
     const s = run(f, ['sync', '--json']);
     expect(s.code, s.stderr).toBe(0);
     const r = JSON.parse(s.stdout) as { sessions: number; promptOnly: number; subagents: number };
     expect(r).toMatchObject({ sessions: 6, promptOnly: 1, subagents: 1 });
-    expect(run(f, ['search', 'pgbouncer', 'pool']).stdout).toMatch(/→ slopie read \S+ --from \d+ --to \d+/);
-    expect(run(f, ['read', IDS.claude, '--from', '-2']).stdout).toContain('[turns 4-5 of 5; end of thread.]');
+    expect(run(f, ['search', 'pgbouncer', 'pool']).stdout).toMatch(/→ slopie search --session \S+ --turns \d+-\d+/);
+    expect(run(f, ['search', '--session', IDS.claude, '--turns', '-2']).stdout).toContain('[turns 4-5 of 5; end of thread.');
+    expect(run(f, ['search', 'ZEBRA_MIDDLE_NEEDLE_42', '--session', IDS.claude]).stdout).toContain('(output)');
+    expect(run(f, ['search', '--project', 'demo-app']).stdout).toContain(IDS.claude);
+    expect(run(f, ['read', IDS.claude, '--from', '-2']).stdout).toContain('[turns 4-5 of 5; end of thread.');
     expect(run(f, ['threads', '--text', 'pool']).stdout).toContain('threads containing all of: pool');
     expect(run(f, ['grep', IDS.claude, 'ZEBRA_MIDDLE_NEEDLE_42']).stdout).toContain('(output)');
     expect(run(f, ['search', 'x', '--json']).stdout).toMatch(/^\{\s*"text":/);
@@ -51,11 +54,14 @@ describe('slopie sync / search / read / threads / grep', () => {
     expect(r.stderr).toContain('slopie sync');
   });
 
-  it('the old memory verbs and MCP tools are gone', () => {
+  it('the old memory verbs are gone; read/threads/grep are hidden; MCP lists one tool, search', () => {
     const f = setup();
     for (const verb of ['ask', 'find', 'graft', 'rescue', 'index', 'ls', 'note']) expect(run(f, [verb]).code, verb).not.toBe(0);
     const out = run(f, ['mcp'], JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) + '\n').stdout;
-    expect((JSON.parse(out) as { result: { tools: { name: string }[] } }).result.tools.map(t => t.name)).toEqual(['search', 'read', 'threads', 'grep']);
+    expect((JSON.parse(out) as { result: { tools: { name: string }[] } }).result.tools.map(t => t.name)).toEqual(['search']);
+    const help = run(f, ['--help']).stdout;
+    expect(help).toMatch(/^\s+search\b/m);
+    for (const verb of ['read', 'threads', 'grep']) expect(help, verb).not.toMatch(new RegExp(`^\\s+${verb}\\b`, 'm'));
   });
 });
 
@@ -92,10 +98,15 @@ describe('slopie setup', () => {
     fs.writeFileSync(settings, JSON.stringify({ model: 'opus', hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo done' }] }] } }, null, 2));
     const dry = run(f, ['setup', '--claude', '--dry-run']);
     expect(dry.stdout).toContain('dry run: nothing written.');
-    expect(fs.existsSync(path.join(f.claudeDir, 'skills', 'slopie-memory', 'SKILL.md'))).toBe(false);
+    expect(fs.existsSync(path.join(f.claudeDir, 'skills', 'slopie', 'SKILL.md'))).toBe(false);
+    // A pre-release slopie-memory skill is replaced by the one slopie skill.
+    fs.mkdirSync(path.join(f.claudeDir, 'skills', 'slopie-memory'), { recursive: true });
+    fs.writeFileSync(path.join(f.claudeDir, 'skills', 'slopie-memory', 'SKILL.md'), '---\nname: slopie-memory\ndescription: "old"\n---\n\nold note\n');
     expect(run(f, ['setup', '--claude', '--yes']).code).toBe(0);
-    const skill = fs.readFileSync(path.join(f.claudeDir, 'skills', 'slopie-memory', 'SKILL.md'), 'utf8');
-    expect(skill).toMatch(/^---\nname: slopie-memory\ndescription: /);
+    expect(fs.existsSync(path.join(f.claudeDir, 'skills', 'slopie-memory'))).toBe(false);
+    expect(fs.readdirSync(path.join(f.claudeDir, 'skills'))).toEqual(['slopie']);
+    const skill = fs.readFileSync(path.join(f.claudeDir, 'skills', 'slopie', 'SKILL.md'), 'utf8');
+    expect(skill).toMatch(/^---\nname: slopie\ndescription: "Search everything you and the user did in past coding sessions/);
     expect(skill).toContain(`exported as plain text records under ${f.recordsDir}:`);
     const s = JSON.parse(fs.readFileSync(settings, 'utf8')) as { model: string; hooks: Record<string, { matcher?: string; hooks: { command: string }[] }[]> };
     expect(s.model).toBe('opus');
@@ -105,18 +116,21 @@ describe('slopie setup', () => {
     expect(fs.readdirSync(f.claudeDir).some(n => n.startsWith('settings.json.slopie-bak-'))).toBe(true);
     expect(run(f, ['setup', '--claude', '--yes']).stdout).toContain('already set up');
     expect(run(f, ['setup', '--claude', '--remove', '--yes']).code).toBe(0);
-    expect(fs.existsSync(path.join(f.claudeDir, 'skills', 'slopie-memory'))).toBe(false);
+    expect(fs.existsSync(path.join(f.claudeDir, 'skills', 'slopie'))).toBe(false);
     expect(JSON.parse(fs.readFileSync(settings, 'utf8'))).toEqual({ model: 'opus', hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo done' }] }] } });
   });
 
   it('writes a marked AGENTS.md block for Codex and the pi skill + extension', () => {
     const f = setup();
-    fs.writeFileSync(path.join(f.codexDir, 'AGENTS.md'), '# mine\nkeep this\n');
+    // A pre-release block (old markers) is replaced, not duplicated.
+    fs.writeFileSync(path.join(f.codexDir, 'AGENTS.md'), '# mine\nkeep this\n\n<!-- slopie:memory:begin -->\nold\n<!-- slopie:memory:end -->\n');
     expect(run(f, ['setup', '--codex', '--pi', '--yes']).code).toBe(0);
     const agents = fs.readFileSync(path.join(f.codexDir, 'AGENTS.md'), 'utf8');
-    expect(agents).toMatch(/^# mine\nkeep this\n\n<!-- slopie:memory:begin -->\nThe user's agent history/);
-    expect(agents.trimEnd().endsWith('<!-- slopie:memory:end -->')).toBe(true);
-    expect(fs.readFileSync(path.join(f.piDir, 'agent', 'skills', 'slopie-memory', 'SKILL.md'), 'utf8')).toContain('slopie search');
+    expect(agents).toMatch(/^# mine\nkeep this\n\n<!-- slopie:begin -->\n## slopie\nSearch everything you and the user did in past coding sessions[^\n]*\n\nThe user's agent history/);
+    expect(agents).not.toContain('slopie:memory');
+    expect(agents.trimEnd().endsWith('<!-- slopie:end -->')).toBe(true);
+    expect(fs.readdirSync(path.join(f.piDir, 'agent', 'skills'))).toEqual(['slopie']);
+    expect(fs.readFileSync(path.join(f.piDir, 'agent', 'skills', 'slopie', 'SKILL.md'), 'utf8')).toContain('slopie search');
     expect(fs.readFileSync(path.join(f.piDir, 'agent', 'extensions', 'slopie.ts'), 'utf8')).toContain("pi.on('session_start'");
     run(f, ['setup', '--codex', '--pi', '--remove', '--yes']);
     expect(fs.readFileSync(path.join(f.codexDir, 'AGENTS.md'), 'utf8')).toBe('# mine\nkeep this\n');
@@ -138,7 +152,7 @@ describe('slopie hook session-start', () => {
     const lines = out.trimEnd().split('\n');
     expect(lines.length).toBeLessThanOrEqual(10);
     expect(out).toContain(`record: ${path.join(f.recordsDir, 'claude', 'work-demo-app', `2026-10-01_${IDS.claude}.txt`)}`);
-    expect(out).toContain(`slopie read ${IDS.claude} --from -30`);
+    expect(out).toContain(`slopie search --session ${IDS.claude} --turns -30`);
     expect(run(f, ['hook', 'session-start'], JSON.stringify({ session_id: IDS.claude, source: 'startup' })).stdout).toBe('');
     // A hook never fails the session, even on garbage.
     expect(run(f, ['hook', 'session-start'], 'not json').code).toBe(0);

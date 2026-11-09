@@ -133,7 +133,7 @@ describe('the shipped bundle, with no node_modules anywhere', () => {
     expect(fs.readFileSync(path.join(dir, 'INDEX.tsv'), 'utf8')).toContain('(prompt history only; transcript not kept)');
     const r = run(['search', 'pgbouncer'], { SLOPIE_RECORDS_DIR: dir });
     expect(r.code, r.stderr).toBe(0);
-    expect(r.stdout).toMatch(/→ slopie read \S+ --from \d+ --to \d+|→ potsherd read|→ slopie read/);
+    expect(r.stdout).toMatch(/→ slopie search --session \S+ --turns \d+-\d+/);
     expect(r.stdout).toContain('pgbouncer');
   });
 

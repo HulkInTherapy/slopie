@@ -46,6 +46,8 @@ const VERBS: string[][] = [
   ['--help'],
   ['sync', '--help'],
   ['search', 'pgbouncer pool'],
+  ['search', '--session', IDS.claude, '--turns', '-3'],
+  ['search', '--project', 'demo'],
   ['read', IDS.claude, '--from', '-3'],
   ['threads', '--text', 'pool'],
   ['grep', IDS.claude, 'pgbouncer'],

@@ -418,7 +418,7 @@ function tour(o: { width?: number; ascii?: boolean; color?: boolean; json?: bool
   }
   const wide = t.width >= 80;
   print('');
-  print(`  ${t.bold(publicCommandName)} ${t.dim(VERSION)}  ${t.dim(`${t.g('—', '-')} ${wide ? 'search your past coding-agent sessions; plus a Wrapped of your year' : 'search your sessions'}`)}`);
+  print(`  ${t.bold(publicCommandName)} ${t.dim(VERSION)}  ${t.dim(`${t.g('—', '-')} ${wide ? 'search your past coding-agent sessions' : 'search your sessions'}`)}`);
   print('');
   for (const [verb, what] of VERBS) print(wide ? `    ${publicCommandName} ${verb.padEnd(8)} ${t.dim(what)}` : `    ${verb.padEnd(8)} ${t.dim(what.slice(0, Math.max(10, t.width - 14)))}`);
   print('');
