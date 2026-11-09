@@ -1,7 +1,7 @@
 {
   "name": "potsherd",
   "version": "1.9.0",
-  "description": "Slopie: every coding-agent session kept as plain-text records your agent can search with rg, sed or the slopie CLI, plus the terminal audit. Teaches the agent the record format and points it back to its own record after compaction.",
+  "description": "slopie — search your past coding-agent sessions. One skill, slopie, that your agent uses whenever you mention earlier work. Plus `slopie audit`, a Wrapped of your year.",
   "author": {
     "name": "HulkInTherapy",
     "url": "https://github.com/HulkInTherapy"
@@ -21,8 +21,8 @@
   ],
   "interface": {
     "displayName": "Slopie",
-    "shortDescription": "Plain-text memory of your coding-agent sessions",
-    "longDescription": "Slopie keeps every Claude Code, Codex and pi session on this machine as a plain-text record (~/.slopie/records) with an INDEX.tsv, and teaches Codex the format so it can find and continue earlier work with its own shell tools or the slopie CLI. Local only: no models, no daemon, no network.",
+    "shortDescription": "Search your past coding-agent sessions",
+    "longDescription": "slopie — search your past coding-agent sessions. It keeps every Claude Code, Codex and pi session on this machine as a plain-text record (~/.slopie/records) and gives Codex one skill, slopie, to search them with its shell or `slopie search`. Plus `slopie audit`, a Wrapped of your year. Local only: no models, no daemon, no network.",
     "developerName": "HulkInTherapy",
     "category": "Productivity",
     "capabilities": [

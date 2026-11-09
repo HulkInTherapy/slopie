@@ -47,6 +47,8 @@ More detail: [coverage and privacy](docs/audit-terminal.md).
 
 ## Memory for your agents
 
+**slopie — search your past coding-agent sessions.** Plus `slopie audit`, a Wrapped of your year.
+
 Your agents forget, so Slopie keeps every session for them. The format is plain text, because that is what measured best. We tested on a real 35 GB history, with questions about earlier work.
 
 - **31 fresh questions:** agents reading these records with nothing but `rg` and `sed` answered 97–100% correctly (Claude Haiku and Sonnet).
@@ -55,13 +57,19 @@ Your agents forget, so Slopie keeps every session for them. The format is plain 
 
 ```sh
 slopie sync        # every session -> ~/.slopie/records (about a minute the first time, then under a second)
-slopie setup       # teach Claude Code, Codex and pi to use them
+slopie setup       # give Claude Code, Codex and pi the one slopie skill
 ```
 
 - **Records.** `~/.slopie/records/<harness>/<project>/<date>_<session>.txt` holds one file per session: Claude Code (including Desktop agent sessions), Codex (including `.jsonl.zst` and archived sessions) and pi. Every line carries its turn tag and time (`t12 USER 2026-08-20 20:26 | …`). Tool output is shortened, with a pointer to the raw line. Subagents are named after their parent. Sessions the harness deleted keep their record, and prompts that survive only in `history.jsonl` get a prompt-only record. `INDEX.tsv` has one line per session. Records sync on `slopie sync`, in the background of `slopie audit`, and from the session-start hook.
-- **The note.** `slopie setup` installs a nine-line note that teaches the format, as a Claude Code skill, a block in Codex's `AGENTS.md`, and a pi skill and extension. `slopie setup --note` prints it for any other agent. After a resume or compaction, the session-start hook prints this session's record path and the exact commands to read it.
-- **CLI.** `slopie search`, `read`, `threads` and `grep` are fast lookups over the same records, backed by a local SQLite full-text index built by `sync`. Every reply ends with the exact next command. With them, Haiku answered as accurately at about a quarter less median cost per question; Sonnet mostly kept using `rg`.
-- **MCP.** `slopie mcp` serves the same four tools (`search`, `read`, `threads`, `grep`) for harnesses without a shell.
+- **One skill, `slopie`.** Every integration installs exactly one: a Claude Code skill, a block in Codex's `AGENTS.md`, a pi skill (plus a small extension). Its body teaches the record format, how to answer, and how to search. `slopie setup --note` prints it for any other agent. After a resume or compaction, the session-start hook prints this session's record path and the exact command to read its end.
+- **One command, `slopie search`.** A fast lookup over the same records, backed by a local SQLite full-text index built by `sync`. Every reply ends with the exact next command.
+  ```sh
+  slopie search "pgbouncer pool size"                 # passages from every thread
+  slopie search "ECONNREFUSED" --session 9c4d2f18     # inside one thread
+  slopie search --session 9c4d2f18 --turns -30        # read its last 30 turns (or 120-160)
+  slopie search --project api --since 2026-11-01      # list threads
+  ```
+- **One MCP tool, `search`.** `slopie mcp` serves the same thing, with the same parameters, for harnesses without a shell.
 - **Private.** Everything is local plain text in a 0700 directory. There are no models, no daemon and no network calls. `slopie forget <session>` and `slopie ignore <project>` remove sessions from the records and from the audit.
 
 More detail: [memory design and evaluation](docs/memory.md).

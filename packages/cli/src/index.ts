@@ -19,9 +19,11 @@ if (process.env.NODE_ENV === undefined) process.env.NODE_ENV = 'production';
  *
  *   audit                             the terminal audit (unchanged), plus a background records sync
  *   sync                              native history -> ~/.slopie/records (+ INDEX.tsv, search index)
- *   search | read | threads | grep    lookups over the records; every reply ends with the next command
- *   mcp                               the same four tools as a stdio MCP server
- *   setup | doctor                    install the agent note and hooks; say what slopie sees
+ *   search                            the one lookup: passages, a thread's turns, matches inside a thread, or
+ *                                     a thread list; every reply ends with the next command
+ *                                     (read | threads | grep: hidden 1.9 aliases)
+ *   mcp                               the same, as one MCP tool (search) over stdio
+ *   setup | doctor                    install the one slopie skill and the hook; say what slopie sees
  *   ignore | forget                   privacy: keep a project / a session out of records and audit
  *
  * Every verb takes `--json`, shows a real example in `--help`, and accepts the global flags in either position.

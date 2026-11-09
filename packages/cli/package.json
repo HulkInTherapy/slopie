@@ -1,7 +1,7 @@
 {
   "name": "slopie",
   "version": "1.9.0",
-  "description": "Slopie: audit your coding-agent history, and keep every session as plain-text records your agents can search.",
+  "description": "slopie — search your past coding-agent sessions. Plus `slopie audit`, a Wrapped of your year.",
   "type": "module",
   "license": "MIT",
   "homepage": "https://github.com/HulkInTherapy/slopie",

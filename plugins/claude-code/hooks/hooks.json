@@ -1,5 +1,5 @@
 {
-  "description": "slopie: keep the plain-text session records current, and on resume or after compaction say where this session's record is.",
+  "description": "slopie: keep the plain-text session records current, and on resume or after compaction print the slopie search command for this session.",
   "hooks": {
     "SessionStart": [
       {

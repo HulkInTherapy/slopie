@@ -1,7 +1,7 @@
 {
   "name": "potsherd",
   "version": "1.9.0",
-  "description": "Slopie: every coding-agent session kept as plain-text records your agent can search with rg, sed or the slopie CLI, plus the terminal audit. Teaches the agent the record format and points it back to its own record after compaction.",
+  "description": "slopie — search your past coding-agent sessions. One skill, slopie, that your agent uses whenever you mention earlier work. Plus `slopie audit`, a Wrapped of your year.",
   "author": {
     "name": "HulkInTherapy",
     "url": "https://github.com/HulkInTherapy"

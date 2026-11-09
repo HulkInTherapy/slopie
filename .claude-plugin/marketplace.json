@@ -4,12 +4,12 @@
     "name": "HulkInTherapy",
     "url": "https://github.com/HulkInTherapy"
   },
-  "description": "slopie: your coding-agent sessions as plain-text records your agents can search, and a terminal audit of your year with them.",
+  "description": "slopie — search your past coding-agent sessions. Plus `slopie audit`, a Wrapped of your year.",
   "plugins": [
     {
       "name": "potsherd",
       "source": "./plugins/claude-code",
-      "description": "Keeps every Claude Code session as a plain-text record and teaches Claude Code to search it; after compaction it points the agent back to its own record.",
+      "description": "slopie — search your past coding-agent sessions. One skill, slopie, plus a session-start hook that keeps the records current.",
       "version": "1.9.0",
       "author": {
         "name": "HulkInTherapy",
