@@ -23,7 +23,7 @@ So 1.9 ships records, the note, the CLI and an MCP wrapper. There are no embeddi
 `slopie sync` writes `~/.slopie/records`, or the directory in `SLOPIE_RECORDS_DIR`:
 
 ```
-INDEX.tsv                                     harness, id, project, start, end, turns, parent, title, first user message, file
+INDEX.tsv                                     harness, id, project, start, end, turns, parent, title, first user message, file, active
 claude/<project-slug>/<date>_<session>.txt    one file per session
 claude/<project-slug>/<date>_<parent>__agent-<id>.txt   Claude subagents, named after their parent
 codex/…   pi/…
@@ -42,9 +42,9 @@ t3 > …[1054 chars cut; full output: /…/1a2b3c4d-….jsonl:5]…
 `rg -n` output is therefore self-locating, and `sed -n 'a,bp'` reads a range.
 
 - **Sources.** These are the same readers the audit uses: Claude Code (including Claude Desktop agent sessions), Codex (`sessions/`, `archived_sessions/`, compressed `.jsonl.zst`), pi, and the potsherd 1.x rescue archive.
-- **Copies.** Live, compressed, archived and rescued copies of one session become one record, and the copy with the most turns wins. Codex threads that are imports of Claude sessions are dropped, and fork prefixes are skipped.
+- **Copies.** Live, compressed, archived and rescued copies of one session become one record, and the copy with the most turns wins. Codex threads that are imports of Claude sessions are dropped, unless the user went on working in Codex: then the turns after the import are kept as `import of <claude id>` (1.9.0 before R7 dropped them, losing 486 messages in 4 threads of the 35 GB history). Fork prefixes are skipped.
 - **Prompt-only records.** A session that survives only as typed prompts in `history.jsonl` gets a prompt-only record.
-- **Tool output** is cut to 500 + 300 characters, with a pointer to the raw line. `slopie grep` reaches the full text. `slopie sync --sidecar` also writes `<record>.out.txt` with every cut output, up to 20 kB each. That is opt-in: in R6 it fixed the target question but cost others, a net wash, and it triples the records' size.
+- **Tool output** up to 4,000 characters is kept whole; longer output keeps 2,000 + 1,000 characters, with a pointer to the raw line. `slopie grep` reaches the full text. (1.9.0 before R7 cut everything over 800 characters to 500 + 300; R7 found answers in the cut middle of 2 kB outputs. Records grow about half, to ~165 MB on the 35 GB history.) `slopie sync --sidecar` still writes `<record>.out.txt` with every cut output, up to 20 kB each, as an opt-in.
 - **Records outlive their sources.** When a harness deletes a transcript, its record stays. A record never shrinks to a shorter copy.
 - **Incremental.** A source file is re-read only when its size or mtime changes. On the 35 GB history a full build takes about a minute, and a sync with nothing new takes about 0.3 s.
 - **Atomic and private.** Every file is written to a temp file and renamed. Directories are 0700 and files 0600.
@@ -74,6 +74,8 @@ After a resume or compaction, the session-start hook prints at most 10 lines: th
 
 - **Index.** The search index is `<records>/.slopie/index.sqlite`. It holds one row per turn, with the deterministic prefix `title · project · date · ROLE[ tool]`, plus a session-card lane (title and every user ask), fused by reciprocal rank. It is built by `sync` and opened read-only by the lookups.
 - **Subagent hits.** Every hit on a subagent prints `subagent of <parent-id>`.
+- **Delegated threads.** A thread another thread dispatched through a `delegate_task` tool (T3 Code orchestration) has `parent: delegated by <id>`, and the dispatcher lists it under `children`. Both sides are linked by the dispatched task text. Hits on such threads print `delegated by <id>`.
+- **Activity dates.** INDEX.tsv's last column, `active`, lists every UTC date with a turn, so `rg 2026-07-14 INDEX.tsv` finds threads active that day, including long threads that started earlier. Each record's modification time is its session's last activity, so `rg -l --sortr modified <term>` lists the most recently active threads first. `slopie search` ends with the newest threads among its best candidates.
 - **MCP.** `slopie mcp` serves the four tools over stdio for harnesses without a shell. Their names, descriptions and schemas are the evaluated ones, verbatim.
 
 ## Privacy
