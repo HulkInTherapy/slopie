@@ -61,7 +61,7 @@ Records sync on `slopie sync`, in the background of `slopie audit`, and from the
 
 The Claude Code and Codex plugins carry the same skill and hook. Two more commands help: `slopie setup --note` prints the note to paste anywhere, and `slopie setup --remove` takes out exactly what setup wrote.
 
-After a resume or compaction, the session-start hook prints at most 10 lines: this session's id, its record path, and the exact `slopie read <id> --from -30` and `slopie search … --session <id>` commands. It is a pointer, not a summary.
+After a resume or compaction, the session-start hook prints at most 10 lines: this session's id, its record path, and the exact `slopie read <id> --from -30` and `slopie search … --session <id>` commands. It is a pointer, not a summary. The hook never waits on a sync: it points at the records as they are and refreshes them in a detached process (if this session has no record yet, it waits up to 3 seconds for one, `SLOPIE_HOOK_WAIT_MS`).
 
 ## CLI and MCP
 

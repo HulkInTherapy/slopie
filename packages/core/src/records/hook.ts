@@ -40,6 +40,11 @@ function findRecord(recordsDir: string, id: string): Found | null {
   return null;
 }
 
+/** True when the records already hold this session. */
+export function hasRecord(sessionId: string, recordsDir = paths.recordsDir()): boolean {
+  return findRecord(recordsDir, sessionId) !== null;
+}
+
 /** The continuation pointer (≤ 10 lines). */
 export function continuationPointer(sessionId: string, harness: string, recordsDir = paths.recordsDir()): string[] {
   const rec = findRecord(recordsDir, sessionId);

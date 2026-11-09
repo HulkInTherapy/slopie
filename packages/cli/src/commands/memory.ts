@@ -2,13 +2,12 @@
  * The records verbs: sync, search, read, threads, grep, mcp, hook, forget.
  */
 import fs from 'node:fs';
-import path from 'node:path';
 import process from 'node:process';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {
-  Engine, NoIndexError, SyncBusyError, VERSION, continuationPointer, isContinuation, parseHookInput, paths, readForgetList, legacyForgotten,
-  serveMcp, sourceId, stateDir, syncRecords, writeForgetList, type ForgetEntry, type SyncResult,
+  Engine, NoIndexError, SyncBusyError, VERSION, continuationPointer, hasRecord, isContinuation, parseHookInput, paths, readForgetList, legacyForgotten,
+  serveMcp, sourceId, syncRecords, writeForgetList, type ForgetEntry, type SyncResult,
 } from '@potsherd/core';
 import {print, printJson, UserError, type GlobalOptions} from '../output.js';
 
@@ -98,12 +97,12 @@ export async function runMcp(o: RecordsOptions): Promise<number> {
 }
 
 /** Re-runs this CLI detached: `slopie sync --quiet --if-idle` (never blocks the caller). */
-export function spawnBackgroundSync(o: GlobalOptions = {}): void {
+export function spawnBackgroundSync(o: GlobalOptions & {recordsDir?: string} = {}): void {
   if (process.env['SLOPIE_NO_SYNC'] === '1') return;
   const entry = process.argv[1];
   if (!entry) return;
   const args = [entry, 'sync', '--quiet', '--if-idle'];
-  for (const [flag, v] of [['--claude-dir', o.claudeDir], ['--codex-dir', o.codexDir], ['--pi-dir', o.piDir], ['--potsherd-dir', o.potsherdDir]] as const) if (v) args.push(flag, v);
+  for (const [flag, v] of [['--claude-dir', o.claudeDir], ['--codex-dir', o.codexDir], ['--pi-dir', o.piDir], ['--potsherd-dir', o.potsherdDir], ['--records-dir', o.recordsDir]] as const) if (v) args.push(flag, v);
   try {
     const child = spawn(process.execPath, args, {detached: true, stdio: 'ignore', env: {...process.env, POTSHERD_CLI_PUBLIC_NAME: 'slopie'}});
     child.unref();
@@ -126,6 +125,10 @@ async function readStdin(timeoutMs = 2000): Promise<string> {
 /**
  * `slopie hook session-start --harness claude|codex|pi`: keep records current; on resume / compaction print
  * the continuation pointer (≤ 10 lines). Never fails the harness: every error is swallowed.
+ *
+ * The refresh always runs detached: the hook never awaits a sync (a large one could outlast the harness's
+ * hook timeout, and a killed hook must not take a writer down with it). The pointer comes from the records
+ * as they are; only when they do not hold this session yet does the hook wait, briefly, for the refresh.
  */
 export async function runHook(o: RecordsOptions & {event: string; harness?: string}): Promise<number> {
   try {
@@ -134,15 +137,15 @@ export async function runHook(o: RecordsOptions & {event: string; harness?: stri
     const id = input.session_id ?? input.sessionId ?? '';
     const harness = o.harness ?? 'claude';
     const dir = paths.recordsDir(o.recordsDir);
-    const built = fs.existsSync(path.join(stateDir(dir), 'state.json'));
     const continuing = isContinuation(input.source);
-    if (built && continuing && process.env['SLOPIE_NO_SYNC'] !== '1') {
-      // The pointer should name this session's record: bring the records current first (incremental, ~seconds).
-      try { await syncRecords({...(o.recordsDir ? {recordsDir: o.recordsDir} : {}), workerUrl: workerUrl()}); } catch { /* busy or unreadable: point anyway */ }
-    } else {
-      spawnBackgroundSync(o);
+    spawnBackgroundSync(o);
+    if (!continuing || !id) return 0;
+    const budget = Math.max(0, Math.min(Number(process.env['SLOPIE_HOOK_WAIT_MS'] ?? 3000) || 0, 10000));
+    if (process.env['SLOPIE_NO_SYNC'] !== '1' && !hasRecord(id, dir)) {
+      const until = Date.now() + budget;
+      while (Date.now() < until && !hasRecord(id, dir)) await new Promise(r => setTimeout(r, 100));
     }
-    if (continuing && id) print(continuationPointer(id, harness, dir).join('\n'));
+    print(continuationPointer(id, harness, dir).join('\n'));
   } catch {
     /* a hook never blocks a session */
   }

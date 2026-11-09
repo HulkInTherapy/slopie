@@ -97,6 +97,6 @@ export { Engine, NoIndexError, ftsQuery, type CallStyle } from './records/engine
 export { MCP_TOOLS, MCP_INSTRUCTIONS, NOTE_B_TEMPLATE } from './records/spec.js';
 export { agentNote, CLI_LINE, GUIDANCE, SIDECAR_LINE, type NoteOptions } from './records/note.js';
 export { serveMcp, callTool } from './records/mcp.js';
-export { continuationPointer, parseHookInput, isContinuation, type HookInput } from './records/hook.js';
+export { continuationPointer, hasRecord, parseHookInput, isContinuation, type HookInput } from './records/hook.js';
 
 export { VERSION } from './version.js';
