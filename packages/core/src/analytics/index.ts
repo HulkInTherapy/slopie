@@ -32,7 +32,7 @@ import {FactsCache} from './facts-cache.js';
 import {inlineScanExecutor, type ScanExecutor, type ScanJob, type ScanResult} from './scan-pool.js';
 import {ADAPTER_HARNESSES, adapterKey, readAdapterSources} from './adapter-facts.js';
 import {discover} from '../sources/discover.js';
-import {loadPolicy, type Policy} from '../sources/policy.js';
+import {assertPolicy, loadPolicy, type Policy} from '../sources/policy.js';
 import {extractOpenCodeDatabase, extractOpenCodeJson} from './opencode-facts.js';
 import {DerivedCache} from './derived-cache.js';
 import {requestedProjectFocus} from './project-focus.js';
@@ -342,6 +342,8 @@ class LocalAuditSession implements AuditSession {
       }
       t = lap('pruneMs', t);
       this.policy = loadPolicy(this.root);
+      // Unreadable opt-outs stop the audit before any transcript is read, counted, cached or sent.
+      assertPolicy(this.policy);
       t = lap('policyMs', t);
       this.detail = {...this.detail, stage: 'reading'};
       this.publish({sources: this.current.sources.map(s => {

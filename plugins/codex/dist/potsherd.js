@@ -973,8 +973,8 @@ var require_command = __commonJS({
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
     var path30 = __require("node:path");
-    var fs36 = __require("node:fs");
-    var process9 = __require("node:process");
+    var fs37 = __require("node:fs");
+    var process10 = __require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
     var { Help: Help2 } = require_help();
@@ -1020,10 +1020,10 @@ var require_command = __commonJS({
         this._showHelpAfterError = false;
         this._showSuggestionAfterError = true;
         this._outputConfiguration = {
-          writeOut: (str7) => process9.stdout.write(str7),
-          writeErr: (str7) => process9.stderr.write(str7),
-          getOutHelpWidth: () => process9.stdout.isTTY ? process9.stdout.columns : void 0,
-          getErrHelpWidth: () => process9.stderr.isTTY ? process9.stderr.columns : void 0,
+          writeOut: (str7) => process10.stdout.write(str7),
+          writeErr: (str7) => process10.stderr.write(str7),
+          getOutHelpWidth: () => process10.stdout.isTTY ? process10.stdout.columns : void 0,
+          getErrHelpWidth: () => process10.stderr.isTTY ? process10.stderr.columns : void 0,
           outputError: (str7, write) => write(str7)
         };
         this._hidden = false;
@@ -1402,7 +1402,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._exitCallback) {
           this._exitCallback(new CommanderError2(exitCode, code, message));
         }
-        process9.exit(exitCode);
+        process10.exit(exitCode);
       }
       /**
        * Register callback `fn` for the command.
@@ -1800,16 +1800,16 @@ Expecting one of '${allowedValues.join("', '")}'`);
         }
         parseOptions = parseOptions || {};
         if (argv === void 0 && parseOptions.from === void 0) {
-          if (process9.versions?.electron) {
+          if (process10.versions?.electron) {
             parseOptions.from = "electron";
           }
-          const execArgv = process9.execArgv ?? [];
+          const execArgv = process10.execArgv ?? [];
           if (execArgv.includes("-e") || execArgv.includes("--eval") || execArgv.includes("-p") || execArgv.includes("--print")) {
             parseOptions.from = "eval";
           }
         }
         if (argv === void 0) {
-          argv = process9.argv;
+          argv = process10.argv;
         }
         this.rawArgs = argv.slice();
         let userArgs;
@@ -1820,7 +1820,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
             userArgs = argv.slice(2);
             break;
           case "electron":
-            if (process9.defaultApp) {
+            if (process10.defaultApp) {
               this._scriptPath = argv[1];
               userArgs = argv.slice(2);
             } else {
@@ -1906,10 +1906,10 @@ Expecting one of '${allowedValues.join("', '")}'`);
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
           const localBin = path30.resolve(baseDir, baseName);
-          if (fs36.existsSync(localBin)) return localBin;
+          if (fs37.existsSync(localBin)) return localBin;
           if (sourceExt.includes(path30.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs36.existsSync(`${localBin}${ext}`)
+            (ext) => fs37.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -1921,7 +1921,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs36.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs37.realpathSync(this._scriptPath);
           } catch (err) {
             resolvedScriptPath = this._scriptPath;
           }
@@ -1948,23 +1948,23 @@ Expecting one of '${allowedValues.join("', '")}'`);
         }
         launchWithNode = sourceExt.includes(path30.extname(executableFile));
         let proc;
-        if (process9.platform !== "win32") {
+        if (process10.platform !== "win32") {
           if (launchWithNode) {
             args.unshift(executableFile);
-            args = incrementNodeInspectorPort(process9.execArgv).concat(args);
-            proc = childProcess.spawn(process9.argv[0], args, { stdio: "inherit" });
+            args = incrementNodeInspectorPort(process10.execArgv).concat(args);
+            proc = childProcess.spawn(process10.argv[0], args, { stdio: "inherit" });
           } else {
             proc = childProcess.spawn(executableFile, args, { stdio: "inherit" });
           }
         } else {
           args.unshift(executableFile);
-          args = incrementNodeInspectorPort(process9.execArgv).concat(args);
-          proc = childProcess.spawn(process9.execPath, args, { stdio: "inherit" });
+          args = incrementNodeInspectorPort(process10.execArgv).concat(args);
+          proc = childProcess.spawn(process10.execPath, args, { stdio: "inherit" });
         }
         if (!proc.killed) {
           const signals = ["SIGUSR1", "SIGUSR2", "SIGTERM", "SIGINT", "SIGHUP"];
           signals.forEach((signal) => {
-            process9.on(signal, () => {
+            process10.on(signal, () => {
               if (proc.killed === false && proc.exitCode === null) {
                 proc.kill(signal);
               }
@@ -1975,7 +1975,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
         proc.on("close", (code) => {
           code = code ?? 1;
           if (!exitCallback) {
-            process9.exit(code);
+            process10.exit(code);
           } else {
             exitCallback(
               new CommanderError2(
@@ -1998,7 +1998,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
             throw new Error(`'${executableFile}' not executable`);
           }
           if (!exitCallback) {
-            process9.exit(1);
+            process10.exit(1);
           } else {
             const wrappedError = new CommanderError2(
               1,
@@ -2490,13 +2490,13 @@ Expecting one of '${allowedValues.join("', '")}'`);
        */
       _parseOptionsEnv() {
         this.options.forEach((option) => {
-          if (option.envVar && option.envVar in process9.env) {
+          if (option.envVar && option.envVar in process10.env) {
             const optionKey = option.attributeName();
             if (this.getOptionValue(optionKey) === void 0 || ["default", "config", "env"].includes(
               this.getOptionValueSource(optionKey)
             )) {
               if (option.required || option.optional) {
-                this.emit(`optionEnv:${option.name()}`, process9.env[option.envVar]);
+                this.emit(`optionEnv:${option.name()}`, process10.env[option.envVar]);
               } else {
                 this.emit(`optionEnv:${option.name()}`);
               }
@@ -2925,7 +2925,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        */
       help(contextOptions) {
         this.outputHelp(contextOptions);
-        let exitCode = process9.exitCode || 0;
+        let exitCode = process10.exitCode || 0;
         if (exitCode === 0 && contextOptions && typeof contextOptions !== "function" && contextOptions.error) {
           exitCode = 1;
         }
@@ -5477,14 +5477,14 @@ import fs3 from "node:fs";
 import { createHash as createHash5 } from "node:crypto";
 function readAt(fd, length, position) {
   const buffer = Buffer.allocUnsafe(length);
-  let read2 = 0;
-  while (read2 < length) {
-    const n = fs3.readSync(fd, buffer, read2, length - read2, position + read2);
+  let read3 = 0;
+  while (read3 < length) {
+    const n = fs3.readSync(fd, buffer, read3, length - read3, position + read3);
     if (!n)
       break;
-    read2 += n;
+    read3 += n;
   }
-  return buffer.subarray(0, read2);
+  return buffer.subarray(0, read3);
 }
 function sniffBlock(head) {
   const firstEnd = head.indexOf(10);
@@ -6568,14 +6568,14 @@ function stripText(facts) {
 }
 function tailHash(fd, offset) {
   const start = Math.max(0, offset - TAIL2), buffer = Buffer.alloc(offset - start);
-  let read2 = 0;
-  while (read2 < buffer.length) {
-    const n = fs4.readSync(fd, buffer, read2, buffer.length - read2, start + read2);
+  let read3 = 0;
+  while (read3 < buffer.length) {
+    const n = fs4.readSync(fd, buffer, read3, buffer.length - read3, start + read3);
     if (!n)
       break;
-    read2 += n;
+    read3 += n;
   }
-  return createHash6("sha256").update(buffer.subarray(0, read2)).digest("hex");
+  return createHash6("sha256").update(buffer.subarray(0, read3)).digest("hex");
 }
 function readHistory(file, options, previous) {
   let fd;
@@ -6591,14 +6591,14 @@ function readHistory(file, options, previous) {
       fs4.readSync(fd, last, 0, 1, previous.size - 1);
       if (last[0] === 10) {
         const tail = Buffer.alloc(size - previous.size);
-        let read3 = 0;
-        while (read3 < tail.length) {
-          const n = fs4.readSync(fd, tail, read3, tail.length - read3, previous.size + read3);
+        let read4 = 0;
+        while (read4 < tail.length) {
+          const n = fs4.readSync(fd, tail, read4, tail.length - read4, previous.size + read4);
           if (!n)
             break;
-          read3 += n;
+          read4 += n;
         }
-        const end2 = tail.lastIndexOf(10, read3 - 1) + 1;
+        const end2 = tail.lastIndexOf(10, read4 - 1) + 1;
         const data2 = parseHistory(tail.toString("utf8", 0, end2), options, { entries: [...previous.data.entries], counters: previous.data.counters });
         data2.tail = tailHash(fd, previous.size + end2);
         data2.bytes = previous.size + end2;
@@ -6607,14 +6607,14 @@ function readHistory(file, options, previous) {
       }
     }
     const raw = Buffer.alloc(size);
-    let read2 = 0;
-    while (read2 < size) {
-      const n = fs4.readSync(fd, raw, read2, size - read2, read2);
+    let read3 = 0;
+    while (read3 < size) {
+      const n = fs4.readSync(fd, raw, read3, size - read3, read3);
       if (!n)
         break;
-      read2 += n;
+      read3 += n;
     }
-    const end = raw.lastIndexOf(10, read2 - 1) + 1;
+    const end = raw.lastIndexOf(10, read3 - 1) + 1;
     const data = parseHistory(raw.toString("utf8", 0, end), options);
     data.tail = tailHash(fd, end);
     data.bytes = end;
@@ -11263,14 +11263,14 @@ var init_facts_cache = __esm({
        * Facts of a non-file-backed or adapter source (Cursor, Gemini, Copilot), keyed by an identity
        * plus size and mtime; parsed again only when that changes.
        */
-      external(key, size, mtimeMs, tz, read2) {
+      external(key, size, mtimeMs, tz, read3) {
         const m = this.metas.get(key);
         if (m && m.size === size && m.mtimeMs === mtimeMs && m.tz === tz) {
           const hit = this.shard(m);
           if (hit)
             return Promise.resolve(hit);
         }
-        return read2().then((facts) => {
+        return read3().then((facts) => {
           const stored = { ...facts, size, mtimeMs, tz };
           this.loaded.set(key, stored);
           this.metas.set(key, { ...metaOf(stored), file: key, shard: shardOf(key), source: facts.file });
@@ -11302,7 +11302,7 @@ var init_facts_cache = __esm({
        * changes. `read` gets the previous data and its byte length so an
        * append-only log can be extended instead of re-read.
        */
-      history(file, tz, read2) {
+      history(file, tz, read3) {
         let stat;
         try {
           stat = fs7.statSync(file);
@@ -11312,7 +11312,7 @@ var init_facts_cache = __esm({
         const h = this.loadHistory(file);
         if (h && h.tz === tz && h.size === stat.size && h.mtimeMs === stat.mtimeMs)
           return h.data;
-        const data = read2(file, h && h.tz === tz && h.size > 0 && h.size < stat.size ? { data: h.data, size: h.data.bytes ?? h.size } : null);
+        const data = read3(file, h && h.tz === tz && h.size > 0 && h.size < stat.size ? { data: h.data, size: h.data.bytes ?? h.size } : null);
         for (const e of data.entries)
           e.text = "";
         const record2 = { file, shard: shardOf(file, "h-"), size: stat.size, mtimeMs: stat.mtimeMs, tz, data };
@@ -13301,8 +13301,10 @@ function readIgnoreConfig(root = potsherdDir()) {
   let text;
   try {
     text = fs15.readFileSync(file, "utf8");
-  } catch {
-    return { list: [], rest: {}, file };
+  } catch (e) {
+    if (e.code === "ENOENT")
+      return { list: [], rest: {}, file };
+    return { list: [], rest: {}, file, error: `config.json could not be read (${e.code ?? "error"})` };
   }
   let parsed;
   try {
@@ -13408,6 +13410,10 @@ var init_ignore = __esm({
 // packages/core/dist/sources/policy.js
 import fs16 from "node:fs";
 import path12 from "node:path";
+function assertPolicy(policy) {
+  if (policy.error)
+    throw new PolicyError(policy.error, policy.errorDetail ?? policy.error);
+}
 function legacyForgotten(potsherdRoot) {
   const ids = /* @__PURE__ */ new Set();
   const dbFile = dbPath(potsherdRoot);
@@ -13432,12 +13438,25 @@ function forgetPath(slopieRoot = slopieDir()) {
   return path12.join(slopieRoot, "forget.json");
 }
 function readForgetList(slopieRoot = slopieDir()) {
+  const file = forgetPath(slopieRoot);
+  let text;
   try {
-    const raw = JSON.parse(fs16.readFileSync(forgetPath(slopieRoot), "utf8"));
-    return Array.isArray(raw.forgotten) ? raw.forgotten.filter((e) => e && typeof e.sourceId === "string") : [];
-  } catch {
-    return null;
+    text = fs16.readFileSync(file, "utf8");
+  } catch (e) {
+    if (e.code === "ENOENT")
+      return null;
+    throw new PolicyError("forget_list_unreadable", `${file} (${e.code ?? "unreadable"})`);
   }
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new PolicyError("forget_list_unreadable", `${file} (not valid JSON)`);
+  }
+  const list3 = raw && typeof raw === "object" ? raw.forgotten : void 0;
+  if (!Array.isArray(list3))
+    throw new PolicyError("forget_list_unreadable", `${file} (no "forgotten" list)`);
+  return list3.filter((e) => e && typeof e.sourceId === "string");
 }
 function writeForgetList(list3, slopieRoot = slopieDir()) {
   fs16.mkdirSync(slopieRoot, { recursive: true, mode: 448 });
@@ -13446,33 +13465,64 @@ function writeForgetList(list3, slopieRoot = slopieDir()) {
   fs16.renameSync(tmp, file);
 }
 function loadPolicy(potsherdRoot, slopieRoot = slopieDir()) {
-  const policy = { ignoredList: [], forgotten: /* @__PURE__ */ new Set(), ignored: () => false, error: null };
-  const fresh = fs16.existsSync(configPath(slopieRoot));
+  const policy = { ignoredList: [], forgotten: /* @__PURE__ */ new Set(), ignored: () => false, error: null, errorDetail: null };
+  const fail3 = (code, detail) => {
+    if (!policy.error) {
+      policy.error = code;
+      policy.errorDetail = detail;
+    }
+  };
+  const fresh = (() => {
+    try {
+      fs16.lstatSync(configPath(slopieRoot));
+      return true;
+    } catch {
+      return false;
+    }
+  })();
   const config = readIgnoreConfig(fresh ? slopieRoot : potsherdRoot);
   if (config.error)
-    policy.error = "ignore_policy_unreadable";
+    fail3("ignore_policy_unreadable", `${config.file} (${config.error})`);
   policy.ignoredList = config.list;
   if (config.list.length)
     policy.ignored = (project) => !!project && isIgnoredProject(project, config.list);
-  const list3 = readForgetList(slopieRoot);
+  let list3 = null;
+  try {
+    list3 = readForgetList(slopieRoot);
+  } catch (e) {
+    if (!(e instanceof PolicyError))
+      throw e;
+    fail3(e.code, e.detail);
+  }
   if (list3) {
     for (const e of list3)
       policy.forgotten.add(e.sourceId);
-  } else {
+  } else if (policy.error !== "forget_list_unreadable") {
     const legacy = legacyForgotten(potsherdRoot);
     for (const id of legacy.ids)
       policy.forgotten.add(id);
     if (legacy.error)
-      policy.error ??= "forget_list_unreadable";
+      fail3("forget_list_unreadable", `${dbPath(potsherdRoot)} (the 1.8 forget list)`);
   }
   return policy;
 }
+var PolicyError;
 var init_policy = __esm({
   "packages/core/dist/sources/policy.js"() {
     "use strict";
     init_paths();
     init_ignore();
     init_sqlite_driver();
+    PolicyError = class extends Error {
+      code;
+      detail;
+      fix = "repair or move that file aside, then run the command again";
+      constructor(code, detail) {
+        super(`cannot read ${detail}; slopie stops rather than undo your ignore / forget choices.`);
+        this.code = code;
+        this.detail = detail;
+      }
+    };
   }
 });
 
@@ -15741,6 +15791,7 @@ var init_analytics = __esm({
           }
           t = lap("pruneMs", t);
           this.policy = loadPolicy(this.root);
+          assertPolicy(this.policy);
           t = lap("policyMs", t);
           this.detail = { ...this.detail, stage: "reading" };
           this.publish({ sources: this.current.sources.map((s) => {
@@ -17701,6 +17752,60 @@ function mkdirPrivate(dir, root) {
   mkdirPrivate(path19.dirname(dir), root);
   fs23.mkdirSync(dir, { mode: 448 });
 }
+function fileId(file) {
+  try {
+    const st = fs23.statSync(file);
+    return `${st.dev}:${st.ino}`;
+  } catch {
+    return null;
+  }
+}
+function readRecordFile(file) {
+  try {
+    const back = parseRecordText(fs23.readFileSync(file, "utf8"));
+    return back && ["claude", "codex", "pi"].includes(back.session.harness) && back.session.id ? back : null;
+  } catch {
+    return null;
+  }
+}
+function adoptRecordFiles(dir, prev) {
+  const known3 = /* @__PURE__ */ new Set();
+  for (const s of Object.values(prev.sessions)) {
+    const id = fileId(path19.join(dir, s.rel));
+    if (id)
+      known3.add(id);
+  }
+  for (const h of ["claude", "codex", "pi"]) {
+    for (const f of listFiles(path19.join(dir, h), (x) => x.endsWith(".txt") && !x.endsWith(".out.txt")).sort()) {
+      const id = fileId(f);
+      if (!id || known3.has(id))
+        continue;
+      const back = readRecordFile(f);
+      if (!back)
+        continue;
+      const rs = back.session;
+      const key = `${rs.harness}:${sidFile(rs.harness, rs.id, rs.parent, rs.parentKind)}`;
+      const cur = prev.sessions[key];
+      if (cur && fs23.existsSync(path19.join(dir, cur.rel)) && (cur.n ?? 0) >= rs.turns.length)
+        continue;
+      const rel = path19.relative(dir, f).split(path19.sep).join("/");
+      prev.sessions[key] = {
+        sig: "",
+        rel,
+        line: indexLine(rs, rel),
+        start: rs.start ?? "",
+        harness: rs.harness,
+        id: rs.id,
+        parent: rs.parent,
+        parentKind: rs.parentKind,
+        project: rs.project,
+        n: rs.turns.length,
+        ...rs.title === PROMPT_ONLY_TITLE ? { history: true } : {}
+      };
+      known3.add(id);
+    }
+  }
+}
 function codexMeta(homes, imports) {
   const titles = /* @__PURE__ */ new Map();
   const db = /* @__PURE__ */ new Map();
@@ -17839,6 +17944,8 @@ async function syncLocked(o) {
   };
   const dir = recordsDir(o.recordsDir);
   const sidecar = o.sidecar ?? process.env["SLOPIE_SIDECAR"] === "1";
+  const policy = loadPolicy(potsherdDir(o.potsherdDir), slopieDir(o.slopieDir));
+  assertPolicy(policy);
   if (!fs23.existsSync(dir))
     fs23.mkdirSync(dir, { recursive: true, mode: 448 });
   try {
@@ -17846,13 +17953,15 @@ async function syncLocked(o) {
   } catch {
   }
   mkdirPrivate(stateDir(dir), dir);
-  let state = o.full ? null : readState(dir);
-  if (state && (state.format !== FORMAT_VERSION || state.sidecar !== sidecar)) {
+  let state = readState(dir);
+  if (state && o.full) {
+    state = { ...state, sources: {}, sessions: Object.fromEntries(Object.entries(state.sessions).map(([k, v]) => [k, { ...v, sig: "" }])) };
+  } else if (state && (state.format !== FORMAT_VERSION || state.sidecar !== sidecar)) {
     state = { ...state, sessions: Object.fromEntries(Object.entries(state.sessions).map(([k, v]) => [k, { ...v, sig: "" }])) };
   }
   const prev = state ?? { v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {} };
   const next = { v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {} };
-  const policy = loadPolicy(potsherdDir(o.potsherdDir), slopieDir(o.slopieDir));
+  adoptRecordFiles(dir, prev);
   const { sources, historyFiles, codexHomes, codexImported } = discoverSources(o, state);
   mark("discover");
   const result = {
@@ -18030,14 +18139,18 @@ async function syncLocked(o) {
   const present = new Set(sessions.map((s) => s.key));
   const kept = [];
   const presentIds = new Set(sessions.map((s) => `${s.harness}:${s.id}`));
+  const promptOnlyPrev = /* @__PURE__ */ new Map();
   for (const [key, ss] of Object.entries(prev.sessions)) {
-    if (present.has(key) || ss.history || presentIds.has(`${ss.harness}:${ss.id}`))
+    if (present.has(key) || presentIds.has(`${ss.harness}:${ss.id}`))
       continue;
     if (ss.harness === "codex" && meta.imported.has(ss.id))
       continue;
     if (!fs23.existsSync(path19.join(dir, ss.rel)))
       continue;
-    kept.push([key, ss]);
+    if (ss.history)
+      promptOnlyPrev.set(ss.id, ss);
+    else
+      kept.push([key, ss]);
   }
   const have = /* @__PURE__ */ new Set([...sessions.map((s) => s.id), ...kept.map(([, s]) => s.id)]);
   const hist = /* @__PURE__ */ new Map();
@@ -18054,6 +18167,9 @@ async function syncLocked(o) {
       hist.set(sid3, rows2);
     });
   }
+  for (const [sid3, ss] of promptOnlyPrev)
+    if (!hist.has(sid3))
+      kept.push([`claude:${sid3}`, ss]);
   for (const [sid3, rows0] of hist) {
     const cmp = (a, b2) => a < b2 ? -1 : a > b2 ? 1 : 0;
     const sorted = [...rows0].sort((a, b2) => a.at - b2.at || cmp(a.display, b2.display) || cmp(String(a.project), String(b2.project)) || cmp(a.ref, b2.ref));
@@ -18065,7 +18181,29 @@ async function syncLocked(o) {
       seen.add(k);
       return true;
     });
-    const turns = rows2.map((r3) => ({ ts: isoTs(r3.at), text: r3.display, ref: r3.ref }));
+    let turns = rows2.map((r3) => ({ ts: isoTs(r3.at), text: r3.display, ref: r3.ref }));
+    let srcs = [...new Set(rows0.map((r3) => r3.ref.slice(0, r3.ref.lastIndexOf(":"))))];
+    let project = rows2[0].project, start = turns[0].ts, end = turns[turns.length - 1].ts;
+    const old = promptOnlyPrev.get(sid3);
+    const back = old ? (() => {
+      try {
+        return parseRecordText(fs23.readFileSync(path19.join(dir, old.rel), "utf8"));
+      } catch {
+        return null;
+      }
+    })() : null;
+    if (back && back.session.turns.length) {
+      const known3 = new Set(back.session.turns.map((t) => promptKey(t.ts, t.text)));
+      const added = turns.filter((t) => !known3.has(promptKey(t.ts, recTurn({ role: "USER", ts: t.ts, text: t.text, textLen: cpLen(t.text), ref: t.ref }).text)));
+      const carried = back.session.turns.map((t) => ({ ts: t.ts, text: t.text, ref: "", rec: t }));
+      const all = [...carried.map((t, i) => ({ t, k: fmtTs(t.ts), i })), ...added.map((t, i) => ({ t, k: fmtTs(t.ts), i: carried.length + i }))];
+      all.sort((a, b2) => a.k < b2.k ? -1 : a.k > b2.k ? 1 : a.i - b2.i);
+      turns = all.map((x) => x.t);
+      srcs = [.../* @__PURE__ */ new Set([...back.header.sources, ...srcs])];
+      project = back.session.project ?? project;
+      start = turns[0].rec && back.session.start ? back.session.start : turns[0].ts;
+      end = turns[turns.length - 1].rec && back.session.end ? back.session.end : turns[turns.length - 1].ts;
+    }
     sessions.push({
       key: `claude:${sid3}`,
       harness: "claude",
@@ -18074,14 +18212,14 @@ async function syncLocked(o) {
       parentKind: null,
       nTurns: turns.length,
       size: 0,
-      start: turns[0].ts,
-      end: turns[turns.length - 1].ts,
-      project: rows2[0].project,
+      start,
+      end,
+      project,
       best: null,
       paths: [],
       archiveOnly: false,
       history: turns,
-      sources: [...new Set(rows0.map((r3) => r3.ref.slice(0, r3.ref.lastIndexOf(":"))))].sort()
+      sources: srcs.sort()
     });
   }
   const keep = (h, id, parent, project) => !policy.ignored(project) && !isForgotten(policy, h, id, parent);
@@ -18100,6 +18238,30 @@ async function syncLocked(o) {
   for (const l of kids.values())
     l.sort((a, b2) => a.start < b2.start ? -1 : a.start > b2.start ? 1 : a.id < b2.id ? -1 : 1);
   mark("merge");
+  const realRoot = (() => {
+    try {
+      return fs23.realpathSync.native(dir);
+    } catch {
+      return null;
+    }
+  })();
+  const realDirs = /* @__PURE__ */ new Map();
+  const canonicalRel = (rel) => {
+    const d = path19.dirname(rel);
+    let real = realDirs.get(d);
+    if (real === void 0) {
+      real = d;
+      try {
+        mkdirPrivate(path19.join(dir, d), dir);
+        const r3 = realRoot ? path19.relative(realRoot, fs23.realpathSync.native(path19.join(dir, d))) : "";
+        if (r3 && !r3.startsWith("..") && !path19.isAbsolute(r3) && r3.toLowerCase() === d.split("/").join(path19.sep).toLowerCase())
+          real = r3.split(path19.sep).join("/");
+      } catch {
+      }
+      realDirs.set(d, real);
+    }
+    return `${real}/${path19.basename(rel)}`;
+  };
   const index = o.index === false ? null : RecordIndex.open(stateDir(dir));
   if (index && o.full)
     index.clear();
@@ -18125,7 +18287,7 @@ async function syncLocked(o) {
     rec2.parentKind = s.parentKind;
     if (s.harness === "codex")
       rec2.title = s.codexTitle || rec2.title;
-    const rel = recordRelPath(rec2);
+    const rel = canonicalRel(recordRelPath(rec2));
     const file = path19.join(dir, rel);
     mkdirPrivate(path19.dirname(file), dir);
     const text = render(rec2, { children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly });
@@ -18137,15 +18299,16 @@ async function syncLocked(o) {
     else if (fs23.existsSync(side))
       fs23.unlinkSync(side);
     const old = prev.sessions[s.key];
-    if (old && old.rel !== rel) {
+    if (old && old.rel !== rel && fileId(path19.join(dir, old.rel)) !== fileId(file)) {
       try {
         fs23.unlinkSync(path19.join(dir, old.rel));
       } catch {
       }
-      try {
-        fs23.unlinkSync(path19.join(dir, old.rel.slice(0, -4) + ".out.txt"));
-      } catch {
-      }
+      if (fileId(path19.join(dir, old.rel.slice(0, -4) + ".out.txt")) !== fileId(side))
+        try {
+          fs23.unlinkSync(path19.join(dir, old.rel.slice(0, -4) + ".out.txt"));
+        } catch {
+        }
     }
     next.sessions[s.key] = {
       sig,
@@ -18194,12 +18357,12 @@ async function syncLocked(o) {
         harness: "claude",
         id: s.id,
         project: s.project,
-        title: "(prompt history only; transcript not kept)",
+        title: PROMPT_ONLY_TITLE,
         start: s.start,
         end: s.end,
         parent: null,
         parentKind: null,
-        turns: s.history.map((t) => recTurn({ role: "USER", ts: t.ts, text: t.text, textLen: cpLen(t.text), ref: t.ref }))
+        turns: s.history.map((t) => t.rec ?? recTurn({ role: "USER", ts: t.ts, text: t.text, textLen: cpLen(t.text), ref: t.ref }))
       };
       writeOne(s, rec2, sig);
       continue;
@@ -18236,35 +18399,50 @@ async function syncLocked(o) {
   }
   live.clear();
   mark("write");
+  const claimedIds = /* @__PURE__ */ new Set();
+  const claim3 = (rel) => {
+    for (const f of [rel, rel.slice(0, -4) + ".out.txt"]) {
+      const id = fileId(path19.join(dir, f));
+      if (id)
+        claimedIds.add(id);
+    }
+  };
+  for (const s of Object.values(next.sessions))
+    claim3(s.rel);
+  const unlinkUnclaimed = (file) => {
+    const id = fileId(file);
+    if (!id || claimedIds.has(id))
+      return false;
+    try {
+      fs23.unlinkSync(file);
+      return true;
+    } catch {
+      return false;
+    }
+  };
   for (const [key, ss] of Object.entries(prev.sessions)) {
     if (next.sessions[key])
       continue;
-    for (const f of [ss.rel, ss.rel.slice(0, -4) + ".out.txt"]) {
-      try {
-        fs23.unlinkSync(path19.join(dir, f));
-      } catch {
-      }
-    }
+    for (const f of [ss.rel, ss.rel.slice(0, -4) + ".out.txt"])
+      unlinkUnclaimed(path19.join(dir, f));
     result.removed++;
+  }
+  for (const h of ["claude", "codex", "pi"]) {
+    for (const f of listFiles(path19.join(dir, h), (x) => x.endsWith(".txt"))) {
+      const id = fileId(f);
+      if (!id || claimedIds.has(id))
+        continue;
+      if (!f.endsWith(".out.txt") && !readRecordFile(f))
+        continue;
+      if (unlinkUnclaimed(f))
+        result.removed++;
+    }
   }
   if (index) {
     for (const key of indexed.keys())
       if (!next.sessions[key])
         index.remove(key);
     index.finish(!!o.full || result.written > 200);
-  }
-  const claimed = new Set(Object.values(next.sessions).flatMap((s) => [s.rel, s.rel.slice(0, -4) + ".out.txt"]));
-  for (const h of ["claude", "codex", "pi"]) {
-    for (const f of listFiles(path19.join(dir, h), (x) => x.endsWith(".txt"))) {
-      const rel = path19.relative(dir, f).split(path19.sep).join("/");
-      if (!claimed.has(rel)) {
-        try {
-          fs23.unlinkSync(f);
-          result.removed++;
-        } catch {
-        }
-      }
-    }
   }
   const rows = Object.entries(next.sessions).sort(([ka, a], [kb, b2]) => a.start < b2.start ? -1 : a.start > b2.start ? 1 : ka < kb ? -1 : 1);
   writeAtomic2(path19.join(dir, "INDEX.tsv"), INDEX_HEADER + "\n" + rows.map(([, s]) => s.line).join("\n") + "\n");
@@ -18292,7 +18470,7 @@ async function syncLocked(o) {
   result.maxRssMb = Math.round(process.resourceUsage().maxRSS / 1024);
   return result;
 }
-var FORMAT_VERSION, STATE_VERSION, SyncBusyError, hash2, isForgotten;
+var FORMAT_VERSION, STATE_VERSION, SyncBusyError, hash2, PROMPT_ONLY_TITLE, promptKey, isForgotten;
 var init_sync = __esm({
   "packages/core/dist/records/sync.js"() {
     "use strict";
@@ -18319,6 +18497,8 @@ var init_sync = __esm({
       }
     };
     hash2 = (v) => createHash12("sha1").update(JSON.stringify(v)).digest("hex").slice(0, 20);
+    PROMPT_ONLY_TITLE = "(prompt history only; transcript not kept)";
+    promptKey = (ts, text) => JSON.stringify([fmtTs(ts), text.replace(/ …\[\+\d+ chars; raw: [^\]]*\]$/, "").replace(/\s+/g, " ").trim()]);
     isForgotten = (policy, h, id, parent) => policy.forgotten.size > 0 && (policy.forgotten.has(sourceId(h, id)) || !!parent && policy.forgotten.has(sourceId(h, parent)));
   }
 });
@@ -18405,18 +18585,18 @@ let lets get got make made please tell show give went one ones also out up down 
         this.db.close();
       }
       // ------------------------------------------------------------ call syntax
-      readCall(id, from, to) {
+      readCall(id, from, to, fromChar) {
         if (this.style === "mcp")
-          return `read(session=${q(id)}, from_turn=${from}${to !== void 0 ? `, to_turn=${to}` : ""})`;
-        return `slopie read ${id} --from ${from}${to !== void 0 ? ` --to ${to}` : ""}`;
+          return `read(session=${q(id)}, from_turn=${from}${to !== void 0 ? `, to_turn=${to}` : ""}${fromChar ? `, from_char=${fromChar}` : ""})`;
+        return `slopie read ${id} --from ${from}${to !== void 0 ? ` --to ${to}` : ""}${fromChar ? ` --from-char ${fromChar}` : ""}`;
       }
       moreThreads(offset) {
         return this.style === "mcp" ? `threads(..., offset=${offset})` : `slopie threads ... --offset ${offset}`;
       }
-      grepCall(id, pattern, offset) {
+      grepCall(id, pattern, offset, regex = false) {
         if (this.style === "mcp")
-          return `grep(session=${q(id)}, pattern=${pattern === null ? "..." : q(pattern)}${offset !== void 0 ? `, offset=${offset}` : ""})`;
-        return `slopie grep ${id} ${pattern === null ? "<pattern>" : shq(pattern)}${offset !== void 0 ? ` --offset ${offset}` : ""}`;
+          return `grep(session=${q(id)}, pattern=${pattern === null ? "..." : q(pattern)}${regex ? ", regex=true" : ""}${offset !== void 0 ? `, offset=${offset}` : ""})`;
+        return `slopie grep ${id} ${pattern === null ? "<pattern>" : shq(pattern)}${regex ? " --regex" : ""}${offset !== void 0 ? ` --offset ${offset}` : ""}`;
       }
       name(tool) {
         return this.style === "mcp" ? `${tool}(...)` : `slopie ${tool}`;
@@ -18595,25 +18775,43 @@ let lets get got make made please tell show give went one ones also out up down 
         let b2 = o.to_turn === void 0 || o.to_turn === null || Number.isNaN(Number(o.to_turn)) ? Math.min(N2, a + 39) : Math.trunc(Number(o.to_turn));
         b2 = Math.max(a, Math.min(b2, N2));
         const maxChars = Math.max(2e3, Math.min(Math.trunc(Number(o.max_chars ?? 12e3)) || 12e3, 4e4));
+        const c0 = Math.max(0, Math.trunc(Number(o.from_char ?? 0)) || 0);
         const rows = this.db.prepare("select n, role, ts, tool, body from turns where skey=? and n between ? and ? order by n").all(s.key, a, b2);
         const out = [this.head(s)];
         const ch = JSON.parse(s.children || "[]");
         if (ch.length)
           out.push("children: " + ch.slice(0, 20).map((x) => `${x.id} (${x.kind})`).join(", ") + (ch.length > 20 ? ` \u2026 +${ch.length - 20}` : ""));
-        let used = 0, last = a - 1;
+        const footerRoom = `[turn ${N2} of ${N2} cut at character ${99999999} of ${99999999}; turns ${N2}-${N2} of ${N2}. Continue: ${this.readCall(s.id, N2, void 0, 99999999)}]`.length + 1;
+        let used = out.reduce((n, l) => n + l.length + 1, 0);
+        let last = a - 1;
+        let cut = null;
         for (const r3 of rows) {
-          let block = `t${r3.n} ${r3.role}${r3.tool ? " " + r3.tool : ""} ${shortTs(r3.ts)}
-${r3.body}
+          const from = r3.n === a ? Math.min(c0, r3.body.length) : 0;
+          const head = `t${r3.n} ${r3.role}${r3.tool ? " " + r3.tool : ""} ${shortTs(r3.ts)}${from ? ` (continued from character ${from})` : ""}
 `;
-          if (used + block.length > maxChars && r3.n > a)
+          const block = `${head}${r3.body.slice(from)}
+`;
+          const room = maxChars - footerRoom - used;
+          if (block.length + 1 <= room) {
+            out.push(block);
+            used += block.length + 1;
+            last = r3.n;
+            continue;
+          }
+          if (r3.n > a)
             break;
-          if (block.length > maxChars)
-            block = block.slice(0, maxChars) + "\u2026[turn truncated]\n";
-          out.push(block);
-          used += block.length;
-          last = r3.n;
+          const mark = "\u2026[turn continues]\n";
+          let take = Math.max(0, room - head.length - mark.length - 1);
+          const code = r3.body.charCodeAt(from + take - 1);
+          if (take > 0 && code >= 55296 && code <= 56319)
+            take--;
+          out.push(`${head}${r3.body.slice(from, from + take)}${mark}`);
+          cut = { n: r3.n, at: from + take, of: r3.body.length };
+          break;
         }
-        if (last < N2)
+        if (cut)
+          out.push(`[turn ${cut.n} cut at character ${cut.at} of ${cut.of}; ${last >= a ? `turns ${a}-${last}, then ` : ""}part of t${cut.n} of ${N2}. Continue: ${this.readCall(s.id, cut.n, void 0, cut.at)}]`);
+        else if (last < N2)
           out.push(`[turns ${a}-${last} of ${N2}. Continue: ${this.readCall(s.id, last + 1)}]`);
         else
           out.push(`[turns ${a}-${last} of ${N2}; end of thread.]`);
@@ -18634,14 +18832,32 @@ ${r3.body}
         if (o.text) {
           const fq = ftsQuery(o.text, "and");
           if (fq) {
-            let hit = [];
-            try {
-              hit = this.db.prepare("select t.skey as skey, min(t.n) as n from ctx join turns t on t.rid = ctx.rowid where ctx match ? group by t.skey").all(`body : (${fq})`);
-            } catch {
-              hit = [];
+            const perTerm = this.db.prepare("select t.skey as skey, min(t.n) as n from ctx join turns t on t.rid = ctx.rowid where ctx match ? group by t.skey");
+            const hits = (expr) => {
+              try {
+                return new Map(perTerm.all(`body : (${expr})`).map((h) => [h.skey, h.n]));
+              } catch {
+                return /* @__PURE__ */ new Map();
+              }
+            };
+            let both = null;
+            for (const term of fq.split(" AND ")) {
+              const m = hits(term);
+              if (!both) {
+                both = m;
+                continue;
+              }
+              for (const [k, n] of both) {
+                const x = m.get(k);
+                if (x === void 0)
+                  both.delete(k);
+                else if (x < n)
+                  both.set(k, x);
+              }
             }
-            for (const h of hit)
-              firstHit.set(h.skey, h.n);
+            const together = hits(fq);
+            for (const [k, n] of both ?? [])
+              firstHit.set(k, together.get(k) ?? n);
             pool = pool.filter((s) => firstHit.has(s.key));
             note = ` containing all of: ${o.text}`;
           }
@@ -18672,23 +18888,30 @@ ${r3.body}
         return out.join("\n");
       }
       // ------------------------------------------------------------ grep
-      /** Turns with full text and output: re-read from the raw source when it is still there, else the record's text. */
+      /**
+       * Turns with full text and output: re-read, uncapped, from the raw source when it is still there; else the
+       * record's text, whose long fields are cut, so a scan of it is partial (`partial` says why).
+       */
       fullTurns(s) {
+        let why = s.best ? "its raw source is gone" : "it has no raw source (prompt history only)";
         if (s.best && fs24.existsSync(s.best)) {
           try {
             const sub = s.harness === "claude" && s.parent_kind === "subagent" ? s.parent : null;
-            const parsed = readSession(s.best, s.harness, sub, { text: 2e5, output: 2e5 });
+            const parsed = readSession(s.best, s.harness, sub, { text: Number.MAX_SAFE_INTEGER, output: Number.MAX_SAFE_INTEGER });
             if (parsed && parsed.turns.length >= s.n_turns)
-              return parsed.turns;
-          } catch {
+              return { turns: parsed.turns, partial: null };
+            why = "its raw source no longer matches the record";
+          } catch (e) {
+            why = `its raw source could not be read (${e.message.slice(0, 80)})`;
           }
         }
-        return this.db.prepare("select role, ts, tool, body from turns where skey=? order by n").all(s.key).map((r3) => {
+        const turns = this.db.prepare("select role, ts, tool, body from turns where skey=? order by n").all(s.key).map((r3) => {
           if (r3.role !== "TOOL")
             return { role: r3.role, ts: r3.ts, text: r3.body };
           const i = r3.body.indexOf("\n\u2192 ");
           return { role: r3.role, ts: r3.ts, tool: r3.tool ?? "", text: i < 0 ? r3.body : r3.body.slice(0, i), output: i < 0 ? null : r3.body.slice(i + 3) };
         });
+        return { turns, partial: `searched the record only (${why}); text the record shortens was not searched` };
       }
       grep(o) {
         const { s, err } = this.resolve(o.session);
@@ -18703,7 +18926,8 @@ ${r3.body}
           return `bad regex: ${e.message}`;
         }
         const hits = [];
-        this.fullTurns(s).slice(0, s.n_turns).forEach((t, i) => {
+        const { turns, partial } = this.fullTurns(s);
+        turns.slice(0, s.n_turns).forEach((t, i) => {
           for (const field of ["text", "output"]) {
             const v = (field === "text" ? t.text : t.output) ?? "";
             if (!v)
@@ -18726,9 +18950,12 @@ ${r3.body}
         const parent = s.parent && this.hitParent ? `, ${s.parent_kind} of ${s.parent}` : "";
         const out = [`${hits.length} matches for ${pyRepr2(o.pattern)} in ${s.harness} ${s.id} (${s.n_turns} turns, reading order${parent}):`, ...page];
         if (offset + page.length < hits.length)
-          out.push(`[more: ${this.grepCall(s.id, o.pattern, offset + page.length)}]`);
-        if (!hits.length)
-          out.push(`No match. This clears only this spelling in this thread; try another spelling or ${this.name("search")}.`);
+          out.push(`[more: ${this.grepCall(s.id, o.pattern, offset + page.length, !!o.regex)}]`);
+        if (partial)
+          out.push(`[partial scan: ${partial}.]`);
+        if (!hits.length) {
+          out.push(partial ? `No match in what could be searched. This does not clear the spelling: the full text was not available; try ${this.name("search")} or the raw files.` : `No match. This clears only this spelling in this thread; try another spelling or ${this.name("search")}.`);
+        }
         return out.join("\n");
       }
     };
@@ -18765,7 +18992,7 @@ Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) a
             },
             "project": {
               "type": "string",
-              "description": "Only sessions whose working directory contains this text, e.g. 'crush-thoughts'."
+              "description": "Only sessions whose working directory contains this text, e.g. 'my-app'."
             },
             "harness": {
               "type": "string",
@@ -18815,6 +19042,10 @@ Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) a
             "max_chars": {
               "type": "integer",
               "description": "Character budget for the reply (default 12000, max 40000)."
+            },
+            "from_char": {
+              "type": "integer",
+              "description": "Resume inside from_turn at this character, when a reply had to cut that turn (its continuation line gives it)."
             }
           },
           "required": [
@@ -18830,7 +19061,7 @@ Search with rg (e.g. rg -n -i 'term' {RECORDS}, rg -l, rg 'pattern' INDEX.tsv) a
           "properties": {
             "project": {
               "type": "string",
-              "description": "Working-directory substring, e.g. 'slopie' or '/Users/zebra/randomness'."
+              "description": "Working-directory substring, e.g. 'slopie' or '/Users/me/work'."
             },
             "harness": {
               "type": "string",
@@ -18944,7 +19175,7 @@ function callTool(name, args, recordsDir2) {
     if (name === "search")
       return { text: engine2.search({ query: s("query") ?? "", k: n("k"), project: s("project"), harness: s("harness"), since: s("since"), until: s("until"), session: s("session") }), isError: false };
     if (name === "read")
-      return { text: engine2.read({ session: s("session") ?? "", from_turn: n("from_turn") ?? null, to_turn: n("to_turn") ?? null, max_chars: n("max_chars") ?? null }), isError: false };
+      return { text: engine2.read({ session: s("session") ?? "", from_turn: n("from_turn") ?? null, to_turn: n("to_turn") ?? null, max_chars: n("max_chars") ?? null, from_char: n("from_char") ?? null }), isError: false };
     if (name === "threads")
       return { text: engine2.threads({ project: s("project"), harness: s("harness"), since: s("since"), until: s("until"), text: s("text"), include_subagents: args["include_subagents"] === true, parent: s("parent"), limit: n("limit"), offset: n("offset") }), isError: false };
     if (name === "grep")
@@ -19033,6 +19264,9 @@ function findRecord(recordsDir2, id) {
   } catch {
   }
   return null;
+}
+function hasRecord(sessionId, recordsDir2 = recordsDir()) {
+  return findRecord(recordsDir2, sessionId) !== null;
 }
 function continuationPointer(sessionId, harness, recordsDir2 = recordsDir()) {
   const rec2 = findRecord(recordsDir2, sessionId);
@@ -19136,6 +19370,25 @@ function writable(stream2) {
 function printJson(value) {
   if (!writable(process4.stdout)) return;
   process4.stdout.write(JSON.stringify(value, null, 2) + "\n");
+}
+function fold2(text, width) {
+  const rows = [];
+  let line = "";
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    let rest = [...word];
+    if (line && [...line].length + 1 + rest.length <= width) {
+      line += " " + word;
+      continue;
+    }
+    if (line) rows.push(line);
+    while (rest.length > width) {
+      rows.push(rest.slice(0, width).join(""));
+      rest = rest.slice(width);
+    }
+    line = rest.join("");
+  }
+  if (line || !rows.length) rows.push(line);
+  return rows;
 }
 function print(s) {
   if (!writable(process4.stdout)) return;
@@ -20543,7 +20796,7 @@ import fs27 from "node:fs";
 import zlib2 from "node:zlib";
 import { execFileSync as execFileSync2 } from "node:child_process";
 import { createHash as createHash15 } from "node:crypto";
-import path23 from "node:path";
+import path22 from "node:path";
 function time3(v) {
   let t;
   if (typeof v === "string") t = Date.parse(v);
@@ -20584,7 +20837,7 @@ function makeBuilder2(file, harness, size, mtimeMs) {
       file,
       size,
       mtimeMs,
-      sessionId: path23.basename(file.replace(/\.zst$/, ""), ".jsonl"),
+      sessionId: path22.basename(file.replace(/\.zst$/, ""), ".jsonl"),
       parentId: null,
       child: false,
       project: null,
@@ -20683,7 +20936,7 @@ function claudeLine2(b2, line, subagentPath, sessions, archive = false) {
       if (!b2.sidechainFile) {
         f.parentId = sid3;
         f.child = true;
-        f.sessionId = `${sid3}:${path23.basename(f.file, ".jsonl")}`;
+        f.sessionId = `${sid3}:${path22.basename(f.file, ".jsonl")}`;
       }
     } else if (!sessions.size) f.sessionId = sid3;
   }
@@ -20960,7 +21213,7 @@ function piLine2(b2, line) {
     f.project = str4(r3.cwd);
     const parent = str4(r3.parentSession);
     if (parent) {
-      const base3 = path23.basename(parent.replace(/\\/g, "/")).replace(/\.jsonl$/, "");
+      const base3 = path22.basename(parent.replace(/\\/g, "/")).replace(/\.jsonl$/, "");
       f.forkedFrom = base3.includes("_") ? base3.slice(base3.lastIndexOf("_") + 1) : base3;
     }
     touch2(b2, at);
@@ -21288,13 +21541,13 @@ function stripText2(facts) {
 }
 function tailHash2(fd, offset) {
   const start = Math.max(0, offset - TAIL4), buffer = Buffer.alloc(offset - start);
-  let read2 = 0;
-  while (read2 < buffer.length) {
-    const n = fs27.readSync(fd, buffer, read2, buffer.length - read2, start + read2);
+  let read3 = 0;
+  while (read3 < buffer.length) {
+    const n = fs27.readSync(fd, buffer, read3, buffer.length - read3, start + read3);
     if (!n) break;
-    read2 += n;
+    read3 += n;
   }
-  return createHash15("sha256").update(buffer.subarray(0, read2)).digest("hex");
+  return createHash15("sha256").update(buffer.subarray(0, read3)).digest("hex");
 }
 var FACTS_VERSION2, MAX_PROMPT_CHARS2, isRec4, str4, int3, MAX_DATE_MS2, INJECTED_PREFIXES2, SYSTEM_REMINDER2, CODEX_STRIP2, SUBAGENT_DIR2, newCodexState2, ResumeMismatch2, U_KEYS2, tuple2, CODEX_NON_MODELS2, codexModel2, TOOL_CALL2, NAME2, STAMP2, CHUNK3, MAX_LINE3, sharedBuffer2, RESUME_RECENT_MS2, ZSTD_MAGIC3, ZSTD_INPUT2, ZSTD_OUTPUT2, zstdMode2, TAIL4;
 var init_extract2 = __esm({
@@ -21334,7 +21587,7 @@ var init_extract2 = __esm({
     ];
     SYSTEM_REMINDER2 = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
     CODEX_STRIP2 = [/<in-app-browser-context[\s\S]*?<\/in-app-browser-context>/g, /<image name=[^>]*>\s*<\/image>/g, /<\/?image[^>]*>/g];
-    SUBAGENT_DIR2 = `${path23.sep}subagents${path23.sep}`;
+    SUBAGENT_DIR2 = `${path22.sep}subagents${path22.sep}`;
     newCodexState2 = () => ({
       lineNo: 0,
       previousTotal: null,
@@ -21475,7 +21728,7 @@ __export(audit_background_exports, {
 });
 import { fork } from "node:child_process";
 import fs28 from "node:fs";
-import path24 from "node:path";
+import path23 from "node:path";
 function localScanPool() {
   const entry = new URL("./audit-native-worker.js", import.meta.url);
   return fs28.existsSync(entry) ? createScanPool(entry) : void 0;
@@ -21518,7 +21771,7 @@ function createBackgroundAuditSession(options, entry = process.argv[1]) {
     });
     ready.catch(() => {
     });
-    child = fork(path24.resolve(entry), ["__audit_worker"], { stdio: ["ignore", "ignore", "ignore", "ipc"], serialization: "advanced" });
+    child = fork(path23.resolve(entry), ["__audit_worker"], { stdio: ["ignore", "ignore", "ignore", "ipc"], serialization: "advanced" });
     child.on("message", (raw) => {
       if (disposed || cancelled) return;
       if (raw?.kind === "ready") {
@@ -28945,11 +29198,11 @@ var init_share = __esm({
 import crypto3 from "node:crypto";
 import fs29 from "node:fs";
 import os8 from "node:os";
-import path25 from "node:path";
+import path24 from "node:path";
 function historyDir(env = process.env) {
   if (env["SLOPIE_AUDIT_HISTORY_DIR"]) return env["SLOPIE_AUDIT_HISTORY_DIR"];
-  const root = env["POTSHERD_DIR"] || path25.join(os8.homedir(), ".potsherd");
-  return path25.join(root, "audit-history");
+  const root = env["POTSHERD_DIR"] || path24.join(os8.homedir(), ".potsherd");
+  return path24.join(root, "audit-history");
 }
 function scopeKey(snapshot2) {
   const s = snapshot2.scope;
@@ -28988,7 +29241,7 @@ function isDigest(x) {
 }
 function readHistory2(snapshot2, dir = historyDir()) {
   try {
-    const text = fs29.readFileSync(path25.join(dir, `${scopeKey(snapshot2)}.jsonl`), "utf8");
+    const text = fs29.readFileSync(path24.join(dir, `${scopeKey(snapshot2)}.jsonl`), "utf8");
     const out = [];
     for (const line of text.split("\n")) {
       if (!line.trim()) continue;
@@ -29006,7 +29259,7 @@ function readHistory2(snapshot2, dir = historyDir()) {
 function writeDigest(snapshot2, digest3, dir = historyDir()) {
   try {
     fs29.mkdirSync(dir, { recursive: true, mode: 448 });
-    const file = path25.join(dir, `${scopeKey(snapshot2)}.jsonl`);
+    const file = path24.join(dir, `${scopeKey(snapshot2)}.jsonl`);
     const prior = readHistory2(snapshot2, dir);
     const lines = [...prior, digest3].slice(-MAX_LINES).map((d) => JSON.stringify(d));
     const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
@@ -29062,7 +29315,7 @@ var init_history = __esm({
 
 // packages/cli/src/audit-ui/terminal.ts
 import fs30 from "node:fs";
-import path26 from "node:path";
+import path25 from "node:path";
 function splitKeys(chunk) {
   const out = [];
   for (const part of chunk.split(/(?=\x1b)/)) {
@@ -29576,7 +29829,7 @@ async function runWallboard(session, options = {}) {
       const dir = options.shareDir ?? process.cwd();
       let file = "";
       for (let n = 1; n < 100 && !file; n++) {
-        const candidate = path26.join(dir, n === 1 ? "slopie-wrapped.svg" : `slopie-wrapped-${n}.svg`);
+        const candidate = path25.join(dir, n === 1 ? "slopie-wrapped.svg" : `slopie-wrapped-${n}.svg`);
         try {
           fs30.writeFileSync(candidate, svg, { flag: "wx", mode: 420 });
           file = candidate;
@@ -29588,7 +29841,7 @@ async function runWallboard(session, options = {}) {
         flash("too many slopie-wrapped files here already");
         return;
       }
-      flash(`saved ${path26.basename(file)} \xB7 no project names, none of your words`, 2600);
+      flash(`saved ${path25.basename(file)} \xB7 no project names, none of your words`, 2600);
     } catch (error) {
       flash(`couldn't save: ${error instanceof Error ? sanitize(error.message).slice(0, 60) : "unknown error"}`);
     }
@@ -29871,11 +30124,11 @@ __export(audit_overview_exports, {
   runAuditOverview: () => runAuditOverview
 });
 import fs32 from "node:fs";
-import path27 from "node:path";
+import path26 from "node:path";
 async function runAuditOverview(o) {
   const harnesses = o.harness ? [...new Set(o.harness.split(",").map((h) => h.trim()))] : void 0;
   if (harnesses?.some((h) => !["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot"].includes(h))) throw new UserError("Choose overview sources from claude,codex,pi,opencode,cursor,gemini,copilot.");
-  if (o.export && path27.extname(o.export).toLowerCase() !== ".svg") throw new UserError("Use a .svg path for the safe share preview.");
+  if (o.export && path26.extname(o.export).toLowerCase() !== ".svg") throw new UserError("Use a .svg path for the safe share preview.");
   if (o.tone && !["elegant", "witty", "chaotic", "roast"].includes(o.tone)) throw new UserError("Choose a tone: elegant, witty, chaotic, roast.");
   if (o.online) process.env["SLOPIE_ONLINE"] = "1";
   let options = {
@@ -29916,14 +30169,14 @@ async function runAuditOverview(o) {
         const ui2 = await Promise.resolve().then(() => (init_audit_ui(), audit_ui_exports));
         print(ui2.renderLaunchPlain(snapshot2, { ascii: o.ascii, width }));
         if (o.export) {
-          const file = path27.resolve(o.export);
+          const file = path26.resolve(o.export);
           fs32.writeFileSync(file, ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
           print(`Saved safe share preview: ${file}`);
         }
       }
       if (o.json && o.export) {
         const ui2 = await Promise.resolve().then(() => (init_audit_ui(), audit_ui_exports));
-        fs32.writeFileSync(path27.resolve(o.export), ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
+        fs32.writeFileSync(path26.resolve(o.export), ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
       }
       return snapshot2.status === "cancelled" ? 130 : snapshot2.status === "error" ? 1 : 0;
     } finally {
@@ -29964,8 +30217,8 @@ async function createSession(options) {
   const { createBackgroundAuditSession: createBackgroundAuditSession2 } = await Promise.resolve().then(() => (init_audit_background(), audit_background_exports));
   if (fixture || record2) {
     const dev = await Promise.resolve().then(() => (init_fixture_session(), fixture_session_exports));
-    if (fixture) return dev.createFixtureSession(path27.resolve(fixture));
-    return dev.recordAuditSession(createBackgroundAuditSession2(options), path27.resolve(record2));
+    if (fixture) return dev.createFixtureSession(path26.resolve(fixture));
+    return dev.recordAuditSession(createBackgroundAuditSession2(options), path26.resolve(record2));
   }
   return createBackgroundAuditSession2(options);
 }
@@ -29978,7 +30231,7 @@ var init_audit_overview = __esm({
 });
 
 // packages/cli/src/index.ts
-import process8 from "node:process";
+import process9 from "node:process";
 
 // node_modules/.pnpm/commander@12.1.0/node_modules/commander/esm.mjs
 var import_index = __toESM(require_commander(), 1);
@@ -30004,7 +30257,6 @@ init_output();
 init_dist();
 init_output();
 import fs26 from "node:fs";
-import path22 from "node:path";
 import process5 from "node:process";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -30075,7 +30327,7 @@ function runSearch(o) {
   return withEngine(o, (e) => e.search({ query: o.query, k: num5(o.k), project: o.project, harness: o.harness, since: o.since, until: o.until, session: o.session }));
 }
 function runRead(o) {
-  return withEngine(o, (e) => e.read({ session: o.session, from_turn: num5(o.from) ?? null, to_turn: num5(o.to) ?? null, max_chars: num5(o.maxChars) ?? null }));
+  return withEngine(o, (e) => e.read({ session: o.session, from_turn: num5(o.from) ?? null, to_turn: num5(o.to) ?? null, max_chars: num5(o.maxChars) ?? null, from_char: num5(o.fromChar) ?? null }));
 }
 function runThreads(o) {
   return withEngine(o, (e) => e.threads({ project: o.project, harness: o.harness, since: o.since, until: o.until, text: o.text, include_subagents: !!o.subagents, parent: o.parent, limit: num5(o.limit), offset: num5(o.offset) }));
@@ -30092,7 +30344,7 @@ function spawnBackgroundSync(o = {}) {
   const entry = process5.argv[1];
   if (!entry) return;
   const args = [entry, "sync", "--quiet", "--if-idle"];
-  for (const [flag, v] of [["--claude-dir", o.claudeDir], ["--codex-dir", o.codexDir], ["--pi-dir", o.piDir], ["--potsherd-dir", o.potsherdDir]]) if (v) args.push(flag, v);
+  for (const [flag, v] of [["--claude-dir", o.claudeDir], ["--codex-dir", o.codexDir], ["--pi-dir", o.piDir], ["--potsherd-dir", o.potsherdDir], ["--records-dir", o.recordsDir]]) if (v) args.push(flag, v);
   try {
     const child = spawn(process5.execPath, args, { detached: true, stdio: "ignore", env: { ...process5.env, POTSHERD_CLI_PUBLIC_NAME: "slopie" } });
     child.unref();
@@ -30134,17 +30386,15 @@ async function runHook(o) {
     const id = input.session_id ?? input.sessionId ?? "";
     const harness = o.harness ?? "claude";
     const dir = paths_exports.recordsDir(o.recordsDir);
-    const built = fs26.existsSync(path22.join(stateDir(dir), "state.json"));
     const continuing = isContinuation(input.source);
-    if (built && continuing && process5.env["SLOPIE_NO_SYNC"] !== "1") {
-      try {
-        await syncRecords({ ...o.recordsDir ? { recordsDir: o.recordsDir } : {}, workerUrl: workerUrl() });
-      } catch {
-      }
-    } else {
-      spawnBackgroundSync(o);
+    spawnBackgroundSync(o);
+    if (!continuing || !id) return 0;
+    const budget = Math.max(0, Math.min(Number(process5.env["SLOPIE_HOOK_WAIT_MS"] ?? 3e3) || 0, 1e4));
+    if (process5.env["SLOPIE_NO_SYNC"] !== "1" && !hasRecord(id, dir)) {
+      const until = Date.now() + budget;
+      while (Date.now() < until && !hasRecord(id, dir)) await new Promise((r3) => setTimeout(r3, 100));
     }
-    if (continuing && id) print(continuationPointer(id, harness, dir).join("\n"));
+    print(continuationPointer(id, harness, dir).join("\n"));
   } catch {
   }
   return 0;
@@ -30205,17 +30455,144 @@ async function runAudit(o) {
 // packages/cli/src/commands/doctor.ts
 init_dist();
 init_output();
-import fs34 from "node:fs";
+import fs35 from "node:fs";
 import path29 from "node:path";
-import process7 from "node:process";
+import process8 from "node:process";
 
 // packages/cli/src/commands/setup.ts
 init_dist();
 init_output();
-import fs33 from "node:fs";
+import fs34 from "node:fs";
 import os9 from "node:os";
 import path28 from "node:path";
+import process7 from "node:process";
+
+// packages/cli/src/commands/setup-legacy.ts
+init_dist();
+import fs33 from "node:fs";
+import path27 from "node:path";
 import process6 from "node:process";
+var LEGACY_WHAT = "remove the potsherd 1.x MCP server (its program is gone)";
+var NAME3 = "potsherd";
+var PI_MARK = "// potsherd-pi-entry: ";
+var PI_STUB = "export default function() {}\n";
+var SCRIPT = /(?:^|[\\/])(?:packages[\\/]mcp[\\/]dist[\\/]index\.js|@potsherd[\\/]mcp[\\/]dist[\\/]index\.js|dist[\\/]mcp\.js)$/;
+function ownArgv(argv) {
+  if (!argv.every((a) => typeof a === "string")) return false;
+  const [cmd, ...args] = argv;
+  if (!cmd) return false;
+  if (cmd === "potsherd-mcp") return args.length === 0;
+  return /^node(?:\.exe)?$|[\\/]node(?:\.exe)?$/.test(cmd) && args.length === 1 && SCRIPT.test(args[0]);
+}
+function ownJsonEntry(target, e) {
+  if (!e || typeof e !== "object" || Array.isArray(e)) return false;
+  const o = e;
+  const keys2 = Object.keys(o).sort().join(",");
+  const args = Array.isArray(o["args"]) ? o["args"] : o["args"] === void 0 ? [] : null;
+  if (target === "opencode") return keys2 === "command,enabled,type" && o["type"] === "local" && o["enabled"] === true && Array.isArray(o["command"]) && ownArgv(o["command"]);
+  if (args === null || typeof o["command"] !== "string") return false;
+  if (!Object.keys(o).every((k) => ["type", "command", "args", "env", "tools"].includes(k))) return false;
+  if (o["type"] !== void 0 && o["type"] !== "stdio" && o["type"] !== "local") return false;
+  if (o["env"] !== void 0 && JSON.stringify(o["env"]) !== "{}") return false;
+  if (o["tools"] !== void 0 && JSON.stringify(o["tools"]) !== '["*"]') return false;
+  return ownArgv([o["command"], ...args]);
+}
+function jsonTransform(target, holderKey) {
+  return (text) => {
+    const json3 = JSON.parse(text);
+    const holder = json3[holderKey];
+    if (holder && ownJsonEntry(target, holder[NAME3])) delete holder[NAME3];
+    return JSON.stringify(json3, null, 2) + "\n";
+  };
+}
+function jsonHas(target, holderKey, text) {
+  try {
+    const json3 = JSON.parse(text);
+    const holder = json3?.[holderKey];
+    return !!holder && typeof holder === "object" && ownJsonEntry(target, holder[NAME3]);
+  } catch {
+    return false;
+  }
+}
+var TABLE = /^[ \t]*\[[ \t]*mcp_servers[ \t]*\.[ \t]*(?:"([^"]+)"|'([^']+)'|([^\]]+?))[ \t]*\][ \t]*$/;
+var tableOf = (line) => {
+  const m = TABLE.exec(line);
+  if (!m) return null;
+  const full = m[1] ?? m[2] ?? m[3];
+  return { server: m[3] !== void 0 ? full.split(".")[0] : full, full };
+};
+function tomlOwnTable(text) {
+  const lines = text.split("\n");
+  const start = lines.findIndex((l) => tableOf(l)?.full === NAME3);
+  if (start < 0) return null;
+  let end = start + 1;
+  while (end < lines.length && !/^[ \t]*\[/.test(lines[end])) end++;
+  const body = {};
+  for (const l of lines.slice(start + 1, end)) {
+    if (!l.trim()) continue;
+    const m = /^[ \t]*([A-Za-z_]+)[ \t]*=[ \t]*(.*?)[ \t]*$/.exec(l);
+    if (!m) return null;
+    try {
+      body[m[1]] = JSON.parse(m[2]);
+    } catch {
+      return null;
+    }
+  }
+  if (lines.some((l, i) => i !== start && tableOf(l)?.server === NAME3)) return null;
+  if (lines.some((l) => /^[ \t]*mcp_servers[ \t]*=/.test(l))) return null;
+  const keys2 = Object.keys(body).sort().join(",");
+  if (keys2 !== "args,command" && keys2 !== "command") return null;
+  const args = body["args"] === void 0 ? [] : body["args"];
+  return Array.isArray(args) && ownArgv([body["command"], ...args]) ? { start, end } : null;
+}
+function tomlTransform(text) {
+  const t = tomlOwnTable(text);
+  if (!t) return text;
+  const lines = text.split("\n");
+  lines.splice(t.start, t.end - t.start);
+  return lines.join("\n").replace(/\n{3,}/g, "\n\n").replace(/^\n+/, "");
+}
+function read(file) {
+  try {
+    return fs33.readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+}
+function claudeJsons(claudeDirOpt) {
+  const override = claudeDirOpt ?? (process6.env["CLAUDE_CONFIG_DIR"]?.trim() || void 0);
+  return [.../* @__PURE__ */ new Set([...override ? [path27.join(paths_exports.claudeDir(override), ".claude.json")] : [], path27.join(paths_exports.home(), ".claude.json")])];
+}
+function opencodeConfig() {
+  const xdg = process6.env["XDG_CONFIG_HOME"]?.trim();
+  return path27.join(xdg ? path27.resolve(paths_exports.expandTilde(xdg)) : path27.join(paths_exports.home(), ".config"), "opencode", "opencode.json");
+}
+function legacyChanges(targets, o = {}) {
+  const out = [];
+  const json3 = (client, file, holder) => {
+    const text = read(file);
+    if (text !== null && jsonHas(client, holder, text)) out.push({ client, file, transform: jsonTransform(client, holder) });
+  };
+  for (const t of targets) {
+    if (t === "claude") for (const file of claudeJsons(o.claudeDir)) json3(t, file, "mcpServers");
+    else if (t === "cursor") json3(t, path27.join(paths_exports.cursorDir(), "mcp.json"), "mcpServers");
+    else if (t === "gemini") json3(t, path27.join(paths_exports.geminiDir(), "settings.json"), "mcpServers");
+    else if (t === "copilot") json3(t, path27.join(paths_exports.copilotDir(), "mcp-config.json"), "mcpServers");
+    else if (t === "opencode") json3(t, opencodeConfig(), "mcp");
+    else if (t === "codex") {
+      const file = path27.join(paths_exports.codexDir(o.codexDir), "config.toml");
+      const text = read(file);
+      if (text !== null && tomlOwnTable(text)) out.push({ client: t, file, transform: tomlTransform });
+    } else if (t === "pi") {
+      const file = path27.join(paths_exports.piDir(o.piDir), "agent", "extensions", "potsherd.ts");
+      const text = read(file);
+      if (text !== null && (text.startsWith(PI_MARK) || text === PI_STUB)) out.push({ client: t, file, transform: () => null });
+    }
+  }
+  return out;
+}
+
+// packages/cli/src/commands/setup.ts
 var SETUP_CLIENTS = ["claude", "codex", "pi"];
 var BEGIN = "<!-- slopie:memory:begin -->";
 var END = "<!-- slopie:memory:end -->";
@@ -30231,17 +30608,17 @@ ${agentNote(recordsDir2)}
 `;
 }
 function slopieArgv() {
-  const onPath = (process6.env["PATH"] ?? "").split(path28.delimiter).some((d) => d && fs33.existsSync(path28.join(d, "slopie")));
-  const entry = process6.argv[1] ?? "";
-  return onPath || !entry ? ["slopie"] : [process6.execPath, path28.resolve(entry)];
+  const onPath = (process7.env["PATH"] ?? "").split(path28.delimiter).some((d) => d && fs34.existsSync(path28.join(d, "slopie")));
+  const entry = process7.argv[1] ?? "";
+  return onPath || !entry ? ["slopie"] : [process7.execPath, path28.resolve(entry)];
 }
 var sh = (a) => /^[A-Za-z0-9_./:@+-]+$/.test(a) ? a : JSON.stringify(a);
 function hookCommand(harness) {
   return [...slopieArgv(), "hook", "session-start", "--harness", harness].map(sh).join(" ");
 }
-function read(file) {
+function read2(file) {
   try {
-    return fs33.readFileSync(file, "utf8");
+    return fs34.readFileSync(file, "utf8");
   } catch {
     return null;
   }
@@ -30276,23 +30653,44 @@ function claudeSettings(text, command) {
 }
 function piExtension() {
   const [cmd, ...args] = slopieArgv();
-  return `// slopie: keep the session records current when a pi session starts (installed by \`slopie setup\`).
+  return `// slopie (installed by \`slopie setup\`): keep the session records current when a pi session starts, and after
+// a resume or a compaction give the agent this session's record path and the commands to read it (at most 10 lines).
 import { spawn } from 'node:child_process';
-export default function (pi) {
-  pi.on('session_start', async () => {
+const CMD = ${JSON.stringify(cmd)};
+const ARGS = ${JSON.stringify([...args, "hook", "session-start", "--harness", "pi"])};
+function hook(source, sessionId) {
+  return new Promise(resolve => {
+    let out = '';
     try {
-      const child = spawn(${JSON.stringify(cmd)}, ${JSON.stringify([...args, "hook", "session-start", "--harness", "pi"])}, { detached: true, stdio: 'ignore' });
-      child.unref();
-    } catch {}
+      const child = spawn(CMD, ARGS, { stdio: ['pipe', 'pipe', 'ignore'] });
+      child.stdout.on('data', d => { if (out.length < 4000) out += d; });
+      child.on('close', () => resolve(out));
+      child.on('error', () => resolve(''));
+      child.stdin.on('error', () => {});
+      child.stdin.end(JSON.stringify({ session_id: sessionId, source }));
+    } catch { resolve(''); }
   });
+}
+export default function (pi) {
+  const run = async (source, ctx) => {
+    try {
+      const id = ctx?.sessionManager?.getSessionId?.() ?? '';
+      const text = (await hook(source, id)).trim();
+      if (text && source !== 'startup') pi.sendMessage({ customType: 'slopie', content: text.split('\\n').slice(0, 10).join('\\n'), display: true }, { deliverAs: 'nextTurn' });
+    } catch {}
+  };
+  // Never awaited: a session start is not held up by slopie.
+  pi.on('session_start', (event, ctx) => { void run(event?.reason === 'resume' ? 'resume' : 'startup', ctx); });
+  pi.on('session_compact', (_event, ctx) => { void run('compact', ctx); });
 }
 `;
 }
-function plan(o, clients) {
+var LEGACY_ONLY = ["cursor", "gemini", "opencode", "copilot"];
+function plan(o, clients, others = false) {
   const records = paths_exports.recordsDir();
   const out = [];
   const add = (client, file, what, after) => {
-    const before = read(file);
+    const before = read2(file);
     if (before !== after && !(before === null && after === null)) out.push({ client, file, what, before, after });
   };
   for (const c of clients) {
@@ -30300,24 +30698,31 @@ function plan(o, clients) {
       const dir = paths_exports.claudeDir(o.claudeDir);
       add(c, path28.join(dir, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
       const settings = path28.join(dir, "settings.json");
-      add(c, settings, "SessionStart hook", claudeSettings(read(settings), o.remove ? null : hookCommand("claude")));
+      add(c, settings, "SessionStart hook", claudeSettings(read2(settings), o.remove ? null : hookCommand("claude")));
     } else if (c === "codex") {
       const home2 = paths_exports.codexDir(o.codexDir);
       const file = path28.join(home2, "AGENTS.md");
-      add(c, file, "AGENTS.md note", withBlock(read(file), o.remove ? null : agentNote(records)));
+      add(c, file, "AGENTS.md note", withBlock(read2(file), o.remove ? null : agentNote(records)));
     } else {
       const root = path28.join(paths_exports.piDir(o.piDir), "agent");
       add(c, path28.join(root, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
       add(c, path28.join(root, "extensions", "slopie.ts"), "extension", o.remove ? null : piExtension());
     }
   }
+  const legacyOpts = { ...o.claudeDir ? { claudeDir: o.claudeDir } : {}, ...o.codexDir ? { codexDir: o.codexDir } : {}, ...o.piDir ? { piDir: o.piDir } : {} };
+  for (const l of legacyChanges([...clients, ...others ? LEGACY_ONLY : []], legacyOpts)) {
+    const before = read2(l.file);
+    if (before === null) continue;
+    const after = l.transform(before);
+    if (after !== before) out.push({ client: l.client, file: l.file, what: LEGACY_WHAT, before, after, transform: l.transform });
+  }
   return out;
 }
 function detected(o) {
   const found = [];
-  if (fs33.existsSync(paths_exports.claudeDir(o.claudeDir))) found.push("claude");
-  if (fs33.existsSync(paths_exports.codexDir(o.codexDir))) found.push("codex");
-  if (fs33.existsSync(paths_exports.piDir(o.piDir))) found.push("pi");
+  if (fs34.existsSync(paths_exports.claudeDir(o.claudeDir))) found.push("claude");
+  if (fs34.existsSync(paths_exports.codexDir(o.codexDir))) found.push("codex");
+  if (fs34.existsSync(paths_exports.piDir(o.piDir))) found.push("pi");
   return found;
 }
 function diff(before, after) {
@@ -30328,9 +30733,9 @@ function diff(before, after) {
 async function runSetup(o) {
   const t = themeFrom(o);
   if (o.note) {
-    const note = agentNote(paths_exports.recordsDir(), { cli: process6.env["SLOPIE_NOTE_CLI"] !== "0", guidance: process6.env["SLOPIE_NOTE_GUIDANCE"] === "1", sidecar: process6.env["SLOPIE_NOTE_SIDECAR"] === "1" });
+    const note = agentNote(paths_exports.recordsDir(), { cli: process7.env["SLOPIE_NOTE_CLI"] !== "0", guidance: process7.env["SLOPIE_NOTE_GUIDANCE"] === "1", sidecar: process7.env["SLOPIE_NOTE_SIDECAR"] === "1" });
     if (o.json) printJson({ note, records: paths_exports.recordsDir() });
-    else process6.stdout.write(note + "\n");
+    else process7.stdout.write(note + "\n");
     return 0;
   }
   const clients = o.clients?.length ? o.clients : detected(o);
@@ -30340,14 +30745,17 @@ async function runSetup(o) {
       return { client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map((p) => p.what) };
     });
     if (o.json) printJson({ records: paths_exports.recordsDir(), clients: rows });
-    else for (const r3 of rows) print(`  ${r3.client.padEnd(8)}${r3.installed ? "installed" : r3.detected ? `missing: ${r3.missing.join(", ")}  (slopie setup --${r3.client})` : "not found on this machine"}`);
+    else for (const r3 of rows) {
+      const text = r3.installed ? "installed" : r3.detected ? `missing: ${r3.missing.join(", ")} (slopie setup --${r3.client})` : "not found on this machine";
+      fold2(text, Math.max(20, t.width - 12)).forEach((row, i) => print(`  ${i ? "".padEnd(8) : r3.client.padEnd(8)}${row}`));
+    }
     return 0;
   }
   if (!clients.length) {
     print("no Claude Code, Codex or pi directory found; name one: slopie setup --claude | --codex | --pi");
     return 1;
   }
-  const changes = plan(o, clients);
+  const changes = plan(o, clients, !o.clients?.length || !!o.all);
   if (!changes.length) {
     if (o.json) printJson({ changes: [] });
     else print(o.remove ? "nothing to remove." : `already set up for ${clients.join(", ")}.`);
@@ -30373,20 +30781,33 @@ async function runSetup(o) {
   }
   const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
   for (const c of changes) {
-    if (c.before !== null && !c.file.includes(`${path28.sep}${SKILL}${path28.sep}`) && !c.file.endsWith(`${path28.sep}slopie.ts`)) fs33.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
+    if (c.transform) {
+      const now = read2(c.file);
+      if (now === null) continue;
+      c.before = now;
+      c.after = c.transform(now);
+      if (c.after === now) continue;
+    }
+    if (c.before !== null && !c.file.includes(`${path28.sep}${SKILL}${path28.sep}`) && !c.file.endsWith(`${path28.sep}slopie.ts`)) fs34.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
     if (c.after === null) {
-      fs33.rmSync(c.file, { force: true });
+      fs34.rmSync(c.file, { force: true });
       const dir = path28.dirname(c.file);
-      if (path28.basename(dir) === SKILL) fs33.rmSync(dir, { recursive: true, force: true });
+      if (path28.basename(dir) === SKILL) fs34.rmSync(dir, { recursive: true, force: true });
     } else {
-      fs33.mkdirSync(path28.dirname(c.file), { recursive: true });
-      fs33.writeFileSync(c.file, c.after);
+      fs34.mkdirSync(path28.dirname(c.file), { recursive: true });
+      if (c.transform) {
+        const tmp = `${c.file}.slopie-tmp-${process7.pid}`;
+        fs34.writeFileSync(tmp, c.after, { mode: fs34.statSync(c.file).mode & 511 });
+        fs34.renameSync(tmp, c.file);
+      } else {
+        fs34.writeFileSync(c.file, c.after);
+      }
     }
   }
   if (o.json) printJson({ written: changes.map((c) => c.file) });
   else {
     print(`${o.remove ? "removed" : "done"}: ${changes.length} file${changes.length === 1 ? "" : "s"}.`);
-    if (!o.remove && !fs33.existsSync(path28.join(paths_exports.recordsDir(), "INDEX.tsv"))) print(`next:  slopie sync   ${t.dim("(writes the records the note points at)")}`);
+    if (!o.remove && !fs34.existsSync(path28.join(paths_exports.recordsDir(), "INDEX.tsv"))) print(`next:  slopie sync   ${t.dim("(writes the records the note points at)")}`);
   }
   return 0;
 }
@@ -30400,7 +30821,7 @@ async function runDoctor(o) {
   const records = paths_exports.recordsDir();
   const state = (() => {
     try {
-      return JSON.parse(fs34.readFileSync(path29.join(stateDir(records), "state.json"), "utf8"));
+      return JSON.parse(fs35.readFileSync(path29.join(stateDir(records), "state.json"), "utf8"));
     } catch {
       return null;
     }
@@ -30408,19 +30829,30 @@ async function runDoctor(o) {
   const index = path29.join(stateDir(records), "index.sqlite");
   let mode = null;
   try {
-    mode = (fs34.statSync(records).mode & 511).toString(8);
+    mode = (fs35.statSync(records).mode & 511).toString(8);
   } catch {
   }
   const policy = loadPolicy(paths_exports.potsherdDir(o.potsherdDir));
   const legacy = paths_exports.potsherdDir(o.potsherdDir);
-  const legacyParts = ["potsherd.db", "archive", "models", "cards"].filter((p) => fs34.existsSync(path29.join(legacy, p)));
+  const legacyParts = ["potsherd.db", "archive", "models", "cards"].filter((p) => fs35.existsSync(path29.join(legacy, p)));
   const report = {
     version: VERSION,
-    node: process7.version,
+    node: process8.version,
     sqlite: sqliteDriverName(),
     sources: census,
-    records: { dir: records, built: !!state, sessions: state?.sessions ? Object.keys(state.sessions).length : 0, mode, index: fs34.existsSync(index) ? fs34.statSync(index).size : 0 },
-    privacy: { ignored: policy.ignoredList, forgotten: policy.forgotten.size, forgetFile: readForgetList() !== null },
+    records: { dir: records, built: !!state, sessions: state?.sessions ? Object.keys(state.sessions).length : 0, mode, index: fs35.existsSync(index) ? fs35.statSync(index).size : 0 },
+    privacy: {
+      ignored: policy.ignoredList,
+      forgotten: policy.forgotten.size,
+      forgetFile: (() => {
+        try {
+          return readForgetList() !== null;
+        } catch {
+          return true;
+        }
+      })(),
+      error: policy.errorDetail
+    },
     legacy: { dir: legacy, present: legacyParts, unused: legacyParts.length > 0 }
   };
   if (o.json) {
@@ -30428,26 +30860,31 @@ async function runDoctor(o) {
     return 0;
   }
   const mb2 = (n) => `${(n / 1e6).toFixed(0)} MB`;
-  print(`${t.bold("slopie")} ${VERSION}  ${t.dim(`node ${process7.version} \xB7 sqlite ${report.sqlite ?? "unavailable (search needs better-sqlite3 or node:sqlite)"}`)}`);
+  const say = (text, style = (s) => s, indent = 2) => {
+    fold2(text, Math.max(20, t.width - indent - 2)).forEach((row, i) => print(" ".repeat(i ? indent + 2 : indent) + style(row)));
+  };
+  print(`${t.bold("slopie")} ${VERSION}`);
+  say(`node ${process8.version} \xB7 sqlite ${report.sqlite ?? "unavailable (search needs better-sqlite3 or node:sqlite)"}`, (s) => t.dim(s));
   print("");
   print(t.dim("sources (read-only)"));
   for (const [h, r3] of Object.entries(census)) print(`  ${h.padEnd(8)}${String(r3.files).padStart(6)} files  ${mb2(r3.bytes)}`);
   print("");
   print(t.dim("records"));
-  if (state) print(`  ${paths_exports.tildify(records)}  ${report.records.sessions} sessions  mode ${mode}  index ${mb2(report.records.index)}`);
-  else print(`  not built yet: ${t.accent("slopie sync")}`);
-  print(`  ignored projects: ${policy.ignoredList.length ? policy.ignoredList.join(", ") : "none"} \xB7 forgotten sessions: ${policy.forgotten.size}`);
+  if (state) {
+    say(paths_exports.tildify(records));
+    say(`${report.records.sessions} sessions \xB7 mode ${mode} \xB7 index ${mb2(report.records.index)}`);
+  } else print(`  not built yet: ${t.accent("slopie sync")}`);
+  say(`ignored projects: ${policy.ignoredList.length ? policy.ignoredList.join(", ") : "none"} \xB7 forgotten sessions: ${policy.forgotten.size}`);
+  if (policy.errorDetail) say(`unreadable opt-outs: ${policy.errorDetail}; sync and audit stop until it is fixed`, (s) => t.warn(s));
   print("");
   print(t.dim("agents"));
   await runSetup({ ...o, json: false, status: true });
   if (legacyParts.length) {
     print("");
     print(t.dim("no longer used"));
-    print(`  ${paths_exports.tildify(legacy)}`);
-    print(`  ${legacyParts.join(", ")}: potsherd 1.x data that slopie 1.9 does not use`);
-    print("  (only audit-derived/ is still used: the audit's cache).");
-    print(`  ${state ? "The records hold the archived sessions, so they are" : "After one  slopie sync  they are"} safe to`);
-    print("  remove by hand. slopie never deletes them.");
+    say(paths_exports.tildify(legacy));
+    say(`${legacyParts.join(", ")}: potsherd 1.x data that slopie 1.9 does not use (only audit-derived/ is still used: the audit's cache).`);
+    say(`${state ? "The records hold the archived sessions, so they are" : "After one  slopie sync  they are"} safe to remove by hand. slopie never deletes them.`);
   }
   return 0;
 }
@@ -30455,12 +30892,12 @@ async function runDoctor(o) {
 // packages/cli/src/commands/ignore.ts
 init_dist();
 init_output();
-import fs35 from "node:fs";
+import fs36 from "node:fs";
 async function runIgnore(o) {
   const verb = o.remove ? "unignore" : "ignore";
   const root = paths_exports.slopieDir();
   const legacy = paths_exports.potsherdDir(o.potsherdDir);
-  const fresh = fs35.existsSync(paths_exports.configPath(root));
+  const fresh = fs36.existsSync(paths_exports.configPath(root));
   const before = readIgnoreConfig(fresh ? root : legacy);
   if (before.error) throw new UserError(`${paths_exports.tildify(before.file)}: ${before.error}`, "open it and fix it, or delete it; slopie will write a new one");
   const named = o.project?.trim();
@@ -30483,9 +30920,9 @@ async function runIgnore(o) {
 
 // packages/cli/src/index.ts
 init_dist();
-if (process8.env.NODE_ENV === void 0) process8.env.NODE_ENV = "production";
+if (process9.env.NODE_ENV === void 0) process9.env.NODE_ENV = "production";
 var GLOBAL_ONLY = /^(--json|--no-color|--ascii|--width|--claude-dir|--codex-dir|--potsherd-dir|--debug|\d+|\/.*|~.*)$/;
-var publicCommandName = process8.env["POTSHERD_CLI_PUBLIC_NAME"] === "slopie" ? "slopie" : "potsherd";
+var publicCommandName = process9.env["POTSHERD_CLI_PUBLIC_NAME"] === "slopie" ? "slopie" : "potsherd";
 function publicHelpText(text) {
   return publicCommandName === "slopie" ? text.replace(/\bpotsherd(?=\s|:)/g, "slopie") : text;
 }
@@ -30499,9 +30936,9 @@ function addGlobals(cmd) {
 function main(argv) {
   const program2 = new Command();
   program2.configureOutput({ writeOut: (text) => {
-    process8.stdout.write(publicHelpText(text));
+    process9.stdout.write(publicHelpText(text));
   }, writeErr: (text) => {
-    process8.stderr.write(publicHelpText(text));
+    process9.stderr.write(publicHelpText(text));
   } });
   addGlobals(
     program2.name(publicCommandName).description("audit your coding-agent history, and keep every session as plain text your agents can search").version(VERSION, "-v, --version").showHelpAfterError(`(run  ${publicCommandName} --help  for the list of verbs)`)
@@ -30581,16 +31018,16 @@ example:
       session: str6(opts["session"])
     }), o);
   });
-  const read2 = addGlobals(records(
-    program2.command("read").description("read a past session's turns (tool output shortened); --from -30 reads the last 30").argument("<session>", "session id or 8+ char prefix").addOption(new Option("--from <n>", "first turn (negative counts from the end)")).addOption(new Option("--to <n>", "last turn (default from+39)")).addOption(new Option("--max-chars <n>", "character budget (default 12000, max 40000)"))
+  const read3 = addGlobals(records(
+    program2.command("read").description("read a past session's turns (tool output shortened); --from -30 reads the last 30").argument("<session>", "session id or 8+ char prefix").addOption(new Option("--from <n>", "first turn (negative counts from the end)")).addOption(new Option("--to <n>", "last turn (default from+39)")).addOption(new Option("--max-chars <n>", "character budget (default 12000, max 40000)")).addOption(new Option("--from-char <n>", "resume inside the --from turn at this character (from a cut reply)"))
   )).addHelpText("after", `
 example:
   potsherd read 9c4d2f18
   potsherd read 9c4d2f18 --from 120 --to 140
   potsherd read 9c4d2f18 --from -30`);
-  read2.action((session, opts) => {
-    const o = globals(program2, read2, opts);
-    void run(async () => runRead({ ...o, ...rec(opts), session, from: opts["from"], to: opts["to"], maxChars: opts["maxChars"] }), o);
+  read3.action((session, opts) => {
+    const o = globals(program2, read3, opts);
+    void run(async () => runRead({ ...o, ...rec(opts), session, from: opts["from"], to: opts["to"], maxChars: opts["maxChars"], fromChar: opts["fromChar"] }), o);
   });
   const threads = addGlobals(records(
     program2.command("threads").description("list sessions newest first; --text lists EVERY thread containing all the words").option("--project <text>", "working-directory substring").addOption(new Option("--harness <name>", "only this harness").choices(["claude", "codex", "pi"])).option("--since <iso>", "threads active at or after this date/time").option("--until <iso>", "threads active at or before this date/time").option("--text <words>", "only threads whose transcript contains all of these words").option("--subagents", "also list subagent threads").option("--parent <id>", "the child threads (subagents, forks) of this session").addOption(new Option("--limit <n>", "max rows (default 40, max 200)")).addOption(new Option("--offset <n>", "skip this many rows"))
@@ -30763,7 +31200,7 @@ function globals(program2, cmd, local) {
 async function run(fn, o) {
   try {
     const code = await fn();
-    if (code) process8.exitCode = code;
+    if (code) process9.exitCode = code;
   } catch (err) {
     fail2(err, o);
   }
@@ -30796,9 +31233,9 @@ function tour(o = {}) {
   print(`  start here:  ${t.accent(`${publicCommandName} audit`)}`);
   print("");
 }
-if (process8.argv[2] === "__audit_worker" && process8.send) {
+if (process9.argv[2] === "__audit_worker" && process9.send) {
   void Promise.resolve().then(() => (init_audit_background(), audit_background_exports)).then(({ runAuditWorkerHost: runAuditWorkerHost2 }) => runAuditWorkerHost2());
-} else main(process8.argv);
+} else main(process9.argv);
 export {
   VERSION
 };

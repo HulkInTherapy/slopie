@@ -3,18 +3,23 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { agentNote, paths } from '@potsherd/core';
-import { confirm, print, printJson, themeFrom, UserError, type GlobalOptions } from '../output.js';
+import { confirm, fold, print, printJson, themeFrom, UserError, type GlobalOptions } from '../output.js';
+import { LEGACY_WHAT, legacyChanges, type LegacyTarget } from './setup-legacy.js';
 
 /**
  * `slopie setup`: teach the user's agents the records.
  *
  *   claude   ~/.claude/skills/slopie-memory/SKILL.md (the note) + a SessionStart hook in ~/.claude/settings.json
  *   codex    a marked block in ~/.codex/AGENTS.md (the note)
- *   pi       ~/.pi/agent/skills/slopie-memory/SKILL.md (the note) + ~/.pi/agent/extensions/slopie.ts (sync on start)
+ *   pi       ~/.pi/agent/skills/slopie-memory/SKILL.md (the note) + ~/.pi/agent/extensions/slopie.ts (sync on start;
+ *            the continuation pointer after a resume or compaction, injected with pi.sendMessage)
  *
  * The note is R5's NOTE_B verbatim with the records path filled in, plus one line on the CLI tools. Every write
  * shows its diff first, asks (or takes --yes), keeps a backup of a file it changes, and never touches content it
  * did not write. `--remove` takes out exactly what it put in.
+ *
+ * It also removes the MCP server potsherd 1.x registered (setup-legacy.ts), whose program 1.9 no longer ships:
+ * in the same reviewable plan, with the same backup, touching only the entry potsherd wrote.
  */
 export const SETUP_CLIENTS = ['claude', 'codex', 'pi'] as const;
 export type SetupClient = (typeof SETUP_CLIENTS)[number];
@@ -35,11 +40,13 @@ const SKILL = 'slopie-memory';
 const DESCRIPTION = "The user's past coding-agent sessions (Claude Code, Codex, pi; every project; including sessions the harness deleted) as plain-text records you can search with rg/sed or the slopie CLI. Use whenever the user refers to earlier work, a past session, decision, error or file, or when you continue a session.";
 
 interface Change {
-  client: SetupClient;
+  client: SetupClient | LegacyTarget;
   file: string;
   what: string;
   before: string | null;
   after: string | null;
+  /** Recomputes `after` from the file as it is when written (a file its client may have changed meanwhile). */
+  transform?: (text: string) => string | null;
 }
 
 export function skillText(recordsDir: string): string {
@@ -89,20 +96,43 @@ function claudeSettings(text: string | null, command: string | null): string {
 
 function piExtension(): string {
   const [cmd, ...args] = slopieArgv();
-  return `// slopie: keep the session records current when a pi session starts (installed by \`slopie setup\`).
+  return `// slopie (installed by \`slopie setup\`): keep the session records current when a pi session starts, and after
+// a resume or a compaction give the agent this session's record path and the commands to read it (at most 10 lines).
 import { spawn } from 'node:child_process';
-export default function (pi) {
-  pi.on('session_start', async () => {
+const CMD = ${JSON.stringify(cmd)};
+const ARGS = ${JSON.stringify([...args, 'hook', 'session-start', '--harness', 'pi'])};
+function hook(source, sessionId) {
+  return new Promise(resolve => {
+    let out = '';
     try {
-      const child = spawn(${JSON.stringify(cmd)}, ${JSON.stringify([...args, 'hook', 'session-start', '--harness', 'pi'])}, { detached: true, stdio: 'ignore' });
-      child.unref();
-    } catch {}
+      const child = spawn(CMD, ARGS, { stdio: ['pipe', 'pipe', 'ignore'] });
+      child.stdout.on('data', d => { if (out.length < 4000) out += d; });
+      child.on('close', () => resolve(out));
+      child.on('error', () => resolve(''));
+      child.stdin.on('error', () => {});
+      child.stdin.end(JSON.stringify({ session_id: sessionId, source }));
+    } catch { resolve(''); }
   });
+}
+export default function (pi) {
+  const run = async (source, ctx) => {
+    try {
+      const id = ctx?.sessionManager?.getSessionId?.() ?? '';
+      const text = (await hook(source, id)).trim();
+      if (text && source !== 'startup') pi.sendMessage({ customType: 'slopie', content: text.split('\\n').slice(0, 10).join('\\n'), display: true }, { deliverAs: 'nextTurn' });
+    } catch {}
+  };
+  // Never awaited: a session start is not held up by slopie.
+  pi.on('session_start', (event, ctx) => { void run(event?.reason === 'resume' ? 'resume' : 'startup', ctx); });
+  pi.on('session_compact', (_event, ctx) => { void run('compact', ctx); });
 }
 `;
 }
 
-function plan(o: SetupOptions, clients: readonly SetupClient[]): Change[] {
+/** The other clients potsherd 1.x could register its server with; cleaned when no client is named (or --all). */
+const LEGACY_ONLY: LegacyTarget[] = ['cursor', 'gemini', 'opencode', 'copilot'];
+
+function plan(o: SetupOptions, clients: readonly SetupClient[], others = false): Change[] {
   const records = paths.recordsDir();
   const out: Change[] = [];
   const add = (client: SetupClient, file: string, what: string, after: string | null) => {
@@ -124,6 +154,14 @@ function plan(o: SetupOptions, clients: readonly SetupClient[]): Change[] {
       add(c, path.join(root, 'skills', SKILL, 'SKILL.md'), 'skill', o.remove ? null : skillText(records));
       add(c, path.join(root, 'extensions', 'slopie.ts'), 'extension', o.remove ? null : piExtension());
     }
+  }
+  const legacyOpts = {...(o.claudeDir ? {claudeDir: o.claudeDir} : {}), ...(o.codexDir ? {codexDir: o.codexDir} : {}), ...(o.piDir ? {piDir: o.piDir} : {})};
+  for (const l of legacyChanges([...clients, ...(others ? LEGACY_ONLY : [])], legacyOpts)) {
+    const before = read(l.file);
+    if (before === null) continue;
+    const after = l.transform(before);
+    // One file can carry both a slopie change and the legacy removal (never today; kept apart if it ever does).
+    if (after !== before) out.push({client: l.client, file: l.file, what: LEGACY_WHAT, before, after, transform: l.transform});
   }
   return out;
 }
@@ -157,14 +195,17 @@ export async function runSetup(o: SetupOptions): Promise<number> {
       return {client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map(p => p.what)};
     });
     if (o.json) printJson({records: paths.recordsDir(), clients: rows});
-    else for (const r of rows) print(`  ${r.client.padEnd(8)}${r.installed ? 'installed' : r.detected ? `missing: ${r.missing.join(', ')}  (slopie setup --${r.client})` : 'not found on this machine'}`);
+    else for (const r of rows) {
+      const text = r.installed ? 'installed' : r.detected ? `missing: ${r.missing.join(', ')} (slopie setup --${r.client})` : 'not found on this machine';
+      fold(text, Math.max(20, t.width - 12)).forEach((row, i) => print(`  ${i ? ''.padEnd(8) : r.client.padEnd(8)}${row}`));
+    }
     return 0;
   }
   if (!clients.length) {
     print('no Claude Code, Codex or pi directory found; name one: slopie setup --claude | --codex | --pi');
     return 1;
   }
-  const changes = plan(o, clients);
+  const changes = plan(o, clients, !o.clients?.length || !!o.all);
   if (!changes.length) {
     if (o.json) printJson({changes: []}); else print(o.remove ? 'nothing to remove.' : `already set up for ${clients.join(', ')}.`);
     return 0;
@@ -180,6 +221,14 @@ export async function runSetup(o: SetupOptions): Promise<number> {
   if (!o.yes && !(await confirm(o.remove ? 'remove these?' : 'write these?', {default: true}))) { print('nothing written.'); return 1; }
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   for (const c of changes) {
+    if (c.transform) {
+      // Recomputed from the file as it is now: its client may have written it while the plan was on screen.
+      const now = read(c.file);
+      if (now === null) continue;
+      c.before = now;
+      c.after = c.transform(now);
+      if (c.after === now) continue;
+    }
     if (c.before !== null && !c.file.includes(`${path.sep}${SKILL}${path.sep}`) && !c.file.endsWith(`${path.sep}slopie.ts`)) fs.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
     if (c.after === null) {
       fs.rmSync(c.file, {force: true});
@@ -187,7 +236,14 @@ export async function runSetup(o: SetupOptions): Promise<number> {
       if (path.basename(dir) === SKILL) fs.rmSync(dir, {recursive: true, force: true});
     } else {
       fs.mkdirSync(path.dirname(c.file), {recursive: true});
-      fs.writeFileSync(c.file, c.after);
+      if (c.transform) {
+        // A file another program keeps open (~/.claude.json): replaced whole, with its mode kept.
+        const tmp = `${c.file}.slopie-tmp-${process.pid}`;
+        fs.writeFileSync(tmp, c.after, {mode: fs.statSync(c.file).mode & 0o777});
+        fs.renameSync(tmp, c.file);
+      } else {
+        fs.writeFileSync(c.file, c.after);
+      }
     }
   }
   if (o.json) printJson({written: changes.map(c => c.file)});

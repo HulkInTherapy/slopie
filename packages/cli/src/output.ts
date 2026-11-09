@@ -83,6 +83,21 @@ export function printJson(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + '\n');
 }
 
+/** Word-wrap plain text to `width` characters; a word longer than that (a path) is split. */
+export function fold(text: string, width: number): string[] {
+  const rows: string[] = [];
+  let line = '';
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    let rest = [...word];
+    if (line && [...line].length + 1 + rest.length <= width) { line += ' ' + word; continue; }
+    if (line) rows.push(line);
+    while (rest.length > width) { rows.push(rest.slice(0, width).join('')); rest = rest.slice(width); }
+    line = rest.join('');
+  }
+  if (line || !rows.length) rows.push(line);
+  return rows;
+}
+
 export function print(s: string): void {
   if (!writable(process.stdout)) return;
   // The fold is width-preserving (Theme.asciiLine), so it can never turn a

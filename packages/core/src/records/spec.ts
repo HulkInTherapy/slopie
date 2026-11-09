@@ -27,7 +27,7 @@ export const MCP_TOOLS = [
         },
         "project": {
           "type": "string",
-          "description": "Only sessions whose working directory contains this text, e.g. 'crush-thoughts'."
+          "description": "Only sessions whose working directory contains this text, e.g. 'my-app'."
         },
         "harness": {
           "type": "string",
@@ -77,6 +77,10 @@ export const MCP_TOOLS = [
         "max_chars": {
           "type": "integer",
           "description": "Character budget for the reply (default 12000, max 40000)."
+        },
+        "from_char": {
+          "type": "integer",
+          "description": "Resume inside from_turn at this character, when a reply had to cut that turn (its continuation line gives it)."
         }
       },
       "required": [
@@ -92,7 +96,7 @@ export const MCP_TOOLS = [
       "properties": {
         "project": {
           "type": "string",
-          "description": "Working-directory substring, e.g. 'slopie' or '/Users/zebra/randomness'."
+          "description": "Working-directory substring, e.g. 'slopie' or '/Users/me/work'."
         },
         "harness": {
           "type": "string",

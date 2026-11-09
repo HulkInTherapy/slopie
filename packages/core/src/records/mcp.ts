@@ -27,7 +27,7 @@ export function callTool(name: string, args: Args, recordsDir?: string): {text: 
     const s = (k: string) => (typeof args[k] === 'string' ? (args[k] as string) : undefined);
     const n = (k: string) => (args[k] === undefined || args[k] === null || args[k] === '' ? undefined : Number(args[k]));
     if (name === 'search') return {text: engine.search({query: s('query') ?? '', k: n('k'), project: s('project'), harness: s('harness'), since: s('since'), until: s('until'), session: s('session')}), isError: false};
-    if (name === 'read') return {text: engine.read({session: s('session') ?? '', from_turn: n('from_turn') ?? null, to_turn: n('to_turn') ?? null, max_chars: n('max_chars') ?? null}), isError: false};
+    if (name === 'read') return {text: engine.read({session: s('session') ?? '', from_turn: n('from_turn') ?? null, to_turn: n('to_turn') ?? null, max_chars: n('max_chars') ?? null, from_char: n('from_char') ?? null}), isError: false};
     if (name === 'threads') return {text: engine.threads({project: s('project'), harness: s('harness'), since: s('since'), until: s('until'), text: s('text'), include_subagents: args['include_subagents'] === true, parent: s('parent'), limit: n('limit'), offset: n('offset')}), isError: false};
     if (name === 'grep') return {text: engine.grep({session: s('session') ?? '', pattern: s('pattern') ?? '', regex: args['regex'] === true, offset: n('offset')}), isError: false};
     return {text: `unknown tool ${name}`, isError: true};

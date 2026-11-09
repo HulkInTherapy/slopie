@@ -139,7 +139,9 @@ describe('grep', () => {
       try {
         expect(e.grep({session: IDS.claude, pattern: 'pgbouncer'})).toContain('t5 USER');
         expect(e.grep({session: IDS.claude, pattern: 'pool at \\d+', regex: true})).toContain('pool at 40');
-        expect(e.grep({session: IDS.claude, pattern: 'absent-string'})).toContain('No match. This clears only this spelling');
+        const none = e.grep({session: IDS.claude, pattern: 'absent-string'});
+        expect(none).toContain('partial scan: searched the record only');
+        expect(none).toContain('This does not clear the spelling');
       } finally { e.close(); fs.rmSync(g.root, {recursive: true, force: true}); }
     });
   });

@@ -13,7 +13,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import * as paths from '../paths.js';
 import {discover, listFiles} from '../sources/discover.js';
-import {loadPolicy, type Policy} from '../sources/policy.js';
+import {assertPolicy, loadPolicy, type Policy} from '../sources/policy.js';
 import {sourceId} from '../sources/identity.js';
 import {forEachRecord} from '../sources/lines.js';
 import {claudeSubagentParent, isoTs, type Harness} from '../sources/sessions.js';
@@ -22,7 +22,7 @@ import {nativeAuditRoots} from '../analytics/native-census.js';
 import {probeFile} from '../analytics/copy-prune.js';
 import {openAuditSqliteSnapshot} from '../audit-sqlite.js';
 import type {AuditOverviewOptions} from '../analytics/contracts.js';
-import {ARCHIVE_MARK, INDEX_HEADER, indexLine, recTurn, lastAssistant, firstUser, recordRelPath, render, renderSidecar, sidFile, type RecSession} from './format.js';
+import {ARCHIVE_MARK, INDEX_HEADER, fmtTs, indexLine, recTurn, lastAssistant, firstUser, recordRelPath, render, renderSidecar, sidFile, type RecSession, type RecTurn} from './format.js';
 import {runJobs, type ParseJob, type ParseResult} from './worker.js';
 import {delegEdges, type Deleg} from './deleg.js';
 import {RecordIndex, parseRecordText} from './index-db.js';
@@ -45,7 +45,7 @@ export interface SyncOptions {
   threads?: number;
   /** Write `<record>.out.txt` with full tool outputs (up to 20 kB each). Default: SLOPIE_SIDECAR=1. */
   sidecar?: boolean;
-  /** Rebuild every record and the index. */
+  /** Rebuild every record and the index (records whose sources are gone are kept and re-indexed). */
   full?: boolean;
   /** Build the search index (default true). */
   index?: boolean;
@@ -144,7 +144,8 @@ interface Merged {
   paths: string[];
   archiveOnly: boolean;
   codexTitle?: string | null;
-  history?: {ts: string | null; text: string; ref: string}[];
+  /** Prompt-only turns; `rec` is a turn carried over from the previous record as written. */
+  history?: {ts: string | null; text: string; ref: string; rec?: RecTurn}[];
   sources: string[];
 }
 
@@ -203,6 +204,52 @@ function mkdirPrivate(dir: string, root: string): void {
 }
 
 const hash = (v: unknown) => createHash('sha1').update(JSON.stringify(v)).digest('hex').slice(0, 20);
+
+/** A file's identity (device + inode): two spellings of one file on a case-insensitive volume compare equal. */
+function fileId(file: string): string | null {
+  try { const st = fs.statSync(file); return `${st.dev}:${st.ino}`; } catch { return null; }
+}
+
+function readRecordFile(file: string): ReturnType<typeof parseRecordText> {
+  try {
+    const back = parseRecordText(fs.readFileSync(file, 'utf8'));
+    return back && ['claude', 'codex', 'pi'].includes(back.session.harness) && back.session.id ? back : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Record files the inventory does not list (a lost or older state file, an older layout) join it before the
+ * merge, as records of their own: each may be the only copy left of a session whose sources are gone, so
+ * the ordinary rules (kept, never shrunk, prompt-only merged, opted out → removed) apply to it. A file for a
+ * session the inventory already holds (with at least as many turns) is a superseded copy, left to the sweep.
+ */
+function adoptRecordFiles(dir: string, prev: State): void {
+  const known = new Set<string>();
+  for (const s of Object.values(prev.sessions)) { const id = fileId(path.join(dir, s.rel)); if (id) known.add(id); }
+  for (const h of ['claude', 'codex', 'pi']) {
+    for (const f of listFiles(path.join(dir, h), x => x.endsWith('.txt') && !x.endsWith('.out.txt')).sort()) {
+      const id = fileId(f);
+      if (!id || known.has(id)) continue;
+      const back = readRecordFile(f);
+      if (!back) continue;
+      const rs = back.session;
+      const key = `${rs.harness}:${sidFile(rs.harness, rs.id, rs.parent, rs.parentKind)}`;
+      const cur = prev.sessions[key];
+      if (cur && fs.existsSync(path.join(dir, cur.rel)) && (cur.n ?? 0) >= rs.turns.length) continue;
+      const rel = path.relative(dir, f).split(path.sep).join('/');
+      prev.sessions[key] = {sig: '', rel, line: indexLine(rs, rel), start: rs.start ?? '', harness: rs.harness, id: rs.id, parent: rs.parent, parentKind: rs.parentKind,
+        project: rs.project, n: rs.turns.length, ...(rs.title === PROMPT_ONLY_TITLE ? {history: true} : {})};
+      known.add(id);
+    }
+  }
+}
+
+/** The title a prompt-only record carries. */
+const PROMPT_ONLY_TITLE = '(prompt history only; transcript not kept)';
+/** One prompt, as compared across history files and an earlier record (the cap note's line ref can change). */
+const promptKey = (ts: string | null, text: string) => JSON.stringify([fmtTs(ts), text.replace(/ …\[\+\d+ chars; raw: [^\]]*\]$/, '').replace(/\s+/g, ' ').trim()]);
 
 /** Codex thread titles, imports, archived flags and spawn edges from each Codex home. */
 function codexMeta(homes: readonly string[], imports: Set<string>): {titles: Map<string, string>; db: Map<string, {title?: string | null; spawnParent?: string}>; imported: Set<string>} {
@@ -324,18 +371,25 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const mark = (name: string) => { const now = Date.now(); phases[name] = (now - tp) / 1000; tp = now; };
   const dir = paths.recordsDir(o.recordsDir);
   const sidecar = o.sidecar ?? process.env['SLOPIE_SIDECAR'] === '1';
+  // The opt-outs first: when they cannot be read, nothing is written or removed (carrying on would undo them).
+  const policy = loadPolicy(paths.potsherdDir(o.potsherdDir), paths.slopieDir(o.slopieDir));
+  assertPolicy(policy);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive: true, mode: 0o700});
   try { fs.chmodSync(dir, 0o700); } catch { /* not ours to change */ }
   mkdirPrivate(stateDir(dir), dir);
-  let state = o.full ? null : readState(dir);
-  if (state && (state.format !== FORMAT_VERSION || state.sidecar !== sidecar)) {
+  // The inventory is always read, --full included: it is the only list of records whose sources are gone.
+  let state = readState(dir);
+  if (state && o.full) {
+    // Full rebuild: forget every parse (re-probe, re-parse) and rewrite every record; keep the inventory.
+    state = {...state, sources: {}, sessions: Object.fromEntries(Object.entries(state.sessions).map(([k, v]) => [k, {...v, sig: ''}]))};
+  } else if (state && (state.format !== FORMAT_VERSION || state.sidecar !== sidecar)) {
     // Format change: keep the parse metadata, rewrite every record.
     state = {...state, sessions: Object.fromEntries(Object.entries(state.sessions).map(([k, v]) => [k, {...v, sig: ''}]))};
   }
   if (state && (state.parse ?? 1) !== PARSE_VERSION) state = {...state, sources: {}};
   const prev: State = state ?? {v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {}};
   const next: State = {v: STATE_VERSION, format: FORMAT_VERSION, parse: PARSE_VERSION, sidecar, sources: {}, sessions: {}};
-  const policy = loadPolicy(paths.potsherdDir(o.potsherdDir), paths.slopieDir(o.slopieDir));
+  adoptRecordFiles(dir, prev);
 
   // ---- 1. discover
   const {sources, historyFiles, codexHomes, codexImported} = discoverSources(o, state);
@@ -456,11 +510,14 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const present = new Set(sessions.map(s => s.key));
   const kept: [string, SessionState][] = [];
   const presentIds = new Set(sessions.map(s => `${s.harness}:${s.id}`));
+  // Prompt-only records are an archive too: kept when history.jsonl shrinks or goes, merged when it has more.
+  const promptOnlyPrev = new Map<string, SessionState>();
   for (const [key, ss] of Object.entries(prev.sessions)) {
-    if (present.has(key) || ss.history || presentIds.has(`${ss.harness}:${ss.id}`)) continue;
+    if (present.has(key) || presentIds.has(`${ss.harness}:${ss.id}`)) continue;
     if (ss.harness === 'codex' && meta.imported.has(ss.id)) continue;
     if (!fs.existsSync(path.join(dir, ss.rel))) continue;
-    kept.push([key, ss]);
+    if (ss.history) promptOnlyPrev.set(ss.id, ss);
+    else kept.push([key, ss]);
   }
   const have = new Set([...sessions.map(s => s.id), ...kept.map(([, s]) => s.id)]);
   // Prompt-only records: sessions known only from history.jsonl.
@@ -476,15 +533,33 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
       hist.set(sid, rows);
     });
   }
+  for (const [sid, ss] of promptOnlyPrev) if (!hist.has(sid)) kept.push([`claude:${sid}`, ss]);
   for (const [sid, rows0] of hist) {
     // One turn per prompt: the same prompt (time, text, project) in two history files counts once.
     const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
     const sorted = [...rows0].sort((a, b) => a.at - b.at || cmp(a.display, b.display) || cmp(String(a.project), String(b.project)) || cmp(a.ref, b.ref));
     const seen = new Set<string>();
     const rows = sorted.filter(r => { const k = JSON.stringify([r.at, r.display, r.project]); if (seen.has(k)) return false; seen.add(k); return true; });
-    const turns = rows.map(r => ({ts: isoTs(r.at), text: r.display, ref: r.ref}));
-    sessions.push({key: `claude:${sid}`, harness: 'claude', id: sid, parent: null, parentKind: null, nTurns: turns.length, size: 0, start: turns[0]!.ts, end: turns[turns.length - 1]!.ts,
-      project: rows[0]!.project, best: null, paths: [], archiveOnly: false, history: turns, sources: [...new Set(rows0.map(r => r.ref.slice(0, r.ref.lastIndexOf(':'))))].sort()});
+    let turns: NonNullable<Merged['history']> = rows.map(r => ({ts: isoTs(r.at), text: r.display, ref: r.ref}));
+    let srcs = [...new Set(rows0.map(r => r.ref.slice(0, r.ref.lastIndexOf(':'))))];
+    let project = rows[0]!.project, start = turns[0]!.ts, end = turns[turns.length - 1]!.ts;
+    // The prompts an earlier record holds stay, even when history.jsonl has since lost them.
+    const old = promptOnlyPrev.get(sid);
+    const back = old ? (() => { try { return parseRecordText(fs.readFileSync(path.join(dir, old.rel), 'utf8')); } catch { return null; } })() : null;
+    if (back && back.session.turns.length) {
+      const known = new Set(back.session.turns.map(t => promptKey(t.ts, t.text)));
+      const added = turns.filter(t => !known.has(promptKey(t.ts, recTurn({role: 'USER', ts: t.ts, text: t.text, textLen: cpLen(t.text), ref: t.ref}).text)));
+      const carried = back.session.turns.map(t => ({ts: t.ts, text: t.text, ref: '', rec: t}));
+      const all = [...carried.map((t, i) => ({t, k: fmtTs(t.ts), i})), ...added.map((t, i) => ({t, k: fmtTs(t.ts), i: carried.length + i}))];
+      all.sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : a.i - b.i));
+      turns = all.map(x => x.t);
+      srcs = [...new Set([...back.header.sources, ...srcs])];
+      project = back.session.project ?? project;
+      start = turns[0]!.rec && back.session.start ? back.session.start : turns[0]!.ts;
+      end = turns[turns.length - 1]!.rec && back.session.end ? back.session.end : turns[turns.length - 1]!.ts;
+    }
+    sessions.push({key: `claude:${sid}`, harness: 'claude', id: sid, parent: null, parentKind: null, nTurns: turns.length, size: 0, start, end,
+      project, best: null, paths: [], archiveOnly: false, history: turns, sources: srcs.sort()});
   }
   // Opt-outs.
   const keep = (h: string, id: string, parent: string | null, project: string | null) => !policy.ignored(project) && !isForgotten(policy, h, id, parent);
@@ -500,6 +575,24 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   mark('merge');
 
   // ---- 4. write changed records
+  // Record paths as the volume spells them: on a case-insensitive volume, /work/Demo and /work/demo share one
+  // directory, and the path kept in the state (and INDEX.tsv) is the one that directory really has.
+  const realRoot = (() => { try { return fs.realpathSync.native(dir); } catch { return null; } })();
+  const realDirs = new Map<string, string>();
+  const canonicalRel = (rel: string): string => {
+    const d = path.dirname(rel);
+    let real = realDirs.get(d);
+    if (real === undefined) {
+      real = d;
+      try {
+        mkdirPrivate(path.join(dir, d), dir);
+        const r = realRoot ? path.relative(realRoot, fs.realpathSync.native(path.join(dir, d))) : '';
+        if (r && !r.startsWith('..') && !path.isAbsolute(r) && r.toLowerCase() === d.split('/').join(path.sep).toLowerCase()) real = r.split(path.sep).join('/');
+      } catch { /* keep the computed spelling */ }
+      realDirs.set(d, real);
+    }
+    return `${real}/${path.basename(rel)}`;
+  };
   const index = o.index === false ? null : RecordIndex.open(stateDir(dir));
   if (index && o.full) index.clear();
   const indexed = index ? index.keys() : new Map<string, string>();
@@ -509,7 +602,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const writeOne = (s: Merged, rec: RecSession, sig: string) => {
     rec.parent = s.parent; rec.parentKind = s.parentKind;
     if (s.harness === 'codex') rec.title = s.codexTitle || rec.title;
-    const rel = recordRelPath(rec);
+    const rel = canonicalRel(recordRelPath(rec));
     const file = path.join(dir, rel);
     mkdirPrivate(path.dirname(file), dir);
     const text = render(rec, {children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly});
@@ -521,7 +614,11 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     const sideText = sidecar ? renderSidecar(rec, path.basename(file)) : null;
     if (sideText) writeAtomic(side, sideText); else if (fs.existsSync(side)) fs.unlinkSync(side);
     const old = prev.sessions[s.key];
-    if (old && old.rel !== rel) { try { fs.unlinkSync(path.join(dir, old.rel)); } catch { /* gone */ } try { fs.unlinkSync(path.join(dir, old.rel.slice(0, -4) + '.out.txt')); } catch { /* none */ } }
+    // The old path is removed only when it is another file (on a case-insensitive volume it can be this one).
+    if (old && old.rel !== rel && fileId(path.join(dir, old.rel)) !== fileId(file)) {
+      try { fs.unlinkSync(path.join(dir, old.rel)); } catch { /* gone */ }
+      if (fileId(path.join(dir, old.rel.slice(0, -4) + '.out.txt')) !== fileId(side)) try { fs.unlinkSync(path.join(dir, old.rel.slice(0, -4) + '.out.txt')); } catch { /* none */ }
+    }
     next.sessions[s.key] = {sig, rel, line: indexLine(rec, rel), start: rec.start ?? '', harness: rec.harness, id: rec.id, parent: rec.parent, parentKind: rec.parentKind, project: rec.project, n: rec.turns.length,
       ...(s.history ? {history: true} : {}), ...(sidecar && sideText ? {sidecar: true} : {})};
     index?.put(s.key, rec, {rel, children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly, best: s.best, firstUser: firstUser(rec), lastAssistant: lastAssistant(rec)}, sig);
@@ -548,8 +645,8 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
       if (rec) { index.put(s.key, rec.session, {...rec.header, rel: old.rel, best: s.best, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, sig); next.sessions[s.key] = old; continue; }
     }
     if (s.history) {
-      const rec: RecSession = {harness: 'claude', id: s.id, project: s.project, title: '(prompt history only; transcript not kept)', start: s.start, end: s.end, parent: null, parentKind: null,
-        turns: s.history.map(t => recTurn({role: 'USER', ts: t.ts, text: t.text, textLen: cpLen(t.text), ref: t.ref}))};
+      const rec: RecSession = {harness: 'claude', id: s.id, project: s.project, title: PROMPT_ONLY_TITLE, start: s.start, end: s.end, parent: null, parentKind: null,
+        turns: s.history.map(t => t.rec ?? recTurn({role: 'USER', ts: t.ts, text: t.text, textLen: cpLen(t.text), ref: t.ref}))};
       writeOne(s, rec, sig);
       continue;
     }
@@ -578,22 +675,33 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   mark('write');
 
   // ---- 5. remove what is no longer kept (forgotten, ignored, superseded)
+  // Files are compared by identity, not spelling: a case-insensitive volume reaches one file by two spellings.
+  const claimedIds = new Set<string>();
+  const claim = (rel: string) => { for (const f of [rel, rel.slice(0, -4) + '.out.txt']) { const id = fileId(path.join(dir, f)); if (id) claimedIds.add(id); } };
+  for (const s of Object.values(next.sessions)) claim(s.rel);
+  const unlinkUnclaimed = (file: string): boolean => {
+    const id = fileId(file);
+    if (!id || claimedIds.has(id)) return false;
+    try { fs.unlinkSync(file); return true; } catch { return false; }
+  };
   for (const [key, ss] of Object.entries(prev.sessions)) {
     if (next.sessions[key]) continue;
-    for (const f of [ss.rel, ss.rel.slice(0, -4) + '.out.txt']) { try { fs.unlinkSync(path.join(dir, f)); } catch { /* gone */ } }
+    for (const f of [ss.rel, ss.rel.slice(0, -4) + '.out.txt']) unlinkUnclaimed(path.join(dir, f));
     result.removed++;
+  }
+  // Record files no session claims (superseded copies of a session held under another path; every other
+  // record file was taken into the inventory before the merge) are removed. Files that are not records stay.
+  for (const h of ['claude', 'codex', 'pi']) {
+    for (const f of listFiles(path.join(dir, h), x => x.endsWith('.txt'))) {
+      const id = fileId(f);
+      if (!id || claimedIds.has(id)) continue;
+      if (!f.endsWith('.out.txt') && !readRecordFile(f)) continue;
+      if (unlinkUnclaimed(f)) result.removed++;
+    }
   }
   if (index) {
     for (const key of indexed.keys()) if (!next.sessions[key]) index.remove(key);
     index.finish(!!o.full || result.written > 200);
-  }
-  // Stray record files (e.g. written by an older layout) that no session claims are removed too.
-  const claimed = new Set(Object.values(next.sessions).flatMap(s => [s.rel, s.rel.slice(0, -4) + '.out.txt']));
-  for (const h of ['claude', 'codex', 'pi']) {
-    for (const f of listFiles(path.join(dir, h), x => x.endsWith('.txt'))) {
-      const rel = path.relative(dir, f).split(path.sep).join('/');
-      if (!claimed.has(rel)) { try { fs.unlinkSync(f); result.removed++; } catch { /* gone */ } }
-    }
   }
 
   // ---- 6. INDEX.tsv and state

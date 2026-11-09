@@ -161,7 +161,8 @@ example:
       .argument('<session>', 'session id or 8+ char prefix')
       .addOption(new Option('--from <n>', 'first turn (negative counts from the end)'))
       .addOption(new Option('--to <n>', 'last turn (default from+39)'))
-      .addOption(new Option('--max-chars <n>', 'character budget (default 12000, max 40000)')),
+      .addOption(new Option('--max-chars <n>', 'character budget (default 12000, max 40000)'))
+      .addOption(new Option('--from-char <n>', 'resume inside the --from turn at this character (from a cut reply)')),
   )).addHelpText('after', `
 example:
   potsherd read 9c4d2f18
@@ -169,7 +170,7 @@ example:
   potsherd read 9c4d2f18 --from -30`);
   read.action((session: string, opts: Record<string, unknown>) => {
     const o = globals(program, read, opts);
-    void run(async () => runRead({...o, ...rec(opts), session, from: opts['from'], to: opts['to'], maxChars: opts['maxChars']}), o);
+    void run(async () => runRead({...o, ...rec(opts), session, from: opts['from'], to: opts['to'], maxChars: opts['maxChars'], fromChar: opts['fromChar']}), o);
   });
 
   const threads = addGlobals(records(

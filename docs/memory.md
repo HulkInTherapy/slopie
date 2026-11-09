@@ -57,11 +57,11 @@ Records sync on `slopie sync`, in the background of `slopie audit`, and from the
 
 - **Claude Code:** `~/.claude/skills/slopie-memory/SKILL.md`, plus a SessionStart hook in `~/.claude/settings.json`.
 - **Codex:** a marked block in `~/.codex/AGENTS.md`.
-- **pi:** `~/.pi/agent/skills/slopie-memory/SKILL.md`, plus an extension that syncs on session start.
+- **pi:** `~/.pi/agent/skills/slopie-memory/SKILL.md`, plus an extension that syncs on session start and, after a resume or compaction, hands the agent the same pointer with `pi.sendMessage` (delivered with the next prompt).
 
-The Claude Code and Codex plugins carry the same skill and hook. Two more commands help: `slopie setup --note` prints the note to paste anywhere, and `slopie setup --remove` takes out exactly what setup wrote.
+The Claude Code and Codex plugins carry the same skill and hook. Two more commands help: `slopie setup --note` prints the note to paste anywhere, and `slopie setup --remove` takes out exactly what setup wrote. Setup also removes the MCP server potsherd 1.x registered (in `~/.claude.json`, `~/.codex/config.toml`, the pi `potsherd.ts` extension, and Cursor, Gemini, opencode and Copilot configs when no agent is named): only an entry in the shape potsherd wrote, shown in the plan first and backed up like every other change.
 
-After a resume or compaction, the session-start hook prints at most 10 lines: this session's id, its record path, and the exact `slopie read <id> --from -30` and `slopie search … --session <id>` commands. It is a pointer, not a summary.
+After a resume or compaction, the session-start hook prints at most 10 lines: this session's id, its record path, and the exact `slopie read <id> --from -30` and `slopie search … --session <id>` commands. It is a pointer, not a summary. The hook never waits on a sync: it points at the records as they are and refreshes them in a detached process (if this session has no record yet, it waits up to 3 seconds for one, `SLOPIE_HOOK_WAIT_MS`).
 
 ## CLI and MCP
 

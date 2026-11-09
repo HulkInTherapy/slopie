@@ -17,7 +17,26 @@ export interface Policy {
   ignoredList: string[];
   forgotten: Set<string>;
   ignored(project: string | null): boolean;
+  /** Set when an opt-out file exists but cannot be read or understood: the opt-outs are then unknown. */
   error: string | null;
+  /** What was wrong, and with which file (for the user). */
+  errorDetail: string | null;
+}
+
+/**
+ * An opt-out file exists but cannot be read or understood. Nothing that writes records (or counts or sends
+ * anything) may go on: carrying on would silently undo the user's ignore / forget choices.
+ */
+export class PolicyError extends Error {
+  readonly fix = 'repair or move that file aside, then run the command again';
+  constructor(readonly code: string, readonly detail: string) {
+    super(`cannot read ${detail}; slopie stops rather than undo your ignore / forget choices.`);
+  }
+}
+
+/** Stops when the opt-outs could not be established. */
+export function assertPolicy(policy: Policy): void {
+  if (policy.error) throw new PolicyError(policy.error, policy.errorDetail ?? policy.error);
 }
 
 /** Source ids (sourceId(harness, native id)) in the legacy store's forget tombstones; read-only. */
@@ -46,14 +65,24 @@ export function forgetPath(slopieRoot = paths.slopieDir()): string {
   return path.join(slopieRoot, 'forget.json');
 }
 
-/** The 1.9 forget list, or null when it does not exist yet. */
+/**
+ * The 1.9 forget list, or null when it does not exist yet. Throws PolicyError when the file exists but cannot
+ * be read or is not a forget list: "nothing is forgotten" and "the list is unreadable" are different facts.
+ */
 export function readForgetList(slopieRoot = paths.slopieDir()): ForgetEntry[] | null {
+  const file = forgetPath(slopieRoot);
+  let text: string;
   try {
-    const raw = JSON.parse(fs.readFileSync(forgetPath(slopieRoot), 'utf8')) as {forgotten?: unknown};
-    return Array.isArray(raw.forgotten) ? (raw.forgotten as ForgetEntry[]).filter(e => e && typeof e.sourceId === 'string') : [];
-  } catch {
-    return null;
+    text = fs.readFileSync(file, 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw new PolicyError('forget_list_unreadable', `${file} (${(e as NodeJS.ErrnoException).code ?? 'unreadable'})`);
   }
+  let raw: unknown;
+  try { raw = JSON.parse(text); } catch { throw new PolicyError('forget_list_unreadable', `${file} (not valid JSON)`); }
+  const list = raw && typeof raw === 'object' ? (raw as {forgotten?: unknown}).forgotten : undefined;
+  if (!Array.isArray(list)) throw new PolicyError('forget_list_unreadable', `${file} (no "forgotten" list)`);
+  return (list as ForgetEntry[]).filter(e => e && typeof e.sourceId === 'string');
 }
 
 export function writeForgetList(list: readonly ForgetEntry[], slopieRoot = paths.slopieDir()): void {
@@ -65,19 +94,25 @@ export function writeForgetList(list: readonly ForgetEntry[], slopieRoot = paths
 
 /** Opt-outs, read once: the `slopie ignore` list and the sources the user asked slopie to forget. */
 export function loadPolicy(potsherdRoot: string, slopieRoot = paths.slopieDir()): Policy {
-  const policy: Policy = {ignoredList: [], forgotten: new Set(), ignored: () => false, error: null};
-  const fresh = fs.existsSync(paths.configPath(slopieRoot));
+  const policy: Policy = {ignoredList: [], forgotten: new Set(), ignored: () => false, error: null, errorDetail: null};
+  const fail = (code: string, detail: string) => { if (!policy.error) { policy.error = code; policy.errorDetail = detail; } };
+  // lstat, not exists: a config.json that is there but unreadable must not fall back to the 1.8 file.
+  const fresh = (() => { try { fs.lstatSync(paths.configPath(slopieRoot)); return true; } catch { return false; } })();
   const config = readIgnoreConfig(fresh ? slopieRoot : potsherdRoot);
-  if (config.error) policy.error = 'ignore_policy_unreadable';
+  if (config.error) fail('ignore_policy_unreadable', `${config.file} (${config.error})`);
   policy.ignoredList = config.list;
   if (config.list.length) policy.ignored = project => !!project && isIgnoredProject(project, config.list);
-  const list = readForgetList(slopieRoot);
+  let list: ForgetEntry[] | null = null;
+  try { list = readForgetList(slopieRoot); } catch (e) {
+    if (!(e instanceof PolicyError)) throw e;
+    fail(e.code, e.detail);
+  }
   if (list) {
     for (const e of list) policy.forgotten.add(e.sourceId);
-  } else {
+  } else if (policy.error !== 'forget_list_unreadable') {
     const legacy = legacyForgotten(potsherdRoot);
     for (const id of legacy.ids) policy.forgotten.add(id);
-    if (legacy.error) policy.error ??= 'forget_list_unreadable';
+    if (legacy.error) fail('forget_list_unreadable', `${paths.dbPath(potsherdRoot)} (the 1.8 forget list)`);
   }
   return policy;
 }

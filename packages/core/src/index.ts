@@ -80,7 +80,7 @@ export {
   type IgnoreConfig,
   type IgnoreChange,
 } from './ignore.js';
-export { loadPolicy, legacyForgotten, readForgetList, writeForgetList, forgetPath, type Policy, type ForgetEntry } from './sources/policy.js';
+export { loadPolicy, assertPolicy, PolicyError, legacyForgotten, readForgetList, writeForgetList, forgetPath, type Policy, type ForgetEntry } from './sources/policy.js';
 
 // ------------------------------------------------- the shared source layer
 export { discover, listFiles, readCodexImports, archiveEvidenceDir, type Discovered } from './sources/discover.js';
@@ -97,6 +97,6 @@ export { Engine, NoIndexError, ftsQuery, type CallStyle } from './records/engine
 export { MCP_TOOLS, MCP_INSTRUCTIONS, NOTE_B_TEMPLATE } from './records/spec.js';
 export { agentNote, CLI_LINE, GUIDANCE, SIDECAR_LINE, type NoteOptions } from './records/note.js';
 export { serveMcp, callTool } from './records/mcp.js';
-export { continuationPointer, parseHookInput, isContinuation, type HookInput } from './records/hook.js';
+export { continuationPointer, hasRecord, parseHookInput, isContinuation, type HookInput } from './records/hook.js';
 
 export { VERSION } from './version.js';
