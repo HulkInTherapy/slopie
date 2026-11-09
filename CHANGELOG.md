@@ -35,6 +35,7 @@ Memory is rebuilt around what measured best, and cut down to one thing. Every se
   - The records match the reference exporter's turn for turn.
   - Records + note + `rg`: 97% / 100% on 31 fresh questions, and 89% / 85% on 33 hard ones. The same agents scored 39% / 64% over the raw files.
   - With the CLI added: 100% / 100% and 88% / 88%, with Haiku's median cost per question about a quarter lower.
+  - The final surface (one `slopie` skill, one `slopie search`) on 40 fresh, frozen questions (CONFIRM3), one rep: Haiku 39/40 and Sonnet 39/40. Both misses were the same borderline roster question.
 
   The optional full-output sidecar (`sync --sidecar`) and extra note guidance were measured, gave mixed results, and are not defaults. See `docs/memory.md`.
 
