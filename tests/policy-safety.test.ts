@@ -68,3 +68,31 @@ describe('D4: unreadable opt-outs stop sync and the audit', () => {
     }
   });
 });
+
+describe('an old potsherd store never blocks the audit', () => {
+  const tmp = () => fs.mkdtempSync(path.join(fs.realpathSync(require('node:os').tmpdir()), 'slopie-legacy-'));
+  const make = (sql: string | null) => {
+    const root = tmp();
+    const db = path.join(root, 'potsherd.db');
+    if (sql === null) fs.writeFileSync(db, 'not a database');
+    else require('node:child_process').execFileSync('sqlite3', [db, sql]);
+    return root;
+  };
+  it('a store from before the forget tables means nothing is forgotten, not an error', () => {
+    const policy = loadPolicy(make('CREATE TABLE memory_sources(id INTEGER, path TEXT); CREATE TABLE exchanges(id INTEGER);'), tmp());
+    expect(policy.error).toBeNull();
+    expect(policy.warnings).toEqual([]);
+    expect(policy.forgotten.size).toBe(0);
+  });
+  it('forget choices in a current-schema store still apply', () => {
+    const policy = loadPolicy(make(`CREATE TABLE memory_sources(source_id TEXT, availability TEXT); INSERT INTO memory_sources VALUES ('claude:abc','forgotten'),('claude:def','live');
+      CREATE TABLE forget_tombstones(source_id TEXT, state TEXT); INSERT INTO forget_tombstones VALUES ('codex:x','active'),('codex:y','reversed');`), tmp());
+    expect(policy.error).toBeNull();
+    expect([...policy.forgotten].sort()).toEqual(['claude:abc', 'codex:x']);
+  });
+  it('an unreadable old store is a warning, not a stop', () => {
+    const policy = loadPolicy(make(null), tmp());
+    expect(policy.error).toBeNull();
+    expect(policy.warnings.length).toBe(1);
+  });
+});
