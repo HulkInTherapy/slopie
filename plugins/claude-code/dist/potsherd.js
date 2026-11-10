@@ -588,14 +588,14 @@ var require_help = __commonJS({
        * @return {string}
        *
        */
-      wrap(str7, width, indent, minColumnWidth = 40) {
+      wrap(str8, width, indent, minColumnWidth = 40) {
         const indents = " \\f\\t\\v\xA0\u1680\u2000-\u200A\u202F\u205F\u3000\uFEFF";
         const manualIndent = new RegExp(`[\\n][${indents}]+`);
-        if (str7.match(manualIndent)) return str7;
+        if (str8.match(manualIndent)) return str8;
         const columnWidth = width - indent;
-        if (columnWidth < minColumnWidth) return str7;
-        const leadingStr = str7.slice(0, indent);
-        const columnText = str7.slice(indent).replace("\r\n", "\n");
+        if (columnWidth < minColumnWidth) return str8;
+        const leadingStr = str8.slice(0, indent);
+        const columnText = str8.slice(indent).replace("\r\n", "\n");
         const indentString = " ".repeat(indent);
         const zeroWidthSpace = "\u200B";
         const breaks = `\\s${zeroWidthSpace}`;
@@ -864,9 +864,9 @@ var require_option = __commonJS({
         return option.negate === (negativeValue === value);
       }
     };
-    function camelcase(str7) {
-      return str7.split("-").reduce((str8, word) => {
-        return str8 + word[0].toUpperCase() + word.slice(1);
+    function camelcase(str8) {
+      return str8.split("-").reduce((str9, word) => {
+        return str9 + word[0].toUpperCase() + word.slice(1);
       });
     }
     function splitOptionFlags(flags) {
@@ -972,8 +972,8 @@ var require_command = __commonJS({
   "node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/command.js"(exports) {
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
-    var path31 = __require("node:path");
-    var fs38 = __require("node:fs");
+    var path32 = __require("node:path");
+    var fs39 = __require("node:fs");
     var process10 = __require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -1020,11 +1020,11 @@ var require_command = __commonJS({
         this._showHelpAfterError = false;
         this._showSuggestionAfterError = true;
         this._outputConfiguration = {
-          writeOut: (str7) => process10.stdout.write(str7),
-          writeErr: (str7) => process10.stderr.write(str7),
+          writeOut: (str8) => process10.stdout.write(str8),
+          writeErr: (str8) => process10.stderr.write(str8),
           getOutHelpWidth: () => process10.stdout.isTTY ? process10.stdout.columns : void 0,
           getErrHelpWidth: () => process10.stderr.isTTY ? process10.stderr.columns : void 0,
-          outputError: (str7, write) => write(str7)
+          outputError: (str8, write) => write(str8)
         };
         this._hidden = false;
         this._helpOption = void 0;
@@ -1905,11 +1905,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path31.resolve(baseDir, baseName);
-          if (fs38.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path31.extname(baseName))) return void 0;
+          const localBin = path32.resolve(baseDir, baseName);
+          if (fs39.existsSync(localBin)) return localBin;
+          if (sourceExt.includes(path32.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs38.existsSync(`${localBin}${ext}`)
+            (ext) => fs39.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -1921,21 +1921,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs38.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs39.realpathSync(this._scriptPath);
           } catch (err) {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path31.resolve(
-            path31.dirname(resolvedScriptPath),
+          executableDir = path32.resolve(
+            path32.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path31.basename(
+            const legacyName = path32.basename(
               this._scriptPath,
-              path31.extname(this._scriptPath)
+              path32.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -1946,7 +1946,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path31.extname(executableFile));
+        launchWithNode = sourceExt.includes(path32.extname(executableFile));
         let proc;
         if (process10.platform !== "win32") {
           if (launchWithNode) {
@@ -2660,18 +2660,18 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [description]
        * @return {(this | string | undefined)} `this` command for chaining, or version string if no arguments
        */
-      version(str7, flags, description) {
-        if (str7 === void 0) return this._version;
-        this._version = str7;
+      version(str8, flags, description) {
+        if (str8 === void 0) return this._version;
+        this._version = str8;
         flags = flags || "-V, --version";
         description = description || "output the version number";
         const versionOption = this.createOption(flags, description);
         this._versionOptionName = versionOption.attributeName();
         this._registerOption(versionOption);
         this.on("option:" + versionOption.name(), () => {
-          this._outputConfiguration.writeOut(`${str7}
+          this._outputConfiguration.writeOut(`${str8}
 `);
-          this._exit(0, "commander.version", str7);
+          this._exit(0, "commander.version", str8);
         });
         return this;
       }
@@ -2682,10 +2682,10 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {object} [argsDescription]
        * @return {(string|Command)}
        */
-      description(str7, argsDescription) {
-        if (str7 === void 0 && argsDescription === void 0)
+      description(str8, argsDescription) {
+        if (str8 === void 0 && argsDescription === void 0)
           return this._description;
-        this._description = str7;
+        this._description = str8;
         if (argsDescription) {
           this._argsDescription = argsDescription;
         }
@@ -2697,9 +2697,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [str]
        * @return {(string|Command)}
        */
-      summary(str7) {
-        if (str7 === void 0) return this._summary;
-        this._summary = str7;
+      summary(str8) {
+        if (str8 === void 0) return this._summary;
+        this._summary = str8;
         return this;
       }
       /**
@@ -2747,8 +2747,8 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [str]
        * @return {(string|Command)}
        */
-      usage(str7) {
-        if (str7 === void 0) {
+      usage(str8) {
+        if (str8 === void 0) {
           if (this._usage) return this._usage;
           const args = this.registeredArguments.map((arg) => {
             return humanReadableArgName(arg);
@@ -2759,7 +2759,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
             this.registeredArguments.length ? args : []
           ).join(" ");
         }
-        this._usage = str7;
+        this._usage = str8;
         return this;
       }
       /**
@@ -2768,9 +2768,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [str]
        * @return {(string|Command)}
        */
-      name(str7) {
-        if (str7 === void 0) return this._name;
-        this._name = str7;
+      name(str8) {
+        if (str8 === void 0) return this._name;
+        this._name = str8;
         return this;
       }
       /**
@@ -2786,7 +2786,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path31.basename(filename, path31.extname(filename));
+        this._name = path32.basename(filename, path32.extname(filename));
         return this;
       }
       /**
@@ -2800,9 +2800,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path32) {
-        if (path32 === void 0) return this._executableDir;
-        this._executableDir = path32;
+      executableDir(path33) {
+        if (path33 === void 0) return this._executableDir;
+        this._executableDir = path33;
         return this;
       }
       /**
@@ -3035,6 +3035,8 @@ var require_commander = __commonJS({
 // packages/core/dist/paths.js
 var paths_exports = {};
 __export(paths_exports, {
+  antigravityDir: () => antigravityDir,
+  antigravityStateDb: () => antigravityStateDb,
   archiveDir: () => archiveDir,
   cardsDir: () => cardsDir,
   claudeDir: () => claudeDir,
@@ -3189,6 +3191,27 @@ function geminiDir(override) {
 }
 function geminiPaths(dir = geminiDir()) {
   return { root: dir, tmp: path.join(dir, "tmp") };
+}
+function antigravityDir(override) {
+  if (override)
+    return path.resolve(expandTilde(override));
+  const env = process2.env["SLOPIE_ANTIGRAVITY_DIR"];
+  if (env && env.trim())
+    return path.resolve(expandTilde(env.trim()));
+  return path.join(home(), ".gemini", "antigravity");
+}
+function antigravityStateDb(override) {
+  if (override)
+    return path.resolve(expandTilde(override));
+  const env = process2.env["SLOPIE_ANTIGRAVITY_STATE"];
+  if (env && env.trim())
+    return path.resolve(expandTilde(env.trim()));
+  const tail = ["Antigravity", "User", "globalStorage", "state.vscdb"];
+  if (process2.platform === "darwin")
+    return path.join(home(), "Library", "Application Support", ...tail);
+  if (process2.platform === "win32")
+    return path.join(process2.env["APPDATA"] || path.join(home(), "AppData", "Roaming"), ...tail);
+  return path.join(process2.env["XDG_CONFIG_HOME"] || path.join(home(), ".config"), ...tail);
 }
 function geminiTmpDir(override) {
   return geminiPaths(geminiDir(override)).tmp;
@@ -3445,11 +3468,11 @@ function wrap(db) {
         Object.assign(variant, variants);
       return variants.default;
     },
-    loadExtension(path31) {
+    loadExtension(path32) {
       db.enableLoadExtension?.(true);
       if (!db.loadExtension)
         throw new Error("this sqlite cannot load extensions");
-      db.loadExtension(path31);
+      db.loadExtension(path32);
     },
     // 5. **`function()` registers an application-defined function.** Both
     //    drivers spell it the same way and both take the arity from
@@ -5565,25 +5588,25 @@ function probeFile(file, known3) {
     return null;
   }
   try {
-    const stat2 = fs3.fstatSync(fd);
-    if (!stat2.isFile())
+    const stat3 = fs3.fstatSync(fd);
+    if (!stat3.isFile())
       return null;
-    const head = readAt(fd, Math.min(known3 ? HEAD * 2 : SNIFF, stat2.size), 0);
+    const head = readAt(fd, Math.min(known3 ? HEAD * 2 : SNIFF, stat3.size), 0);
     const compressed = head.length >= 4 && head.readUInt32LE(0) === ZSTD_MAGIC;
     let harness = compressed ? "auto" : known3 ?? sniffBlock(head);
     let deep = false;
     const history = !harness && HISTORY_LINE.test(head.toString("utf8", 0, Math.min(head.length, 4096)));
-    if (!harness && !history && stat2.size > SNIFF) {
-      harness = classifyDeep(fd, stat2.size);
+    if (!harness && !history && stat3.size > SNIFF) {
+      harness = classifyDeep(fd, stat3.size);
       deep = harness !== null;
     }
     const probe = {
-      size: stat2.size,
-      mtimeMs: stat2.mtimeMs,
+      size: stat3.size,
+      mtimeMs: stat3.mtimeMs,
       harness,
       identity: compressed ? ROLLOUT_ID.exec(file)?.[1] ?? "" : identityOf(harness, head),
       head: sha1(head.subarray(0, HEAD)),
-      tail: sha1(readAt(fd, Math.min(TAIL, stat2.size), Math.max(0, stat2.size - TAIL)))
+      tail: sha1(readAt(fd, Math.min(TAIL, stat3.size), Math.max(0, stat3.size - TAIL)))
     };
     if (deep)
       probe.deep = true;
@@ -6262,7 +6285,7 @@ function piLine(b2, line2) {
 function extractFile(file, requested, options = {}, previous) {
   const fd = fs4.openSync(file, "r");
   try {
-    const stat2 = fs4.fstatSync(fd);
+    const stat3 = fs4.fstatSync(fd);
     const hashes = options.checks?.length ? new StreamHashes(options.checks) : null;
     const zst = isZstd(fd) ? zstdStream(fd, file, hashes) : null;
     const harness = requested === "auto" ? sniffHarness(zst ? zst.peek(64 * 1024) : headBytes(fd, 64 * 1024)) : requested;
@@ -6270,7 +6293,7 @@ function extractFile(file, requested, options = {}, previous) {
       throw new Error("unrecognised_archive_source");
     if (zst && previous)
       throw new ResumeMismatch();
-    let b2 = makeBuilder(file, harness, stat2.size, stat2.mtimeMs);
+    let b2 = makeBuilder(file, harness, stat3.size, stat3.mtimeMs);
     if (options.archive)
       b2.facts.archived = true;
     let codex = newCodexState();
@@ -6278,13 +6301,13 @@ function extractFile(file, requested, options = {}, previous) {
     const subagent = file.includes(SUBAGENT_DIR), sessions = /* @__PURE__ */ new Set();
     if (previous) {
       const r3 = previous.resume;
-      if (!r3 || previous.excluded || r3.dev !== stat2.dev || r3.ino !== stat2.ino || r3.offset > stat2.size || r3.offset < 1 || tailHash(fd, r3.offset) !== r3.tail)
+      if (!r3 || previous.excluded || r3.dev !== stat3.dev || r3.ino !== stat3.ino || r3.offset > stat3.size || r3.offset < 1 || tailHash(fd, r3.offset) !== r3.tail)
         throw new ResumeMismatch();
       const nl = Buffer.alloc(1);
       fs4.readSync(fd, nl, 0, 1, r3.offset - 1);
       if (nl[0] !== 10)
         throw new ResumeMismatch();
-      b2 = resumeBuilder(previous, r3, stat2);
+      b2 = resumeBuilder(previous, r3, stat3);
       if (r3.codex)
         codex = { ...structuredClone(r3.codex), itemPrompts: [], responsePrompts: [] };
       for (const sid3 of r3.sessions ?? [])
@@ -6350,11 +6373,11 @@ function extractFile(file, requested, options = {}, previous) {
       b2.facts.copyHashes = hashes.result();
     if (harness === "claude" && !subagent && sessions.size)
       b2.facts.sessionIds = [...sessions];
-    b2.facts.size = stat2.size;
-    b2.facts.mtimeMs = stat2.mtimeMs;
+    b2.facts.size = stat3.size;
+    b2.facts.mtimeMs = stat3.mtimeMs;
     finishStory(b2, harness, options, firstNew);
     delete b2.facts.resume;
-    if (!zst && !options.archive && endsWithNewline && !b2.facts.excluded && Date.now() - stat2.mtimeMs < RESUME_RECENT_MS) {
+    if (!zst && !options.archive && endsWithNewline && !b2.facts.excluded && Date.now() - stat3.mtimeMs < RESUME_RECENT_MS) {
       const events = new Float64Array(b2.events.length * 4);
       b2.events.forEach((e, i) => {
         events[i * 4] = e.at;
@@ -6366,8 +6389,8 @@ function extractFile(file, requested, options = {}, previous) {
       b2.facts.resume = {
         offset: base3,
         tail: tailHash(fd, base3),
-        dev: stat2.dev,
-        ino: stat2.ino,
+        dev: stat3.dev,
+        ino: stat3.ino,
         model: b2.currentModel,
         provider: b2.currentProvider,
         events,
@@ -6528,18 +6551,18 @@ function sniffHarness(head) {
     return "claude";
   return null;
 }
-function resumeBuilder(previous, r3, stat2) {
+function resumeBuilder(previous, r3, stat3) {
   const facts2 = {
     ...previous,
-    size: stat2.size,
-    mtimeMs: stat2.mtimeMs,
+    size: stat3.size,
+    mtimeMs: stat3.mtimeMs,
     usage: [...previous.usage],
     prompts: previous.prompts.map((p) => ({ ...p })),
     ...previous.sessionIds ? { sessionIds: [...previous.sessionIds] } : {},
     ...previous.story ? { story: { vocab: null, topics: null } } : {}
   };
   delete facts2.resume;
-  const b2 = makeBuilder(previous.file, previous.harness, stat2.size, stat2.mtimeMs);
+  const b2 = makeBuilder(previous.file, previous.harness, stat3.size, stat3.mtimeMs);
   b2.facts = facts2;
   b2.currentModel = r3.model;
   b2.currentProvider = r3.provider;
@@ -10559,7 +10582,7 @@ function aggregate(input) {
   const dayOf = dayFormatter(scope.timezone);
   const inRange = (at) => (scope.eventFrom === null || at !== null && at >= scope.eventFrom) && (scope.asOf === null || at !== null && at <= scope.asOf);
   const projectAllowed = (p) => !policy.ignored(p) && (scope.project === null || normProject(p) === normProject(scope.project));
-  const harness = { claude: emptyHarness(), codex: emptyHarness(), pi: emptyHarness(), opencode: emptyHarness(), cursor: emptyHarness(), gemini: emptyHarness(), copilot: emptyHarness() };
+  const harness = { claude: emptyHarness(), codex: emptyHarness(), pi: emptyHarness(), opencode: emptyHarness(), cursor: emptyHarness(), gemini: emptyHarness(), copilot: emptyHarness(), antigravity: emptyHarness() };
   let excludedSources = 0;
   const completeness = (s) => s.usage.length + s.prompts.length;
   const sources = input.sources.filter((s) => harnessSet.has(s.harness)).sort((a, b2) => (a.startedAt ?? "").localeCompare(b2.startedAt ?? "") || (a.firstAt ?? 0) - (b2.firstAt ?? 0) || Number(a.child) - Number(b2.child) || Number(!!a.forkedFrom) - Number(!!b2.forkedFrom) || (a.sessionId === b2.sessionId ? completeness(b2) - completeness(a) || b2.size - a.size || Number(!!a.archived) - Number(!!b2.archived) : 0) || a.file.localeCompare(b2.file)).filter((s) => {
@@ -10904,7 +10927,8 @@ function aggregate(input) {
   for (const s of sources) {
     const id = sid2(s.harness, s.sessionId);
     const inScopePrompt = s.prompts.some((p) => inRange(p.at) && projectAllowed(p.project ?? s.project));
-    const active2 = scoped ? activeIds.has(id) || inScopePrompt : s.harness === "claude" ? s.child ? s.usage.length > 0 || s.prompts.length > 0 : (s.sessionIds?.length ?? 0) > 0 : true;
+    const inScopeActivity = !!s.activity?.some((t) => inRange(t));
+    const active2 = scoped ? activeIds.has(id) || inScopePrompt || inScopeActivity : s.harness === "claude" ? s.child ? s.usage.length > 0 || s.prompts.length > 0 : (s.sessionIds?.length ?? 0) > 0 : true;
     if (!active2 || !projectAllowed(s.project) && !inScopePrompt)
       continue;
     const entry = conversationFor(s.harness, s.sessionId, s.child ? s.parentId : null, s.title, s.project, s.file);
@@ -10935,6 +10959,28 @@ function aggregate(input) {
       if (p.kind === "human")
         addHuman(entry, s.harness, p, p.key, s.file, `${s.harness}_record`, s);
     }
+  }
+  const actDays = /* @__PURE__ */ new Map(), actProjects = /* @__PURE__ */ new Map();
+  for (const s of sources) {
+    if (!s.activity?.length || !projectAllowed(s.project) || s.child)
+      continue;
+    const ds = actDays.get(s.harness) ?? /* @__PURE__ */ new Set();
+    let any = false;
+    for (const t of s.activity)
+      if (inRange(t)) {
+        ds.add(dayOf(t));
+        any = true;
+      }
+    actDays.set(s.harness, ds);
+    if (any && s.project) {
+      const ps = actProjects.get(s.harness) ?? /* @__PURE__ */ new Set();
+      ps.add(normProject(s.project) ?? s.project);
+      actProjects.set(s.harness, ps);
+    }
+  }
+  for (const [h, ds] of actDays) {
+    const sorted = [...ds].sort();
+    harness[h].activity = { days: sorted.length, first: sorted[0] ?? null, last: sorted[sorted.length - 1] ?? null, projects: actProjects.get(h)?.size ?? 0 };
   }
   let historyOnlyConversations = 0;
   if (harnessSet.has("claude") && input.historyFile) {
@@ -11321,21 +11367,21 @@ var init_facts_cache = __esm({
        * append-only log can be extended instead of re-read.
        */
       history(file, tz, read3) {
-        let stat2;
+        let stat3;
         try {
-          stat2 = fs7.statSync(file);
+          stat3 = fs7.statSync(file);
         } catch {
           return { entries: [], counters: /* @__PURE__ */ new Map() };
         }
         const h = this.loadHistory(file);
-        if (h && h.tz === tz && h.size === stat2.size && h.mtimeMs === stat2.mtimeMs)
+        if (h && h.tz === tz && h.size === stat3.size && h.mtimeMs === stat3.mtimeMs)
           return h.data;
-        const data = read3(file, h && h.tz === tz && h.size > 0 && h.size < stat2.size ? { data: h.data, size: h.data.bytes ?? h.size } : null);
+        const data = read3(file, h && h.tz === tz && h.size > 0 && h.size < stat3.size ? { data: h.data, size: h.data.bytes ?? h.size } : null);
         for (const e of data.entries)
           e.text = "";
-        const record2 = { file, shard: shardOf(file, "h-"), size: stat2.size, mtimeMs: stat2.mtimeMs, tz, data };
+        const record2 = { file, shard: shardOf(file, "h-"), size: stat3.size, mtimeMs: stat3.mtimeMs, tz, data };
         this.historyLoaded.set(file, record2);
-        this.historyMetas.set(file, { file, shard: record2.shard, size: stat2.size, mtimeMs: stat2.mtimeMs, tz });
+        this.historyMetas.set(file, { file, shard: record2.shard, size: stat3.size, mtimeMs: stat3.mtimeMs, tz });
         this.dirtyHistory.add(file);
         this.indexDirty = true;
         return data;
@@ -12174,21 +12220,21 @@ function discover2(override) {
       if (!file.endsWith(".json"))
         continue;
       const full = path7.join(dir, file);
-      let stat2;
+      let stat3;
       try {
-        stat2 = fs10.statSync(full);
+        stat3 = fs10.statSync(full);
       } catch {
         continue;
       }
-      if (!stat2.isFile())
+      if (!stat3.isFile())
         continue;
       out.push({
         sessionId: sessionIdFromFilename(file, hash3.name),
         harness: "gemini",
         path: full,
         projectSlug: hash3.name,
-        bytes: stat2.size,
-        mtimeMs: stat2.mtimeMs,
+        bytes: stat3.size,
+        mtimeMs: stat3.mtimeMs,
         isSidechain: false,
         status: "live"
       });
@@ -12587,13 +12633,13 @@ function stateFileIn(dir) {
   return void 0;
 }
 function sourceFor(file, sessionId) {
-  let stat2;
+  let stat3;
   try {
-    stat2 = fs11.statSync(file);
+    stat3 = fs11.statSync(file);
   } catch {
     return void 0;
   }
-  if (!stat2.isFile())
+  if (!stat3.isFile())
     return void 0;
   return {
     sessionId,
@@ -12603,8 +12649,8 @@ function sourceFor(file, sessionId) {
     // by project — so there is no harness slug to report. Left empty rather
     // than filled with something that is not one.
     projectSlug: "",
-    bytes: stat2.size,
-    mtimeMs: stat2.mtimeMs,
+    bytes: stat3.size,
+    mtimeMs: stat3.mtimeMs,
     isSidechain: false,
     status: "live"
   };
@@ -12628,7 +12674,7 @@ async function parse3(source, options = {}) {
   const fileTime = mtimeMs ? new Date(mtimeMs).toISOString() : "";
   const counts = { userPrompts: 0, assistantTurns: 0, toolCalls: 0 };
   const built = buildExchanges2(turns, sessionId, fileTime, counts, unknownTypes);
-  const str7 = (...keys2) => {
+  const str8 = (...keys2) => {
     if (!meta)
       return void 0;
     for (const key3 of keys2) {
@@ -12638,12 +12684,12 @@ async function parse3(source, options = {}) {
     }
     return void 0;
   };
-  const startedAt = str7("startTime", "startedAt", "createdAt") ?? built.firstTs ?? fileTime;
-  const endedAt = str7("lastUpdated", "updatedAt", "endedAt") ?? built.lastTs ?? fileTime;
-  const cwd = str7("cwd", "workingDirectory", "projectRoot", "directory");
-  const title = str7("title", "name", "summary");
-  const model = str7("model", "modelId") ?? built.model;
-  const gitBranch = str7("gitBranch", "branch");
+  const startedAt = str8("startTime", "startedAt", "createdAt") ?? built.firstTs ?? fileTime;
+  const endedAt = str8("lastUpdated", "updatedAt", "endedAt") ?? built.lastTs ?? fileTime;
+  const cwd = str8("cwd", "workingDirectory", "projectRoot", "directory");
+  const title = str8("title", "name", "summary");
+  const model = str8("model", "modelId") ?? built.model;
+  const gitBranch = str8("gitBranch", "branch");
   const session = {
     id: sessionId,
     harness: "copilot",
@@ -13005,8 +13051,483 @@ var init_copilot = __esm({
   }
 });
 
-// packages/core/dist/analytics/adapter-facts.js
+// packages/core/dist/adapters/antigravity.js
+var antigravity_exports = {};
+__export(antigravity_exports, {
+  STATE_KEY: () => STATE_KEY,
+  antigravityInputs: () => antigravityInputs,
+  antigravityPresent: () => antigravityPresent,
+  asText: () => asText,
+  extractConversations: () => extractConversations,
+  loadAntigravity: () => loadAntigravity,
+  readBrain: () => readBrain,
+  readProto: () => readProto,
+  readStateBlob: () => readStateBlob,
+  tryProto: () => tryProto
+});
 import fs12 from "node:fs";
+import os3 from "node:os";
+import path9 from "node:path";
+import { fileURLToPath } from "node:url";
+function varint(b2, i) {
+  let r3 = 0n, shift = 0n;
+  for (let n = 0; n < 10; n++) {
+    if (i >= b2.length)
+      throw new Error("truncated varint");
+    const c = b2[i++];
+    r3 |= BigInt(c & 127) << shift;
+    if (c < 128)
+      return [r3, i];
+    shift += 7n;
+  }
+  throw new Error("varint too long");
+}
+function readProto(b2) {
+  const out = [];
+  let i = 0;
+  while (i < b2.length) {
+    const [key3, j] = varint(b2, i);
+    i = j;
+    const field2 = Number(key3 >> 3n), wire = Number(key3 & 7n);
+    if (field2 < 1 || field2 > 536870911)
+      throw new Error("bad field number");
+    if (wire === 0) {
+      const [v, k] = varint(b2, i);
+      i = k;
+      out.push({ field: field2, wire, value: v });
+    } else if (wire === 1 || wire === 5) {
+      const n = wire === 1 ? 8 : 4;
+      if (i + n > b2.length)
+        throw new Error("truncated fixed");
+      out.push({ field: field2, wire, value: b2.subarray(i, i + n) });
+      i += n;
+    } else if (wire === 2) {
+      const [n02, k] = varint(b2, i);
+      const n = Number(n02);
+      if (k + n > b2.length)
+        throw new Error("truncated bytes");
+      out.push({ field: field2, wire, value: b2.subarray(k, k + n) });
+      i = k + n;
+    } else
+      throw new Error("unsupported wire type");
+  }
+  return out;
+}
+function tryProto(b2) {
+  if (!b2.length)
+    return null;
+  try {
+    return readProto(b2);
+  } catch {
+    return null;
+  }
+}
+function asText(b2) {
+  let s;
+  try {
+    s = DEC.decode(b2);
+  } catch {
+    return null;
+  }
+  return /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(s) ? null : s;
+}
+function timestampOf(fields) {
+  let s = null, ns = 0n;
+  for (const f of fields) {
+    if (f.wire !== 0)
+      return null;
+    if (f.field === 1 && s === null)
+      s = f.value;
+    else if (f.field === 2)
+      ns = f.value;
+    else
+      return null;
+  }
+  const max = BigInt(Math.floor(Date.now() / 1e3) + 2 * 86400);
+  if (s === null || s < MIN_S || s > max || ns >= 1000000000n)
+    return null;
+  return Number(s) * 1e3 + Math.floor(Number(ns) / 1e6);
+}
+function workspacePath(uri) {
+  try {
+    return fileURLToPath(uri);
+  } catch {
+  }
+  try {
+    return decodeURIComponent(new URL(uri).pathname) || null;
+  } catch {
+    return null;
+  }
+}
+function jsonObject(s) {
+  if (!s.startsWith("{"))
+    return null;
+  try {
+    const v = JSON.parse(s);
+    return v && typeof v === "object" && !Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+function buildConversation(id, fields) {
+  const conv = { id: id.toLowerCase(), title: null, workspace: null, times: [], steps: [], artifacts: [] };
+  const times2 = /* @__PURE__ */ new Set();
+  const seenSteps = /* @__PURE__ */ new Set();
+  const visit = (fs0, ctxTs, depth) => {
+    if (depth > 24)
+      return;
+    const kids = fs0.filter((f) => f.wire === 2).map((f) => {
+      const msg = tryProto(f.value);
+      return { text: asText(f.value), msg, ts: msg ? timestampOf(msg) : null };
+    });
+    let local = ctxTs;
+    for (const k of kids)
+      if (k.ts !== null) {
+        times2.add(k.ts);
+        if (local === ctxTs)
+          local = k.ts;
+      }
+    const texts = kids.map((k) => k.text).filter((t) => t !== null);
+    for (const t of texts) {
+      if (/^file:\/\//i.test(t)) {
+        if (/[\\/]brain[\\/]/.test(t)) {
+          const p = workspacePath(t);
+          if (p && !conv.artifacts.includes(p))
+            conv.artifacts.push(p);
+        } else if (!conv.workspace && t.replace(/^file:\/+/i, "").length > 0)
+          conv.workspace = workspacePath(t);
+      }
+    }
+    const tool = texts.find((t) => STEP_TOOLS.has(t));
+    if (tool) {
+      for (const t of texts) {
+        const j = jsonObject(t);
+        if (!j)
+          continue;
+        const key3 = tool + "\0" + t;
+        if (seenSteps.has(key3))
+          break;
+        seenSteps.add(key3);
+        const step = { tool, at: local };
+        if (tool === "notify_user") {
+          const m = str2(j["Message"]);
+          if (!m)
+            break;
+          step.message = m;
+        } else {
+          step.taskName = str2(j["TaskName"]);
+          step.taskStatus = str2(j["TaskStatus"]);
+          step.mode = str2(j["Mode"]);
+          if (!step.taskName && !step.taskStatus)
+            break;
+        }
+        conv.steps.push(step);
+        break;
+      }
+    }
+    for (const k of kids)
+      if (k.msg && k.ts === null)
+        visit(k.msg, local, depth + 1);
+  };
+  for (const f of fields) {
+    if (f.wire !== 2)
+      continue;
+    const m = tryProto(f.value);
+    if (!m)
+      continue;
+    for (const g2 of m) {
+      if (g2.wire !== 2)
+        continue;
+      const t = asText(g2.value);
+      if (t !== null && isTitle(t)) {
+        conv.title = t;
+        break;
+      }
+    }
+    if (conv.title)
+      break;
+  }
+  visit(fields, null, 0);
+  conv.times = [...times2].sort((a, b2) => a - b2);
+  conv.steps.sort((a, b2) => (a.at ?? 0) - (b2.at ?? 0));
+  if (!conv.title && !conv.workspace && !conv.times.length && !conv.steps.length)
+    throw new Error("empty conversation");
+  return conv;
+}
+function conversationId(fields) {
+  let id = null, payload = false;
+  for (const f of fields) {
+    if (f.wire !== 2)
+      continue;
+    const t = asText(f.value);
+    if (t !== null && UUID.test(t)) {
+      id ??= t;
+      continue;
+    }
+    if (tryProto(f.value))
+      payload = true;
+  }
+  return id && payload ? id : null;
+}
+function extractConversations(blob, gaps = []) {
+  const top = tryProto(blob);
+  if (!top) {
+    gaps.push("antigravity_state_unreadable");
+    return [];
+  }
+  const byId = /* @__PURE__ */ new Map();
+  const walk = (fields, depth) => {
+    if (depth > 6)
+      return;
+    for (const f of fields) {
+      if (f.wire !== 2)
+        continue;
+      const m = tryProto(f.value);
+      if (!m)
+        continue;
+      const id = conversationId(m);
+      if (!id) {
+        walk(m, depth + 1);
+        continue;
+      }
+      try {
+        const c = buildConversation(id, m);
+        const old = byId.get(c.id);
+        if (!old) {
+          byId.set(c.id, c);
+          continue;
+        }
+        old.title ??= c.title;
+        old.workspace ??= c.workspace;
+        old.times = [.../* @__PURE__ */ new Set([...old.times, ...c.times])].sort((a, b2) => a - b2);
+        old.steps.push(...c.steps);
+        old.artifacts.push(...c.artifacts.filter((a) => !old.artifacts.includes(a)));
+      } catch {
+        gaps.push("antigravity_conversation_unreadable");
+      }
+    }
+  };
+  walk(top, 0);
+  return [...byId.values()];
+}
+function readBrain(dir, withText = true) {
+  let names;
+  try {
+    names = fs12.readdirSync(dir);
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const name of names.filter((n) => /\.md$/i.test(n)).sort()) {
+    let meta = {};
+    try {
+      meta = JSON.parse(fs12.readFileSync(path9.join(dir, `${name}.metadata.json`), "utf8"));
+    } catch {
+    }
+    const resolved = path9.join(dir, `${name}.resolved`);
+    const file = fs12.existsSync(resolved) ? resolved : path9.join(dir, name);
+    let text = "";
+    if (withText) {
+      try {
+        const st = fs12.statSync(file);
+        if (st.size <= MAX_ARTIFACT_BYTES)
+          text = fs12.readFileSync(file, "utf8");
+      } catch {
+      }
+    }
+    const at = typeof meta["updatedAt"] === "string" ? Date.parse(meta["updatedAt"]) : NaN;
+    out.push({ name, file, artifactType: str2(meta["artifactType"]) ?? null, summary: str2(meta["summary"]) ?? null, updatedAt: Number.isFinite(at) ? at : null, text });
+  }
+  return out;
+}
+function stat(file) {
+  try {
+    return fs12.statSync(file);
+  } catch {
+    return null;
+  }
+}
+function readStateBlob(db, gaps) {
+  if (!stat(db)?.isFile())
+    return null;
+  const tmp = fs12.mkdtempSync(path9.join(os3.tmpdir(), "slopie-ag-"));
+  try {
+    const copy = path9.join(tmp, "state.vscdb");
+    fs12.copyFileSync(db, copy);
+    for (const ext of ["-wal", "-shm"])
+      if (fs12.existsSync(db + ext))
+        fs12.copyFileSync(db + ext, copy + ext);
+    const d = openDatabase(copy, { readonly: true, fileMustExist: true });
+    try {
+      const row = d.prepare("SELECT value FROM ItemTable WHERE key = ?").get(STATE_KEY);
+      const v = row?.value;
+      if (v === void 0 || v === null)
+        return null;
+      const s = typeof v === "string" ? v : Buffer.from(v).toString("utf8");
+      const b2 = Buffer.from(s.trim(), "base64");
+      return b2.length ? b2 : null;
+    } finally {
+      d.close();
+    }
+  } catch {
+    gaps.push("antigravity_state_unreadable");
+    return null;
+  } finally {
+    try {
+      fs12.rmSync(tmp, { recursive: true, force: true });
+    } catch {
+    }
+  }
+}
+function antigravityPresent(o = {}) {
+  const dir = antigravityDir(o.dir);
+  return !!stat(path9.join(dir, "conversations"))?.isDirectory() || !!stat(path9.join(dir, "brain"))?.isDirectory() || !!stat(antigravityStateDb(o.stateDb))?.isFile();
+}
+function loadAntigravity(o = {}) {
+  const gaps = [];
+  const inputs = [];
+  const dir = antigravityDir(o.dir);
+  const dbFile = antigravityStateDb(o.stateDb);
+  const sessions = /* @__PURE__ */ new Map();
+  const get = (id) => {
+    let s = sessions.get(id);
+    if (!s) {
+      s = { id, title: null, project: null, times: [], steps: [], artifacts: [], pb: null, brain: null, state: null };
+      sessions.set(id, s);
+    }
+    return s;
+  };
+  const list3 = (d) => {
+    try {
+      return fs12.readdirSync(d);
+    } catch {
+      return [];
+    }
+  };
+  for (const name of list3(path9.join(dir, "conversations"))) {
+    const m = /^([0-9a-f-]{36})\.pb$/i.exec(name);
+    if (!m || !UUID.test(m[1]))
+      continue;
+    const file = path9.join(dir, "conversations", name);
+    const st = stat(file);
+    if (!st?.isFile())
+      continue;
+    const s = get(m[1].toLowerCase());
+    s.pb = file;
+    inputs.push({ file, size: st.size, mtimeMs: st.mtimeMs });
+    for (const t of st.birthtimeMs > 0 && st.birthtimeMs <= st.mtimeMs ? [st.birthtimeMs, st.mtimeMs] : [st.mtimeMs])
+      if (t > 0)
+        s.times.push(Math.round(t));
+  }
+  for (const name of list3(path9.join(dir, "brain"))) {
+    if (!UUID.test(name))
+      continue;
+    const bdir = path9.join(dir, "brain", name);
+    const st = stat(bdir);
+    if (!st?.isDirectory())
+      continue;
+    const artifacts = readBrain(bdir, o.artifactText ?? false);
+    const known3 = sessions.has(name.toLowerCase());
+    if (!artifacts.length && !known3)
+      continue;
+    const s = get(name.toLowerCase());
+    s.brain = bdir;
+    s.artifacts = artifacts;
+    let newest2 = st.mtimeMs;
+    for (const a of artifacts) {
+      if (a.updatedAt !== null)
+        s.times.push(a.updatedAt);
+      const f = stat(a.file);
+      if (f && f.mtimeMs > newest2)
+        newest2 = f.mtimeMs;
+    }
+    inputs.push({ file: bdir, size: artifacts.length, mtimeMs: newest2 });
+  }
+  const dbStat = stat(dbFile);
+  if (dbStat?.isFile()) {
+    inputs.push({ file: dbFile, size: dbStat.size, mtimeMs: dbStat.mtimeMs });
+    const blob = readStateBlob(dbFile, gaps);
+    if (blob) {
+      for (const c of extractConversations(blob, gaps)) {
+        const s = get(c.id);
+        s.state = dbFile;
+        s.title = c.title;
+        s.project = c.workspace;
+        s.times.push(...c.times);
+        s.steps = c.steps;
+      }
+    }
+  }
+  const out = [...sessions.values()];
+  for (const s of out)
+    s.times = [...new Set(s.times)].sort((a, b2) => a - b2);
+  out.sort((a, b2) => (a.times[0] ?? 0) - (b2.times[0] ?? 0) || (a.id < b2.id ? -1 : 1));
+  return { sessions: out, gaps: [...new Set(gaps)], inputs };
+}
+function antigravityInputs(o = {}) {
+  const out = [];
+  const dir = antigravityDir(o.dir);
+  const list3 = (d) => {
+    try {
+      return fs12.readdirSync(d).sort();
+    } catch {
+      return [];
+    }
+  };
+  for (const name of list3(path9.join(dir, "conversations"))) {
+    if (!name.endsWith(".pb"))
+      continue;
+    const st2 = stat(path9.join(dir, "conversations", name));
+    if (st2?.isFile())
+      out.push({ file: path9.join(dir, "conversations", name), size: st2.size, mtimeMs: st2.mtimeMs });
+  }
+  for (const name of list3(path9.join(dir, "brain"))) {
+    if (!UUID.test(name))
+      continue;
+    const bdir = path9.join(dir, "brain", name);
+    const st2 = stat(bdir);
+    if (!st2?.isDirectory())
+      continue;
+    let newest2 = st2.mtimeMs, n = 0;
+    for (const f of list3(bdir)) {
+      const s = stat(path9.join(bdir, f));
+      if (s) {
+        n++;
+        if (s.mtimeMs > newest2)
+          newest2 = s.mtimeMs;
+      }
+    }
+    out.push({ file: bdir, size: n, mtimeMs: newest2 });
+  }
+  const db = antigravityStateDb(o.stateDb);
+  const st = stat(db);
+  if (st?.isFile()) {
+    out.push({ file: db, size: st.size, mtimeMs: st.mtimeMs });
+    const wal = stat(db + "-wal");
+    if (wal)
+      out.push({ file: db + "-wal", size: wal.size, mtimeMs: wal.mtimeMs });
+  }
+  return out;
+}
+var STATE_KEY, DEC, UUID, MIN_S, STEP_TOOLS, isTitle, str2, MAX_ARTIFACT_BYTES;
+var init_antigravity = __esm({
+  "packages/core/dist/adapters/antigravity.js"() {
+    "use strict";
+    init_paths();
+    init_sqlite_driver();
+    STATE_KEY = "jetskiStateSync.agentManagerInitState";
+    DEC = new TextDecoder("utf-8", { fatal: true });
+    UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    MIN_S = 1577836800n;
+    STEP_TOOLS = /* @__PURE__ */ new Set(["notify_user", "task_boundary"]);
+    isTitle = (s) => s.length > 0 && s.length <= 200 && !/[\n\r]/.test(s) && !UUID.test(s) && !/^[a-z]+:\/\//i.test(s) && !s.startsWith("{");
+    str2 = (v) => typeof v === "string" && v ? v : void 0;
+    MAX_ARTIFACT_BYTES = 2 * 1024 * 1024;
+  }
+});
+
+// packages/core/dist/analytics/adapter-facts.js
+import fs13 from "node:fs";
 function discoverAdapter(harness, options) {
   const override = options[OPTION[harness]];
   const explicit = options.claudeDir ?? options.codexDir ?? options.piDir ?? options.opencodeDir;
@@ -13078,7 +13599,7 @@ async function readAdapterSources(harnesses, discovered, timezone, failures, cac
   for (const h of harnesses)
     for (const source of discovered.get(h) ?? []) {
       try {
-        if (!fs12.existsSync(source.path))
+        if (!fs13.existsSync(source.path))
           continue;
         out.push(await (cache3 ? cache3.external(adapterKey(source), source.bytes, source.mtimeMs, timezone, () => parse5(h, source)) : parse5(h, source)));
       } catch {
@@ -13086,6 +13607,67 @@ async function readAdapterSources(harnesses, discovered, timezone, failures, cac
       }
     }
   return out;
+}
+function antigravityWanted(options) {
+  const explicit = options.claudeDir ?? options.codexDir ?? options.piDir ?? options.opencodeDir ?? options.cursorDir ?? options.geminiDir ?? options.copilotDir;
+  if (!options.antigravityDir && explicit)
+    return false;
+  return antigravityPresent({ dir: options.antigravityDir, stateDb: options.antigravityStateDb });
+}
+function antigravityCensus(options) {
+  if (!antigravityWanted(options))
+    return { files: 0, bytes: 0 };
+  let files = 0, bytes = 0;
+  const dir = antigravityDir(options.antigravityDir);
+  try {
+    for (const n of fs13.readdirSync(`${dir}/conversations`))
+      if (n.endsWith(".pb")) {
+        files++;
+        try {
+          bytes += fs13.statSync(`${dir}/conversations/${n}`).size;
+        } catch {
+        }
+      }
+  } catch {
+  }
+  try {
+    const st = fs13.statSync(antigravityStateDb(options.antigravityStateDb));
+    files++;
+    bytes += st.size;
+  } catch {
+  }
+  return { files, bytes };
+}
+function antigravityFacts(options, timezone, failures) {
+  if (!antigravityWanted(options))
+    return [];
+  const data = loadAntigravity({ dir: options.antigravityDir, stateDb: options.antigravityStateDb });
+  failures.push(...data.gaps);
+  return data.sessions.filter((s) => s.times.length).map((s) => {
+    const file = s.pb ?? s.brain ?? `${s.state ?? "antigravity"}#${s.id}`;
+    const facts2 = {
+      v: FACTS_VERSION,
+      harness: "antigravity",
+      file,
+      size: 0,
+      mtimeMs: s.times[s.times.length - 1],
+      sessionId: s.id,
+      parentId: null,
+      child: false,
+      project: s.project,
+      title: s.title,
+      automated: false,
+      excluded: false,
+      startedAt: new Date(s.times[0]).toISOString(),
+      firstAt: s.times[0],
+      lastAt: s.times[s.times.length - 1],
+      activity: [...s.times],
+      usage: [],
+      prompts: [],
+      malformed: 0
+    };
+    return finishExternalFacts(facts2, { timezone });
+  });
 }
 var ADAPTER_HARNESSES, ADAPTERS, OPTION, adapterKey;
 var init_adapter_facts = __esm({
@@ -13095,6 +13677,8 @@ var init_adapter_facts = __esm({
     init_gemini();
     init_copilot();
     init_extract();
+    init_antigravity();
+    init_paths();
     ADAPTER_HARNESSES = ["cursor", "gemini", "copilot"];
     ADAPTERS = { cursor: cursor_exports, gemini: gemini_exports, copilot: copilot_exports };
     OPTION = { cursor: "cursorDir", gemini: "geminiDir", copilot: "copilotDir" };
@@ -13103,48 +13687,48 @@ var init_adapter_facts = __esm({
 });
 
 // packages/core/dist/analytics/native-census.js
-import os3 from "node:os";
-import fs13 from "node:fs";
-import path9 from "node:path";
-function nativeAuditRoots(harness, options, env = process.env, home2 = os3.homedir()) {
+import os4 from "node:os";
+import fs14 from "node:fs";
+import path10 from "node:path";
+function nativeAuditRoots(harness, options, env = process.env, home2 = os4.homedir()) {
   if (harness === "claude") {
     const configured = options.claudeDir ?? env.CLAUDE_CONFIG_DIR;
-    const roots = configured ? list(configured) : [path9.join(env.XDG_CONFIG_HOME && path9.isAbsolute(env.XDG_CONFIG_HOME) ? env.XDG_CONFIG_HOME : path9.join(home2, ".config"), "claude"), path9.join(home2, ".claude")];
-    return [...new Set(roots.map((p) => path9.basename(p) === "projects" ? p : path9.join(p, "projects")))];
+    const roots = configured ? list(configured) : [path10.join(env.XDG_CONFIG_HOME && path10.isAbsolute(env.XDG_CONFIG_HOME) ? env.XDG_CONFIG_HOME : path10.join(home2, ".config"), "claude"), path10.join(home2, ".claude")];
+    return [...new Set(roots.map((p) => path10.basename(p) === "projects" ? p : path10.join(p, "projects")))];
   }
   if (harness === "codex") {
-    const roots = list(options.codexDir ?? env.POTSHERD_CODEX_DIR ?? env.CODEX_HOME ?? path9.join(home2, ".codex"));
-    return [...new Set(roots.flatMap((p) => ["sessions", "archived_sessions"].includes(path9.basename(p)) ? [p] : [path9.join(p, "sessions"), path9.join(p, "archived_sessions")]))];
+    const roots = list(options.codexDir ?? env.POTSHERD_CODEX_DIR ?? env.CODEX_HOME ?? path10.join(home2, ".codex"));
+    return [...new Set(roots.flatMap((p) => ["sessions", "archived_sessions"].includes(path10.basename(p)) ? [p] : [path10.join(p, "sessions"), path10.join(p, "archived_sessions")]))];
   }
   if (harness === "pi") {
     if (!options.piDir && !env.POTSHERD_PI_DIR && env.PI_CODING_AGENT_DIR)
-      return list(env.PI_CODING_AGENT_DIR).map((p) => path9.join(p, "sessions"));
+      return list(env.PI_CODING_AGENT_DIR).map((p) => path10.join(p, "sessions"));
     if (!options.piDir && !env.POTSHERD_PI_DIR && env.PI_AGENT_DIR)
       return list(env.PI_AGENT_DIR);
-    return list(options.piDir ?? env.POTSHERD_PI_DIR ?? path9.join(home2, ".pi")).map((p) => path9.join(p, "agent", "sessions"));
+    return list(options.piDir ?? env.POTSHERD_PI_DIR ?? path10.join(home2, ".pi")).map((p) => path10.join(p, "agent", "sessions"));
   }
-  return list(options.opencodeDir ?? env.POTSHERD_OPENCODE_DIR ?? env.OPENCODE_DATA_DIR ?? path9.join(env.XDG_DATA_HOME && path9.isAbsolute(env.XDG_DATA_HOME) ? env.XDG_DATA_HOME : path9.join(home2, ".local", "share"), "opencode"));
+  return list(options.opencodeDir ?? env.POTSHERD_OPENCODE_DIR ?? env.OPENCODE_DATA_DIR ?? path10.join(env.XDG_DATA_HOME && path10.isAbsolute(env.XDG_DATA_HOME) ? env.XDG_DATA_HOME : path10.join(home2, ".local", "share"), "opencode"));
 }
-function claudeDesktopRoots(options, env = process.env, home2 = os3.homedir()) {
+function claudeDesktopRoots(options, env = process.env, home2 = os4.homedir()) {
   const explicit = env.POTSHERD_CLAUDE_DESKTOP_DIR;
   if (!explicit && (options.claudeDir ?? env.CLAUDE_CONFIG_DIR))
     return [];
-  const base3 = explicit ? path9.resolve(expandTilde(explicit)) : path9.join(home2, "Library", "Application Support", "Claude", "local-agent-mode-sessions");
+  const base3 = explicit ? path10.resolve(expandTilde(explicit)) : path10.join(home2, "Library", "Application Support", "Claude", "local-agent-mode-sessions");
   const out = [];
   const walk = (dir, depth) => {
     let entries;
     try {
-      entries = fs13.readdirSync(dir, { withFileTypes: true });
+      entries = fs14.readdirSync(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const e of entries) {
       if (!e.isDirectory())
         continue;
-      const p = path9.join(dir, e.name);
+      const p = path10.join(dir, e.name);
       if (e.name === ".claude") {
-        const projects3 = path9.join(p, "projects");
-        if (fs13.existsSync(projects3))
+        const projects3 = path10.join(p, "projects");
+        if (fs14.existsSync(projects3))
           out.push(projects3);
         continue;
       }
@@ -13160,23 +13744,23 @@ var init_native_census = __esm({
   "packages/core/dist/analytics/native-census.js"() {
     "use strict";
     init_paths();
-    list = (s) => s.split(",").map((p) => p.trim()).filter(Boolean).map((p) => path9.resolve(expandTilde(p))).filter((p, i, a) => a.indexOf(p) === i);
+    list = (s) => s.split(",").map((p) => p.trim()).filter(Boolean).map((p) => path10.resolve(expandTilde(p))).filter((p, i, a) => a.indexOf(p) === i);
   }
 });
 
 // packages/core/dist/sources/discover.js
-import fs14 from "node:fs";
-import path10 from "node:path";
+import fs15 from "node:fs";
+import path11 from "node:path";
 function listFiles(root, accept) {
   let names;
   try {
-    names = fs14.readdirSync(root, { recursive: true });
+    names = fs15.readdirSync(root, { recursive: true });
   } catch {
     return [];
   }
   const out = [];
   for (const name of names) {
-    const file = path10.join(root, name);
+    const file = path11.join(root, name);
     if (accept(file))
       out.push(file);
   }
@@ -13185,7 +13769,7 @@ function listFiles(root, accept) {
 function readCodexImports(file) {
   const out = /* @__PURE__ */ new Set();
   try {
-    for (const m of fs14.readFileSync(file, "utf8").matchAll(UUID))
+    for (const m of fs15.readFileSync(file, "utf8").matchAll(UUID2))
       out.add(m[0].toLowerCase());
   } catch {
   }
@@ -13194,8 +13778,8 @@ function readCodexImports(file) {
 function archiveEvidenceDir(options) {
   if (process.env["SLOPIE_AUDIT_ARCHIVE"] === "0")
     return null;
-  const dir = path10.join(potsherdDir(options.potsherdDir), "archive", "evidence");
-  return fs14.existsSync(dir) ? dir : null;
+  const dir = path11.join(potsherdDir(options.potsherdDir), "archive", "evidence");
+  return fs15.existsSync(dir) ? dir : null;
 }
 function discover4(harnesses, options, onHarness, probeOf = directProbe) {
   const result = { jobs: [], opencodeDatabases: [], opencodeJson: [], historyFiles: [], codexImported: /* @__PURE__ */ new Set(), statsFiles: [], census: /* @__PURE__ */ new Map(), zstdUnsupported: 0, adapters: /* @__PURE__ */ new Map(), unclassified: 0 };
@@ -13205,22 +13789,28 @@ function discover4(harnesses, options, onHarness, probeOf = directProbe) {
   const evidence = archiveEvidenceDir(options);
   if (evidence) {
     for (const file of listFiles(evidence, (f) => f.endsWith(".jsonl") || isZstdName(f))) {
-      let stat2;
+      let stat3;
       try {
-        stat2 = fs14.statSync(file);
+        stat3 = fs15.statSync(file);
       } catch {
         continue;
       }
-      if (!stat2.isFile() || stat2.size === 0)
+      if (!stat3.isFile() || stat3.size === 0)
         continue;
-      const probe = probeOf(file, stat2.size, stat2.mtimeMs, null);
+      const probe = probeOf(file, stat3.size, stat3.mtimeMs, null);
       if (probe?.harness)
-        archive.push({ file, harness: probe.harness, size: stat2.size, mtimeMs: stat2.mtimeMs });
+        archive.push({ file, harness: probe.harness, size: stat3.size, mtimeMs: stat3.mtimeMs });
       else if (!probe?.history)
         result.unclassified++;
     }
   }
   for (const harness of harnesses) {
+    if (harness === "antigravity") {
+      const row2 = { ...antigravityCensus(options), roots: 1 };
+      result.census.set(harness, row2);
+      onHarness?.(harness, row2);
+      continue;
+    }
     if (ADAPTER_HARNESSES.includes(harness)) {
       const list3 = discoverAdapter(harness, options);
       result.adapters.set(harness, list3);
@@ -13238,7 +13828,7 @@ function discover4(harnesses, options, onHarness, probeOf = directProbe) {
         for (const file of listFiles(root, (f) => /\.(?:db|sqlite|sqlite3)$/i.test(f) || f.endsWith(".json") && /[\\/]storage[\\/](?:session|message|part)[\\/]/.test(f))) {
           let size = 0;
           try {
-            size = fs14.statSync(file).size;
+            size = fs15.statSync(file).size;
           } catch {
             continue;
           }
@@ -13249,35 +13839,35 @@ function discover4(harnesses, options, onHarness, probeOf = directProbe) {
         continue;
       }
       if (harness === "claude" && !desktop.includes(root)) {
-        const history = path10.join(path10.dirname(root), "history.jsonl");
-        if (fs14.existsSync(history) && !result.historyFiles.includes(history))
+        const history = path11.join(path11.dirname(root), "history.jsonl");
+        if (fs15.existsSync(history) && !result.historyFiles.includes(history))
           result.historyFiles.push(history);
-        const stats = path10.join(path10.dirname(root), "stats-cache.json");
-        if (fs14.existsSync(stats) && !result.statsFiles.includes(stats))
+        const stats = path11.join(path11.dirname(root), "stats-cache.json");
+        if (fs15.existsSync(stats) && !result.statsFiles.includes(stats))
           result.statsFiles.push(stats);
       }
       if (harness === "codex")
-        for (const f of readCodexImports(path10.join(path10.dirname(root), "external_agent_session_imports.json")))
+        for (const f of readCodexImports(path11.join(path11.dirname(root), "external_agent_session_imports.json")))
           result.codexImported.add(f);
-      for (const file of listFiles(root, (f) => harness === "codex" ? path10.basename(f).startsWith("rollout-") && (f.endsWith(".jsonl") || isZstdName(f)) : f.endsWith(".jsonl"))) {
+      for (const file of listFiles(root, (f) => harness === "codex" ? path11.basename(f).startsWith("rollout-") && (f.endsWith(".jsonl") || isZstdName(f)) : f.endsWith(".jsonl"))) {
         if (seen.has(file))
           continue;
         seen.add(file);
-        let stat2;
+        let stat3;
         try {
-          stat2 = fs14.statSync(file);
+          stat3 = fs15.statSync(file);
         } catch {
           continue;
         }
-        if (!stat2.isFile())
+        if (!stat3.isFile())
           continue;
         if (isZstdName(file) && !zstd) {
           result.zstdUnsupported++;
           continue;
         }
         row.files++;
-        row.bytes += stat2.size;
-        result.jobs.push({ file, harness, size: stat2.size, mtimeMs: stat2.mtimeMs });
+        row.bytes += stat3.size;
+        result.jobs.push({ file, harness, size: stat3.size, mtimeMs: stat3.mtimeMs });
       }
     }
     for (const a of archive) {
@@ -13296,7 +13886,7 @@ function discover4(harnesses, options, onHarness, probeOf = directProbe) {
   }
   return result;
 }
-var UUID, isZstdName, directProbe;
+var UUID2, isZstdName, directProbe;
 var init_discover = __esm({
   "packages/core/dist/sources/discover.js"() {
     "use strict";
@@ -13305,20 +13895,20 @@ var init_discover = __esm({
     init_copy_prune();
     init_native_census();
     init_adapter_facts();
-    UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+    UUID2 = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
     isZstdName = (f) => f.endsWith(".jsonl.zst");
     directProbe = (file, _size, _mtime, known3) => probeFile(file, known3);
   }
 });
 
 // packages/core/dist/ignore.js
-import fs15 from "node:fs";
-import path11 from "node:path";
+import fs16 from "node:fs";
+import path12 from "node:path";
 function readIgnoreConfig(root = potsherdDir()) {
   const file = configPath(root);
   let text;
   try {
-    text = fs15.readFileSync(file, "utf8");
+    text = fs16.readFileSync(file, "utf8");
   } catch (e) {
     if (e.code === "ENOENT")
       return { list: [], rest: {}, file };
@@ -13363,11 +13953,11 @@ function writeIgnoreList(root, list3) {
   }
   const next = { ...current.rest, [IGNORE_KEY]: clean3 };
   const file = current.file;
-  fs15.mkdirSync(path11.dirname(file), { recursive: true, mode: 448 });
+  fs16.mkdirSync(path12.dirname(file), { recursive: true, mode: 448 });
   const tmp = `${file}.tmp-${String(process.pid)}`;
-  fs15.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
+  fs16.writeFileSync(tmp, `${JSON.stringify(next, null, 2)}
 `, { mode: 384 });
-  fs15.renameSync(tmp, file);
+  fs16.renameSync(tmp, file);
   return clean3;
 }
 function addIgnored(root, project) {
@@ -13426,8 +14016,8 @@ var init_ignore = __esm({
 });
 
 // packages/core/dist/sources/policy.js
-import fs16 from "node:fs";
-import path12 from "node:path";
+import fs17 from "node:fs";
+import path13 from "node:path";
 function assertPolicy(policy) {
   if (policy.error)
     throw new PolicyError(policy.error, policy.errorDetail ?? policy.error);
@@ -13441,7 +14031,7 @@ function assertPolicy(policy) {
 function legacyForgotten(potsherdRoot) {
   const ids = /* @__PURE__ */ new Set();
   const dbFile = dbPath(potsherdRoot);
-  if (!fs16.existsSync(dbFile))
+  if (!fs17.existsSync(dbFile))
     return { ids, error: false };
   try {
     const db = openDatabase(dbFile, { readonly: true, fileMustExist: true });
@@ -13468,13 +14058,13 @@ function legacyForgotten(potsherdRoot) {
   }
 }
 function forgetPath(slopieRoot = slopieDir()) {
-  return path12.join(slopieRoot, "forget.json");
+  return path13.join(slopieRoot, "forget.json");
 }
 function readForgetList(slopieRoot = slopieDir()) {
   const file = forgetPath(slopieRoot);
   let text;
   try {
-    text = fs16.readFileSync(file, "utf8");
+    text = fs17.readFileSync(file, "utf8");
   } catch (e) {
     if (e.code === "ENOENT")
       return null;
@@ -13492,10 +14082,10 @@ function readForgetList(slopieRoot = slopieDir()) {
   return list3.filter((e) => e && typeof e.sourceId === "string");
 }
 function writeForgetList(list3, slopieRoot = slopieDir()) {
-  fs16.mkdirSync(slopieRoot, { recursive: true, mode: 448 });
+  fs17.mkdirSync(slopieRoot, { recursive: true, mode: 448 });
   const file = forgetPath(slopieRoot), tmp = `${file}.${process.pid}.tmp`;
-  fs16.writeFileSync(tmp, JSON.stringify({ version: 1, forgotten: list3 }, null, 2) + "\n", { mode: 384 });
-  fs16.renameSync(tmp, file);
+  fs17.writeFileSync(tmp, JSON.stringify({ version: 1, forgotten: list3 }, null, 2) + "\n", { mode: 384 });
+  fs17.renameSync(tmp, file);
 }
 function loadPolicy(potsherdRoot, slopieRoot = slopieDir()) {
   const policy = { ignoredList: [], forgotten: /* @__PURE__ */ new Set(), ignored: () => false, error: null, errorDetail: null, warnings: [] };
@@ -13507,7 +14097,7 @@ function loadPolicy(potsherdRoot, slopieRoot = slopieDir()) {
   };
   const fresh = (() => {
     try {
-      fs16.lstatSync(configPath(slopieRoot));
+      fs17.lstatSync(configPath(slopieRoot));
       return true;
     } catch {
       return false;
@@ -13561,14 +14151,14 @@ var init_policy = __esm({
 });
 
 // packages/core/dist/audit-sqlite.js
-import fs17 from "node:fs";
-import os4 from "node:os";
-import path13 from "node:path";
+import fs18 from "node:fs";
+import os5 from "node:os";
+import path14 from "node:path";
 import { createHash as createHash10 } from "node:crypto";
 import { performance as performance2 } from "node:perf_hooks";
 function optionalStat(file) {
   try {
-    return fs17.lstatSync(file, { bigint: true });
+    return fs18.lstatSync(file, { bigint: true });
   } catch (error) {
     if (error.code === "ENOENT")
       return null;
@@ -13585,35 +14175,35 @@ function checksum(bytes, start, length, bigEndian, seed = [0, 0]) {
   return [s0, s1];
 }
 function readShm(file) {
-  const stat2 = optionalStat(file);
-  if (!stat2?.isFile() || stat2.size < 96n)
+  const stat3 = optionalStat(file);
+  if (!stat3?.isFile() || stat3.size < 96n)
     throw new Error("audit_sqlite_wal_index_unavailable");
-  const fd = fs17.openSync(file, fs17.constants.O_RDONLY | fs17.constants.O_NOFOLLOW);
+  const fd = fs18.openSync(file, fs18.constants.O_RDONLY | fs18.constants.O_NOFOLLOW);
   try {
     const header2 = Buffer.alloc(96);
     let offset = 0;
     while (offset < 96) {
-      const n = fs17.readSync(fd, header2, offset, 96 - offset, offset);
+      const n = fs18.readSync(fd, header2, offset, 96 - offset, offset);
       if (!n)
         throw new Error("audit_sqlite_wal_index_unavailable");
       offset += n;
     }
-    const current = fs17.fstatSync(fd, { bigint: true });
-    if (current.dev !== stat2.dev || current.ino !== stat2.ino || current.size !== stat2.size)
+    const current = fs18.fstatSync(fd, { bigint: true });
+    if (current.dev !== stat3.dev || current.ino !== stat3.ino || current.size !== stat3.size)
       throw new Error("audit_sqlite_snapshot_stale");
     const sum = checksum(header2, 0, 40, nativeBigEndian);
     if (!header2.subarray(0, 48).equals(header2.subarray(48, 96)) || native32(header2, 0) !== 3007e3 || native32(header2, 4) !== 0 || header2[12] !== 1 || sum[0] !== native32(header2, 40) || sum[1] !== native32(header2, 44))
       throw new Error("audit_sqlite_wal_index_unavailable");
-    return { identity: [stat2.dev, stat2.ino, stat2.size, createHash10("sha256").update(header2).digest("hex")].join(":"), header: header2 };
+    return { identity: [stat3.dev, stat3.ino, stat3.size, createHash10("sha256").update(header2).digest("hex")].join(":"), header: header2 };
   } finally {
-    fs17.closeSync(fd);
+    fs18.closeSync(fd);
   }
 }
 function inspect(file, maxBytes) {
   const journal = optionalStat(file + "-journal");
   if (journal && journal.size > 0n)
     throw new Error("audit_sqlite_rollback_journal_unavailable");
-  const database = fs17.lstatSync(file, { bigint: true }), wal = optionalStat(file + "-wal");
+  const database = fs18.lstatSync(file, { bigint: true }), wal = optionalStat(file + "-wal");
   if (!database.isFile() || wal && !wal.isFile() || journal && !journal.isFile())
     throw new Error("audit_sqlite_format_unavailable");
   const databaseBytes = Number(database.size), walBytes = wal ? Number(wal.size) : 0;
@@ -13633,7 +14223,7 @@ function stream(file, size, identity3, buffer, check, destination) {
   check();
   let fd;
   try {
-    fd = fs17.openSync(file, fs17.constants.O_RDONLY | fs17.constants.O_NOFOLLOW);
+    fd = fs18.openSync(file, fs18.constants.O_RDONLY | fs18.constants.O_NOFOLLOW);
   } catch (error) {
     if (error.code === "ENOENT")
       throw new Error("audit_sqlite_snapshot_stale");
@@ -13641,15 +14231,15 @@ function stream(file, size, identity3, buffer, check, destination) {
   }
   let out;
   try {
-    if (fingerprint(fs17.fstatSync(fd, { bigint: true })) !== identity3)
+    if (fingerprint(fs18.fstatSync(fd, { bigint: true })) !== identity3)
       throw new Error("audit_sqlite_snapshot_stale");
     if (destination)
-      out = fs17.openSync(destination, fs17.constants.O_WRONLY | fs17.constants.O_CREAT | fs17.constants.O_EXCL | fs17.constants.O_NOFOLLOW, 384);
+      out = fs18.openSync(destination, fs18.constants.O_WRONLY | fs18.constants.O_CREAT | fs18.constants.O_EXCL | fs18.constants.O_NOFOLLOW, 384);
     const header2 = Buffer.alloc(Math.min(size, 100)), hash3 = createHash10("sha256");
     let offset = 0;
     while (offset < size) {
       check();
-      const n = fs17.readSync(fd, buffer, 0, Math.min(buffer.length, size - offset), offset);
+      const n = fs18.readSync(fd, buffer, 0, Math.min(buffer.length, size - offset), offset);
       if (!n)
         throw new Error("audit_sqlite_snapshot_stale");
       const chunk = buffer.subarray(0, n);
@@ -13660,7 +14250,7 @@ function stream(file, size, identity3, buffer, check, destination) {
         let written = 0;
         while (written < n) {
           check();
-          const count4 = fs17.writeSync(out, buffer, written, n - written, offset + written);
+          const count4 = fs18.writeSync(out, buffer, written, n - written, offset + written);
           if (!count4)
             throw new Error("audit_sqlite_snapshot_copy_unavailable");
           written += count4;
@@ -13669,20 +14259,20 @@ function stream(file, size, identity3, buffer, check, destination) {
       offset += n;
     }
     if (out !== void 0)
-      fs17.fsyncSync(out);
+      fs18.fsyncSync(out);
     check();
-    if (fingerprint(fs17.fstatSync(fd, { bigint: true })) !== identity3)
+    if (fingerprint(fs18.fstatSync(fd, { bigint: true })) !== identity3)
       throw new Error("audit_sqlite_snapshot_stale");
     return { header: header2, hash: hash3.digest("hex") };
   } finally {
-    fs17.closeSync(fd);
+    fs18.closeSync(fd);
     if (out !== void 0)
-      fs17.closeSync(out);
+      fs18.closeSync(out);
   }
 }
 function capture(file, maxBytes, check, buffer, directory) {
   check();
-  const identity3 = inspect(file, maxBytes), copy = directory ? path13.join(directory, "snapshot.db") : void 0;
+  const identity3 = inspect(file, maxBytes), copy = directory ? path14.join(directory, "snapshot.db") : void 0;
   const database = stream(file, identity3.databaseBytes, identity3.database, buffer, check, copy), wal = identity3.wal === null ? null : stream(file + "-wal", identity3.walBytes, identity3.wal, buffer, check, copy ? copy + "-wal" : void 0);
   if (!same(identity3, inspect(file, maxBytes)))
     throw new Error("audit_sqlite_snapshot_stale");
@@ -13717,14 +14307,14 @@ function validateCommittedWal(captured, walFile, buffer, check) {
   };
   if (sum[0] !== wal.readUInt32BE(24) || sum[1] !== wal.readUInt32BE(28) || shm[13] !== Number(bigEndian) || shmPage !== pageSize || !shm.subarray(32, 40).equals(wal.subarray(16, 24)) || committedBytes > captured.identity.walBytes)
     fail3();
-  const fd = fs17.openSync(walFile, fs17.constants.O_RDONLY | fs17.constants.O_NOFOLLOW);
+  const fd = fs18.openSync(walFile, fs18.constants.O_RDONLY | fs18.constants.O_NOFOLLOW);
   try {
     for (let frame = 1; frame <= mxFrame; frame++) {
       check();
       const length = pageSize + 24, position = 32 + (frame - 1) * length;
       let offset = 0;
       while (offset < length) {
-        const n = fs17.readSync(fd, buffer, offset, length - offset, position + offset);
+        const n = fs18.readSync(fd, buffer, offset, length - offset, position + offset);
         if (!n)
           fail3();
         offset += n;
@@ -13739,7 +14329,7 @@ function validateCommittedWal(captured, walFile, buffer, check) {
         fail3();
     }
   } finally {
-    fs17.closeSync(fd);
+    fs18.closeSync(fd);
   }
   check();
   return committedBytes;
@@ -13753,28 +14343,28 @@ function openAuditSqliteSnapshot(file, maxBytes = MAX_DISK_BYTES, options = {}) 
     throw new Error("invalid audit SQLite time limit");
   const check = deadline(maxCaptureMs);
   check();
-  const free = fs17.statfsSync(os4.tmpdir(), { bigint: true });
+  const free = fs18.statfsSync(os5.tmpdir(), { bigint: true });
   if (free.bavail * free.bsize < BigInt(initial.databaseBytes + initial.walBytes + DISK_HEADROOM))
     throw new Error("audit_sqlite_snapshot_disk_limit");
-  const directory = fs17.mkdtempSync(path13.join(os4.tmpdir(), "slopie-audit-sqlite-"));
+  const directory = fs18.mkdtempSync(path14.join(os5.tmpdir(), "slopie-audit-sqlite-"));
   let db;
   try {
-    fs17.chmodSync(directory, 448);
+    fs18.chmodSync(directory, 448);
     const buffer = Buffer.allocUnsafe(BUFFER_BYTES), captured = capture(file, maxBytes, check, buffer, directory);
     validateEnvelope(captured);
     const confirmed = capture(file, maxBytes, check, buffer);
     if (captured.hash !== confirmed.hash || !same(captured.identity, confirmed.identity))
       throw new Error("audit_sqlite_snapshot_stale");
-    const copy = path13.join(directory, "snapshot.db");
+    const copy = path14.join(directory, "snapshot.db");
     const committedBytes = validateCommittedWal(captured, copy + "-wal", buffer, check);
     if (captured.identity.walBytes)
-      fs17.truncateSync(copy + "-wal", committedBytes);
+      fs18.truncateSync(copy + "-wal", committedBytes);
     db = openDatabase(copy, { readonly: true, fileMustExist: true });
     db.pragma("temp_store = MEMORY");
     db.pragma("query_only = ON");
     db.prepare("SELECT count(*) FROM sqlite_schema").get();
-    for (const name of fs17.readdirSync(directory))
-      fs17.chmodSync(path13.join(directory, name), 384);
+    for (const name of fs18.readdirSync(directory))
+      fs18.chmodSync(path14.join(directory, name), 384);
     check();
     const assertCurrent = () => {
       const now = capture(file, maxBytes, deadline(maxCaptureMs), Buffer.allocUnsafe(BUFFER_BYTES));
@@ -13795,7 +14385,7 @@ function openAuditSqliteSnapshot(file, maxBytes = MAX_DISK_BYTES, options = {}) 
         try {
           rawClose();
         } finally {
-          fs17.rmSync(directory, { recursive: true, force: true });
+          fs18.rmSync(directory, { recursive: true, force: true });
         }
       }
       return handle;
@@ -13805,7 +14395,7 @@ function openAuditSqliteSnapshot(file, maxBytes = MAX_DISK_BYTES, options = {}) 
     try {
       db?.close();
     } finally {
-      fs17.rmSync(directory, { recursive: true, force: true });
+      fs18.rmSync(directory, { recursive: true, force: true });
     }
     const code = error.code;
     if (code?.startsWith("SQLITE_") || code === "ERR_SQLITE_ERROR")
@@ -13823,7 +14413,7 @@ var init_audit_sqlite = __esm({
     DISK_HEADROOM = 32 * 1024 * 1024;
     fingerprint = (s) => [s.dev, s.ino, s.size, s.mtimeNs, s.ctimeNs].join(":");
     same = (a, b2) => a.database === b2.database && a.wal === b2.wal && a.journal === b2.journal && a.shm === b2.shm;
-    nativeBigEndian = os4.endianness() === "BE";
+    nativeBigEndian = os5.endianness() === "BE";
     native32 = (bytes, offset) => nativeBigEndian ? bytes.readUInt32BE(offset) : bytes.readUInt32LE(offset);
   }
 });
@@ -14167,7 +14757,7 @@ var init_opencode2 = __esm({
 });
 
 // packages/core/dist/analytics/opencode-json.js
-import path14 from "node:path";
+import path15 from "node:path";
 function readLegacyOpenCode(files, maxBytes = 128 * 1024 * 1024) {
   const sessions = /* @__PURE__ */ new Map(), messages = /* @__PURE__ */ new Map(), parts = /* @__PURE__ */ new Map(), captured = /* @__PURE__ */ new Map(), gaps = /* @__PURE__ */ new Set();
   let bytes = 0, parsed = 0;
@@ -14186,11 +14776,11 @@ function readLegacyOpenCode(files, maxBytes = 128 * 1024 * 1024) {
       }
       parsed++;
       if (typeof r3.role === "string") {
-        const id = typeof r3.id === "string" ? r3.id : path14.basename(item.file, ".json"), session = typeof r3.sessionID === "string" ? r3.sessionID : path14.basename(path14.dirname(item.file));
+        const id = typeof r3.id === "string" ? r3.id : path15.basename(item.file, ".json"), session = typeof r3.sessionID === "string" ? r3.sessionID : path15.basename(path15.dirname(item.file));
         messages.set(id, { value: { ...r3, id, sessionID: session }, file: item.file });
         captured.set(item.file, { file: item.file, hash: digest(buffer), session });
       } else if (typeof r3.messageID === "string" || /[\\/]part[\\/]/u.test(item.file)) {
-        const message = typeof r3.messageID === "string" ? r3.messageID : path14.basename(path14.dirname(item.file)), rows = parts.get(message) ?? [];
+        const message = typeof r3.messageID === "string" ? r3.messageID : path15.basename(path15.dirname(item.file)), rows = parts.get(message) ?? [];
         rows.push(r3);
         parts.set(message, rows);
         captured.set(item.file, { file: item.file, hash: digest(buffer), message, session: typeof r3.sessionID === "string" ? r3.sessionID : null });
@@ -14237,7 +14827,7 @@ var init_opencode_json = __esm({
 });
 
 // packages/core/dist/analytics/opencode-facts.js
-import fs18 from "node:fs";
+import fs19 from "node:fs";
 function toFacts(file, size, mtimeMs, session, records, prompts) {
   const usage = [];
   let model = null, provider = null, firstAt = null, lastAt = null;
@@ -14253,8 +14843,8 @@ function toFacts(file, size, mtimeMs, session, records, prompts) {
     if (m.role !== "assistant")
       continue;
     const modelObj = isRec2(m.model) ? m.model : {};
-    model = str2(m.modelID) ?? str2(modelObj.modelID) ?? str2(modelObj.id) ?? str2(m.model) ?? model;
-    provider = str2(m.providerID) ?? str2(modelObj.providerID) ?? provider;
+    model = str3(m.modelID) ?? str3(modelObj.modelID) ?? str3(modelObj.id) ?? str3(m.model) ?? model;
+    provider = str3(m.providerID) ?? str3(modelObj.providerID) ?? provider;
     const at = time2(r3.timestamp) ?? time2(isRec2(m.time) ? m.time.created : null);
     touch3(at);
     answers.push({ at, model, provider });
@@ -14263,7 +14853,7 @@ function toFacts(file, size, mtimeMs, session, records, prompts) {
       continue;
     const cache3 = isRec2(t.cache) ? t.cache : {};
     const fact = {
-      key: `opencode:${str2(r3.id) ?? str2(m.id) ?? `${session.id}:${usage.length}`}`,
+      key: `opencode:${str3(r3.id) ?? str3(m.id) ?? `${session.id}:${usage.length}`}`,
       at,
       model,
       provider,
@@ -14321,7 +14911,7 @@ function toFacts(file, size, mtimeMs, session, records, prompts) {
   return facts2;
 }
 function extractOpenCodeDatabase(file) {
-  const stat2 = fs18.statSync(file);
+  const stat3 = fs19.statSync(file);
   const db = openDatabase(file, { readonly: true, fileMustExist: true });
   try {
     const reader = { db, hash: "", assertCurrent: () => {
@@ -14334,20 +14924,20 @@ function extractOpenCodeDatabase(file) {
       const schema = selectOpenSchema(found.schema, session.id, reader);
       const metadata = openUsageMetadata(schema, session.id, reader);
       const inputs = openNativeInputs(schema, metadata.records, reader);
-      return toFacts(file, stat2.size, stat2.mtimeMs, session, metadata.records, inputs.prompts.map((p) => ({ key: p.key, text: p.text, time: p.time })));
+      return toFacts(file, stat3.size, stat3.mtimeMs, session, metadata.records, inputs.prompts.map((p) => ({ key: p.key, text: p.text, time: p.time })));
     });
   } finally {
     db.close();
   }
 }
 function extractOpenCodeJson(files) {
-  const { groups } = readLegacyOpenCode(files.map((file) => ({ file, harness: "opencode", bytes: fs18.statSync(file).size, kind: "opencode-json" })));
+  const { groups } = readLegacyOpenCode(files.map((file) => ({ file, harness: "opencode", bytes: fs19.statSync(file).size, kind: "opencode-json" })));
   return groups.map((group) => {
     const prompts = group.facts.events.map((e) => ({ key: e.key, text: e.text, time: e.eventAt }));
     return toFacts(group.root, 0, 0, { id: group.facts.nativeId, project: group.facts.project, parent: group.facts.parent, title: group.facts.title }, group.records, prompts);
   });
 }
-var isRec2, str2, int2, time2;
+var isRec2, str3, int2, time2;
 var init_opencode_facts = __esm({
   "packages/core/dist/analytics/opencode-facts.js"() {
     "use strict";
@@ -14357,7 +14947,7 @@ var init_opencode_facts = __esm({
     init_opencode_json();
     init_source();
     isRec2 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-    str2 = (v) => typeof v === "string" && v.length > 0 ? v : null;
+    str3 = (v) => typeof v === "string" && v.length > 0 ? v : null;
     int2 = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
     time2 = (v) => {
       if (typeof v === "number" && Number.isFinite(v))
@@ -14372,8 +14962,8 @@ var init_opencode_facts = __esm({
 });
 
 // packages/core/dist/analytics/derived-cache.js
-import fs19 from "node:fs";
-import path15 from "node:path";
+import fs20 from "node:fs";
+import path16 from "node:path";
 import { createHash as createHash11, randomUUID } from "node:crypto";
 function validDerivedBinding(v) {
   if (!v || typeof v !== "object")
@@ -14415,20 +15005,20 @@ var init_derived_cache = __esm({
       file(namespace, binding2) {
         if (!/^[a-z0-9-]{1,64}$/.test(namespace) || !validDerivedBinding(binding2))
           throw new Error("derived_cache_binding_invalid");
-        return path15.join(this.directory, `${namespace}-${derivedDigest(binding2.sourceId)}.json`);
+        return path16.join(this.directory, `${namespace}-${derivedDigest(binding2.sourceId)}.json`);
       }
       read(namespace, binding2, validate2) {
         const file = this.file(namespace, binding2);
         let fd;
         try {
-          const directory = fs19.lstatSync(this.directory);
+          const directory = fs20.lstatSync(this.directory);
           if (!directory.isDirectory() || directory.isSymbolicLink() || (directory.mode & 63) !== 0)
             return null;
-          fd = fs19.openSync(file, fs19.constants.O_RDONLY | fs19.constants.O_NOFOLLOW);
-          const st = fs19.fstatSync(fd);
+          fd = fs20.openSync(file, fs20.constants.O_RDONLY | fs20.constants.O_NOFOLLOW);
+          const st = fs20.fstatSync(fd);
           if (!st.isFile() || (st.mode & 63) !== 0 || st.size > this.maxEntryBytes)
             return null;
-          const text = fs19.readFileSync(fd, "utf8"), r3 = JSON.parse(text);
+          const text = fs20.readFileSync(fd, "utf8"), r3 = JSON.parse(text);
           if (r3.schema !== "launch-derived-v1" || r3.binding !== identity(binding2) || !bodyFree(r3.value) || !validate2(r3.value))
             return null;
           return r3.value;
@@ -14436,7 +15026,7 @@ var init_derived_cache = __esm({
           return null;
         } finally {
           if (fd !== void 0)
-            fs19.closeSync(fd);
+            fs20.closeSync(fd);
         }
       }
       /** Atomic mode is an explicit opt-in for regenerable native facts only. */
@@ -14448,34 +15038,34 @@ var init_derived_cache = __esm({
         const text = JSON.stringify({ schema: "launch-derived-v1", binding: identity(binding2), value });
         if (Buffer.byteLength(text) > this.maxEntryBytes)
           throw new Error("derived_cache_entry_limit");
-        fs19.mkdirSync(this.directory, { recursive: true, mode: 448 });
-        const st = fs19.lstatSync(this.directory);
+        fs20.mkdirSync(this.directory, { recursive: true, mode: 448 });
+        const st = fs20.lstatSync(this.directory);
         if (!st.isDirectory() || st.isSymbolicLink())
           throw new Error("derived_cache_directory_invalid");
-        fs19.chmodSync(this.directory, 448);
-        const temp = path15.join(this.directory, `.launch-${randomUUID()}.tmp`);
+        fs20.chmodSync(this.directory, 448);
+        const temp = path16.join(this.directory, `.launch-${randomUUID()}.tmp`);
         let fd;
         try {
-          fd = fs19.openSync(temp, fs19.constants.O_WRONLY | fs19.constants.O_CREAT | fs19.constants.O_EXCL | fs19.constants.O_NOFOLLOW, 384);
-          fs19.writeFileSync(fd, text, "utf8");
+          fd = fs20.openSync(temp, fs20.constants.O_WRONLY | fs20.constants.O_CREAT | fs20.constants.O_EXCL | fs20.constants.O_NOFOLLOW, 384);
+          fs20.writeFileSync(fd, text, "utf8");
           if (!atomic)
-            fs19.fsyncSync(fd);
-          fs19.closeSync(fd);
+            fs20.fsyncSync(fd);
+          fs20.closeSync(fd);
           fd = void 0;
-          fs19.renameSync(temp, file);
+          fs20.renameSync(temp, file);
           if (!atomic) {
-            const dir = fs19.openSync(this.directory, "r");
+            const dir = fs20.openSync(this.directory, "r");
             try {
-              fs19.fsyncSync(dir);
+              fs20.fsyncSync(dir);
             } finally {
-              fs19.closeSync(dir);
+              fs20.closeSync(dir);
             }
           }
         } finally {
           if (fd !== void 0)
-            fs19.closeSync(fd);
+            fs20.closeSync(fd);
           try {
-            fs19.unlinkSync(temp);
+            fs20.unlinkSync(temp);
           } catch {
           }
         }
@@ -14483,7 +15073,7 @@ var init_derived_cache = __esm({
       /** Removes one derived source entry, never the retained source archive. */
       invalidate(namespace, binding2) {
         try {
-          fs19.unlinkSync(this.file(namespace, binding2));
+          fs20.unlinkSync(this.file(namespace, binding2));
         } catch (error) {
           if (error.code !== "ENOENT")
             throw error;
@@ -15433,9 +16023,9 @@ var init_jev_session = __esm({
 });
 
 // packages/core/dist/analytics/index.js
-import fs20 from "node:fs";
-import os5 from "node:os";
-import path16 from "node:path";
+import fs21 from "node:fs";
+import os6 from "node:os";
+import path17 from "node:path";
 import { randomUUID as randomUUID3 } from "node:crypto";
 function publicAuditSnapshot(snapshot2) {
   const launch = snapshot2.launch;
@@ -15533,9 +16123,9 @@ function resumeFacts(previous, job, timezone) {
   }
 }
 function codexFastDefault(options) {
-  const home2 = options.codexDir ?? process.env["POTSHERD_CODEX_DIR"] ?? process.env["CODEX_HOME"] ?? path16.join(os5.homedir(), ".codex");
+  const home2 = options.codexDir ?? process.env["POTSHERD_CODEX_DIR"] ?? process.env["CODEX_HOME"] ?? path17.join(os6.homedir(), ".codex");
   try {
-    for (const line2 of fs20.readFileSync(path16.join(home2.split(",")[0].trim(), "config.toml"), "utf8").split("\n")) {
+    for (const line2 of fs21.readFileSync(path17.join(home2.split(",")[0].trim(), "config.toml"), "utf8").split("\n")) {
       const m = /^\s*service_tier\s*=\s*["']?([\w-]+)/.exec(line2.split("#")[0]);
       if (m)
         return m[1] === "priority" || m[1] === "fast";
@@ -15608,8 +16198,8 @@ var init_analytics = __esm({
     init_jev_session();
     init_contracts();
     init_jev_session();
-    HARNESSES = ["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot"];
-    LAUNCH_ORDER = ["codex", "claude", "opencode", "pi", "cursor", "gemini", "copilot"];
+    HARNESSES = ["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot", "antigravity"];
+    LAUNCH_ORDER = ["codex", "claude", "opencode", "pi", "cursor", "gemini", "copilot", "antigravity"];
     RESUME_MAX_BYTES = 64 * 1024 * 1024;
     offline = () => process.env["POTSHERD_OFFLINE"] === "1" || process.env["SLOPIE_ONLINE"] !== "1";
     metric = (value, unit, basis, definition) => ({ value, numerator: value, denominator: null, unit, measurementBasis: basis, state: value === null ? "unavailable" : "observed", definition });
@@ -15648,7 +16238,7 @@ var init_analytics = __esm({
         if (options.since && !from || options.until && !to || from && to && from > to)
           throw new Error("invalid audit event range");
         this.root = potsherdDir(options.potsherdDir);
-        const derivedDir = options.derivedCacheDir ?? path16.join(this.root, "audit-derived");
+        const derivedDir = options.derivedCacheDir ?? path17.join(this.root, "audit-derived");
         this.derived = options.launch ? new DerivedCache(derivedDir) : null;
         this.catalog = this.derived ? cachedPublicCatalog(this.derived) : bundledModelCatalog;
         this.book = new PriceBook(this.catalog);
@@ -15658,7 +16248,7 @@ var init_analytics = __esm({
           snapshotId: this.id,
           sequence: 0,
           measuredAt: (/* @__PURE__ */ new Date()).toISOString(),
-          scope: { harnesses, project: options.project ? path16.resolve(options.project) : null, eventFrom: from, asOf: to, timezone },
+          scope: { harnesses, project: options.project ? path17.resolve(options.project) : null, eventFrom: from, asOf: to, timezone },
           status: "discovering",
           coverage: { state: "complete_snapshot", knownSources: 0, parsedSources: 0, unknownOriginEvents: 0, excludedEvents: 0, omittedSources: 0, gapCodes: [] },
           progress: { stage: "discovering", completed: 0, total: null, unit: "candidate_source", provisional: true, cancellable: true, label: "Finding history" },
@@ -15966,6 +16556,13 @@ var init_analytics = __esm({
           const adapterStats = { parsed: 0 };
           extra.push(...await readAdapterSources(ADAPTER_HARNESSES.filter((h) => harnesses.includes(h)), found.adapters, tz, failures, cache3, adapterStats));
           this.timings["adapterSourcesParsed"] = adapterStats.parsed;
+          if (harnesses.includes("antigravity") && found.census.get("antigravity")?.files) {
+            try {
+              extra.push(...antigravityFacts(this.options, tz, failures));
+            } catch {
+              failures.push("antigravity_source_unreadable");
+            }
+          }
           for (const f of extra)
             this.count(f, 0);
           const historyData = mergeHistories(harnesses.includes("claude") ? found.historyFiles.map((file) => ({ file, data: cache3.history(file, tz, (f, previous) => readHistory(f, { timezone: tz }, previous)) })) : []);
@@ -16028,10 +16625,10 @@ var init_analytics = __esm({
               discovered.add(adapterKey(source));
           const forgotten = (h, id) => policy.forgotten.size > 0 && policy.forgotten.has(sourceId(h, id));
           cache3.save(
-            (f) => (discovered.has(f.file) || fs20.existsSync(f.file)) && !forgotten(f.harness, f.sessionId) && !(f.parentId && forgotten(f.harness, f.parentId)) && !policy.ignored(f.project),
+            (f) => (discovered.has(f.file) || fs21.existsSync(f.file)) && !forgotten(f.harness, f.sessionId) && !(f.parentId && forgotten(f.harness, f.parentId)) && !policy.ignored(f.project),
             (h) => !policy.ignored(h.project) && !(h.sessionId && policy.forgotten.has(sourceId("claude", h.sessionId))),
             // Probes of files that no longer exist are dropped; a skipped copy inherits its covering file's opt-outs.
-            (file) => fs20.existsSync(file)
+            (file) => fs21.existsSync(file)
           );
           lap("cacheWriteMs", t);
           this.timings["totalMs"] = Math.round(performance.now() - t0);
@@ -16174,6 +16771,29 @@ var init_analytics = __esm({
           const h = a.harness[s.harness];
           const promptOnly = ADAPTER_HARNESSES.includes(s.harness);
           const hasData = h.files > 0 || h.conversations > 0;
+          if (s.harness === "antigravity") {
+            const act = h.activity;
+            return {
+              ...s,
+              state: hasData ? "available" : "absent",
+              conversations: h.conversations,
+              humanPrompts: null,
+              humanOrigin: "unverified",
+              evidence: "unavailable",
+              usage: "unavailable",
+              firstUnsupportedStep: hasData ? "prompts" : null,
+              gapCodes: hasData ? ["prompts_encrypted", "usage_not_recorded", ...new Set(run2.failures.filter((f) => f.startsWith("antigravity_")))] : [],
+              childConversations: 0,
+              slashCommands: 0,
+              userMessages: 0,
+              excluded: {},
+              promptsReadable: false,
+              activeDays: act?.days ?? 0,
+              firstDay: act?.first ?? null,
+              lastDay: act?.last ?? null,
+              projects: act?.projects ?? 0
+            };
+          }
           return {
             ...s,
             state: hasData ? "available" : s.candidateFiles ? "available" : "absent",
@@ -16435,13 +17055,13 @@ var init_analytics = __esm({
           try {
             const texts = /* @__PURE__ */ new Map();
             if (this.historyFiles.includes(file)) {
-              parseHistory(fs20.readFileSync(file, "utf8"), { timezone: tz }).entries.forEach((e, i) => {
+              parseHistory(fs21.readFileSync(file, "utf8"), { timezone: tz }).entries.forEach((e, i) => {
                 if (e.kind === "human")
                   texts.set(`history:${i}`, e.text);
               });
             } else {
               const conv = this.result?.conversations.find((c) => c.file === file);
-              const harness = conv?.conversation.harness ?? (file.includes(`${path16.sep}.codex${path16.sep}`) || path16.basename(file).startsWith("rollout-") ? "codex" : "claude");
+              const harness = conv?.conversation.harness ?? (file.includes(`${path17.sep}.codex${path17.sep}`) || path17.basename(file).startsWith("rollout-") ? "codex" : "claude");
               if (harness === "opencode")
                 continue;
               for (const p of extractFile(file, harness, { timezone: tz }).prompts)
@@ -16580,18 +17200,18 @@ var init_analytics = __esm({
         }
       }
       /* ---------------------------------------------------- detail views --- */
-      async prompts(conversationId, offset = 0, limit = 20) {
+      async prompts(conversationId2, offset = 0, limit = 20) {
         this.assertOpen();
         if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100)
           throw new Error("invalid audit pagination");
-        const entry = this.result?.conversations.find((c) => c.conversation.id === conversationId);
+        const entry = this.result?.conversations.find((c) => c.conversation.id === conversationId2);
         if (!entry)
           throw new Error("audit_conversation_unavailable");
         const all = entry.prompts;
         this.rehydrate(all.slice(offset, offset + limit));
         return {
           snapshotId: this.id,
-          conversationId,
+          conversationId: conversationId2,
           prompts: all.slice(offset, offset + limit),
           offset,
           total: all.length,
@@ -16650,9 +17270,9 @@ var init_types = __esm({
 });
 
 // packages/core/dist/sources/lines.js
-import fs21 from "node:fs";
+import fs22 from "node:fs";
 function forEachLine(file, onLine) {
-  const fd = fs21.openSync(file, "r");
+  const fd = fs22.openSync(file, "r");
   try {
     const zst = isZstd(fd) ? zstdStream(fd, file, null) : null;
     let buffer = Buffer.allocUnsafe(CHUNK2);
@@ -16668,7 +17288,7 @@ function forEachLine(file, onLine) {
           buffer = bigger;
         }
       }
-      const n = zst ? zst.read(buffer, filled, buffer.length - filled) : fs21.readSync(fd, buffer, filled, buffer.length - filled, position);
+      const n = zst ? zst.read(buffer, filled, buffer.length - filled) : fs22.readSync(fd, buffer, filled, buffer.length - filled, position);
       position += n;
       const end = filled + n;
       let start = 0;
@@ -16695,7 +17315,7 @@ function forEachLine(file, onLine) {
       filled = end - start;
     }
   } finally {
-    fs21.closeSync(fd);
+    fs22.closeSync(fd);
   }
 }
 function forEachRecord(file, onRecord) {
@@ -16808,7 +17428,7 @@ var init_text = __esm({
 });
 
 // packages/core/dist/sources/sessions.js
-import path17 from "node:path";
+import path18 from "node:path";
 function put(t, key3, v, lim) {
   const s = v ?? "";
   const n = cpLen(s);
@@ -16879,7 +17499,7 @@ function blockText(c) {
     if (isRec3(b2)) {
       const t = b2["type"];
       if (t === "text")
-        out.push(str3(b2["text"]) ?? "");
+        out.push(str4(b2["text"]) ?? "");
       else if (t === "image")
         out.push("[image]");
       else if (t === "tool_reference")
@@ -16890,7 +17510,7 @@ function blockText(c) {
   return out.join("\n");
 }
 function claudeSubagentParent(file) {
-  const parts = file.split(path17.sep);
+  const parts = file.split(path18.sep);
   const i = parts.lastIndexOf("subagents");
   if (i < 0)
     return void 0;
@@ -16905,7 +17525,7 @@ function parseClaude(file, subParent = null, lim = {}) {
   if (sub) {
     s.parent = sub;
     s.parentKind = "subagent";
-    s.id = path17.basename(file, ".jsonl");
+    s.id = path18.basename(file, ".jsonl");
   }
   const turns = s.turns;
   const pending = /* @__PURE__ */ new Map();
@@ -16915,7 +17535,7 @@ function parseClaude(file, subParent = null, lim = {}) {
       return;
     const typ = o["type"];
     if (typ === "custom-title" && o["customTitle"] !== null && o["customTitle"] !== void 0) {
-      s.title = str3(o["customTitle"]) || null;
+      s.title = str4(o["customTitle"]) || null;
       return;
     }
     if (typ === "ai-title" && o["aiTitle"]) {
@@ -16926,7 +17546,7 @@ function parseClaude(file, subParent = null, lim = {}) {
       aiTitle = pyStr(o["summary"]);
     if (typ !== "user" && typ !== "assistant")
       return;
-    const u = str3(o["uuid"]);
+    const u = str4(o["uuid"]);
     if (u) {
       if (seen.has(u))
         return;
@@ -16958,7 +17578,7 @@ function parseClaude(file, subParent = null, lim = {}) {
           let out = blockText(b2["content"]);
           if (b2["is_error"])
             out = "[error] " + out;
-          const key3 = str3(b2["tool_use_id"]) ?? "";
+          const key3 = str4(b2["tool_use_id"]) ?? "";
           const i = pending.get(key3);
           if (i !== void 0) {
             pending.delete(key3);
@@ -16984,7 +17604,7 @@ function parseClaude(file, subParent = null, lim = {}) {
     } else {
       if (msg["model"] === "<synthetic>" && !content)
         return;
-      const mid = str3(msg["id"]);
+      const mid = str4(msg["id"]);
       const blocks = Array.isArray(content) ? content : [{ type: "text", text: content || "" }];
       for (const b2 of blocks) {
         if (!isRec3(b2))
@@ -17001,7 +17621,7 @@ function parseClaude(file, subParent = null, lim = {}) {
             turns.push(put({ role: "ASSISTANT", ts, ref, mid, text: "" }, "text", bt, TL));
           }
         } else if (t === "tool_use" || t === "server_tool_use") {
-          const name = str3(b2["name"]) ?? "tool";
+          const name = str4(b2["name"]) ?? "tool";
           turns.push(put({ role: "TOOL", ts, tool: name, output: null, ref, text: "" }, "text", toolInputSummary(name, b2["input"]), TL));
           if (b2["id"])
             pending.set(pyStr(b2["id"]), turns.length - 1);
@@ -17010,7 +17630,7 @@ function parseClaude(file, subParent = null, lim = {}) {
     }
   });
   if (!s.id)
-    s.id = path17.basename(file, ".jsonl");
+    s.id = path18.basename(file, ".jsonl");
   s.title = s.title || aiTitle;
   for (const t of turns)
     delete t.mid;
@@ -17027,7 +17647,7 @@ function codexContentText(c) {
       continue;
     const t = b2["type"];
     if (t === "input_text" || t === "output_text" || t === "text")
-      out.push(str3(b2["text"]) ?? "");
+      out.push(str4(b2["text"]) ?? "");
     else if (t === "input_image" || t === "image")
       out.push("[image]");
   }
@@ -17063,8 +17683,8 @@ function parseCodex(file, lim = {}) {
     const p = isRec3(o["payload"]) ? o["payload"] : {};
     if (typ === "session_meta") {
       if (!s.id) {
-        s.id = str3(p["id"]) || str3(p["session_id"]) || "";
-        s.project = str3(p["cwd"]);
+        s.id = str4(p["id"]) || str4(p["session_id"]) || "";
+        s.project = str4(p["cwd"]);
         const src = p["source"];
         if (p["forked_from_id"]) {
           s.parent = pyStr(p["forked_from_id"]);
@@ -17147,7 +17767,7 @@ function parseCodex(file, lim = {}) {
           turns.push(put({ role: injected ? "SYSTEM" : "USER", ts, ref, text: "" }, "text", text, TL));
         }
       } else if (pt === "function_call" || pt === "custom_tool_call" || pt === "local_shell_call" || pt === "web_search_call" || pt === "tool_search_call") {
-        const name = str3(p["name"]) || pyStr(pt);
+        const name = str4(p["name"]) || pyStr(pt);
         let arg = pt === "function_call" ? p["arguments"] : p["input"] || p["action"];
         if (typeof arg === "string") {
           try {
@@ -17191,8 +17811,8 @@ function parsePi(file) {
     if (!isRec3(o))
       return;
     if (o["type"] === "session") {
-      s.id = str3(o["id"]) ?? "";
-      s.project = str3(o["cwd"]);
+      s.id = str4(o["id"]) ?? "";
+      s.project = str4(o["cwd"]);
       if (o["parentSession"]) {
         s.parent = pyStr(o["parentSession"]);
         s.parentKind = "fork";
@@ -17200,14 +17820,14 @@ function parsePi(file) {
       return;
     }
     if (o["type"] === "session_info" && "name" in o)
-      s.title = str3(o["name"]) || null;
+      s.title = str4(o["name"]) || null;
     o["_n"] = n;
     entries.push(o);
     if (o["id"])
       byId.set(pyStr(o["id"]), o);
   });
   if (!s.id) {
-    const parts = path17.basename(file, ".jsonl").split("_");
+    const parts = path18.basename(file, ".jsonl").split("_");
     s.id = parts[parts.length - 1] ?? "";
   }
   let chain = entries;
@@ -17249,7 +17869,7 @@ function parsePi(file) {
         if (b2["type"] === "text" && pyStrip(bt))
           s.turns.push({ role: "ASSISTANT", ts, text: bt, ref });
         else if (b2["type"] === "toolCall" || b2["type"] === "tool_use") {
-          const name = str3(b2["name"]) ?? "tool";
+          const name = str4(b2["name"]) ?? "tool";
           s.turns.push({ role: "TOOL", ts, tool: name, text: toolInputSummary(name, b2["arguments"] || b2["input"]), output: null, ref });
           pending.set(pyStr(b2["id"]), s.turns.length - 1);
         }
@@ -17296,7 +17916,7 @@ function readSession(file, harness, subParent, lim = {}) {
     return parseCodex(file, lim);
   return shrink(parsePi(file), lim);
 }
-var TEXT_LIM, OUT_LIM, isRec3, str3, INJECT_RE, UUID_DIR, CODEX_INJECT, DATA_URL;
+var TEXT_LIM, OUT_LIM, isRec3, str4, INJECT_RE, UUID_DIR, CODEX_INJECT, DATA_URL;
 var init_sessions = __esm({
   "packages/core/dist/sources/sessions.js"() {
     "use strict";
@@ -17305,7 +17925,7 @@ var init_sessions = __esm({
     TEXT_LIM = 4e4;
     OUT_LIM = 6e3;
     isRec3 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-    str3 = (v) => typeof v === "string" ? v : null;
+    str4 = (v) => typeof v === "string" ? v : null;
     INJECT_RE = /^\s*<(task-notification|command-name|command-message|local-command-stdout|local-command-caveat|system-reminder|user-prompt-submit-hook|bash-input|bash-stdout|bash-stderr|command-args)/;
     UUID_DIR = /^[0-9a-f-]{36}$/;
     CODEX_INJECT = /^\s*(<(recommended_plugins|environment_context|user_instructions|INSTRUCTIONS|in-app-browser-context|turn_aborted|user_shell_command|skill|subagent_notification|permissions)|# AGENTS\.md instructions|## My request for Codex:)/;
@@ -17665,7 +18285,7 @@ var init_refs = __esm({
 });
 
 // packages/core/dist/records/worker.js
-import os6 from "node:os";
+import os7 from "node:os";
 import { Worker, parentPort } from "node:worker_threads";
 function parseJob(job) {
   try {
@@ -17683,7 +18303,7 @@ function defaultSyncThreads() {
   const forced = Number(process.env["SLOPIE_SYNC_THREADS"]);
   if (Number.isInteger(forced) && forced > 0)
     return Math.min(forced, 16);
-  return Math.max(1, Math.min(4, os6.availableParallelism() - 1));
+  return Math.max(1, Math.min(4, os7.availableParallelism() - 1));
 }
 async function runJobs(jobs, onResult, workerUrl2, threads = defaultSyncThreads()) {
   const order = [...jobs].sort((a, b2) => b2.size - a.size);
@@ -17737,8 +18357,8 @@ var init_worker = __esm({
 });
 
 // packages/core/dist/records/index-db.js
-import fs22 from "node:fs";
-import path18 from "node:path";
+import fs23 from "node:fs";
+import path19 from "node:path";
 function ctxPrefix(title, project, ts, role, tool) {
   return `${squash(title ?? "").trim().slice(0, 120)} \xB7 ${base2(project)} \xB7 ${(ts ?? "").slice(0, 10)} \xB7 ${role}${tool ? " " + tool : ""}`;
 }
@@ -17837,11 +18457,11 @@ create virtual table if not exists cards using fts5(skey unindexed, title, asks,
       }
       /** Opens (creating) the index for writing; one transaction until finish(). */
       static open(dir) {
-        fs22.mkdirSync(dir, { recursive: true, mode: 448 });
-        const file = path18.join(dir, INDEX_FILE);
+        fs23.mkdirSync(dir, { recursive: true, mode: 448 });
+        const file = path19.join(dir, INDEX_FILE);
         const db = openDatabase(file);
         try {
-          fs22.chmodSync(file, 384);
+          fs23.chmodSync(file, 384);
         } catch {
         }
         db.exec("pragma journal_mode=delete; pragma synchronous=normal; pragma secure_delete=on;");
@@ -17928,7 +18548,7 @@ create virtual table if not exists cards using fts5(skey unindexed, title, asks,
       }
       bytes() {
         try {
-          return fs22.statSync(this.file).size;
+          return fs23.statSync(this.file).size;
         } catch {
           return 0;
         }
@@ -17941,33 +18561,81 @@ create virtual table if not exists cards using fts5(skey unindexed, title, asks,
   }
 });
 
+// packages/core/dist/records/antigravity.js
+function agRecord(s, sidecar = false) {
+  const ref = s.state ?? s.brain ?? s.pb ?? "antigravity";
+  const rows = [];
+  for (const st of s.steps) {
+    const ts = st.at === null ? null : isoTs(st.at);
+    if (st.tool === "notify_user" && st.message)
+      rows.push({ at: st.at, turn: { role: "ASSISTANT", ts, text: st.message, textLen: cpLen(st.message), ref } });
+    else if (st.tool === "task_boundary") {
+      const text = `task: ${st.taskName ?? "?"} \xB7 ${st.taskStatus ?? "?"}${st.mode ? ` (${st.mode})` : ""}`;
+      rows.push({ at: st.at, turn: { role: "SYSTEM", ts, text, ref } });
+    }
+  }
+  for (const a of s.artifacts) {
+    const head = [a.name, a.summary ? `summary: ${a.summary}` : null, a.updatedAt !== null ? `updated ${isoTs(a.updatedAt)}` : null, `file: ${a.file}`].filter(Boolean).join(" \xB7 ");
+    rows.push({ at: a.updatedAt, turn: { role: "TOOL", tool: "artifact", ts: a.updatedAt === null ? null : isoTs(a.updatedAt), text: head, output: a.text || null, outputLen: a.text ? cpLen(a.text) : 0, ref: a.file, outRef: a.file } });
+  }
+  const order = rows.map((r3, i) => ({ r: r3, i })).sort((x, y) => (x.r.at ?? Infinity) - (y.r.at ?? Infinity) || x.i - y.i);
+  const start = s.times.length ? isoTs(s.times[0]) : null;
+  const end = s.times.length ? isoTs(s.times[s.times.length - 1]) : null;
+  const rec2 = {
+    harness: "antigravity",
+    id: s.id,
+    project: s.project,
+    title: scrub(s.title),
+    start,
+    end,
+    parent: null,
+    parentKind: null,
+    turns: order.map((x) => recTurn(x.r.turn, sidecar))
+  };
+  return { rec: rec2, sources: [s.pb, s.brain, s.state].filter((x) => !!x) };
+}
+function agRecords(o = {}, sidecar = false) {
+  const data = loadAntigravity({ ...o, artifactText: true });
+  return { records: data.sessions.filter((s) => s.times.length || s.steps.length || s.artifacts.length).map((s) => agRecord(s, sidecar)), gaps: data.gaps };
+}
+var init_antigravity2 = __esm({
+  "packages/core/dist/records/antigravity.js"() {
+    "use strict";
+    init_sessions();
+    init_text();
+    init_antigravity();
+    init_format2();
+    init_scrub();
+  }
+});
+
 // packages/core/dist/records/sync.js
-import fs23 from "node:fs";
-import path19 from "node:path";
+import fs24 from "node:fs";
+import path20 from "node:path";
 import { createHash as createHash13 } from "node:crypto";
 function stateDir(recordsDir2) {
-  return path19.join(recordsDir2, ".slopie");
+  return path20.join(recordsDir2, ".slopie");
 }
 function acquireSyncLock(recordsDir2) {
   const dir = stateDir(recordsDir2);
-  fs23.mkdirSync(dir, { recursive: true, mode: 448 });
-  const file = path19.join(dir, "sync.lock");
+  fs24.mkdirSync(dir, { recursive: true, mode: 448 });
+  const file = path20.join(dir, "sync.lock");
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const fd = fs23.openSync(file, "wx", 384);
-      fs23.writeSync(fd, String(process.pid));
-      fs23.closeSync(fd);
+      const fd = fs24.openSync(file, "wx", 384);
+      fs24.writeSync(fd, String(process.pid));
+      fs24.closeSync(fd);
       return () => {
         try {
-          if (fs23.readFileSync(file, "utf8") === String(process.pid))
-            fs23.unlinkSync(file);
+          if (fs24.readFileSync(file, "utf8") === String(process.pid))
+            fs24.unlinkSync(file);
         } catch {
         }
       };
     } catch (e) {
       if (e.code !== "EEXIST")
         throw e;
-      const pid = Number(fs23.readFileSync(file, "utf8")) || 0;
+      const pid = Number(fs24.readFileSync(file, "utf8")) || 0;
       let alive = false;
       try {
         if (pid) {
@@ -17980,7 +18648,7 @@ function acquireSyncLock(recordsDir2) {
       if (alive && pid !== process.pid)
         throw new SyncBusyError(pid);
       try {
-        fs23.unlinkSync(file);
+        fs24.unlinkSync(file);
       } catch {
       }
     }
@@ -17989,27 +18657,27 @@ function acquireSyncLock(recordsDir2) {
 }
 function readState(dir) {
   try {
-    const s = JSON.parse(fs23.readFileSync(path19.join(stateDir(dir), "state.json"), "utf8"));
+    const s = JSON.parse(fs24.readFileSync(path20.join(stateDir(dir), "state.json"), "utf8"));
     return s.v === STATE_VERSION ? s : null;
   } catch {
     return null;
   }
 }
 function writeAtomic2(file, text) {
-  fs23.mkdirSync(path19.dirname(file), { recursive: true, mode: 448 });
+  fs24.mkdirSync(path20.dirname(file), { recursive: true, mode: 448 });
   const tmp = `${file}.tmp-${process.pid}`;
-  fs23.writeFileSync(tmp, text, { mode: 384 });
-  fs23.renameSync(tmp, file);
+  fs24.writeFileSync(tmp, text, { mode: 384 });
+  fs24.renameSync(tmp, file);
 }
 function mkdirPrivate(dir, root) {
-  if (fs23.existsSync(dir))
+  if (fs24.existsSync(dir))
     return;
-  mkdirPrivate(path19.dirname(dir), root);
-  fs23.mkdirSync(dir, { mode: 448 });
+  mkdirPrivate(path20.dirname(dir), root);
+  fs24.mkdirSync(dir, { mode: 448 });
 }
 function fileId(file) {
   try {
-    const st = fs23.statSync(file);
+    const st = fs24.statSync(file);
     return `${st.dev}:${st.ino}`;
   } catch {
     return null;
@@ -18017,7 +18685,7 @@ function fileId(file) {
 }
 function readRecordFile(file) {
   try {
-    const back = parseRecordText(fs23.readFileSync(file, "utf8"));
+    const back = parseRecordText(fs24.readFileSync(file, "utf8"));
     return back && ["claude", "codex", "pi"].includes(back.session.harness) && back.session.id ? back : null;
   } catch {
     return null;
@@ -18026,12 +18694,12 @@ function readRecordFile(file) {
 function adoptRecordFiles(dir, prev) {
   const known3 = /* @__PURE__ */ new Set();
   for (const s of Object.values(prev.sessions)) {
-    const id = fileId(path19.join(dir, s.rel));
+    const id = fileId(path20.join(dir, s.rel));
     if (id)
       known3.add(id);
   }
   for (const h of ["claude", "codex", "pi"]) {
-    for (const f of listFiles(path19.join(dir, h), (x) => x.endsWith(".txt") && !x.endsWith(".out.txt")).sort()) {
+    for (const f of listFiles(path20.join(dir, h), (x) => x.endsWith(".txt") && !x.endsWith(".out.txt")).sort()) {
       const id = fileId(f);
       if (!id || known3.has(id))
         continue;
@@ -18041,9 +18709,9 @@ function adoptRecordFiles(dir, prev) {
       const rs = back.session;
       const key3 = `${rs.harness}:${sidFile(rs.harness, rs.id, rs.parent, rs.parentKind)}`;
       const cur = prev.sessions[key3];
-      if (cur && fs23.existsSync(path19.join(dir, cur.rel)) && (cur.n ?? 0) >= rs.turns.length)
+      if (cur && fs24.existsSync(path20.join(dir, cur.rel)) && (cur.n ?? 0) >= rs.turns.length)
         continue;
-      const rel = path19.relative(dir, f).split(path19.sep).join("/");
+      const rel = path20.relative(dir, f).split(path20.sep).join("/");
       prev.sessions[key3] = {
         sig: "",
         rel,
@@ -18064,11 +18732,11 @@ function adoptRecordFiles(dir, prev) {
 function scrubRecordFiles(dir) {
   let changed = 0;
   for (const h of ["claude", "codex", "pi"]) {
-    for (const f of listFiles(path19.join(dir, h), (x) => x.endsWith(".txt"))) {
+    for (const f of listFiles(path20.join(dir, h), (x) => x.endsWith(".txt"))) {
       let text, st;
       try {
-        st = fs23.statSync(f);
-        text = fs23.readFileSync(f, "utf8");
+        st = fs24.statSync(f);
+        text = fs24.readFileSync(f, "utf8");
       } catch {
         continue;
       }
@@ -18077,7 +18745,7 @@ function scrubRecordFiles(dir) {
         continue;
       writeAtomic2(f, clean3);
       try {
-        fs23.utimesSync(f, st.atime, st.mtime);
+        fs24.utimesSync(f, st.atime, st.mtime);
       } catch {
       }
       changed++;
@@ -18091,8 +18759,8 @@ function codexMeta(homes, imports) {
   const db = /* @__PURE__ */ new Map();
   const imported = /* @__PURE__ */ new Set();
   for (const home2 of homes) {
-    const idx = path19.join(home2, "session_index.jsonl");
-    if (fs23.existsSync(idx)) {
+    const idx = path20.join(home2, "session_index.jsonl");
+    if (fs24.existsSync(idx)) {
       forEachRecord(idx, (o) => {
         const r3 = o;
         if (r3 && typeof r3 === "object" && typeof r3["thread_name"] === "string" && r3["thread_name"] && typeof r3["id"] === "string")
@@ -18100,7 +18768,7 @@ function codexMeta(homes, imports) {
       });
     }
     try {
-      const raw = JSON.parse(fs23.readFileSync(path19.join(home2, "external_agent_session_imports.json"), "utf8"));
+      const raw = JSON.parse(fs24.readFileSync(path20.join(home2, "external_agent_session_imports.json"), "utf8"));
       for (const r3 of raw.records ?? []) {
         if (!r3.imported_thread_id)
           continue;
@@ -18114,12 +18782,12 @@ function codexMeta(homes, imports) {
     }
     let states = [];
     try {
-      states = fs23.readdirSync(home2).filter((f) => /^state_\d+\.sqlite$/.test(f)).sort((a, b2) => Number(b2.match(/\d+/)[0]) - Number(a.match(/\d+/)[0]));
+      states = fs24.readdirSync(home2).filter((f) => /^state_\d+\.sqlite$/.test(f)).sort((a, b2) => Number(b2.match(/\d+/)[0]) - Number(a.match(/\d+/)[0]));
     } catch {
     }
     if (states.length) {
       try {
-        const snap = openAuditSqliteSnapshot(path19.join(home2, states[0]));
+        const snap = openAuditSqliteSnapshot(path20.join(home2, states[0]));
         try {
           for (const r3 of snap.db.prepare("select id, title from threads").all())
             db.set(r3.id, { ...db.get(r3.id), title: r3.title });
@@ -18158,8 +18826,8 @@ function discoverSources(o, state) {
   });
   const out = [];
   const skip = (f) => {
-    const parts = f.split(path19.sep);
-    return parts.includes("memory") || parts.includes("tool-results") || path19.basename(f) === "history.jsonl";
+    const parts = f.split(path20.sep);
+    return parts.includes("memory") || parts.includes("tool-results") || path20.basename(f) === "history.jsonl";
   };
   for (const job of found.jobs) {
     if (job.harness === "claude" && skip(job.file))
@@ -18168,14 +18836,14 @@ function discoverSources(o, state) {
     out.push({ file: job.file, harness: job.harness, sub, size: job.size, mtimeMs: job.mtimeMs, archive: !!job.archive });
   }
   if (process.env["SLOPIE_AUDIT_ARCHIVE"] !== "0") {
-    const legacy = path19.join(potsherdDir(o.potsherdDir), "archive", "claude");
+    const legacy = path20.join(potsherdDir(o.potsherdDir), "archive", "claude");
     const seen = new Set(out.map((s) => s.file));
     for (const file of listFiles(legacy, (f) => f.endsWith(".jsonl"))) {
       if (seen.has(file) || skip(file))
         continue;
       let st;
       try {
-        st = fs23.statSync(file);
+        st = fs24.statSync(file);
       } catch {
         continue;
       }
@@ -18184,34 +18852,34 @@ function discoverSources(o, state) {
       out.push({ file, harness: "claude", sub: claudeSubagentParent(file) ?? null, size: st.size, mtimeMs: st.mtimeMs, archive: true });
     }
   }
-  const codexHomes = [...new Set(nativeAuditRoots("codex", opts).map((r3) => path19.dirname(r3)))];
+  const codexHomes = [...new Set(nativeAuditRoots("codex", opts).map((r3) => path20.dirname(r3)))];
   const historyFiles = [...found.historyFiles];
-  const archived = path19.join(potsherdDir(o.potsherdDir), "archive", "claude", "history.jsonl");
-  if (process.env["SLOPIE_AUDIT_ARCHIVE"] !== "0" && fs23.existsSync(archived) && !historyFiles.includes(archived))
+  const archived = path20.join(potsherdDir(o.potsherdDir), "archive", "claude", "history.jsonl");
+  if (process.env["SLOPIE_AUDIT_ARCHIVE"] !== "0" && fs24.existsSync(archived) && !historyFiles.includes(archived))
     historyFiles.push(archived);
   return { sources: out, historyFiles, codexHomes, codexImported: found.codexImported };
 }
 function copySig(file, size) {
-  const fd = fs23.openSync(file, "r");
+  const fd = fs24.openSync(file, "r");
   try {
     const h = createHash13("sha1");
     const n = Math.min(size, 1 << 16);
     const b2 = Buffer.allocUnsafe(n);
-    fs23.readSync(fd, b2, 0, n, 0);
+    fs24.readSync(fd, b2, 0, n, 0);
     h.update(b2);
     if (size > n) {
-      fs23.readSync(fd, b2, 0, n, size - n);
+      fs24.readSync(fd, b2, 0, n, size - n);
       h.update(b2);
     }
     return `${size}:${h.digest("hex")}`;
   } finally {
-    fs23.closeSync(fd);
+    fs24.closeSync(fd);
   }
 }
 async function syncRecords(o = {}) {
   const dir0 = recordsDir(o.recordsDir);
-  if (!fs23.existsSync(dir0))
-    fs23.mkdirSync(dir0, { recursive: true, mode: 448 });
+  if (!fs24.existsSync(dir0))
+    fs24.mkdirSync(dir0, { recursive: true, mode: 448 });
   const release = acquireSyncLock(dir0);
   try {
     return await syncLocked(o);
@@ -18232,10 +18900,10 @@ async function syncLocked(o) {
   const sidecar = o.sidecar ?? process.env["SLOPIE_SIDECAR"] === "1";
   const policy = loadPolicy(potsherdDir(o.potsherdDir), slopieDir(o.slopieDir));
   assertPolicy(policy);
-  if (!fs23.existsSync(dir))
-    fs23.mkdirSync(dir, { recursive: true, mode: 448 });
+  if (!fs24.existsSync(dir))
+    fs24.mkdirSync(dir, { recursive: true, mode: 448 });
   try {
-    fs23.chmodSync(dir, 448);
+    fs24.chmodSync(dir, 448);
   } catch {
   }
   mkdirPrivate(stateDir(dir), dir);
@@ -18459,16 +19127,57 @@ async function syncLocked(o) {
       if (b2.id === id)
         b2.later = l;
   }
+  const agOpts = { dir: o.antigravityDir, stateDb: o.antigravityStateDb };
+  const agIn = !o.antigravityDir && (o.claudeDir || o.codexDir || o.piDir) ? [] : antigravityInputs(agOpts);
+  const agKey = agIn.length ? hash2([agIn, FORMAT_VERSION, REDACT_VERSION, sidecar]) : void 0;
+  const agCarry = !!agKey && !o.full && !migrating && prev.ag === agKey;
+  if (agKey)
+    next.ag = agKey;
+  if (agKey && !agCarry) {
+    try {
+      const { records, gaps } = agRecords(agOpts, sidecar);
+      result.errors.push(...gaps);
+      for (const { rec: rec2, sources: srcs } of records) {
+        sessions.push({
+          key: `antigravity:${rec2.id}`,
+          harness: "antigravity",
+          id: rec2.id,
+          parent: null,
+          parentKind: null,
+          nTurns: rec2.turns.length,
+          size: 0,
+          start: rec2.start,
+          end: rec2.end,
+          project: rec2.project,
+          best: null,
+          paths: [],
+          archiveOnly: false,
+          sources: srcs.sort(),
+          ag: rec2,
+          agSig: hash2(rec2)
+        });
+      }
+    } catch {
+      result.errors.push("antigravity_source_unreadable");
+      next.ag = void 0;
+    }
+  }
   const present = new Set(sessions.map((s) => s.key));
   const kept = [];
+  const agCarried = [];
   const presentIds = new Set(sessions.map((s) => `${s.harness}:${s.id}`));
   const promptOnlyPrev = /* @__PURE__ */ new Map();
   for (const [key3, ss] of Object.entries(prev.sessions)) {
     if (present.has(key3) || presentIds.has(`${ss.harness}:${ss.id}`))
       continue;
+    if (agCarry && ss.harness === "antigravity") {
+      if (fs24.existsSync(path20.join(dir, ss.rel)))
+        agCarried.push([key3, ss]);
+      continue;
+    }
     if (ss.harness === "codex" && meta.imported.has(ss.id) && ss.parentKind !== "import")
       continue;
-    if (!fs23.existsSync(path19.join(dir, ss.rel)))
+    if (!fs24.existsSync(path20.join(dir, ss.rel)))
       continue;
     if (ss.history)
       promptOnlyPrev.set(ss.id, ss);
@@ -18510,7 +19219,7 @@ async function syncLocked(o) {
     const old = promptOnlyPrev.get(sid3);
     const back = old ? (() => {
       try {
-        return parseRecordText(fs23.readFileSync(path19.join(dir, old.rel), "utf8"));
+        return parseRecordText(fs24.readFileSync(path20.join(dir, old.rel), "utf8"));
       } catch {
         return null;
       }
@@ -18548,6 +19257,7 @@ async function syncLocked(o) {
   const keep = (h, id, parent, project) => !policy.ignored(project) && !isForgotten(policy, h, id, parent);
   const final = sessions.filter((s) => keep(s.harness, s.id, s.parent, s.project));
   const finalKept = kept.filter(([, s]) => keep(s.harness, s.id, s.parent, s.project));
+  const finalCarried = agCarried.filter(([, s]) => keep(s.harness, s.id, s.parent, s.project));
   result.excludedByPolicy = sessions.length - final.length + kept.length - finalKept.length;
   const kids = /* @__PURE__ */ new Map();
   const ids = /* @__PURE__ */ new Set([...final.map((s) => s.id), ...finalKept.map(([, s]) => s.id)]);
@@ -18563,27 +19273,27 @@ async function syncLocked(o) {
   mark("merge");
   const realRoot = (() => {
     try {
-      return fs23.realpathSync.native(dir);
+      return fs24.realpathSync.native(dir);
     } catch {
       return null;
     }
   })();
   const realDirs = /* @__PURE__ */ new Map();
   const canonicalRel = (rel) => {
-    const d = path19.dirname(rel);
+    const d = path20.dirname(rel);
     let real = realDirs.get(d);
     if (real === void 0) {
       real = d;
       try {
-        mkdirPrivate(path19.join(dir, d), dir);
-        const r3 = realRoot ? path19.relative(realRoot, fs23.realpathSync.native(path19.join(dir, d))) : "";
-        if (r3 && !r3.startsWith("..") && !path19.isAbsolute(r3) && r3.toLowerCase() === d.split("/").join(path19.sep).toLowerCase())
-          real = r3.split(path19.sep).join("/");
+        mkdirPrivate(path20.join(dir, d), dir);
+        const r3 = realRoot ? path20.relative(realRoot, fs24.realpathSync.native(path20.join(dir, d))) : "";
+        if (r3 && !r3.startsWith("..") && !path20.isAbsolute(r3) && r3.toLowerCase() === d.split("/").join(path20.sep).toLowerCase())
+          real = r3.split(path20.sep).join("/");
       } catch {
       }
       realDirs.set(d, real);
     }
-    return `${real}/${path19.basename(rel)}`;
+    return `${real}/${path20.basename(rel)}`;
   };
   const index = o.index === false ? null : RecordIndex.open(stateDir(dir));
   if (index && (o.full || migrating))
@@ -18607,7 +19317,8 @@ async function syncLocked(o) {
     s.history ? s.history.length : -1,
     s.importCut ?? null,
     (s.later ?? []).map((x) => x.id),
-    (s.relays ?? []).map((r3) => [r3.title, r3.child])
+    (s.relays ?? []).map((r3) => [r3.title, r3.child]),
+    s.agSig ?? null
   ]);
   const writeOne = (s, rec2, sig) => {
     rec2.parent = s.parent;
@@ -18631,32 +19342,32 @@ async function syncLocked(o) {
           t.text = scrub(t.text);
     }
     const rel = canonicalRel(recordRelPath(rec2));
-    const file = path19.join(dir, rel);
-    mkdirPrivate(path19.dirname(file), dir);
+    const file = path20.join(dir, rel);
+    mkdirPrivate(path20.dirname(file), dir);
     const text = render(rec2, { children: kids.get(s.id) ?? [], sources: s.sources, archiveOnly: s.archiveOnly, later: s.later });
     writeAtomic2(file, text);
     const last = Date.parse(rec2.end ?? rec2.start ?? "");
     if (Number.isFinite(last)) {
       try {
-        fs23.utimesSync(file, last / 1e3, last / 1e3);
+        fs24.utimesSync(file, last / 1e3, last / 1e3);
       } catch {
       }
     }
     const side = file.slice(0, -4) + ".out.txt";
-    const sideText = sidecar ? renderSidecar(rec2, path19.basename(file)) : null;
+    const sideText = sidecar ? renderSidecar(rec2, path20.basename(file)) : null;
     if (sideText)
       writeAtomic2(side, sideText);
-    else if (fs23.existsSync(side))
-      fs23.unlinkSync(side);
+    else if (fs24.existsSync(side))
+      fs24.unlinkSync(side);
     const old = prev.sessions[s.key];
-    if (old && old.rel !== rel && fileId(path19.join(dir, old.rel)) !== fileId(file)) {
+    if (old && old.rel !== rel && fileId(path20.join(dir, old.rel)) !== fileId(file)) {
       try {
-        fs23.unlinkSync(path19.join(dir, old.rel));
+        fs24.unlinkSync(path20.join(dir, old.rel));
       } catch {
       }
-      if (fileId(path19.join(dir, old.rel.slice(0, -4) + ".out.txt")) !== fileId(side))
+      if (fileId(path20.join(dir, old.rel.slice(0, -4) + ".out.txt")) !== fileId(side))
         try {
-          fs23.unlinkSync(path19.join(dir, old.rel.slice(0, -4) + ".out.txt"));
+          fs24.unlinkSync(path20.join(dir, old.rel.slice(0, -4) + ".out.txt"));
         } catch {
         }
     }
@@ -18680,27 +19391,31 @@ async function syncLocked(o) {
   for (const s of final) {
     const sig = sigOf(s);
     const old = prev.sessions[s.key];
-    const fileOk = old && fs23.existsSync(path19.join(dir, old.rel));
+    const fileOk = old && fs24.existsSync(path20.join(dir, old.rel));
     if (old && old.sig === sig && fileOk && (!index || indexed.get(s.key) === sig)) {
       next.sessions[s.key] = old;
       continue;
     }
-    if (old && fileOk && !old.history && !s.history && (old.n ?? 0) > s.nTurns) {
+    if (old && fileOk && !old.history && !s.history && !s.ag && (old.n ?? 0) > s.nTurns) {
       next.sessions[s.key] = { ...old, kept: true };
       if (index && !indexed.has(s.key)) {
-        const rec2 = parseRecordText(fs23.readFileSync(path19.join(dir, old.rel), "utf8"));
+        const rec2 = parseRecordText(fs24.readFileSync(path20.join(dir, old.rel), "utf8"));
         if (rec2)
           index.put(s.key, scrubRec(rec2.session), { ...rec2.header, rel: old.rel, best: null, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, old.sig);
       }
       continue;
     }
     if (old && old.sig === sig && fileOk && index) {
-      const rec2 = parseRecordText(fs23.readFileSync(path19.join(dir, old.rel), "utf8"));
+      const rec2 = parseRecordText(fs24.readFileSync(path20.join(dir, old.rel), "utf8"));
       if (rec2) {
         index.put(s.key, scrubRec(rec2.session), { ...rec2.header, rel: old.rel, best: s.best, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, sig);
         next.sessions[s.key] = old;
         continue;
       }
+    }
+    if (s.ag) {
+      writeOne(s, s.ag, sig);
+      continue;
     }
     if (s.history) {
       const rec2 = {
@@ -18739,10 +19454,18 @@ async function syncLocked(o) {
         next.sessions[x.s.key] = prev.sessions[x.s.key];
     }, o.workerUrl ?? null, o.threads);
   }
+  for (const [key3, ss] of finalCarried) {
+    next.sessions[key3] = ss;
+    if (index && !indexed.has(key3)) {
+      const rec2 = parseRecordText(fs24.readFileSync(path20.join(dir, ss.rel), "utf8"));
+      if (rec2)
+        index.put(key3, scrubRec(rec2.session), { ...rec2.header, rel: ss.rel, best: null, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, ss.sig);
+    }
+  }
   for (const [key3, ss] of finalKept) {
     next.sessions[key3] = { ...ss, kept: true };
     if (index && !indexed.has(key3)) {
-      const rec2 = parseRecordText(fs23.readFileSync(path19.join(dir, ss.rel), "utf8"));
+      const rec2 = parseRecordText(fs24.readFileSync(path20.join(dir, ss.rel), "utf8"));
       if (rec2)
         index.put(key3, scrubRec(rec2.session), { ...rec2.header, rel: ss.rel, best: null, firstUser: firstUser(rec2.session), lastAssistant: lastAssistant(rec2.session) }, ss.sig);
     }
@@ -18752,7 +19475,7 @@ async function syncLocked(o) {
   const claimedIds = /* @__PURE__ */ new Set();
   const claim3 = (rel) => {
     for (const f of [rel, rel.slice(0, -4) + ".out.txt"]) {
-      const id = fileId(path19.join(dir, f));
+      const id = fileId(path20.join(dir, f));
       if (id)
         claimedIds.add(id);
     }
@@ -18764,7 +19487,7 @@ async function syncLocked(o) {
     if (!id || claimedIds.has(id))
       return false;
     try {
-      fs23.unlinkSync(file);
+      fs24.unlinkSync(file);
       return true;
     } catch {
       return false;
@@ -18774,11 +19497,11 @@ async function syncLocked(o) {
     if (next.sessions[key3])
       continue;
     for (const f of [ss.rel, ss.rel.slice(0, -4) + ".out.txt"])
-      unlinkUnclaimed(path19.join(dir, f));
+      unlinkUnclaimed(path20.join(dir, f));
     result.removed++;
   }
   for (const h of ["claude", "codex", "pi"]) {
-    for (const f of listFiles(path19.join(dir, h), (x) => x.endsWith(".txt"))) {
+    for (const f of listFiles(path20.join(dir, h), (x) => x.endsWith(".txt"))) {
       const id = fileId(f);
       if (!id || claimedIds.has(id))
         continue;
@@ -18795,8 +19518,8 @@ async function syncLocked(o) {
     index.finish(!!o.full || migrating || result.written > 200, migrating);
   }
   const rows = Object.entries(next.sessions).sort(([ka, a], [kb, b2]) => a.start < b2.start ? -1 : a.start > b2.start ? 1 : ka < kb ? -1 : 1);
-  writeAtomic2(path19.join(dir, "INDEX.tsv"), INDEX_HEADER + "\n" + rows.map(([, s]) => s.line = scrubLine(s.line)).join("\n") + "\n");
-  writeAtomic2(path19.join(stateDir(dir), "state.json"), JSON.stringify(next));
+  writeAtomic2(path20.join(dir, "INDEX.tsv"), INDEX_HEADER + "\n" + rows.map(([, s]) => s.line = scrubLine(s.line)).join("\n") + "\n");
+  writeAtomic2(path20.join(stateDir(dir), "state.json"), JSON.stringify(next));
   if (migrate)
     result.redacted = migrate;
   mark("index");
@@ -18812,7 +19535,7 @@ async function syncLocked(o) {
   result.sessions = rows.length;
   for (const [, s] of rows) {
     try {
-      result.recordBytes += fs23.statSync(path19.join(dir, s.rel)).size;
+      result.recordBytes += fs24.statSync(path20.join(dir, s.rel)).size;
     } catch {
     }
   }
@@ -18842,6 +19565,8 @@ var init_sync = __esm({
     init_refs();
     init_index_db();
     init_scrub();
+    init_antigravity();
+    init_antigravity2();
     FORMAT_VERSION = 4;
     STATE_VERSION = 1;
     PARSE_VERSION = 4;
@@ -18862,8 +19587,8 @@ var init_sync = __esm({
 });
 
 // packages/core/dist/records/engine.js
-import fs24 from "node:fs";
-import path20 from "node:path";
+import fs25 from "node:fs";
+import path21 from "node:path";
 function ftsQuery(q2, mode = "or") {
   const toks = [];
   for (const w of q2.match(WORD2) ?? []) {
@@ -18990,8 +19715,8 @@ let lets get got make made please tell show give went one ones also out up down 
       constructor(recordsDir2, style = "cli") {
         this.style = style;
         this.recordsDir = recordsDir(recordsDir2);
-        const file = path20.join(stateDir(this.recordsDir), INDEX_FILE);
-        if (!fs24.existsSync(file))
+        const file = path21.join(stateDir(this.recordsDir), INDEX_FILE);
+        if (!fs25.existsSync(file))
           throw new NoIndexError(file);
         this.db = openDatabase(file, { readonly: true, fileMustExist: true });
         for (const r3 of this.db.prepare("select * from sessions").all())
@@ -19051,7 +19776,7 @@ let lets get got make made please tell show give went one ones also out up down 
       // ------------------------------------------------------------ helpers
       resolve(sid3) {
         let id = (sid3 ?? "").trim();
-        if (id.split(":").length === 2 && ["claude", "codex", "pi"].includes(id.split(":")[0]))
+        if (id.split(":").length === 2 && ["claude", "codex", "pi", "antigravity"].includes(id.split(":")[0]))
           id = id.split(":")[1];
         if (!id)
           return { s: null, err: "session is required" };
@@ -19099,7 +19824,7 @@ let lets get got make made please tell show give went one ones also out up down 
         if (!this.laterByKey) {
           this.laterByKey = /* @__PURE__ */ new Map();
           try {
-            for (const line2 of fs24.readFileSync(path20.join(this.recordsDir, "INDEX.tsv"), "utf8").split("\n")) {
+            for (const line2 of fs25.readFileSync(path21.join(this.recordsDir, "INDEX.tsv"), "utf8").split("\n")) {
               const f = line2.split("	");
               if (f.length >= 12 && f[11])
                 this.laterByKey.set(`${f[0]}:${f[1]}`, f[11]);
@@ -19464,7 +20189,7 @@ let lets get got make made please tell show give went one ones also out up down 
           for (const p of this.nearProjects([o.project, ...terms(o.query ?? "")]))
             if (p !== o.project)
               nexts.push(this.call({ query: o.query, project: p, since: o.since }));
-          const cwd = path20.basename(process.cwd());
+          const cwd = path21.basename(process.cwd());
           if (cwd && cwd !== o.project && [...this.sessions.values()].some((s) => (s.project ?? "").toLowerCase().includes(cwd.toLowerCase())))
             nexts.push(this.call({ query: o.query, project: cwd, since: o.since }));
         }
@@ -19705,7 +20430,7 @@ let lets get got make made please tell show give went one ones also out up down 
        */
       fullTurns(s) {
         let why = s.best ? "its raw source is gone" : "it has no raw source (prompt history only)";
-        if (s.best && fs24.existsSync(s.best)) {
+        if (s.best && fs25.existsSync(s.best)) {
           try {
             const sub = s.harness === "claude" && s.parent_kind === "subagent" ? s.parent : null;
             const parsed = readSession(s.best, s.harness, sub, { text: Number.MAX_SAFE_INTEGER, output: Number.MAX_SAFE_INTEGER });
@@ -19787,7 +20512,7 @@ var NOTE_B_TEMPLATE, MCP_INSTRUCTIONS, MCP_TOOLS;
 var init_spec = __esm({
   "packages/core/dist/records/spec.js"() {
     "use strict";
-    NOTE_B_TEMPLATE = `The user's agent history (Claude Code, Codex, Pi; all projects; including sessions the harness deleted) is exported as plain text records under {RECORDS}:
+    NOTE_B_TEMPLATE = `The user's agent history (Claude Code, Codex, Pi, Antigravity (titles, agent messages and plans; prompts are encrypted); all projects; including sessions the harness deleted) is exported as plain text records under {RECORDS}:
 - INDEX.tsv: one line per session: harness, id, project (working dir), start, end (last activity), turns, parent, title, first user message, file, active (every UTC date with a turn, so rg '2026-07-14' INDEX.tsv lists every thread active that day, including long threads that started earlier), later (later threads that name this one, where the work or a decision often continued).
 - <harness>/<project-slug>/<start-date>_<session-id>.txt: one file per session. Header lines start with "## " (session, project, title, time, parent, children, later threads that mention it, raw source paths).
 - Every content line starts with its turn tag: "t12 USER 2026-08-20 20:26 | text", "t13 ASSISTANT ...", "t14 TOOL Bash 20:27 | command", tool output lines "t14 > ...", continuation lines "t12 | ...". SYSTEM turns are injected/harness text.
@@ -19838,7 +20563,7 @@ var init_note = __esm({
   "packages/core/dist/records/note.js"() {
     "use strict";
     init_spec();
-    CLI_LINE = "Your past coding-agent sessions with the user (Claude Code, Codex, pi) are searchable. If the slopie command is on PATH, start with it rather than rg:\n- find: slopie search <words> [--project P --since D]  (add --session ID to search inside one thread)\n- read a session's end: slopie search --session ID --turns -30  (--turns 120-160 reads a range)\n- latest: slopie search <words> --latest  (threads with these words, newest activity first)\nEach reply starts with the index age and ends with the exact next command. Use rg/sed on the files below for anything else.";
+    CLI_LINE = "Your past coding-agent sessions with the user (Claude Code, Codex, pi; Antigravity titles, agent messages and plans, its prompts are encrypted) are searchable. If the slopie command is on PATH, start with it rather than rg:\n- find: slopie search <words> [--project P --since D]  (add --session ID to search inside one thread)\n- read a session's end: slopie search --session ID --turns -30  (--turns 120-160 reads a range)\n- latest: slopie search <words> --latest  (threads with these words, newest activity first)\nEach reply starts with the index age and ends with the exact next command. Use rg/sed on the files below for anything else.";
     GUIDANCE = "For 'which threads' questions, include threads that dispatched, coordinated or tracked the work, and long threads that started before the window but were active in it. For 'latest decision' questions, after the first hit check later threads in every harness and read the turns after an announced plan before answering. Do not answer NOT FOUND after reading only part of a session.";
     PROTOCOL = 'Before you answer: cite the thread where the fact was produced, not one that pasted it, re-read it from a file, or received it as a relay ("Delegated task \u2026 [from delegated thread <id>]" names the thread that did the work). For a current, final or latest value, or the result of a step, read on past the first hit to the end of that step and check later threads ("## mentioned later in", rg -l --sortr modified) for a change. For which-threads questions, list every candidate thread in scope (no head), check each, and count the thread that dispatched the work ("parent: delegated by <id>") and long threads active in the window.';
     SIDECAR_LINE = "- Full tool outputs (up to 20 kB each) are also in <record>.out.txt beside each record, tagged the same way, so rg reaches text the record cut.";
@@ -19945,8 +20670,8 @@ var init_mcp = __esm({
 });
 
 // packages/core/dist/records/hook.js
-import fs25 from "node:fs";
-import path21 from "node:path";
+import fs26 from "node:fs";
+import path22 from "node:path";
 function parseHookInput(text) {
   try {
     const v = JSON.parse(text);
@@ -19960,7 +20685,7 @@ function isContinuation(source) {
 }
 function findRecord(recordsDir2, id) {
   try {
-    const state = JSON.parse(fs25.readFileSync(path21.join(stateDir(recordsDir2), "state.json"), "utf8"));
+    const state = JSON.parse(fs26.readFileSync(path22.join(stateDir(recordsDir2), "state.json"), "utf8"));
     for (const s of Object.values(state.sessions))
       if (s.id === id)
         return s;
@@ -19973,10 +20698,10 @@ function hasRecord(sessionId, recordsDir2 = recordsDir()) {
 }
 function continuationPointer(sessionId, harness, recordsDir2 = recordsDir()) {
   const rec2 = findRecord(recordsDir2, sessionId);
-  const file = rec2 ? path21.join(recordsDir2, rec2.rel) : null;
+  const file = rec2 ? path22.join(recordsDir2, rec2.rel) : null;
   const lines = [
     `slopie: this ${harness} session (${sessionId}) continues earlier work; its full transcript is a plain-text record.`,
-    file ? `record: ${file}` : `record: not written yet (run: slopie sync); index: ${path21.join(recordsDir2, "INDEX.tsv")}`,
+    file ? `record: ${file}` : `record: not written yet (run: slopie sync); index: ${path22.join(recordsDir2, "INDEX.tsv")}`,
     `latest turns:  slopie search --session ${sessionId} --turns -30`,
     `inside it:     slopie search "<words>" --session ${sessionId}`
   ];
@@ -20000,7 +20725,7 @@ var VERSION;
 var init_version = __esm({
   "packages/core/dist/version.js"() {
     "use strict";
-    VERSION = "1.9.3";
+    VERSION = "1.9.4";
   }
 });
 
@@ -20021,6 +20746,7 @@ var init_dist = __esm({
     init_gemini();
     init_opencode();
     init_copilot();
+    init_antigravity();
     init_cursor();
     init_gemini();
     init_opencode();
@@ -21511,11 +22237,11 @@ var init_copy_prune2 = __esm({
 });
 
 // packages/core/src/analytics/extract.ts
-import fs27 from "node:fs";
+import fs28 from "node:fs";
 import zlib2 from "node:zlib";
 import { execFileSync as execFileSync2 } from "node:child_process";
 import { createHash as createHash16 } from "node:crypto";
-import path22 from "node:path";
+import path23 from "node:path";
 function time3(v) {
   let t;
   if (typeof v === "string") t = Date.parse(v);
@@ -21556,7 +22282,7 @@ function makeBuilder2(file, harness, size, mtimeMs) {
       file,
       size,
       mtimeMs,
-      sessionId: path22.basename(file.replace(/\.zst$/, ""), ".jsonl"),
+      sessionId: path23.basename(file.replace(/\.zst$/, ""), ".jsonl"),
       parentId: null,
       child: false,
       project: null,
@@ -21638,12 +22364,12 @@ function claudeLine2(b2, line2, subagentPath, sessions, archive = false) {
   }
   const f = b2.facts;
   if (r3.type === "summary" || r3.type === "custom-title" || r3.type === "ai-title") {
-    const title = str4(r3.customTitle) ?? str4(r3.aiTitle) ?? str4(r3.title) ?? str4(r3.summary);
+    const title = str5(r3.customTitle) ?? str5(r3.aiTitle) ?? str5(r3.title) ?? str5(r3.summary);
     if (title && (r3.type !== "summary" || !f.title)) f.title = title;
     return;
   }
   if (typeof r3.cwd === "string" && !f.project) f.project = r3.cwd;
-  const sid3 = str4(r3.sessionId);
+  const sid3 = str5(r3.sessionId);
   if (archive && !subagent && sid3 && r3.isSidechain === true && typeof r3.agentId === "string" && !sessions.size && !f.prompts.length) {
     b2.sidechainFile = subagent = true;
     f.parentId = sid3;
@@ -21655,7 +22381,7 @@ function claudeLine2(b2, line2, subagentPath, sessions, archive = false) {
       if (!b2.sidechainFile) {
         f.parentId = sid3;
         f.child = true;
-        f.sessionId = `${sid3}:${path22.basename(f.file, ".jsonl")}`;
+        f.sessionId = `${sid3}:${path23.basename(f.file, ".jsonl")}`;
       }
     } else if (!sessions.size) f.sessionId = sid3;
   }
@@ -21664,11 +22390,11 @@ function claudeLine2(b2, line2, subagentPath, sessions, archive = false) {
   if (r3.type === "assistant") {
     const u = m.usage;
     if (!isRec4(u)) return;
-    const model = str4(m.model);
+    const model = str5(m.model);
     if (model === "<synthetic>") return;
     const cc = isRec4(u.cache_creation) ? u.cache_creation : null;
     const write = cc ? int3(cc.ephemeral_5m_input_tokens) + int3(cc.ephemeral_1h_input_tokens) : int3(u.cache_creation_input_tokens);
-    const id = str4(m.id), request = str4(r3.requestId), session = sid3 ?? f.file;
+    const id = str5(m.id), request = str5(r3.requestId), session = sid3 ?? f.file;
     const fact = {
       key: id ? request ? `c:${id}:${request}` : `c:${id}::${session}:${String(r3.timestamp)}` : null,
       at,
@@ -21702,7 +22428,7 @@ function claudeLine2(b2, line2, subagentPath, sessions, archive = false) {
   const content = m.content;
   if (Array.isArray(content) && content.some((block) => isRec4(block) && block.type === "tool_result")) return;
   if (sid3) sessions.add(sid3);
-  const origin = isRec4(r3.origin) ? str4(r3.origin.kind) : null;
+  const origin = isRec4(r3.origin) ? str5(r3.origin.kind) : null;
   const flagged = r3.isMeta === true ? "is_meta" : r3.isCompactSummary === true ? "compaction_summary" : origin && origin !== "human" ? `origin_${origin}` : r3.entrypoint === "sdk-cli" ? "headless_claude_p" : r3.promptSource === "system" ? "prompt_source_system" : null;
   let { kind: kind3, reason, text } = classifyText2(textOf2(content));
   if (flagged) {
@@ -21713,7 +22439,7 @@ function claudeLine2(b2, line2, subagentPath, sessions, archive = false) {
     reason = null;
     text = "[image]";
   }
-  addPrompt2(b2, str4(r3.uuid) ?? `${f.sessionId}:${String(r3.timestamp)}`, at, str4(r3.cwd) ?? f.project, kind3, reason, text);
+  addPrompt2(b2, str5(r3.uuid) ?? `${f.sessionId}:${String(r3.timestamp)}`, at, str5(r3.cwd) ?? f.project, kind3, reason, text);
 }
 function codexFact2(model, tier, at, d, key3) {
   const input = d[0], output = d[2], reasoning = d[3], cached2 = Math.min(d[1], input);
@@ -21742,17 +22468,17 @@ function codexLine2(b2, line2, s) {
     const r3 = parse5();
     if (!r3) return;
     const p = isRec4(r3.payload) ? r3.payload : {};
-    f.sessionId = str4(p.id) ?? str4(p.session_id) ?? f.sessionId;
-    f.project = str4(p.cwd);
-    f.startedAt = str4(p.timestamp) ?? str4(r3.timestamp);
+    f.sessionId = str5(p.id) ?? str5(p.session_id) ?? f.sessionId;
+    f.project = str5(p.cwd);
+    f.startedAt = str5(p.timestamp) ?? str5(r3.timestamp);
     const source = p.source;
     if (isRec4(source) && "subagent" in source) {
       f.child = true;
       const sub = isRec4(source.subagent) ? source.subagent : {};
       const spawn2 = isRec4(sub.thread_spawn) ? sub.thread_spawn : {};
-      f.parentId = str4(spawn2.parent_thread_id) ?? str4(p.parent_thread_id) ?? str4(p.forked_from_id);
+      f.parentId = str5(spawn2.parent_thread_id) ?? str5(p.parent_thread_id) ?? str5(p.forked_from_id);
     }
-    if (str4(p.forked_from_id)) f.forkedFrom = str4(p.forked_from_id);
+    if (str5(p.forked_from_id)) f.forkedFrom = str5(p.forked_from_id);
     if (source === "exec" || p.originator === "codex_exec" || p.originator === "codex_sdk_ts") f.automated = true;
     touch2(b2, time3(r3.timestamp));
     return;
@@ -21783,7 +22509,7 @@ function codexLine2(b2, line2, s) {
   if (head.includes('"turn_context"')) {
     const p = parse5()?.payload;
     if (isRec4(p)) {
-      b2.currentModel = str4(p.model) ?? b2.currentModel;
+      b2.currentModel = str5(p.model) ?? b2.currentModel;
       if (typeof p.cwd === "string") f.project = p.cwd;
     }
     return;
@@ -21812,7 +22538,7 @@ function codexLine2(b2, line2, s) {
     if (!r3 || !p) return;
     const item = isRec4(p.item) ? p.item : {};
     s.itemPrompts.push({
-      key: str4(item.id),
+      key: str5(item.id),
       at: time3(r3.timestamp),
       text: textOf2(item.content),
       imported: s.imported || String(p.turn_id ?? "").startsWith("external-import"),
@@ -21839,7 +22565,7 @@ function codexLine2(b2, line2, s) {
   if (head.includes('"token_usage_record"')) {
     const r3 = parse5();
     const p = r3 && isRec4(r3.payload) ? r3.payload : null;
-    const id = p ? str4(p.response_id) : null;
+    const id = p ? str5(p.response_id) : null;
     if (r3 && p && id && isRec4(p.usage) && !s.records.has(id)) s.records.set(id, { at: time3(r3.timestamp), usage: p.usage, model: b2.currentModel, tier: s.tier });
     return;
   }
@@ -21928,19 +22654,19 @@ function piLine2(b2, line2) {
   }
   const f = b2.facts, at = time3(r3.timestamp);
   if (r3.type === "session") {
-    f.sessionId = str4(r3.id) ?? f.sessionId;
-    f.project = str4(r3.cwd);
-    const parent = str4(r3.parentSession);
+    f.sessionId = str5(r3.id) ?? f.sessionId;
+    f.project = str5(r3.cwd);
+    const parent = str5(r3.parentSession);
     if (parent) {
-      const base3 = path22.basename(parent.replace(/\\/g, "/")).replace(/\.jsonl$/, "");
+      const base3 = path23.basename(parent.replace(/\\/g, "/")).replace(/\.jsonl$/, "");
       f.forkedFrom = base3.includes("_") ? base3.slice(base3.lastIndexOf("_") + 1) : base3;
     }
     touch2(b2, at);
     return;
   }
   if (r3.type === "model_change") {
-    b2.currentModel = str4(r3.modelId) ?? b2.currentModel;
-    b2.currentProvider = str4(r3.provider) ?? b2.currentProvider;
+    b2.currentModel = str5(r3.modelId) ?? b2.currentModel;
+    b2.currentProvider = str5(r3.provider) ?? b2.currentProvider;
     return;
   }
   if (r3.type !== "message" || !isRec4(r3.message)) return;
@@ -21950,8 +22676,8 @@ function piLine2(b2, line2) {
     const fact = {
       key: `pi:${String(r3.id)}@${String(r3.timestamp ?? "")}`,
       at,
-      model: str4(m.model) ?? b2.currentModel,
-      provider: str4(m.provider) ?? b2.currentProvider,
+      model: str5(m.model) ?? b2.currentModel,
+      provider: str5(m.provider) ?? b2.currentProvider,
       input: int3(u.input),
       output: int3(u.output),
       cacheRead: int3(u.cacheRead),
@@ -21973,26 +22699,26 @@ function piLine2(b2, line2) {
   }
 }
 function extractFile2(file, requested, options = {}, previous) {
-  const fd = fs27.openSync(file, "r");
+  const fd = fs28.openSync(file, "r");
   try {
-    const stat2 = fs27.fstatSync(fd);
+    const stat3 = fs28.fstatSync(fd);
     const hashes = options.checks?.length ? new StreamHashes2(options.checks) : null;
     const zst = isZstd2(fd) ? zstdStream2(fd, file, hashes) : null;
     const harness = requested === "auto" ? sniffHarness2(zst ? zst.peek(64 * 1024) : headBytes2(fd, 64 * 1024)) : requested;
     if (!harness) throw new Error("unrecognised_archive_source");
     if (zst && previous) throw new ResumeMismatch2();
-    let b2 = makeBuilder2(file, harness, stat2.size, stat2.mtimeMs);
+    let b2 = makeBuilder2(file, harness, stat3.size, stat3.mtimeMs);
     if (options.archive) b2.facts.archived = true;
     let codex = newCodexState2();
     let position = 0, firstNew = 0;
     const subagent = file.includes(SUBAGENT_DIR2), sessions = /* @__PURE__ */ new Set();
     if (previous) {
       const r3 = previous.resume;
-      if (!r3 || previous.excluded || r3.dev !== stat2.dev || r3.ino !== stat2.ino || r3.offset > stat2.size || r3.offset < 1 || tailHash2(fd, r3.offset) !== r3.tail) throw new ResumeMismatch2();
+      if (!r3 || previous.excluded || r3.dev !== stat3.dev || r3.ino !== stat3.ino || r3.offset > stat3.size || r3.offset < 1 || tailHash2(fd, r3.offset) !== r3.tail) throw new ResumeMismatch2();
       const nl = Buffer.alloc(1);
-      fs27.readSync(fd, nl, 0, 1, r3.offset - 1);
+      fs28.readSync(fd, nl, 0, 1, r3.offset - 1);
       if (nl[0] !== 10) throw new ResumeMismatch2();
-      b2 = resumeBuilder2(previous, r3, stat2);
+      b2 = resumeBuilder2(previous, r3, stat3);
       if (r3.codex) codex = { ...structuredClone(r3.codex), itemPrompts: [], responsePrompts: [] };
       for (const sid3 of r3.sessions ?? []) sessions.add(sid3);
       position = r3.offset;
@@ -22022,7 +22748,7 @@ function extractFile2(file, requested, options = {}, previous) {
           if (bigger.length <= 4 * CHUNK3) sharedBuffer2 = bigger;
         }
       }
-      const n = zst ? zst.read(buffer, filled, buffer.length - filled) : fs27.readSync(fd, buffer, filled, buffer.length - filled, position);
+      const n = zst ? zst.read(buffer, filled, buffer.length - filled) : fs28.readSync(fd, buffer, filled, buffer.length - filled, position);
       position += n;
       const end = filled + n;
       let start = 0;
@@ -22048,11 +22774,11 @@ function extractFile2(file, requested, options = {}, previous) {
     if (harness === "codex") finishCodex2(b2, codex);
     if (hashes) b2.facts.copyHashes = hashes.result();
     if (harness === "claude" && !subagent && sessions.size) b2.facts.sessionIds = [...sessions];
-    b2.facts.size = stat2.size;
-    b2.facts.mtimeMs = stat2.mtimeMs;
+    b2.facts.size = stat3.size;
+    b2.facts.mtimeMs = stat3.mtimeMs;
     finishStory2(b2, harness, options, firstNew);
     delete b2.facts.resume;
-    if (!zst && !options.archive && endsWithNewline && !b2.facts.excluded && Date.now() - stat2.mtimeMs < RESUME_RECENT_MS2) {
+    if (!zst && !options.archive && endsWithNewline && !b2.facts.excluded && Date.now() - stat3.mtimeMs < RESUME_RECENT_MS2) {
       const events = new Float64Array(b2.events.length * 4);
       b2.events.forEach((e, i) => {
         events[i * 4] = e.at;
@@ -22064,8 +22790,8 @@ function extractFile2(file, requested, options = {}, previous) {
       b2.facts.resume = {
         offset: base3,
         tail: tailHash2(fd, base3),
-        dev: stat2.dev,
-        ino: stat2.ino,
+        dev: stat3.dev,
+        ino: stat3.ino,
         model: b2.currentModel,
         provider: b2.currentProvider,
         events,
@@ -22076,12 +22802,12 @@ function extractFile2(file, requested, options = {}, previous) {
     }
     return b2.facts;
   } finally {
-    fs27.closeSync(fd);
+    fs28.closeSync(fd);
   }
 }
 function headBytes2(fd, max) {
   const buffer = Buffer.alloc(max);
-  const n = fs27.readSync(fd, buffer, 0, max, 0);
+  const n = fs28.readSync(fd, buffer, 0, max, 0);
   return buffer.subarray(0, n);
 }
 function isZstd2(fd) {
@@ -22141,7 +22867,7 @@ function zstdStream2(fd, file, hashes) {
       done = true;
       return;
     }
-    const n = fs27.readSync(fd, input, 0, ZSTD_INPUT2, inPos);
+    const n = fs28.readSync(fd, input, 0, ZSTD_INPUT2, inPos);
     inPos += n;
     if (!n) {
       done = true;
@@ -22190,7 +22916,7 @@ function decompressZstd2(file) {
   zstdMode2 ??= zstdSupport2();
   if (zstdMode2 === "node") {
     try {
-      return zlib2.zstdDecompressSync(fs27.readFileSync(file));
+      return zlib2.zstdDecompressSync(fs28.readFileSync(file));
     } catch {
       throw new Error("zstd_corrupt");
     }
@@ -22213,18 +22939,18 @@ function sniffHarness2(head) {
   if (text.includes('"sessionId"') && /"type"\s*:\s*"(?:user|assistant|summary|system)"/.test(text)) return "claude";
   return null;
 }
-function resumeBuilder2(previous, r3, stat2) {
+function resumeBuilder2(previous, r3, stat3) {
   const facts2 = {
     ...previous,
-    size: stat2.size,
-    mtimeMs: stat2.mtimeMs,
+    size: stat3.size,
+    mtimeMs: stat3.mtimeMs,
     usage: [...previous.usage],
     prompts: previous.prompts.map((p) => ({ ...p })),
     ...previous.sessionIds ? { sessionIds: [...previous.sessionIds] } : {},
     ...previous.story ? { story: { vocab: null, topics: null } } : {}
   };
   delete facts2.resume;
-  const b2 = makeBuilder2(previous.file, previous.harness, stat2.size, stat2.mtimeMs);
+  const b2 = makeBuilder2(previous.file, previous.harness, stat3.size, stat3.mtimeMs);
   b2.facts = facts2;
   b2.currentModel = r3.model;
   b2.currentProvider = r3.provider;
@@ -22262,13 +22988,13 @@ function tailHash2(fd, offset) {
   const start = Math.max(0, offset - TAIL4), buffer = Buffer.alloc(offset - start);
   let read3 = 0;
   while (read3 < buffer.length) {
-    const n = fs27.readSync(fd, buffer, read3, buffer.length - read3, start + read3);
+    const n = fs28.readSync(fd, buffer, read3, buffer.length - read3, start + read3);
     if (!n) break;
     read3 += n;
   }
   return createHash16("sha256").update(buffer.subarray(0, read3)).digest("hex");
 }
-var FACTS_VERSION2, MAX_PROMPT_CHARS2, isRec4, str4, int3, MAX_DATE_MS2, INJECTED_PREFIXES2, SYSTEM_REMINDER2, CODEX_STRIP2, SUBAGENT_DIR2, newCodexState2, ResumeMismatch2, U_KEYS2, tuple2, CODEX_NON_MODELS2, codexModel2, TOOL_CALL2, NAME2, STAMP2, CHUNK3, MAX_LINE3, sharedBuffer2, RESUME_RECENT_MS2, ZSTD_MAGIC3, ZSTD_INPUT2, ZSTD_OUTPUT2, zstdMode2, TAIL4;
+var FACTS_VERSION2, MAX_PROMPT_CHARS2, isRec4, str5, int3, MAX_DATE_MS2, INJECTED_PREFIXES2, SYSTEM_REMINDER2, CODEX_STRIP2, SUBAGENT_DIR2, newCodexState2, ResumeMismatch2, U_KEYS2, tuple2, CODEX_NON_MODELS2, codexModel2, TOOL_CALL2, NAME2, STAMP2, CHUNK3, MAX_LINE3, sharedBuffer2, RESUME_RECENT_MS2, ZSTD_MAGIC3, ZSTD_INPUT2, ZSTD_OUTPUT2, zstdMode2, TAIL4;
 var init_extract2 = __esm({
   "packages/core/src/analytics/extract.ts"() {
     "use strict";
@@ -22281,7 +23007,7 @@ var init_extract2 = __esm({
     FACTS_VERSION2 = 8;
     MAX_PROMPT_CHARS2 = 4e3;
     isRec4 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-    str4 = (v) => typeof v === "string" && v.length > 0 ? v : null;
+    str5 = (v) => typeof v === "string" && v.length > 0 ? v : null;
     int3 = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
     MAX_DATE_MS2 = 864e13;
     INJECTED_PREFIXES2 = [
@@ -22306,7 +23032,7 @@ var init_extract2 = __esm({
     ];
     SYSTEM_REMINDER2 = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
     CODEX_STRIP2 = [/<in-app-browser-context[\s\S]*?<\/in-app-browser-context>/g, /<image name=[^>]*>\s*<\/image>/g, /<\/?image[^>]*>/g];
-    SUBAGENT_DIR2 = `${path22.sep}subagents${path22.sep}`;
+    SUBAGENT_DIR2 = `${path23.sep}subagents${path23.sep}`;
     newCodexState2 = () => ({
       lineNo: 0,
       previousTotal: null,
@@ -22348,7 +23074,7 @@ var init_extract2 = __esm({
 });
 
 // packages/core/src/analytics/scan-pool.ts
-import os7 from "node:os";
+import os8 from "node:os";
 import { Worker as Worker2, parentPort as parentPort2 } from "node:worker_threads";
 function runInline2(job) {
   try {
@@ -22360,7 +23086,7 @@ function runInline2(job) {
 function defaultThreads() {
   const forced = Number(process.env["SLOPIE_AUDIT_THREADS"]);
   if (Number.isInteger(forced) && forced > 0) return Math.min(forced, 16);
-  return Math.max(1, Math.min(8, os7.availableParallelism() - 1));
+  return Math.max(1, Math.min(8, os8.availableParallelism() - 1));
 }
 function createScanPool(entry, threads = defaultThreads()) {
   let workers = [];
@@ -22439,15 +23165,15 @@ var init_scan_pool2 = __esm({
 });
 
 // packages/cli/src/audit-crash-log.ts
-import fs28 from "node:fs";
-import os8 from "node:os";
-import path23 from "node:path";
+import fs29 from "node:fs";
+import os9 from "node:os";
+import path24 from "node:path";
 function crashLogDir() {
-  return process.env["SLOPIE_LOG_DIR"] || path23.join(os8.homedir(), ".slopie", "logs");
+  return process.env["SLOPIE_LOG_DIR"] || path24.join(os9.homedir(), ".slopie", "logs");
 }
 function tildePath(file) {
-  const home2 = os8.homedir();
-  return home2 && (file === home2 || file.startsWith(home2 + path23.sep)) ? "~" + file.slice(home2.length) : file;
+  const home2 = os9.homedir();
+  return home2 && (file === home2 || file.startsWith(home2 + path24.sep)) ? "~" + file.slice(home2.length) : file;
 }
 function errorText(error) {
   if (error instanceof Error) return { message: error.message || error.name, stack: error.stack ?? error.message };
@@ -22462,16 +23188,16 @@ function section(report) {
 }
 function writeCrashLog(report, dir = crashLogDir(), now = /* @__PURE__ */ new Date()) {
   try {
-    fs28.mkdirSync(dir, { recursive: true, mode: 448 });
+    fs29.mkdirSync(dir, { recursive: true, mode: 448 });
     try {
-      fs28.chmodSync(dir, 448);
+      fs29.chmodSync(dir, 448);
     } catch {
     }
     const head = [`slopie ${VERSION}`, `node ${process.version}`, `platform ${process.platform}/${process.arch}`, `time ${now.toISOString()}`, ""].join("\n");
     const stamp = now.toISOString().replace(/[:.]/g, "-");
-    let file = path23.join(dir, `audit-${stamp}.log`);
-    for (let n = 2; fs28.existsSync(file); n++) file = path23.join(dir, `audit-${stamp}-${n}.log`);
-    fs28.writeFileSync(file, redactText(head + section(report)), { mode: 384, flag: "wx" });
+    let file = path24.join(dir, `audit-${stamp}.log`);
+    for (let n = 2; fs29.existsSync(file); n++) file = path24.join(dir, `audit-${stamp}-${n}.log`);
+    fs29.writeFileSync(file, redactText(head + section(report)), { mode: 384, flag: "wx" });
     prune(dir);
     return file;
   } catch {
@@ -22481,15 +23207,15 @@ function writeCrashLog(report, dir = crashLogDir(), now = /* @__PURE__ */ new Da
 function appendCrashLog(file, report) {
   if (!file) return writeCrashLog(report);
   try {
-    fs28.appendFileSync(file, redactText("\n" + section(report)), { mode: 384 });
+    fs29.appendFileSync(file, redactText("\n" + section(report)), { mode: 384 });
     return file;
   } catch {
     return file;
   }
 }
 function prune(dir) {
-  const logs = fs28.readdirSync(dir).filter((name) => /^audit-.*\.log$/.test(name)).map((name) => ({ name, at: fs28.statSync(path23.join(dir, name)).mtimeMs })).sort((a, b2) => b2.at - a.at || (a.name < b2.name ? 1 : -1));
-  for (const old of logs.slice(KEEP)) fs28.rmSync(path23.join(dir, old.name), { force: true });
+  const logs = fs29.readdirSync(dir).filter((name) => /^audit-.*\.log$/.test(name)).map((name) => ({ name, at: fs29.statSync(path24.join(dir, name)).mtimeMs })).sort((a, b2) => b2.at - a.at || (a.name < b2.name ? 1 : -1));
+  for (const old of logs.slice(KEEP)) fs29.rmSync(path24.join(dir, old.name), { force: true });
 }
 var KEEP;
 var init_audit_crash_log = __esm({
@@ -22508,11 +23234,11 @@ __export(audit_background_exports, {
   runAuditWorkerHost: () => runAuditWorkerHost
 });
 import { fork } from "node:child_process";
-import fs29 from "node:fs";
-import path24 from "node:path";
+import fs30 from "node:fs";
+import path25 from "node:path";
 function localScanPool() {
   const entry = new URL("./audit-native-worker.js", import.meta.url);
-  return fs29.existsSync(entry) ? createScanPool(entry) : void 0;
+  return fs30.existsSync(entry) ? createScanPool(entry) : void 0;
 }
 function createBackgroundAuditSession(options, entry = process.argv[1]) {
   const worker = createWorkerSession(options, entry);
@@ -22651,7 +23377,7 @@ function createWorkerSession(options, entry) {
     });
     ready.catch(() => {
     });
-    child = fork(path24.resolve(entry), ["__audit_worker"], { stdio: ["ignore", "ignore", "pipe", "ipc"], serialization: "advanced" });
+    child = fork(path25.resolve(entry), ["__audit_worker"], { stdio: ["ignore", "ignore", "pipe", "ipc"], serialization: "advanced" });
     const stderr = child.stderr;
     if (stderr) {
       stderr.setEncoding("utf8");
@@ -23009,7 +23735,7 @@ var init_format4 = __esm({
     MONTHS3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     PROVIDER_PREFIX = /^(?:anthropic|openai|google|google-vertex|anthropic-vertex|deepseek|qwen|mistral|x-ai|xai|groq|opencode|openrouter|amazon-bedrock)\//i;
     FAMILY = /^(opus|sonnet|haiku|fable|instant)$/i;
-    HARNESS_NAMES = { claude: "Claude Code", claude_hist: "Claude Code", codex: "Codex", pi: "pi", opencode: "OpenCode", cursor: "Cursor", gemini: "Gemini CLI", copilot: "Copilot" };
+    HARNESS_NAMES = { claude: "Claude Code", claude_hist: "Claude Code", codex: "Codex", pi: "pi", opencode: "OpenCode", cursor: "Cursor", gemini: "Gemini CLI", copilot: "Copilot", antigravity: "Antigravity" };
   }
 });
 
@@ -23938,6 +24664,7 @@ function boardData(snapshot2) {
     progress: progressOf(snapshot2, phase),
     sources,
     range: { from: activity.days[0]?.date ?? null, to: activity.days.at(-1)?.date ?? null },
+    chatOnly: snapshot2.sources.filter((s) => s.promptsReadable === false && s.conversations > 0).map((s) => ({ harness: s.harness, chats: s.conversations })),
     agents: [...snapshot2.sources].filter((source) => source.conversations > 0 || (source.census?.files ?? 0) > 0).sort((a, b2) => b2.conversations - a.conversations || (b2.census?.files ?? 0) - (a.census?.files ?? 0)).map((source) => harnessName(source.harness)),
     hero: { value: value !== null && (value > 0 || !loading) ? value : null, provisional: loading },
     stats: {
@@ -24058,7 +24785,7 @@ function num7(card, key3) {
   const value = card?.numbers[key3];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
-function str5(card, key3) {
+function str6(card, key3) {
   const value = card?.numbers[key3];
   return typeof value === "string" && value ? value : null;
 }
@@ -24568,16 +25295,21 @@ function agentsPanel(story, board, spend) {
     for (const [h, n] of Object.entries(story.totals.byHarness)) if (typeof n === "number") add(h, n, 0);
   }
   const entries = [...merged.entries()].filter(([, v]) => v.prompts > 0).sort((a, b2) => b2[1].prompts - a[1].prompts);
+  const chatOnly = (board.chatOnly ?? []).filter((c) => c.chats > 0);
+  const chatRows = chatOnly.map((c) => ({ label: `${harnessName(c.harness)}*`, pct: 0, value: `${count3(c.chats)} chats`, note: "chats" }));
+  const footnote = chatOnly.length ? `* counted by chats: ${chatOnly.map((c) => harnessName(c.harness)).join(", ")} encrypts its prompts` : null;
   if (entries.length) {
     const pcts = tenths(entries.map(([, v]) => v.prompts));
     const priced = entries.filter(([, v]) => v.usd > 0);
     return {
       basis: "by prompts",
-      rows: entries.map(([h, v], i) => ({ label: harnessName(h), pct: pcts[i], value: shareText(pcts[i]), note: count3(v.prompts) })),
+      rows: [...entries.map(([h, v], i) => ({ label: harnessName(h), pct: pcts[i], value: shareText(pcts[i]), note: count3(v.prompts) })), ...chatRows],
       money: priced.length ? priced.slice(0, 2).map(([h, v]) => `${money(v.usd)} ${harnessName(h)}`).join(" \xB7 ") : null,
-      automated
+      automated,
+      footnote
     };
   }
+  if (chatRows.length && !board.agentSplit.length) return { basis: "by chats", rows: chatRows, money: null, automated, footnote };
   if (board.agentSplit.length) {
     const pcts = tenths(board.agentSplit.map((a) => a.share));
     return { basis: "share of spend", rows: board.agentSplit.map((a, i) => ({ label: a.name, pct: pcts[i], value: shareText(pcts[i]) })), money: null, automated };
@@ -24608,7 +25340,7 @@ function voiceLines(story, board, mask4) {
   else if (!story && board.repeats.rows[0]) out.push({ label: "on repeat", short: "repeat", value: mask4(board.repeats.rows[0].text), quoted: true, count: board.repeats.rows[0].count, private: true });
   if (h?.petName) out.push({ label: "you call it", short: "calls it", value: mask4(h.petName.term), quoted: true, count: h.petName.count, private: true });
   const cont = cardOf(story, "continue_count");
-  if (cont && str5(cont, "word")) out.push({ label: "your nudge", short: "nudge", value: mask4(str5(cont, "word")), quoted: true, count: num7(cont, "count"), private: true });
+  if (cont && str6(cont, "word")) out.push({ label: "your nudge", short: "nudge", value: mask4(str6(cont, "word")), quoted: true, count: num7(cont, "count"), private: true });
   const manners2 = cardOf(story, "thanks_vs_swears");
   if (manners2) {
     const thanks = num7(manners2, "thanks") ?? 0, fb = num7(manners2, "fbombs"), sw = num7(manners2, "swears");
@@ -25070,7 +25802,7 @@ function mood(story) {
   if (!card || !story) return null;
   const months = story.swearTimeline.filter((m) => m.prompts >= 20).map((m) => ({ month: m.month, pct: m.swearPct }));
   if (months.length < 3) return null;
-  const tipMonth = str5(card, "tipMonth") ?? (typeof card.chart.highlight === "string" ? card.chart.highlight : null);
+  const tipMonth = str6(card, "tipMonth") ?? (typeof card.chart.highlight === "string" ? card.chart.highlight : null);
   const tip = Math.max(0, months.findIndex((m) => m.month === tipMonth));
   const mellow = (num7(card, "latePct") ?? 1) < (num7(card, "earlyPct") ?? 0);
   const peak = months.reduce((a, m) => m.pct > a.pct ? m : a, months[0]);
@@ -25134,20 +25866,20 @@ function talk(story, board) {
     tiles.push({ label: "YOUR CATCHPHRASE", text: mask3(h.catchphrase.phrase), count: h.catchphrase.count, quoted: true, sub: ru ? `runner-up \u201C${mask3(ru.phrase)}\u201D \xD7${count3(ru.count)}` : void 0 });
   }
   const cont = cardOf(story, "continue_count");
-  if (cont && str5(cont, "word")) {
-    const total2 = num7(cont, "total"), gap = str5(cont, "gapLabel");
-    tiles.push({ label: "YOUR NUDGE", text: mask3(str5(cont, "word")), count: num7(cont, "count"), quoted: true, sub: total2 ? `${count3(total2)} nudges${gap ? `, ~${gap} after it stops` : ""}` : void 0 });
+  if (cont && str6(cont, "word")) {
+    const total2 = num7(cont, "total"), gap = str6(cont, "gapLabel");
+    tiles.push({ label: "YOUR NUDGE", text: mask3(str6(cont, "word")), count: num7(cont, "count"), quoted: true, sub: total2 ? `${count3(total2)} nudges${gap ? `, ~${gap} after it stops` : ""}` : void 0 });
   } else if (h?.mostTypedLine) tiles.push({ label: "MOST TYPED LINE", text: mask3(h.mostTypedLine.text), count: h.mostTypedLine.count, quoted: true });
   if (h?.petName) {
     const other = h.petName.others[0];
     tiles.push({ label: "WHAT YOU CALL IT", text: mask3(h.petName.term), count: h.petName.count, quoted: true, sub: other ? `also \u201C${mask3(other.term)}\u201D \xD7${count3(other.count)}` : void 0 });
   }
   const typo = cardOf(story, "typo_fingerprint");
-  if (typo && str5(typo, "typo")) tiles.push({ label: `IT'S \u201C${mask3(str5(typo, "word") ?? "?")}\u201D`, text: mask3(str5(typo, "typo")), count: num7(typo, "count"), quoted: true, sub: mask3(typo.support).slice(0, 60) || void 0 });
+  if (typo && str6(typo, "typo")) tiles.push({ label: `IT'S \u201C${mask3(str6(typo, "word") ?? "?")}\u201D`, text: mask3(str6(typo, "typo")), count: num7(typo, "count"), quoted: true, sub: mask3(typo.support).slice(0, 60) || void 0 });
   const we = cardOf(story, "i_to_we");
   if (we && num7(we, "lateRatio") !== null) tiles.push({ label: "\u201CWE\u201D PER \u201CI\u201D", text: `${num7(we, "earlyRatio")?.toFixed(2) ?? "?"} \u2192 ${num7(we, "lateRatio").toFixed(2)}`, count: null, quoted: false, sub: num7(we, "letsNowPct") !== null ? `\u201Clet's\u201D in ${Math.round(num7(we, "letsNowPct"))}% of prompts now` : void 0 });
   const next = cardOf(story, "predicted_next_word");
-  if (next && str5(next, "word") && tiles.length < 4) tiles.push({ label: "NEXT PROMPT STARTS WITH", text: mask3(str5(next, "word")), count: null, quoted: true });
+  if (next && str6(next, "word") && tiles.length < 4) tiles.push({ label: "NEXT PROMPT STARTS WITH", text: mask3(str6(next, "word")), count: null, quoted: true });
   if (!story) for (const row of board.repeats.rows.slice(0, 4)) tiles.push({ label: tiles.length ? "ON REPEAT" : "MOST TYPED LINE", text: mask3(row.text), count: row.count, quoted: true });
   if (tiles.length < 2) return null;
   const lead = cardOf(story, "verbal_tics") ?? cont ?? cardOf(story, "pet_names");
@@ -25220,7 +25952,7 @@ function delegation(story) {
     headline: mask3(card.headline),
     support: mask3(card.support),
     notes: ["Subagents are counted from Task/Agent tool calls (Claude Code) and spawn calls (Codex) in your transcripts."],
-    data: { total: total2, months, firstMonth: str5(card, "firstMonth") }
+    data: { total: total2, months, firstMonth: str6(card, "firstMonth") }
   };
 }
 function thenNow(story) {
@@ -25633,6 +26365,7 @@ function boardPlain(b2) {
   if (b2.agents) {
     bars(`agents (${b2.agents.basis})`, b2.agents.rows);
     if (b2.agents.automated) rows.push(`+ ${count3(b2.agents.automated)} automated runs (not counted as chats)`);
+    if (b2.agents.footnote) rows.push(b2.agents.footnote);
   }
   if (b2.time?.peak) rows.push(`peak: ${b2.time.peak}${b2.time.lines.length ? " \xB7 " + b2.time.lines.join(" \xB7 ") : ""}`);
   for (const v of b2.voice) rows.push(`${v.label}: ${v.quoted ? `\u201C${v.value}\u201D` : v.value}${v.count !== null ? ` \xD7${count3(v.count)}` : ""}`);
@@ -26347,7 +27080,7 @@ function label(k, x, y, text, a = 1, maxW = Infinity, color = k.tk.text3) {
 function kicker(k, x, y, text, a = 1, maxW = Infinity, color = k.tk.accentHi) {
   return txt(k, x, y, text.toUpperCase().replace(/…$/, ""), color, { a, bold: true }, maxW);
 }
-function stat(k, x, y, name, value, o = {}) {
+function stat2(k, x, y, name, value, o = {}) {
   const a = o.a ?? 1;
   label(k, x, y, name, a, o.maxW);
   txt(k, x, y + 1, value, o.hot ? k.tk.accentHi : k.tk.text, { bold: true, a }, o.maxW);
@@ -26419,7 +27152,7 @@ function facts(k, x, y, w, items, a = 1) {
   const list3 = items.filter((f) => f.value);
   if (!list3.length) return 0;
   const colW = Math.floor(w / list3.length);
-  list3.forEach((f, i) => stat(k, x + i * colW, y, f.label, f.value, { hot: f.hot, a, maxW: colW - 3 }));
+  list3.forEach((f, i) => stat2(k, x + i * colW, y, f.label, f.value, { hot: f.hot, a, maxW: colW - 3 }));
   return 2;
 }
 function strokeNum(k, x, y, text, color, a = 1, maxW = Infinity) {
@@ -28024,7 +28757,7 @@ function spendBody(k, sp, r3) {
   const step = bottom - y - noteRows >= pairs.length * 3 ? 3 : 2;
   for (const [name, value, hot] of pairs) {
     if (y + 1 > bottom - noteRows) break;
-    stat(k, r3.x, y, name, value, { hot, a: a1, maxW: lw });
+    stat2(k, r3.x, y, name, value, { hot, a: a1, maxW: lw });
     y += step;
   }
   if (noteRows) txt(k, r3.x, bottom, note, tk.text3, { a: a1 });
@@ -28629,6 +29362,7 @@ function loadingModel(snapshot2) {
     if (d) state = d.absent || d.discovered !== false && d.files === 0 && (detail.stage !== "discovering" || d.discovered) ? "absent" : d.discovered === false ? "searching" : "found";
     else state = source.state === "checking" ? "searching" : source.state === "absent" || source.state === "unsupported" ? "absent" : "found";
     if (state === "searching" && !loading) state = source?.state === "absent" ? "absent" : "found";
+    if (ONLY_WHEN_PRESENT.has(id) && state !== "found") continue;
     let info = "";
     if (state === "absent") info = "not on this machine";
     else if (state === "searching") info = "looking\u2026";
@@ -28637,10 +29371,15 @@ function loadingModel(snapshot2) {
       const files = d?.files ?? source?.census?.files ?? source?.candidateFiles ?? null;
       const head = chats ? `${count3(chats)} chats` : files ? `${count3(files)} files` : "found";
       const since = d?.firstAt ? ` \xB7 since ${monthYear(d.firstAt)}` : "";
-      info = head + since;
+      info = id === "antigravity" ? `${chats ? `${count3(chats)} chats` : "found"} (prompts encrypted by Antigravity)` : head + since;
     }
     const flowing = loading && state === "found" && (!d || d.filesDone < d.files || detail?.stage === "discovering");
     rows.push({ id, name: NAMES[id] ?? id, state, info, flowing });
+  }
+  while (rows.length > SLOTS) {
+    const i = rows.map((r3) => r3.state).lastIndexOf("absent");
+    if (i < 0) break;
+    rows.splice(i, 1);
   }
   const totals2 = storyOf(snapshot2)?.totals;
   const counts = {
@@ -28683,7 +29422,7 @@ function loadingGeometry(w, h) {
   const captionY = barY + 2;
   return { L, S, mx, top, footY, rowStep, numH, labelY, rowsY, numY, barY, captionY };
 }
-var MIN_STORY_MS, OUTRO_MS, ORDER, NAMES, PRIVACY_LINE, FIRST_CAPTION, SLOTS, SPIN, LoadingStory;
+var MIN_STORY_MS, OUTRO_MS, ORDER, NAMES, ONLY_WHEN_PRESENT, PRIVACY_LINE, FIRST_CAPTION, SLOTS, SPIN, LoadingStory;
 var init_loading = __esm({
   "packages/cli/src/audit-ui/loading.ts"() {
     "use strict";
@@ -28696,11 +29435,12 @@ var init_loading = __esm({
     init_view_model();
     MIN_STORY_MS = 2400;
     OUTRO_MS = 950;
-    ORDER = ["claude", "codex", "pi", "opencode"];
-    NAMES = { claude: "Claude Code", codex: "Codex", pi: "pi", opencode: "OpenCode" };
+    ORDER = ["claude", "codex", "pi", "opencode", "antigravity"];
+    NAMES = { claude: "Claude Code", codex: "Codex", pi: "pi", opencode: "OpenCode", antigravity: "Antigravity" };
+    ONLY_WHEN_PRESENT = /* @__PURE__ */ new Set(["antigravity"]);
     PRIVACY_LINE = "all local \xB7 nothing leaves this machine";
     FIRST_CAPTION = "finding your agents";
-    SLOTS = ORDER.length;
+    SLOTS = 4;
     SPIN = ["\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F"];
     LoadingStory = class {
       constructor(started) {
@@ -29022,13 +29762,13 @@ var init_share = __esm({
 
 // packages/cli/src/audit-ui/history.ts
 import crypto3 from "node:crypto";
-import fs30 from "node:fs";
-import os9 from "node:os";
-import path25 from "node:path";
+import fs31 from "node:fs";
+import os10 from "node:os";
+import path26 from "node:path";
 function historyDir(env = process.env) {
   if (env["SLOPIE_AUDIT_HISTORY_DIR"]) return env["SLOPIE_AUDIT_HISTORY_DIR"];
-  const root = env["POTSHERD_DIR"] || path25.join(os9.homedir(), ".potsherd");
-  return path25.join(root, "audit-history");
+  const root = env["POTSHERD_DIR"] || path26.join(os10.homedir(), ".potsherd");
+  return path26.join(root, "audit-history");
 }
 function scopeKey(snapshot2) {
   const s = snapshot2.scope;
@@ -29067,7 +29807,7 @@ function isDigest(x) {
 }
 function readHistory2(snapshot2, dir = historyDir()) {
   try {
-    const text = fs30.readFileSync(path25.join(dir, `${scopeKey(snapshot2)}.jsonl`), "utf8");
+    const text = fs31.readFileSync(path26.join(dir, `${scopeKey(snapshot2)}.jsonl`), "utf8");
     const out = [];
     for (const line2 of text.split("\n")) {
       if (!line2.trim()) continue;
@@ -29084,13 +29824,13 @@ function readHistory2(snapshot2, dir = historyDir()) {
 }
 function writeDigest(snapshot2, digest3, dir = historyDir()) {
   try {
-    fs30.mkdirSync(dir, { recursive: true, mode: 448 });
-    const file = path25.join(dir, `${scopeKey(snapshot2)}.jsonl`);
+    fs31.mkdirSync(dir, { recursive: true, mode: 448 });
+    const file = path26.join(dir, `${scopeKey(snapshot2)}.jsonl`);
     const prior = readHistory2(snapshot2, dir);
     const lines = [...prior, digest3].slice(-MAX_LINES).map((d) => JSON.stringify(d));
     const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-    fs30.writeFileSync(tmp, lines.join("\n") + "\n", { mode: 384 });
-    fs30.renameSync(tmp, file);
+    fs31.writeFileSync(tmp, lines.join("\n") + "\n", { mode: 384 });
+    fs31.renameSync(tmp, file);
     return true;
   } catch {
     return false;
@@ -29140,8 +29880,8 @@ var init_history = __esm({
 });
 
 // packages/cli/src/audit-ui/terminal.ts
-import fs31 from "node:fs";
-import path26 from "node:path";
+import fs32 from "node:fs";
+import path27 from "node:path";
 function splitKeys(chunk) {
   const out = [];
   for (const part of chunk.split(/(?=\x1b)/)) {
@@ -29639,9 +30379,9 @@ async function runWallboard(session, options = {}) {
       const dir = options.shareDir ?? process.cwd();
       let file = "";
       for (let n = 1; n < 100 && !file; n++) {
-        const candidate = path26.join(dir, n === 1 ? "slopie-wrapped.svg" : `slopie-wrapped-${n}.svg`);
+        const candidate = path27.join(dir, n === 1 ? "slopie-wrapped.svg" : `slopie-wrapped-${n}.svg`);
         try {
-          fs31.writeFileSync(candidate, svg, { flag: "wx", mode: 420 });
+          fs32.writeFileSync(candidate, svg, { flag: "wx", mode: 420 });
           file = candidate;
         } catch (error) {
           if (error.code !== "EEXIST") throw error;
@@ -29651,7 +30391,7 @@ async function runWallboard(session, options = {}) {
         flash("too many slopie-wrapped files here already");
         return;
       }
-      flash(`saved ${path26.basename(file)} \xB7 no project names, none of your words`, 2600);
+      flash(`saved ${path27.basename(file)} \xB7 no project names, none of your words`, 2600);
     } catch (error) {
       flash(`couldn't save: ${error instanceof Error ? sanitize(error.message).slice(0, 60) : "unknown error"}`);
     }
@@ -29843,7 +30583,7 @@ __export(fixture_session_exports, {
   createFixtureSession: () => createFixtureSession,
   recordAuditSession: () => recordAuditSession
 });
-import fs32 from "node:fs";
+import fs33 from "node:fs";
 function isRecording(value) {
   return Boolean(value && typeof value === "object" && value.kind === "slopie-audit-recording");
 }
@@ -29867,13 +30607,13 @@ function recordAuditSession(session, file) {
         onEvent?.(event);
       });
       const recording = { kind: "slopie-audit-recording", version: 1, initial, events, final };
-      fs32.writeFileSync(file, JSON.stringify(recording), { mode: 384 });
+      fs33.writeFileSync(file, JSON.stringify(recording), { mode: 384 });
       return final;
     }
   };
 }
 function createFixtureSession(file, speed = Number(process.env["SLOPIE_AUDIT_FIXTURE_SPEED"] ?? 1)) {
-  const parsed = JSON.parse(fs32.readFileSync(file, "utf8"));
+  const parsed = JSON.parse(fs33.readFileSync(file, "utf8"));
   const recording = isRecording(parsed) ? parsed : { kind: "slopie-audit-recording", version: 1, initial: parsed, events: [], final: parsed };
   const factor = Number.isFinite(speed) && speed > 0 ? speed : 1;
   let current = recording.initial;
@@ -29914,8 +30654,8 @@ function createFixtureSession(file, speed = Number(process.env["SLOPIE_AUDIT_FIX
       });
     },
     cancel,
-    async prompts(conversationId) {
-      return { snapshotId: current.snapshotId, conversationId, prompts: [], offset: 0, total: 0, nextOffset: null, coverage: current.coverage };
+    async prompts(conversationId2) {
+      return { snapshotId: current.snapshotId, conversationId: conversationId2, prompts: [], offset: 0, total: 0, nextOffset: null, coverage: current.coverage };
     },
     async evidence(route) {
       return { state: "unavailable", text: null, role: null, eventAt: null, route, gapCodes: ["fixture_evidence_unavailable"] };
@@ -29939,12 +30679,12 @@ var audit_overview_exports = {};
 __export(audit_overview_exports, {
   runAuditOverview: () => runAuditOverview
 });
-import fs33 from "node:fs";
-import path27 from "node:path";
+import fs34 from "node:fs";
+import path28 from "node:path";
 async function runAuditOverview(o) {
   const harnesses = o.harness ? [...new Set(o.harness.split(",").map((h) => h.trim()))] : void 0;
-  if (harnesses?.some((h) => !["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot"].includes(h))) throw new UserError("Choose overview sources from claude,codex,pi,opencode,cursor,gemini,copilot.");
-  if (o.export && path27.extname(o.export).toLowerCase() !== ".svg") throw new UserError("Use a .svg path for the safe share preview.");
+  if (harnesses?.some((h) => !["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot", "antigravity"].includes(h))) throw new UserError("Choose overview sources from claude,codex,pi,opencode,cursor,gemini,copilot,antigravity.");
+  if (o.export && path28.extname(o.export).toLowerCase() !== ".svg") throw new UserError("Use a .svg path for the safe share preview.");
   if (o.tone && !["elegant", "witty", "chaotic", "roast"].includes(o.tone)) throw new UserError("Choose a tone: elegant, witty, chaotic, roast.");
   if (o.online) process.env["SLOPIE_ONLINE"] = "1";
   let options = {
@@ -29985,14 +30725,14 @@ async function runAuditOverview(o) {
         const ui2 = await Promise.resolve().then(() => (init_audit_ui(), audit_ui_exports));
         print(ui2.renderLaunchPlain(snapshot2, { ascii: o.ascii, width }));
         if (o.export) {
-          const file = path27.resolve(o.export);
-          fs33.writeFileSync(file, ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
+          const file = path28.resolve(o.export);
+          fs34.writeFileSync(file, ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
           print(`Saved safe share preview: ${file}`);
         }
       }
       if (o.json && o.export) {
         const ui2 = await Promise.resolve().then(() => (init_audit_ui(), audit_ui_exports));
-        fs33.writeFileSync(path27.resolve(o.export), ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
+        fs34.writeFileSync(path28.resolve(o.export), ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
       }
       return snapshot2.status === "cancelled" ? 130 : snapshot2.status === "error" ? 1 : 0;
     } finally {
@@ -30035,8 +30775,8 @@ async function createSession(options) {
   const { createBackgroundAuditSession: createBackgroundAuditSession2 } = await Promise.resolve().then(() => (init_audit_background(), audit_background_exports));
   if (fixture || record2) {
     const dev = await Promise.resolve().then(() => (init_fixture_session(), fixture_session_exports));
-    if (fixture) return dev.createFixtureSession(path27.resolve(fixture));
-    return dev.recordAuditSession(createBackgroundAuditSession2(options), path27.resolve(record2));
+    if (fixture) return dev.createFixtureSession(path28.resolve(fixture));
+    return dev.recordAuditSession(createBackgroundAuditSession2(options), path28.resolve(record2));
   }
   return createBackgroundAuditSession2(options);
 }
@@ -30074,14 +30814,14 @@ init_output();
 // packages/cli/src/commands/memory.ts
 init_dist();
 init_output();
-import fs26 from "node:fs";
+import fs27 from "node:fs";
 import process5 from "node:process";
 import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 function workerUrl() {
   try {
     const url = new URL("./records-worker.js", import.meta.url);
-    return url.protocol === "file:" && fs26.existsSync(fileURLToPath(url)) ? url : null;
+    return url.protocol === "file:" && fs27.existsSync(fileURLToPath2(url)) ? url : null;
   } catch {
     return null;
   }
@@ -30114,7 +30854,7 @@ async function runSync(o) {
   }
   if (o.quiet) return 0;
   const h = r3.byHarness;
-  print(`slopie sync: ${r3.sessions} sessions (${h["claude"] ?? 0} claude, ${h["codex"] ?? 0} codex, ${h["pi"] ?? 0} pi; ${r3.subagents} subagents, ${r3.promptOnly} prompt-only, ${r3.kept} kept after their source was deleted)`);
+  print(`slopie sync: ${r3.sessions} sessions (${h["claude"] ?? 0} claude, ${h["codex"] ?? 0} codex, ${h["pi"] ?? 0} pi${h["antigravity"] ? `, ${h["antigravity"]} antigravity` : ""}; ${r3.subagents} subagents, ${r3.promptOnly} prompt-only, ${r3.kept} kept after their source was deleted)`);
   print(`  ${r3.sources} source files, ${r3.parsed} parsed this run, ${r3.written} records written, ${r3.removed} removed, ${r3.seconds.toFixed(1)} s`);
   print(`  records: ${r3.recordsDir}  (${mb(r3.recordBytes)}; search index ${mb(r3.indexBytes)})`);
   if (r3.excludedByPolicy) print(`  ${r3.excludedByPolicy} sessions left out by your ignore / forget lists`);
@@ -30146,7 +30886,7 @@ async function refreshIndex(o, budgetMs = 1500) {
   const dir = paths_exports.recordsDir(o.recordsDir);
   const idx = `${dir}/.slopie/index.sqlite`;
   try {
-    if (Date.now() - fs26.statSync(idx).mtimeMs < 6e4) return null;
+    if (Date.now() - fs27.statSync(idx).mtimeMs < 6e4) return null;
   } catch {
     return null;
   }
@@ -30279,8 +31019,8 @@ async function runForget(o) {
     return 0;
   }
   const raw = o.session.trim();
-  const [h, id] = raw.includes(":") && ["claude", "codex", "pi"].includes(raw.split(":")[0]) ? [raw.split(":")[0], raw.split(":").slice(1).join(":")] : [null, raw];
-  let harnesses = h ? [h] : ["claude", "codex", "pi"];
+  const [h, id] = raw.includes(":") && ["claude", "codex", "pi", "antigravity"].includes(raw.split(":")[0]) ? [raw.split(":")[0], raw.split(":").slice(1).join(":")] : [null, raw];
+  let harnesses = h ? [h] : ["claude", "codex", "pi", "antigravity"];
   let full = id;
   try {
     const e = new Engine(o.recordsDir, "cli");
@@ -30323,22 +31063,22 @@ async function runAudit(o) {
 // packages/cli/src/commands/doctor.ts
 init_dist();
 init_output();
-import fs36 from "node:fs";
-import path30 from "node:path";
+import fs37 from "node:fs";
+import path31 from "node:path";
 import process8 from "node:process";
 
 // packages/cli/src/commands/setup.ts
 init_dist();
 init_output();
-import fs35 from "node:fs";
-import os10 from "node:os";
-import path29 from "node:path";
+import fs36 from "node:fs";
+import os11 from "node:os";
+import path30 from "node:path";
 import process7 from "node:process";
 
 // packages/cli/src/commands/setup-legacy.ts
 init_dist();
-import fs34 from "node:fs";
-import path28 from "node:path";
+import fs35 from "node:fs";
+import path29 from "node:path";
 import process6 from "node:process";
 var LEGACY_WHAT = "remove the potsherd 1.x MCP server (its program is gone)";
 var NAME3 = "potsherd";
@@ -30441,18 +31181,18 @@ function tomlTransform(text) {
 }
 function read(file) {
   try {
-    return fs34.readFileSync(file, "utf8");
+    return fs35.readFileSync(file, "utf8");
   } catch {
     return null;
   }
 }
 function claudeJsons(claudeDirOpt) {
   const override = claudeDirOpt ?? (process6.env["CLAUDE_CONFIG_DIR"]?.trim() || void 0);
-  return [.../* @__PURE__ */ new Set([...override ? [path28.join(paths_exports.claudeDir(override), ".claude.json")] : [], path28.join(paths_exports.home(), ".claude.json")])];
+  return [.../* @__PURE__ */ new Set([...override ? [path29.join(paths_exports.claudeDir(override), ".claude.json")] : [], path29.join(paths_exports.home(), ".claude.json")])];
 }
 function opencodeConfig() {
   const xdg = process6.env["XDG_CONFIG_HOME"]?.trim();
-  return path28.join(xdg ? path28.resolve(paths_exports.expandTilde(xdg)) : path28.join(paths_exports.home(), ".config"), "opencode", "opencode.json");
+  return path29.join(xdg ? path29.resolve(paths_exports.expandTilde(xdg)) : path29.join(paths_exports.home(), ".config"), "opencode", "opencode.json");
 }
 function legacyChanges(targets, o = {}) {
   const out = [];
@@ -30462,17 +31202,17 @@ function legacyChanges(targets, o = {}) {
   };
   for (const t of targets) {
     if (t === "claude") for (const file of claudeJsons(o.claudeDir)) json3(t, file, "mcpServers");
-    else if (t === "cursor") json3(t, path28.join(paths_exports.cursorDir(), "mcp.json"), "mcpServers");
-    else if (t === "gemini") json3(t, path28.join(paths_exports.geminiDir(), "settings.json"), "mcpServers");
-    else if (t === "copilot") json3(t, path28.join(paths_exports.copilotDir(), "mcp-config.json"), "mcpServers");
+    else if (t === "cursor") json3(t, path29.join(paths_exports.cursorDir(), "mcp.json"), "mcpServers");
+    else if (t === "gemini") json3(t, path29.join(paths_exports.geminiDir(), "settings.json"), "mcpServers");
+    else if (t === "copilot") json3(t, path29.join(paths_exports.copilotDir(), "mcp-config.json"), "mcpServers");
     else if (t === "opencode") json3(t, opencodeConfig(), "mcp");
     else if (t === "codex") {
-      const file = path28.join(paths_exports.codexDir(o.codexDir), "config.toml");
+      const file = path29.join(paths_exports.codexDir(o.codexDir), "config.toml");
       const text = read(file);
       if (text !== null && tomlOwnTable(text)) out.push({ client: t, file, transform: tomlTransform });
       if (text !== null && tomlHookBlocks(text).length) out.push({ client: t, file, transform: tomlHookTransform, what: LEGACY_HOOK_WHAT });
     } else if (t === "pi") {
-      const file = path28.join(paths_exports.piDir(o.piDir), "agent", "extensions", "potsherd.ts");
+      const file = path29.join(paths_exports.piDir(o.piDir), "agent", "extensions", "potsherd.ts");
       const text = read(file);
       if (text !== null && (text.startsWith(PI_MARK) || text === PI_STUB)) out.push({ client: t, file, transform: () => null });
     }
@@ -30504,9 +31244,9 @@ ${SKILL_DESCRIPTION}
 ${agentNote(recordsDir2)}`;
 }
 function slopieArgv() {
-  const onPath = (process7.env["PATH"] ?? "").split(path29.delimiter).some((d) => d && fs35.existsSync(path29.join(d, "slopie")));
+  const onPath = (process7.env["PATH"] ?? "").split(path30.delimiter).some((d) => d && fs36.existsSync(path30.join(d, "slopie")));
   const entry = process7.argv[1] ?? "";
-  return onPath || !entry ? ["slopie"] : [process7.execPath, path29.resolve(entry)];
+  return onPath || !entry ? ["slopie"] : [process7.execPath, path30.resolve(entry)];
 }
 var sh = (a) => /^[A-Za-z0-9_./:@+-]+$/.test(a) ? a : JSON.stringify(a);
 function hookCommand(harness) {
@@ -30514,7 +31254,7 @@ function hookCommand(harness) {
 }
 function read2(file) {
   try {
-    return fs35.readFileSync(file, "utf8");
+    return fs36.readFileSync(file, "utf8");
   } catch {
     return null;
   }
@@ -30611,7 +31351,7 @@ function plan(o, clients, others = false) {
     if (before !== after && !(before === null && after === null)) out.push({ client, file, what, before, after });
   };
   const oldSkill = (client, skills) => {
-    const file = path29.join(skills, OLD_SKILL, "SKILL.md");
+    const file = path30.join(skills, OLD_SKILL, "SKILL.md");
     const before = read2(file);
     if (before !== null && before.startsWith(`---
 name: ${OLD_SKILL}
@@ -30620,22 +31360,22 @@ name: ${OLD_SKILL}
   for (const c of clients) {
     if (c === "claude") {
       const dir = paths_exports.claudeDir(o.claudeDir);
-      add(c, path29.join(dir, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
-      oldSkill(c, path29.join(dir, "skills"));
-      const settings = path29.join(dir, "settings.json");
+      add(c, path30.join(dir, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
+      oldSkill(c, path30.join(dir, "skills"));
+      const settings = path30.join(dir, "settings.json");
       add(c, settings, "SessionStart hook" + (hasLegacyHook(read2(settings)) ? "; remove stale potsherd 1.x hooks" : ""), claudeSettings(read2(settings), o.remove ? null : hookCommand("claude")));
     } else if (c === "codex") {
       const home2 = paths_exports.codexDir(o.codexDir);
-      const file = path29.join(home2, "AGENTS.md");
+      const file = path30.join(home2, "AGENTS.md");
       add(c, file, "AGENTS.md slopie block", withBlock(read2(file), o.remove ? null : agentsBlock(records)));
-      const hooksFile = path29.join(home2, "hooks.json");
+      const hooksFile = path30.join(home2, "hooks.json");
       const ht = read2(hooksFile);
       if (ht !== null && isHooksJson(ht)) add(c, hooksFile, "SessionStart hook" + (hasLegacyHook(ht) ? "; remove stale potsherd 1.x hooks" : ""), withHooks(ht, hooksFile, "codex", o.remove ? null : hookCommand("codex")));
     } else {
-      const root = path29.join(paths_exports.piDir(o.piDir), "agent");
-      add(c, path29.join(root, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
-      oldSkill(c, path29.join(root, "skills"));
-      add(c, path29.join(root, "extensions", "slopie.ts"), "extension", o.remove ? null : piExtension());
+      const root = path30.join(paths_exports.piDir(o.piDir), "agent");
+      add(c, path30.join(root, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
+      oldSkill(c, path30.join(root, "skills"));
+      add(c, path30.join(root, "extensions", "slopie.ts"), "extension", o.remove ? null : piExtension());
     }
   }
   const legacyOpts = { ...o.claudeDir ? { claudeDir: o.claudeDir } : {}, ...o.codexDir ? { codexDir: o.codexDir } : {}, ...o.piDir ? { piDir: o.piDir } : {} };
@@ -30656,13 +31396,13 @@ function isHooksJson(text) {
   }
 }
 function refreshOf(o, c) {
-  if (c === "claude") return (read2(path29.join(paths_exports.claudeDir(o.claudeDir), "settings.json")) ?? "").includes("hook session-start --harness claude") ? "refresh hook" : "note only";
-  if (c === "codex") return (read2(path29.join(paths_exports.codexDir(o.codexDir), "hooks.json")) ?? "").includes("hook session-start --harness codex") ? "refresh hook" : "note only";
-  return fs35.existsSync(path29.join(paths_exports.piDir(o.piDir), "agent", "extensions", "slopie.ts")) ? "refresh hook" : "note only";
+  if (c === "claude") return (read2(path30.join(paths_exports.claudeDir(o.claudeDir), "settings.json")) ?? "").includes("hook session-start --harness claude") ? "refresh hook" : "note only";
+  if (c === "codex") return (read2(path30.join(paths_exports.codexDir(o.codexDir), "hooks.json")) ?? "").includes("hook session-start --harness codex") ? "refresh hook" : "note only";
+  return fs36.existsSync(path30.join(paths_exports.piDir(o.piDir), "agent", "extensions", "slopie.ts")) ? "refresh hook" : "note only";
 }
 function indexAge() {
   try {
-    const s = Math.round((Date.now() - fs35.statSync(path29.join(paths_exports.recordsDir(), ".slopie", "index.sqlite")).mtimeMs) / 1e3);
+    const s = Math.round((Date.now() - fs36.statSync(path30.join(paths_exports.recordsDir(), ".slopie", "index.sqlite")).mtimeMs) / 1e3);
     return s < 60 ? `${s} s old` : s < 3600 ? `${Math.round(s / 60)} min old` : s < 172800 ? `${Math.round(s / 3600)} h old` : `${Math.round(s / 86400)} days old`;
   } catch {
     return "not built yet (slopie sync)";
@@ -30670,9 +31410,9 @@ function indexAge() {
 }
 function detected(o) {
   const found = [];
-  if (fs35.existsSync(paths_exports.claudeDir(o.claudeDir))) found.push("claude");
-  if (fs35.existsSync(paths_exports.codexDir(o.codexDir))) found.push("codex");
-  if (fs35.existsSync(paths_exports.piDir(o.piDir))) found.push("pi");
+  if (fs36.existsSync(paths_exports.claudeDir(o.claudeDir))) found.push("claude");
+  if (fs36.existsSync(paths_exports.codexDir(o.codexDir))) found.push("codex");
+  if (fs36.existsSync(paths_exports.piDir(o.piDir))) found.push("pi");
   return found;
 }
 function diff(before, after) {
@@ -30694,7 +31434,8 @@ async function runSetup(o) {
       const pending = plan({ ...o, remove: false }, [c]);
       return { client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map((p) => p.what), refresh: refreshOf(o, c) };
     });
-    if (o.json) printJson({ records: paths_exports.recordsDir(), index: indexAge(), clients: rows });
+    const readOnly = [{ client: "antigravity", detected: antigravity_exports.antigravityPresent(), mode: "read only" }];
+    if (o.json) printJson({ records: paths_exports.recordsDir(), index: indexAge(), clients: rows, readOnly });
     else {
       print(`  index   ${indexAge()}`);
     }
@@ -30702,6 +31443,7 @@ async function runSetup(o) {
       const text = (r3.installed ? "installed" : r3.detected ? `missing: ${r3.missing.join(", ")} (slopie setup --${r3.client})` : "not found on this machine") + (r3.detected ? ` \xB7 ${r3.refresh}` : "");
       fold2(text, Math.max(20, t.width - 12)).forEach((row, i) => print(`  ${i ? "".padEnd(8) : r3.client.padEnd(8)}${row}`));
     }
+    if (!o.json && readOnly[0].detected) fold2("read only: no hook; titles, agent messages and plans are synced, prompts are encrypted", Math.max(20, t.width - 16)).forEach((row, i) => print(`  ${i ? "".padEnd(12) : "antigravity "}${row}`));
     return 0;
   }
   if (!clients.length) {
@@ -30741,27 +31483,27 @@ async function runSetup(o) {
       c.after = c.transform(now);
       if (c.after === now) continue;
     }
-    const ours = [SKILL, OLD_SKILL].some((k) => c.file.includes(`${path29.sep}${k}${path29.sep}`)) || c.file.endsWith(`${path29.sep}slopie.ts`);
-    if (c.before !== null && !ours) fs35.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
+    const ours = [SKILL, OLD_SKILL].some((k) => c.file.includes(`${path30.sep}${k}${path30.sep}`)) || c.file.endsWith(`${path30.sep}slopie.ts`);
+    if (c.before !== null && !ours) fs36.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
     if (c.after === null) {
-      fs35.rmSync(c.file, { force: true });
-      const dir = path29.dirname(c.file);
-      if ([SKILL, OLD_SKILL].includes(path29.basename(dir))) fs35.rmSync(dir, { recursive: true, force: true });
+      fs36.rmSync(c.file, { force: true });
+      const dir = path30.dirname(c.file);
+      if ([SKILL, OLD_SKILL].includes(path30.basename(dir))) fs36.rmSync(dir, { recursive: true, force: true });
     } else {
-      fs35.mkdirSync(path29.dirname(c.file), { recursive: true });
+      fs36.mkdirSync(path30.dirname(c.file), { recursive: true });
       if (c.transform) {
         const tmp = `${c.file}.slopie-tmp-${process7.pid}`;
-        fs35.writeFileSync(tmp, c.after, { mode: fs35.statSync(c.file).mode & 511 });
-        fs35.renameSync(tmp, c.file);
+        fs36.writeFileSync(tmp, c.after, { mode: fs36.statSync(c.file).mode & 511 });
+        fs36.renameSync(tmp, c.file);
       } else {
-        fs35.writeFileSync(c.file, c.after);
+        fs36.writeFileSync(c.file, c.after);
       }
     }
   }
   if (o.json) printJson({ written: changes.map((c) => c.file) });
   else {
     print(`${o.remove ? "removed" : "done"}: ${changes.length} file${changes.length === 1 ? "" : "s"}.`);
-    if (!o.remove && !fs35.existsSync(path29.join(paths_exports.recordsDir(), "INDEX.tsv"))) print(`next:  slopie sync   ${t.dim("(writes the records the note points at)")}`);
+    if (!o.remove && !fs36.existsSync(path30.join(paths_exports.recordsDir(), "INDEX.tsv"))) print(`next:  slopie sync   ${t.dim("(writes the records the note points at)")}`);
   }
   return 0;
 }
@@ -30775,26 +31517,26 @@ async function runDoctor(o) {
   const records = paths_exports.recordsDir();
   const state = (() => {
     try {
-      return JSON.parse(fs36.readFileSync(path30.join(stateDir(records), "state.json"), "utf8"));
+      return JSON.parse(fs37.readFileSync(path31.join(stateDir(records), "state.json"), "utf8"));
     } catch {
       return null;
     }
   })();
-  const index = path30.join(stateDir(records), "index.sqlite");
+  const index = path31.join(stateDir(records), "index.sqlite");
   let mode = null;
   try {
-    mode = (fs36.statSync(records).mode & 511).toString(8);
+    mode = (fs37.statSync(records).mode & 511).toString(8);
   } catch {
   }
   const policy = loadPolicy(paths_exports.potsherdDir(o.potsherdDir));
   const legacy = paths_exports.potsherdDir(o.potsherdDir);
-  const legacyParts = ["potsherd.db", "archive", "models", "cards"].filter((p) => fs36.existsSync(path30.join(legacy, p)));
+  const legacyParts = ["potsherd.db", "archive", "models", "cards"].filter((p) => fs37.existsSync(path31.join(legacy, p)));
   const report = {
     version: VERSION,
     node: process8.version,
     sqlite: sqliteDriverName(),
     sources: census,
-    records: { dir: records, built: !!state, sessions: state?.sessions ? Object.keys(state.sessions).length : 0, mode, index: fs36.existsSync(index) ? fs36.statSync(index).size : 0 },
+    records: { dir: records, built: !!state, sessions: state?.sessions ? Object.keys(state.sessions).length : 0, mode, index: fs37.existsSync(index) ? fs37.statSync(index).size : 0 },
     privacy: {
       ignored: policy.ignoredList,
       forgotten: policy.forgotten.size,
@@ -30846,12 +31588,12 @@ async function runDoctor(o) {
 // packages/cli/src/commands/ignore.ts
 init_dist();
 init_output();
-import fs37 from "node:fs";
+import fs38 from "node:fs";
 async function runIgnore(o) {
   const verb = o.remove ? "unignore" : "ignore";
   const root = paths_exports.slopieDir();
   const legacy = paths_exports.potsherdDir(o.potsherdDir);
-  const fresh = fs37.existsSync(paths_exports.configPath(root));
+  const fresh = fs38.existsSync(paths_exports.configPath(root));
   const before = readIgnoreConfig(fresh ? root : legacy);
   if (before.error) throw new UserError(`${paths_exports.tildify(before.file)}: ${before.error}`, "open it and fix it, or delete it; slopie will write a new one");
   const named = o.project?.trim();
@@ -30898,7 +31640,7 @@ function main(argv) {
     program2.name(publicCommandName).description("search your past coding-agent sessions. Plus `slopie audit`, a Wrapped of your year.").version(VERSION, "-v, --version").showHelpAfterError(`(run  ${publicCommandName} --help  for the list of verbs)`)
   );
   const audit = addGlobals(
-    program2.command("audit").description("your year with coding agents: a Wrapped computed from local history").option("--overview", "open the terminal audit (the default)").option("--tone <tone>", "voice override: elegant,witty,chaotic,roast").option("--online", "opt in: let a free hosted model (OpenCode Zen / TypeSafe Jev) polish story wording; sends aggregates and a few filtered quotes").option("--plain", "print the new overview without interactive controls").option("--no-motion", "keep the new terminal view still").option("--private", "show project names in the new private explorer").option("--harness <list>", "scope the overview to claude,codex,pi,opencode,cursor,gemini,copilot").option("--project <path>", "scope the overview to this project").option("--since <when>", "overview events on or after this date").option("--until <when>", "overview events on or before this date").option("--timezone <zone>", "calendar timezone for the overview").option("--export <path>", "save a public-safe overview SVG")
+    program2.command("audit").description("your year with coding agents: a Wrapped computed from local history").option("--overview", "open the terminal audit (the default)").option("--tone <tone>", "voice override: elegant,witty,chaotic,roast").option("--online", "opt in: let a free hosted model (OpenCode Zen / TypeSafe Jev) polish story wording; sends aggregates and a few filtered quotes").option("--plain", "print the new overview without interactive controls").option("--no-motion", "keep the new terminal view still").option("--private", "show project names in the new private explorer").option("--harness <list>", "scope the overview to claude,codex,pi,opencode,cursor,gemini,copilot,antigravity").option("--project <path>", "scope the overview to this project").option("--since <when>", "overview events on or after this date").option("--until <when>", "overview events on or before this date").option("--timezone <zone>", "calendar timezone for the overview").option("--export <path>", "save a public-safe overview SVG")
   ).addHelpText("after", `
 example:
   potsherd audit
@@ -30952,7 +31694,7 @@ forget and ignore remove them.`);
     }), o);
   });
   const search = addGlobals(records(
-    program2.command("search").description("search your past coding-agent sessions; every reply ends with the exact next command").argument("[query...]", "words or exact text to find").option("--session <id>", "one thread (id or 8+ char prefix): with a query, search inside it; without, read it").option("--turns <range>", "with --session: turns to read, e.g. 120-160, or -30 for the last 30").option("--project <text>", "only threads whose working directory contains this").option("--since <date>", "only activity on or after this date").option("--until <date>", "only activity on or before this date").addOption(new Option("--harness <name>", "only this harness").choices(["claude", "codex", "pi"])).option("--latest", "threads with these words, newest last activity first (each with its last matching passage)").option("--include-subagents", "list subagent threads as their own rows (default: under their parent)").option("--parent <id>", "list a thread's child threads (subagents, delegated tasks)").addOption(new Option("-k <n>", "passages to return (default 8, max 30)"))
+    program2.command("search").description("search your past coding-agent sessions; every reply ends with the exact next command").argument("[query...]", "words or exact text to find").option("--session <id>", "one thread (id or 8+ char prefix): with a query, search inside it; without, read it").option("--turns <range>", "with --session: turns to read, e.g. 120-160, or -30 for the last 30").option("--project <text>", "only threads whose working directory contains this").option("--since <date>", "only activity on or after this date").option("--until <date>", "only activity on or before this date").addOption(new Option("--harness <name>", "only this harness").choices(["claude", "codex", "pi", "antigravity"])).option("--latest", "threads with these words, newest last activity first (each with its last matching passage)").option("--include-subagents", "list subagent threads as their own rows (default: under their parent)").option("--parent <id>", "list a thread's child threads (subagents, delegated tasks)").addOption(new Option("-k <n>", "passages to return (default 8, max 30)"))
   )).addHelpText("after", `
 example:
   potsherd search "pgbouncer pool size"                      # passages, every thread
@@ -30967,15 +31709,15 @@ example:
       ...rec(opts),
       query: query.join(" "),
       k: opts["k"],
-      project: str6(opts["project"]),
-      harness: str6(opts["harness"]),
-      since: str6(opts["since"]),
-      until: str6(opts["until"]),
-      session: str6(opts["session"]),
-      turns: str6(opts["turns"]),
+      project: str7(opts["project"]),
+      harness: str7(opts["harness"]),
+      since: str7(opts["since"]),
+      until: str7(opts["until"]),
+      session: str7(opts["session"]),
+      turns: str7(opts["turns"]),
       latest: Boolean(opts["latest"]),
       includeSubagents: Boolean(opts["includeSubagents"]),
-      parent: str6(opts["parent"])
+      parent: str7(opts["parent"])
     }), o);
   });
   const read3 = addGlobals(records(
@@ -30990,7 +31732,7 @@ example:
     void run(async () => runRead({ ...o, ...rec(opts), session, from: opts["from"], to: opts["to"], maxChars: opts["maxChars"], fromChar: opts["fromChar"] }), o);
   });
   const threads = addGlobals(records(
-    program2.command("threads", { hidden: true }).description("list sessions newest first; --text lists EVERY thread containing all the words").option("--project <text>", "working-directory substring").addOption(new Option("--harness <name>", "only this harness").choices(["claude", "codex", "pi"])).option("--since <iso>", "threads active at or after this date/time").option("--until <iso>", "threads active at or before this date/time").option("--text <words>", "only threads whose transcript contains all of these words").option("--subagents", "also list subagent threads").option("--parent <id>", "the child threads (subagents, forks) of this session").addOption(new Option("--limit <n>", "max rows (default 40, max 200)")).addOption(new Option("--offset <n>", "skip this many rows"))
+    program2.command("threads", { hidden: true }).description("list sessions newest first; --text lists EVERY thread containing all the words").option("--project <text>", "working-directory substring").addOption(new Option("--harness <name>", "only this harness").choices(["claude", "codex", "pi", "antigravity"])).option("--since <iso>", "threads active at or after this date/time").option("--until <iso>", "threads active at or before this date/time").option("--text <words>", "only threads whose transcript contains all of these words").option("--subagents", "also list subagent threads").option("--parent <id>", "the child threads (subagents, forks) of this session").addOption(new Option("--limit <n>", "max rows (default 40, max 200)")).addOption(new Option("--offset <n>", "skip this many rows"))
   )).addHelpText("after", `
 example:
   potsherd threads --project slopie --since 2026-10-20
@@ -31001,13 +31743,13 @@ example:
     void run(async () => runThreads({
       ...o,
       ...rec(opts),
-      project: str6(opts["project"]),
-      harness: str6(opts["harness"]),
-      since: str6(opts["since"]),
-      until: str6(opts["until"]),
-      text: str6(opts["text"]),
+      project: str7(opts["project"]),
+      harness: str7(opts["harness"]),
+      since: str7(opts["since"]),
+      until: str7(opts["until"]),
+      text: str7(opts["text"]),
       subagents: Boolean(opts["subagents"]),
-      parent: str6(opts["parent"]),
+      parent: str7(opts["parent"]),
       limit: opts["limit"],
       offset: opts["offset"]
     }), o);
@@ -31039,7 +31781,7 @@ example (what slopie setup installs):
   echo '{"session_id":"9c4d2f18-\u2026","source":"compact"}' | potsherd hook session-start --harness claude`);
   hook.action(async (event, opts) => {
     const o = globals(program2, hook, opts);
-    await run(() => runHook({ ...o, ...rec(opts), event, harness: str6(opts["harness"]) }), o);
+    await run(() => runHook({ ...o, ...rec(opts), event, harness: str7(opts["harness"]) }), o);
   });
   const setup = addGlobals(
     program2.command("setup").description("install the memory note (skill / AGENTS.md / pi extension) and the session-start hook").option("--all", "every detected agent (the default when none is named)").option("--dry-run", "print every change, write nothing").option("--status", "what is installed where").option("--remove", "take it all out again").option("--note", "print the note it installs (paste it into any other agent) and exit").option("-y, --yes", "do not ask")
@@ -31131,7 +31873,7 @@ example:
   }
   program2.parseAsync(argv).catch((err) => fail2(err, {}));
 }
-var str6 = (v) => typeof v === "string" && v ? v : void 0;
+var str7 = (v) => typeof v === "string" && v ? v : void 0;
 var rec = (opts) => typeof opts["recordsDir"] === "string" ? { recordsDir: opts["recordsDir"] } : {};
 function globals(program2, cmd, local) {
   const g2 = program2.opts();
