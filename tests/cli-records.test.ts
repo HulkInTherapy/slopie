@@ -44,7 +44,26 @@ describe('slopie sync / search (and the hidden read / threads / grep aliases)', 
     expect(run(f, ['read', IDS.claude, '--from', '-2']).stdout).toContain('[turns 4-5 of 5; end of thread.');
     expect(run(f, ['threads', '--text', 'pool']).stdout).toContain('threads containing all of: pool');
     expect(run(f, ['grep', IDS.claude, 'ZEBRA_MIDDLE_NEEDLE_42']).stdout).toContain('(output)');
-    expect(run(f, ['search', 'x', '--json']).stdout).toMatch(/^\{\s*"text":/);
+    const j = JSON.parse(run(f, ['search', 'pgbouncer', '--json']).stdout) as { mode: string; indexed_at: string; partial: boolean; hits: { session: string; read_cmd: string }[]; next: string[] };
+    expect(j).toMatchObject({ mode: 'search', partial: false });
+    expect(j.hits[0]!.read_cmd).toMatch(/^slopie search --session /);
+    expect(j.next.length).toBeGreaterThan(0);
+  });
+
+  it('search refreshes a stale index first, within its budget, and says how old the index is', () => {
+    const f = setup();
+    expect(run(f, ['sync', '--quiet']).code).toBe(0);
+    const idx = path.join(f.recordsDir, '.slopie', 'index.sqlite');
+    const old = new Date(Date.now() - 3600_000);
+    fs.utimesSync(idx, old, old);
+    const env = process.env['SLOPIE_NO_SYNC'];
+    delete process.env['SLOPIE_NO_SYNC'];
+    try {
+      const t0 = Date.now();
+      const out = run(f, ['search', 'pgbouncer']).stdout;
+      expect(Date.now() - t0).toBeLessThan(8000);
+      expect(out).toMatch(/^\(index: [^)]+ old\)/);
+    } finally { process.env['SLOPIE_NO_SYNC'] = env; }
   });
 
   it('a verb before sync says how to build the records', () => {
@@ -106,7 +125,7 @@ describe('slopie setup', () => {
     expect(fs.existsSync(path.join(f.claudeDir, 'skills', 'slopie-memory'))).toBe(false);
     expect(fs.readdirSync(path.join(f.claudeDir, 'skills'))).toEqual(['slopie']);
     const skill = fs.readFileSync(path.join(f.claudeDir, 'skills', 'slopie', 'SKILL.md'), 'utf8');
-    expect(skill).toMatch(/^---\nname: slopie\ndescription: "Search everything you and the user did in past coding sessions/);
+    expect(skill).toMatch(/^---\nname: slopie\ndescription: "Search your past coding-agent sessions with the user/);
     expect(skill).toContain(`exported as plain text records under ${f.recordsDir}:`);
     const s = JSON.parse(fs.readFileSync(settings, 'utf8')) as { model: string; hooks: Record<string, { matcher?: string; hooks: { command: string }[] }[]> };
     expect(s.model).toBe('opus');
@@ -126,7 +145,7 @@ describe('slopie setup', () => {
     fs.writeFileSync(path.join(f.codexDir, 'AGENTS.md'), '# mine\nkeep this\n\n<!-- slopie:memory:begin -->\nold\n<!-- slopie:memory:end -->\n');
     expect(run(f, ['setup', '--codex', '--pi', '--yes']).code).toBe(0);
     const agents = fs.readFileSync(path.join(f.codexDir, 'AGENTS.md'), 'utf8');
-    expect(agents).toMatch(/^# mine\nkeep this\n\n<!-- slopie:begin -->\n## slopie\nSearch everything you and the user did in past coding sessions[^\n]*\n\nThe user's agent history/);
+    expect(agents).toMatch(/^# mine\nkeep this\n\n<!-- slopie:begin -->\n## slopie\nSearch your past coding-agent sessions with the user[^\n]*\n\nYour past coding-agent sessions with the user/);
     expect(agents).not.toContain('slopie:memory');
     expect(agents.trimEnd().endsWith('<!-- slopie:end -->')).toBe(true);
     expect(fs.readdirSync(path.join(f.piDir, 'agent', 'skills'))).toEqual(['slopie']);
@@ -140,7 +159,7 @@ describe('slopie setup', () => {
     const f = setup();
     const note = run(f, ['setup', '--note']).stdout;
     expect(note).toContain(`rg -n -i 'term' ${f.recordsDir}`);
-    expect(note.trimEnd().split('\n').at(-1)).toMatch(/^If the slopie command is on PATH, start with it/);
+    expect(note).toMatch(/^Your past coding-agent sessions with the user[^\n]*\n- find: slopie search/);
   });
 });
 

@@ -28,6 +28,32 @@ export interface LegacyChange {
   file: string;
   /** The file as it should be after the removal, from its current text; null deletes the file. */
   transform: (text: string) => string | null;
+  /** What the plan shows (default LEGACY_WHAT). */
+  what?: string;
+}
+
+/** A potsherd 1.x hook command (`potsherd rescue …`, `potsherd-mcp`). */
+const LEGACY_HOOK_CMD = /\bpotsherd(?:\.js)?["']?\s+rescue\b|\bpotsherd-mcp\b/;
+export const LEGACY_HOOK_WHAT = 'remove stale potsherd 1.x hooks (their program is gone)';
+
+/** config.toml hook tables (`[[hooks.…]]`, `[hooks.…]`) whose command runs potsherd 1.x, header to the next header. */
+function tomlHookBlocks(text: string): {start: number; end: number}[] {
+  const lines = text.split('\n');
+  const out: {start: number; end: number}[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^[ \t]*\[\[?[ \t]*hooks\b/.test(lines[i]!) || /^[ \t]*\[[ \t]*hooks[ \t]*\.[ \t]*state\b/.test(lines[i]!)) continue;
+    let j = i + 1;
+    while (j < lines.length && !/^[ \t]*\[/.test(lines[j]!)) j++;
+    if (lines.slice(i + 1, j).some(l => /^[ \t]*command[ \t]*=/.test(l) && LEGACY_HOOK_CMD.test(l))) out.push({start: i, end: j});
+    i = j - 1;
+  }
+  return out;
+}
+
+function tomlHookTransform(text: string): string {
+  const lines = text.split('\n');
+  for (const b of tomlHookBlocks(text).reverse()) lines.splice(b.start, b.end - b.start);
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
 /** argv potsherd's setup wrote: `potsherd-mcp`, or a node binary and one of potsherd's server scripts. */
@@ -145,6 +171,7 @@ export function legacyChanges(targets: readonly LegacyTarget[], o: {claudeDir?: 
       const file = path.join(paths.codexDir(o.codexDir), 'config.toml');
       const text = read(file);
       if (text !== null && tomlOwnTable(text)) out.push({client: t, file, transform: tomlTransform});
+      if (text !== null && tomlHookBlocks(text).length) out.push({client: t, file, transform: tomlHookTransform, what: LEGACY_HOOK_WHAT});
     } else if (t === 'pi') {
       const file = path.join(paths.piDir(o.piDir), 'agent', 'extensions', 'potsherd.ts');
       const text = read(file);

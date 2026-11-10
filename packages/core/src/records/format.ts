@@ -18,6 +18,14 @@
  */
 import type {Role, Session, Turn} from '../sources/sessions.js';
 import {cpLen, cpSlice, pySplitlines, pyStrip, squash} from '../sources/text.js';
+import {scrub} from './scrub.js';
+
+/** Scrubs one raw string before it is capped; `len` (the raw length) moves by what the scrub removed. */
+function scrubbed(raw: string, len: number | undefined): {v: string; len: number} {
+  const v = scrub(raw);
+  const n = len ?? cpLen(raw);
+  return {v, len: v === raw ? n : n - cpLen(raw) + cpLen(v)};
+}
 
 export const CAP = {USER: 6000, ASSISTANT: 8000, SYSTEM: 300, TOOL_IN: 600, TOOL_OUT_WHOLE: 4000, TOOL_OUT_HEAD: 2000, TOOL_OUT_TAIL: 1000} as const;
 /** Per-output cap of the optional full-output sidecar (`<record>.out.txt`). */
@@ -55,13 +63,14 @@ const capOf = (role: Role): number => (role === 'USER' ? CAP.USER : role === 'AS
 /** Applies the record caps to one parsed turn. `sidecar` keeps up to SIDECAR_CAP of a cut output. */
 export function recTurn(t: Turn, sidecar = false): RecTurn {
   if (t.role === 'TOOL') {
-    let inp = pyStrip(t.text || '');
+    let inp = pyStrip(scrub(t.text || ''));
     const inLen = cpLen(inp);
     if (inLen > CAP.TOOL_IN) inp = cpSlice(inp, 0, CAP.TOOL_IN) + ` …[+${inLen - CAP.TOOL_IN} chars]`;
     const r: RecTurn = {role: 'TOOL', ts: t.ts, tool: t.tool ?? '', text: inp, out: null};
     if (t.output) {
-      let o = pyStrip(t.output);
-      const total = t.outputLen ?? cpLen(o);
+      const sc = scrubbed(t.output, t.outputLen);
+      let o = pyStrip(sc.v);
+      const total = sc.len;
       if (total > CAP.TOOL_OUT_WHOLE) {
         if (sidecar) { const n = cpLen(o); r.full = n > SIDECAR_CAP ? cpSlice(o, 0, SIDECAR_CAP) + ` …[+${n - SIDECAR_CAP} chars]` : o; }
         o = cpSlice(o, 0, CAP.TOOL_OUT_HEAD) + `\n…[${total - CAP.TOOL_OUT_HEAD - CAP.TOOL_OUT_TAIL} chars cut; full output: ${t.outRef ?? t.ref}]…\n` + cpSlice(o, -CAP.TOOL_OUT_TAIL);
@@ -70,15 +79,16 @@ export function recTurn(t: Turn, sidecar = false): RecTurn {
     }
     return r;
   }
-  let text = pyStrip(t.text || '');
+  const sc = scrubbed(t.text || '', t.textLen);
+  let text = pyStrip(sc.v);
   const cap = capOf(t.role);
   const n = cpLen(text);
-  if (n > cap) text = cpSlice(text, 0, cap) + ` …[+${(t.textLen ?? n) - cap} chars; raw: ${t.ref}]`;
+  if (n > cap) text = cpSlice(text, 0, cap) + ` …[+${(t.textLen === undefined ? n : sc.len) - cap} chars; raw: ${t.ref}]`;
   return {role: t.role, ts: t.ts, text};
 }
 
 export function recSession(s: Session, sidecar = false): RecSession {
-  return {harness: s.harness, id: s.id, project: s.project, title: s.title, start: s.start, end: s.end, parent: s.parent, parentKind: s.parentKind,
+  return {harness: s.harness, id: s.id, project: s.project, title: scrub(s.title), start: s.start, end: s.end, parent: s.parent, parentKind: s.parentKind,
     turns: s.turns.map(t => recTurn(t, sidecar))};
 }
 

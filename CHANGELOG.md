@@ -2,6 +2,22 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
+## 1.9.1 — Secrets fixed, main threads first
+
+- **Secrets no longer reach your agent.** Every string that enters a record is redacted before it is written, indexed or searched: messages, tool input and output, titles, first asks, last answers, `INDEX.tsv`, sidecars and the session cards. Raw re-reads (exact matches inside a thread) are redacted too. Masks read `[REDACTED:<type>]` and keep the variable name (`TAVILY_API_KEY=[REDACTED:tavily]`). Base64 images and other binary bulk are elided first.
+- New explicit Tavily (`tvly-…`) and Telegram bot token rules, independent of the entropy threshold one Tavily key slipped under.
+- The first `slopie sync` after upgrading rewrites every existing record in place, including records whose source the harness already deleted (they are re-redacted, never dropped), then rebuilds and vacuums the search index. Harness originals are never touched.
+- Search puts main threads first: one passage per thread (the rest as "+N more in this thread"), at most two results per parent/subagent family with the parent first and the subagent under it, and a prior that favours long main threads over subagents and tiny threads.
+- Threads that contain every word of the query rank above those that match only some, which are labelled "(partial match)". The shown snippet prefers what the user or assistant said over tool dumps.
+- `--project`, `--harness`, `--since`, `--until` and `--session` now filter inside the query, before its candidate limit, so scoped searches no longer lose matches to stronger ones elsewhere.
+- `slopie search` (and the MCP tool) refreshes the index first, for at most 1.5 s, and says so when it could not finish. Every reply starts with the index age. `SLOPIE_NO_REFRESH=1` turns the refresh off.
+- `--latest` lists the threads with your words by last activity, newest first, each with its last matching passage. Backlinks now read "referenced later in".
+- `--include-subagents` lists subagents as their own results, and `--parent <id>` lists a thread's children.
+- `--json` (and MCP structuredContent) returns `{mode, indexed_at, partial, hits, next}`, with session, harness, project, parent, root, role, turn, time, snippet and read command per hit.
+- A search with no match suggests a runnable relaxed query and the closest `--project` names. `--project` matches any path segment.
+- `slopie setup` removes stale potsherd 1.x hooks (`potsherd rescue`, `potsherd-mcp`) from Claude and Codex settings, with a backup. It installs a Codex SessionStart refresh hook where `~/.codex/hooks.json` exists. `--status` shows the index age and whether each harness has a refresh hook or only the note.
+- The skill now says "your past coding-agent sessions", and puts the three most useful `slopie search` recipes before the records format.
+
 ## 1.9.0 — Search your past sessions
 
 **slopie — search your past coding-agent sessions.** Plus `slopie audit`, a Wrapped of your year.

@@ -1,6 +1,6 @@
 ---
 name: slopie
-description: "Search everything you and the user did in past coding sessions (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session."
+description: "Search your past coding-agent sessions with the user (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session."
 ---
 
 The user's agent history (Claude Code, Codex, Pi; all projects; including sessions the harness deleted) is exported as plain text records under ~/.slopie/records:

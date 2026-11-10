@@ -42,7 +42,7 @@ const OLD_MARKERS = ['<!-- slopie:memory:begin -->', '<!-- slopie:memory:end -->
 export const SKILL = 'slopie';
 /** The 1.9.0 pre-release skill name; setup removes a skill of this name that it wrote. */
 const OLD_SKILL = 'slopie-memory';
-export const SKILL_DESCRIPTION = 'Search everything you and the user did in past coding sessions (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session.';
+export const SKILL_DESCRIPTION = "Search your past coding-agent sessions with the user (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session.";
 
 interface Change {
   client: SetupClient | LegacyTarget;
@@ -93,20 +93,47 @@ function withBlock(text: string | null, block: string | null): string | null {
   return (without.trim() ? without.replace(/\n*$/, '\n\n') : '') + `${BEGIN}\n${block}\n${END}\n`;
 }
 
-function claudeSettings(text: string | null, command: string | null): string {
+/** A hook command potsherd 1.x installed (`potsherd rescue …`, `potsherd-mcp`): its program is gone. */
+export const LEGACY_HOOK = /\bpotsherd(?:\.js)?["']?\s+rescue\b|\bpotsherd-mcp\b/;
+
+type HookGroup = {matcher?: string; hooks?: {type?: string; command?: string; timeout?: number}[]};
+
+/** True when a hooks object (Claude settings, Codex hooks.json) still runs a potsherd 1.x hook. */
+export function hasLegacyHook(text: string | null): boolean {
+  if (!text) return false;
+  try {
+    const hooks = (JSON.parse(text) as {hooks?: Record<string, HookGroup[]>}).hooks ?? {};
+    return Object.values(hooks).some(l => Array.isArray(l) && l.some(g => (g.hooks ?? []).some(h => typeof h.command === 'string' && LEGACY_HOOK.test(h.command))));
+  } catch { return false; }
+}
+
+/**
+ * A `{hooks: {Event: [{matcher, hooks: [{command}]}]}}` file (Claude settings.json, Codex hooks.json) with this
+ * harness's slopie SessionStart hook set (or removed: command null), and every potsherd 1.x hook taken out.
+ */
+function withHooks(text: string | null, file: string, harness: SetupClient, command: string | null, matcher?: string): string {
   let obj: Record<string, unknown> = {};
   if (text && text.trim()) {
-    try { obj = JSON.parse(text) as Record<string, unknown>; } catch { throw new UserError(`${paths.claudePaths().settings} is not plain JSON; add the hook by hand: ${command}`); }
+    try { obj = JSON.parse(text) as Record<string, unknown>; } catch { throw new UserError(`${file} is not plain JSON; add the hook by hand: ${command}`); }
   }
-  const hooks = (obj['hooks'] && typeof obj['hooks'] === 'object' ? obj['hooks'] : {}) as Record<string, unknown>;
-  const list = (Array.isArray(hooks['SessionStart']) ? hooks['SessionStart'] : []) as {hooks?: {command?: string}[]}[];
-  const kept = list.filter(e => !(e.hooks ?? []).some(h => typeof h.command === 'string' && h.command.includes('hook session-start --harness claude')));
-  if (command) kept.push({matcher: 'startup|resume|compact', hooks: [{type: 'command', command, timeout: 20}]} as never);
-  const next = {...obj, hooks: {...hooks, SessionStart: kept}};
-  if (!kept.length) delete (next.hooks as Record<string, unknown>)['SessionStart'];
-  if (!Object.keys(next.hooks).length) delete (next as Record<string, unknown>)['hooks'];
+  const hooks = {...(obj['hooks'] && typeof obj['hooks'] === 'object' ? obj['hooks'] : {})} as Record<string, unknown>;
+  for (const [ev, l] of Object.entries(hooks)) {
+    if (!Array.isArray(l)) continue;
+    const kept = (l as HookGroup[]).map(g => (Array.isArray(g.hooks) && g.hooks.some(h => typeof h.command === 'string' && LEGACY_HOOK.test(h.command))
+      ? {...g, hooks: g.hooks.filter(h => !(typeof h.command === 'string' && LEGACY_HOOK.test(h.command)))} : g)).filter(g => !Array.isArray(g.hooks) || g.hooks.length);
+    if (kept.length) hooks[ev] = kept; else delete hooks[ev];
+  }
+  const list = (Array.isArray(hooks['SessionStart']) ? hooks['SessionStart'] : []) as HookGroup[];
+  const kept = list.filter(e => !(e.hooks ?? []).some(h => typeof h.command === 'string' && h.command.includes(`hook session-start --harness ${harness}`)));
+  if (command) kept.push({...(matcher ? {matcher} : {}), hooks: [{type: 'command', command, timeout: 20}]});
+  hooks['SessionStart'] = kept;
+  if (!kept.length) delete hooks['SessionStart'];
+  const next: Record<string, unknown> = {...obj, hooks};
+  if (!Object.keys(hooks).length) delete next['hooks'];
   return JSON.stringify(next, null, 2) + '\n';
 }
+
+const claudeSettings = (text: string | null, command: string | null) => withHooks(text, paths.claudePaths().settings, 'claude', command, 'startup|resume|compact');
 
 function piExtension(): string {
   const [cmd, ...args] = slopieArgv();
@@ -164,11 +191,15 @@ function plan(o: SetupOptions, clients: readonly SetupClient[], others = false):
       add(c, path.join(dir, 'skills', SKILL, 'SKILL.md'), 'skill', o.remove ? null : skillText(records));
       oldSkill(c, path.join(dir, 'skills'));
       const settings = path.join(dir, 'settings.json');
-      add(c, settings, 'SessionStart hook', claudeSettings(read(settings), o.remove ? null : hookCommand('claude')));
+      add(c, settings, 'SessionStart hook' + (hasLegacyHook(read(settings)) ? '; remove stale potsherd 1.x hooks' : ''), claudeSettings(read(settings), o.remove ? null : hookCommand('claude')));
     } else if (c === 'codex') {
       const home = paths.codexDir(o.codexDir);
       const file = path.join(home, 'AGENTS.md');
       add(c, file, 'AGENTS.md slopie block', withBlock(read(file), o.remove ? null : agentsBlock(records)));
+      // The refresh hook, mirroring Claude, where this Codex has the hooks.json format.
+      const hooksFile = path.join(home, 'hooks.json');
+      const ht = read(hooksFile);
+      if (ht !== null && isHooksJson(ht)) add(c, hooksFile, 'SessionStart hook' + (hasLegacyHook(ht) ? '; remove stale potsherd 1.x hooks' : ''), withHooks(ht, hooksFile, 'codex', o.remove ? null : hookCommand('codex')));
     } else {
       const root = path.join(paths.piDir(o.piDir), 'agent');
       add(c, path.join(root, 'skills', SKILL, 'SKILL.md'), 'skill', o.remove ? null : skillText(records));
@@ -182,9 +213,27 @@ function plan(o: SetupOptions, clients: readonly SetupClient[], others = false):
     if (before === null) continue;
     const after = l.transform(before);
     // One file can carry both a slopie change and the legacy removal (never today; kept apart if it ever does).
-    if (after !== before) out.push({client: l.client, file: l.file, what: LEGACY_WHAT, before, after, transform: l.transform});
+    if (after !== before) out.push({client: l.client, file: l.file, what: l.what ?? LEGACY_WHAT, before, after, transform: l.transform});
   }
   return out;
+}
+
+function isHooksJson(text: string): boolean {
+  try { const o = JSON.parse(text) as Record<string, unknown>; return !!o && typeof o === 'object' && !Array.isArray(o) && (o['hooks'] === undefined || (typeof o['hooks'] === 'object' && !Array.isArray(o['hooks']))); } catch { return false; }
+}
+
+/** How each harness keeps the index fresh: a refresh hook, or only the note (search then refreshes itself). */
+function refreshOf(o: SetupOptions, c: SetupClient): string {
+  if (c === 'claude') return (read(path.join(paths.claudeDir(o.claudeDir), 'settings.json')) ?? '').includes('hook session-start --harness claude') ? 'refresh hook' : 'note only';
+  if (c === 'codex') return (read(path.join(paths.codexDir(o.codexDir), 'hooks.json')) ?? '').includes('hook session-start --harness codex') ? 'refresh hook' : 'note only';
+  return fs.existsSync(path.join(paths.piDir(o.piDir), 'agent', 'extensions', 'slopie.ts')) ? 'refresh hook' : 'note only';
+}
+
+function indexAge(): string {
+  try {
+    const s = Math.round((Date.now() - fs.statSync(path.join(paths.recordsDir(), '.slopie', 'index.sqlite')).mtimeMs) / 1000);
+    return s < 60 ? `${s} s old` : s < 3600 ? `${Math.round(s / 60)} min old` : s < 172800 ? `${Math.round(s / 3600)} h old` : `${Math.round(s / 86400)} days old`;
+  } catch { return 'not built yet (slopie sync)'; }
 }
 
 function detected(o: SetupOptions): SetupClient[] {
@@ -213,11 +262,14 @@ export async function runSetup(o: SetupOptions): Promise<number> {
   if (o.status) {
     const rows = SETUP_CLIENTS.map(c => {
       const pending = plan({...o, remove: false}, [c]);
-      return {client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map(p => p.what)};
+      return {client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map(p => p.what), refresh: refreshOf(o, c)};
     });
-    if (o.json) printJson({records: paths.recordsDir(), clients: rows});
-    else for (const r of rows) {
-      const text = r.installed ? 'installed' : r.detected ? `missing: ${r.missing.join(', ')} (slopie setup --${r.client})` : 'not found on this machine';
+    if (o.json) printJson({records: paths.recordsDir(), index: indexAge(), clients: rows});
+    else {
+      print(`  index   ${indexAge()}`);
+    }
+    if (!o.json) for (const r of rows) {
+      const text = (r.installed ? 'installed' : r.detected ? `missing: ${r.missing.join(', ')} (slopie setup --${r.client})` : 'not found on this machine') + (r.detected ? ` · ${r.refresh}` : '');
       fold(text, Math.max(20, t.width - 12)).forEach((row, i) => print(`  ${i ? ''.padEnd(8) : r.client.padEnd(8)}${row}`));
     }
     return 0;

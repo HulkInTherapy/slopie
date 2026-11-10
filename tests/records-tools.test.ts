@@ -24,7 +24,7 @@ describe('search', () => {
       const out = e.search({query: 'pgbouncer pool'});
       expect(out).toContain(`claude ${IDS.claude}`);
       expect(out).toMatch(new RegExp(`→ search\\(session="${IDS.claude}", turns="\\d+-\\d+"\\)`));
-      expect(out.trimEnd().split('\n').at(-1)).toMatch(/^Next: search\(session="[^"]+", turns="\d+-\d+"\) reads around hit 1; search\(query="pgbouncer pool", session="[^"]+"\) lists every match inside that thread\.$/);
+      expect(out.trimEnd().split('\n').at(-1)).toMatch(/^Next: search\(session="[^"]+", turns="\d+-\d+"\) reads around hit 1; search\(query="pgbouncer pool", session="[^"]+"\) lists every match inside that thread; search\(query="pgbouncer pool", latest=true\) lists the threads with these words newest first\.$/);
     } finally { e.close(); }
   });
 
@@ -35,14 +35,19 @@ describe('search', () => {
     } finally { e.close(); }
   });
 
-  it('prints "subagent of <parent-id>" on every subagent hit', () => {
+  it('lists a subagent hit under its parent (parent first), and on its own row with --include-subagents', () => {
     const e = cli();
     try {
       const out = e.search({query: 'SameSite cookie redirect'});
-      const hit = out.split('\n').find(l => l.includes(IDS.agent))!;
+      const lines = out.split('\n');
+      const parentAt = lines.findIndex(l => /^\[1\]/.test(l) && l.includes(`claude ${IDS.claude}`));
+      const childAt = lines.findIndex(l => l.startsWith('    ↳ subagent: ') && l.includes(IDS.agent));
+      expect(parentAt).toBeGreaterThanOrEqual(0);
+      expect(childAt).toBeGreaterThan(parentAt);
+      const own = e.search({query: 'SameSite cookie redirect', includeSubagents: true});
+      const hit = own.split('\n').find(l => /^\[\d\]/.test(l) && l.includes(IDS.agent))!;
       expect(hit).toContain(`subagent of ${IDS.claude}`);
       expect(hit).toContain('"Fix the login redirect"');
-      expect(out).toContain('PROMPT-FROM-PARENT-AGENT');
     } finally { e.close(); }
   });
 
@@ -162,18 +167,18 @@ describe('search: the one tool', () => {
       expect(tail).toContain('[turns 4-5 of 5; end of thread. Later threads in this project: search(project="/work/demo-app", since="2026-10-01")]');
       expect(e.find({session: IDS.claude, turns: '1-2'})).toContain(`Continue: search(session="${IDS.claude}", turns="3-5")]`);
       const inside = e.find({query: 'ZEBRA_MIDDLE_NEEDLE_42', session: IDS.claude});
-      expect(inside).toMatch(/^1 exact matches for 'ZEBRA_MIDDLE_NEEDLE_42' in claude/);
+      expect(inside).toMatch(/^\(index: [^)]*old\)\n1 exact matches for 'ZEBRA_MIDDLE_NEEDLE_42' in claude/);
       expect(inside).toContain('t3 TOOL Bash (output)');
       expect(inside.trimEnd().split('\n').at(-1)).toBe(`Next: search(session="${IDS.claude}", turns="1-5") reads around t3.`);
       const words = e.find({query: 'pool login redirect', session: IDS.claude});
       expect(words).toContain('Passages with these words (no exact match):');
       expect(words.trimEnd().split('\n').at(-1)).toMatch(/^Next: search\(session="[^"]+", turns="\d+-\d+"\) reads around t\d+\.$/);
       const list = e.find({project: 'demo-app'});
-      expect(list).toMatch(/^4 threads \(newest first/);
+      expect(list).toMatch(/^\(index: [^)]*\)\n4 threads \(newest first/);
       expect(list).not.toContain('    last: ');
       expect(list.trimEnd().split('\n').at(-1)).toBe(`Next: search(session="${IDS.pi}", turns="-30") reads the end of the newest thread.`);
-      expect(e.find({project: 'demo-app', until: '2026-10-01T23:59'})).toMatch(/^1 threads/);
-      expect(e.find({project: 'nowhere'})).toContain('No threads match those filters.');
+      expect(e.find({project: 'demo-app', until: '2026-10-01T23:59'})).toMatch(/^\(index: [^)]*\)\n1 threads/);
+      expect(e.find({project: 'nowhere'})).toContain('No threads match those filters');
       expect(e.find({turns: '-30'})).toContain('turns needs a session');
       expect(e.find({session: IDS.claude, turns: 'soon'})).toContain('turns must look like');
     } finally { e.close(); }
@@ -192,7 +197,7 @@ describe('search: the one tool', () => {
       const e = new Engine(g.recordsDir, 'mcp');
       try {
         expect(e.find({session: IDS.claude, turns: '-1'}).trimEnd().split('\n').at(-1)).toBe(
-          `[turns 5-5 of 5; end of thread. Mentioned later in: agent-0123456789abcdef0 (claude, 2026-10-02), ${IDS.codex} (codex, 2026-10-02); the work or a decision often continued there. Next: search(session="${IDS.codex}", turns="-30")]`);
+          `[turns 5-5 of 5; end of thread. Referenced later in: agent-0123456789abcdef0 (claude, 2026-10-02), ${IDS.codex} (codex, 2026-10-02) (threads that mention this one; not necessarily where it continued). Read one: search(session="${IDS.codex}", turns="-30")]`);
       } finally { e.close(); }
     } finally { fs.rmSync(g.root, {recursive: true, force: true}); }
   });
@@ -213,7 +218,7 @@ describe('MCP: one tool, search', () => {
     expect(MCP_TOOLS.map(t => t.name)).toEqual(['search']);
     const [tool] = MCP_TOOLS;
     expect(tool.description.split('. ').length).toBeLessThanOrEqual(3);
-    expect(Object.keys(tool.inputSchema.properties)).toEqual(['query', 'session', 'turns', 'project', 'since', 'until']);
+    expect(Object.keys(tool.inputSchema.properties)).toEqual(['query', 'session', 'turns', 'project', 'since', 'until', 'latest', 'include_subagents', 'parent']);
     for (const p of Object.values(tool.inputSchema.properties)) expect(p.description).toMatch(/e\.g\. "/);
     expect(MCP_INSTRUCTIONS).toMatch(/^slopie: search the user's past coding-agent sessions/);
   });
@@ -267,7 +272,9 @@ describe('the agent note', () => {
     const r5Now = NOTE_B_TEMPLATE.split(R7_INDEX).join(R5_INDEX).split(R7_SUB).join(R5_SUB).split(R7_END).join(R5_END).split(R7_HDR).join(R5_HDR);
     expect(r5Now.split('{RECORDS}').join('{DATA}/records')).toBe(r5.NOTE_B_template);
     const note = agentNote('/records-root');
-    expect(note).toBe(NOTE_B_TEMPLATE.split('{RECORDS}').join('/records-root') + '\n' + PROTOCOL + '\n' + CLI_LINE);
+    expect(note).toBe(CLI_LINE + '\n\n' + NOTE_B_TEMPLATE.split('{RECORDS}').join('/records-root') + '\n' + PROTOCOL);
+    expect(note.indexOf('--latest')).toBeLessThan(note.indexOf('INDEX.tsv'));
+    expect(note).not.toMatch(/\beverything\b/i);
     expect(agentNote('/r', {protocol: false})).not.toContain(PROTOCOL);
     expect(agentNote('/r', {cli: false})).not.toContain('slopie search');
     expect(agentNote('/r', {guidance: true})).toContain(GUIDANCE);

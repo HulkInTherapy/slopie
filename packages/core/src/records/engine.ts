@@ -14,6 +14,7 @@ import * as paths from '../paths.js';
 import {stateDir} from './sync.js';
 import {INDEX_FILE} from './index-db.js';
 import {relation} from './format.js';
+import {scrub} from './scrub.js';
 
 export type CallStyle = 'mcp' | 'cli';
 
@@ -38,6 +39,42 @@ export function ftsQuery(q: string, mode: 'or' | 'and' = 'or'): string | null {
 const terms = (q: string) => (q.match(WORD) ?? []).filter(w => !STOP.has(w.toLowerCase()));
 const shortTs = (ts: string | null) => (ts ?? '?').replace('T', ' ').slice(0, 16);
 const ws = (s: string) => s.replace(/\s+/g, ' ');
+const uniq = <T>(xs: T[]): T[] => [...new Set(xs)];
+/** A crude stem for "does this passage hold the word" (the index itself stems with porter). */
+const stem = (t: string) => (t.length > 5 ? t.replace(/(ings?|ed|es|s)$/, '') : t);
+const ttl = (s: {title: string | null}) => ws((s.title ?? '').trim()).slice(0, 70);
+function lev(a: string, b: string): number {
+  if (Math.abs(a.length - b.length) > 3) return 99;
+  let prev = Array.from({length: b.length + 1}, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j]! + 1, cur[j - 1]! + 1, prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length]!;
+}
+/** Scope predicates over `turns t` for the candidate SQL: session keys, turn time window. */
+function scopeSql(keys: Set<string> | null, since?: string, until?: string): {where: string; args: unknown[]} {
+  const where: string[] = [], args: unknown[] = [];
+  if (keys) { where.push('t.skey in (select value from json_each(?))'); args.push(JSON.stringify([...keys])); }
+  if (since) { where.push(`coalesce(t.ts, '') >= ?`); args.push(since); }
+  if (until) { where.push(`coalesce(t.ts, '') <= ?`); args.push(until); }
+  return {where: where.join(' and '), args};
+}
+
+/** One structured hit (`--json`, MCP structuredContent). */
+export interface Hit {
+  session: string; harness: string; project: string | null; parent: string | null; root: string | null;
+  role: string; turn: number; at: string | null; snippet: string; read_cmd: string;
+}
+export interface FindResult {
+  mode: 'search' | 'latest' | 'read' | 'inside' | 'list' | 'error';
+  indexed_at: string | null;
+  partial: boolean;
+  hits: Hit[];
+  next: string[];
+  text: string;
+}
 
 interface S {
   key: string; harness: string; id: string; project: string | null; title: string | null; start: string | null; end: string | null;
@@ -71,6 +108,12 @@ export class Engine {
   readonly recordsDir: string;
   /** Print "subagent of <parent>" on every hit (on by default; SLOPIE_HIT_PARENT=0 turns it off, for ablation only). */
   hitParent = process.env['SLOPIE_HIT_PARENT'] !== '0';
+  /** When the index was last built (meta 'built'), for the age line every reply starts with. */
+  readonly indexedAt: string | null;
+  /** Lines the caller adds under the age line (e.g. "refresh did not finish in 1.5 s"). */
+  notes: string[] = [];
+  /** The structured form of the last find() (`--json`, MCP structuredContent). */
+  result: Omit<FindResult, 'text' | 'indexed_at'> = {mode: 'search', partial: false, hits: [], next: []};
 
   constructor(recordsDir?: string, readonly style: CallStyle = 'cli') {
     this.recordsDir = paths.recordsDir(recordsDir);
@@ -78,14 +121,17 @@ export class Engine {
     if (!fs.existsSync(file)) throw new NoIndexError(file);
     this.db = openDatabase(file, {readonly: true, fileMustExist: true});
     for (const r of this.db.prepare('select * from sessions').all() as S[]) this.sessions.set(r.key, r);
+    let built: string | null = null;
+    try { built = (this.db.prepare(`select v from meta where k='built'`).get() as {v: string} | undefined)?.v ?? null; } catch { /* old index */ }
+    this.indexedAt = built;
   }
 
   close(): void { this.db.close(); }
 
   // ------------------------------------------------------------ call syntax (one tool: search)
-  private call(a: {query?: string; session?: string; turns?: string; project?: string; since?: string}): string {
+  private call(a: {query?: string; session?: string; turns?: string; project?: string; since?: string; latest?: boolean; parent?: string}): string {
     if (this.style === 'mcp') {
-      const parts = Object.entries(a).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${q(v!)}`);
+      const parts = Object.entries(a).filter(([, v]) => v !== undefined && v !== false).map(([k, v]) => `${k}=${v === true ? 'true' : q(String(v))}`);
       return `search(${parts.join(', ')})`;
     }
     const parts = ['slopie search'];
@@ -94,6 +140,8 @@ export class Engine {
     if (a.turns !== undefined) parts.push('--turns', a.turns);
     if (a.project !== undefined) parts.push('--project', shq(a.project));
     if (a.since !== undefined) parts.push('--since', a.since);
+    if (a.latest) parts.push('--latest');
+    if (a.parent !== undefined) parts.push('--parent', a.parent);
     return parts.join(' ');
   }
   private readCall(id: string, from: number, to?: number, fromChar?: number): string {
@@ -137,9 +185,9 @@ export class Engine {
     const inc = o.includeSubagents ?? true;
     if (o.project || o.harness || !inc) {
       keys = new Set();
-      const p = (o.project ?? '').toLowerCase().replace(/\/+$/, '');
+      const p = (o.project === '.' ? process.cwd() : o.project ?? '').toLowerCase().replace(/\/+$/, '');
       for (const s of this.sessions.values()) {
-        if (p && !(s.project ?? '').toLowerCase().includes(p)) continue;
+        if (p && !projectMatches(s.project, p)) continue;
         if (o.harness && s.harness !== o.harness) continue;
         if (!inc && s.parent_kind === 'subagent') continue;
         keys.add(s.key);
@@ -172,8 +220,11 @@ export class Engine {
     if (later) {
       const items = [...later.matchAll(/(\S+) \(([^,)]+), ([^)]+)\)/g)].map(m => ({id: m[1]!, text: m[0]}));
       if (items.length) {
-        const next = (items.find(x => !x.id.startsWith('agent-')) ?? items[0]!).id;
-        return ` Mentioned later in: ${items.slice(0, 6).map(x => x.text).join(', ')}${items.length > 6 ? ` … +${items.length - 6}` : ''}; the work or a decision often continued there. Next: ${this.call({session: next, turns: '-30'})}`;
+        // The most recently active main thread among them (not the first listed).
+        const act = (id: string) => [...this.sessions.values()].find(x => x.id === id)?.end ?? '';
+        const mains = items.filter(x => !x.id.startsWith('agent-'));
+        const next = ([...(mains.length ? mains : items)].sort((a, b) => (act(b.id) < act(a.id) ? -1 : act(b.id) > act(a.id) ? 1 : 0))[0]!).id;
+        return ` Referenced later in: ${items.slice(0, 6).map(x => x.text).join(', ')}${items.length > 6 ? ` … +${items.length - 6}` : ''} (threads that mention this one; not necessarily where it continued). Read one: ${this.call({session: next, turns: '-30'})}`;
       }
     }
     return s.project ? ` Later threads in this project: ${this.call({project: s.project, since: (s.end ?? '').slice(0, 10) || undefined})}` : '';
@@ -197,26 +248,41 @@ export class Engine {
   }
 
   // ------------------------------------------------------------ search
-  private rank(query: string, keys: Set<string> | null, since?: string, until?: string, session?: string): Row[] {
+  /** Candidate turn ids for an FTS expression, scope predicates applied inside the SQL (before ORDER/LIMIT). */
+  private ctxRids(fq: string, keys: Set<string> | null, since: string | undefined, until: string | undefined, limit: number): number[] {
+    try {
+      if (!keys && !since && !until) return (this.db.prepare('select rowid as r from ctx where ctx match ? order by rank limit ?').all(fq, limit) as {r: number}[]).map(r => r.r);
+      const {where, args} = scopeSql(keys, since, until);
+      return (this.db.prepare(`select ctx.rowid as r from ctx join turns t on t.rid = ctx.rowid where ctx match ? and ${where} order by bm25(ctx) limit ?`)
+        .all(fq, ...args, limit) as {r: number}[]).map(r => r.r);
+    } catch { return []; }
+  }
+
+  /** Sessions with at least one turn matching `fq`, scope applied in SQL. */
+  private sessionsMatching(fq: string, keys: Set<string> | null, since?: string, until?: string): Set<string> {
+    try {
+      const {where, args} = scopeSql(keys, since, until);
+      return new Set((this.db.prepare(`select distinct t.skey as k from ctx join turns t on t.rid = ctx.rowid where ctx match ?${where ? ` and ${where}` : ''}`)
+        .all(fq, ...args) as {k: string}[]).map(r => r.k));
+    } catch { return new Set(); }
+  }
+
+  private rank(query: string, keys: Set<string> | null, since?: string, until?: string, session?: string): (Row & {score: number})[] {
     const fq = ftsQuery(query);
     const score = new Map<number, number>();
+    const lane = (rids: number[]) => rids.slice(0, 300).forEach((rid, i) => score.set(rid, (score.get(rid) ?? 0) + 1 / (60 + i)));
     if (fq) {
-      let rids: number[] = [];
-      try { rids = (this.db.prepare('select rowid as r from ctx where ctx match ? order by rank limit 400').all(fq) as {r: number}[]).map(r => r.r); } catch { rids = []; }
-      if (rids.length && (keys || since || until)) {
-        const ok = new Set<number>();
-        for (const r of this.db.prepare(`select rid, skey, ts from turns where rid in (${rids.join(',')})`).all() as {rid: number; skey: string; ts: string | null}[]) {
-          if (keys && !keys.has(r.skey)) continue;
-          if ((since && (r.ts ?? '') < since) || (until && (r.ts ?? '') > until)) continue;
-          ok.add(r.rid);
-        }
-        rids = rids.filter(r => ok.has(r));
-      }
-      rids.slice(0, 300).forEach((rid, i) => score.set(rid, (score.get(rid) ?? 0) + 1 / (60 + i)));
+      lane(this.ctxRids(fq, keys, since, until, 400));
+      // An AND lane: turns holding every word rank on their own, not only through OR.
+      const fa = ftsQuery(query, 'and');
+      if (fa && fa !== fq) lane(this.ctxRids(fa, keys, since, until, 200));
       if (!session) {
         let cards: string[] = [];
-        try { cards = (this.db.prepare('select skey from cards where cards match ? order by bm25(cards, 0, 3.0, 1.0) limit 60').all(fq) as {skey: string}[]).map(r => r.skey); } catch { cards = []; }
-        if (keys) cards = cards.filter(k => keys.has(k));
+        try {
+          cards = keys
+            ? (this.db.prepare('select skey from cards where cards match ? and skey in (select value from json_each(?)) order by bm25(cards, 0, 3.0, 1.0) limit 60').all(fq, JSON.stringify([...keys])) as {skey: string}[]).map(r => r.skey)
+            : (this.db.prepare('select skey from cards where cards match ? order by bm25(cards, 0, 3.0, 1.0) limit 60').all(fq) as {skey: string}[]).map(r => r.skey);
+        } catch { cards = []; }
         const best = new Map<string, number>();
         if (score.size) {
           for (const r of this.db.prepare(`select rid, skey from turns where rid in (${[...score.keys()].join(',')})`).all() as {rid: number; skey: string}[]) {
@@ -232,50 +298,238 @@ export class Engine {
         });
       }
     }
-    const ranked = [...score.keys()].sort((a, b) => score.get(b)! - score.get(a)!).slice(0, 300);
+    const ranked = [...score.keys()].sort((a, b) => score.get(b)! - score.get(a)!).slice(0, 400);
     if (!ranked.length) return [];
     const rows = new Map((this.db.prepare(`select rid, skey, n, role, ts, tool, body from turns where rid in (${ranked.join(',')})`).all() as Row[]).map(r => [r.rid, r]));
-    return ranked.map(r => rows.get(r)).filter((r): r is Row => !!r);
+    return ranked.map(r => rows.get(r)).filter((r): r is Row => !!r).map(r => ({...r, score: score.get(r.rid)!}));
   }
 
-  search(o: {query: string; k?: number; project?: string; harness?: string; since?: string; until?: string; session?: string}): string {
+  /** Main-thread prior: native subagents ×0.6, delegated ×0.85, ≤3 turns ×0.7, main threads a mild length prior (≤ ×1.3). */
+  private prior(s: S): number {
+    let m = s.parent_kind === 'subagent' ? 0.6 : s.parent_kind === 'delegated' ? 0.85 : Math.min(1.3, 1 + 0.1 * Math.log10(Math.max(1, s.n_turns)));
+    if (s.n_turns <= 3) m *= 0.7;
+    return m;
+  }
+
+  /** The family root: the main thread a subagent / delegated chain hangs from (itself for a main thread). */
+  private rootOf(s: S): S {
+    let cur = s;
+    for (let i = 0; i < 8 && cur.parent; i++) {
+      const p = this.parentOf(cur) ?? [...this.sessions.values()].find(x => x.id === cur.parent) ?? null;
+      if (!p || p === cur) break;
+      cur = p;
+    }
+    return cur;
+  }
+
+  private ageText(): string {
+    const built = this.indexedAt ? Date.parse(this.indexedAt) : NaN;
+    if (!Number.isFinite(built)) return 'index: age unknown';
+    const s = Math.max(0, Math.round((Date.now() - built) / 1000));
+    return `index: ${s < 60 ? `${s} s` : s < 3600 ? `${Math.round(s / 60)} min` : s < 172800 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 86400)} days`} old`;
+  }
+
+  private hitOf(s: S, r: {n: number; role: string; ts: string | null; body: string; tool?: string | null}, snip: string, read: string): Hit {
+    const root = this.rootOf(s);
+    return {session: s.id, harness: s.harness, project: s.project, parent: s.parent, root: root.key !== s.key ? root.id : null, role: r.role, turn: r.n, at: r.ts, snippet: snip, read_cmd: read};
+  }
+
+  /** Project basenames closest to the words (for the no-match footer). */
+  private nearProjects(words: string[], n = 3): string[] {
+    const bases = new Map<string, number>();
+    for (const s of this.sessions.values()) { const b = (s.project ?? '').split('/').filter(Boolean).pop(); if (b) bases.set(b, (bases.get(b) ?? 0) + 1); }
+    const ws = words.map(w => w.toLowerCase()).filter(w => w.length >= 3);
+    const scored = [...bases.entries()].map(([b, c]) => {
+      const lb = b.toLowerCase();
+      let d = Infinity;
+      for (const w of ws) d = Math.min(d, lb.includes(w) || w.includes(lb) ? 0 : lev(lb, w));
+      return {b, d, c};
+    }).filter(x => x.d <= 3).sort((a, b) => a.d - b.d || b.c - a.c);
+    return scored.slice(0, n).map(x => x.b);
+  }
+
+  private noMatch(o: {query: string; project?: string; harness?: string; since?: string; until?: string}): string {
+    const ts = terms(o.query);
+    const lines = ['No passages matched.'];
+    const nexts: string[] = [];
+    if (ts.length > 1) {
+      // Relaxed: drop the last word (then keep only the longest one).
+      nexts.push(this.call({query: ts.slice(0, -1).join(' '), project: o.project, since: o.since}));
+      const longest = [...ts].sort((a, b) => b.length - a.length)[0]!;
+      if (ts.length > 2) nexts.push(this.call({query: longest, project: o.project, since: o.since}));
+    }
+    if (o.project || o.since) nexts.push(this.call({query: o.query}));
+    for (const p of this.nearProjects([...ts, ...(o.project ? [o.project] : [])])) if (p !== o.project) nexts.push(this.call({query: o.query, project: p}));
+    if (!nexts.length) nexts.push(this.call({project: '...'}));
+    this.result.next = nexts;
+    lines.push(`Next: ${nexts.join('   or   ')}`);
+    return lines.join('\n');
+  }
+
+  search(o: {query: string; k?: number; project?: string; harness?: string; since?: string; until?: string; session?: string; latest?: boolean; includeSubagents?: boolean}): string {
     const t0 = Date.now();
     const k = Math.max(1, Math.min(Math.trunc(Number(o.k ?? 8)) || 8, 30));
     if (!o.query || !o.query.trim()) return 'query is required.';
     let keys: Set<string> | null;
-    try { keys = this.filters(o); } catch (e) { return (e as Error).message; }
-    if (keys && !keys.size) return `No threads match those filters (project/harness/time). See what exists: ${this.name('threads')}`;
+    // Subagents stay candidates (they are grouped under their parent below, not dropped).
+    try { keys = this.filters({...o, includeSubagents: true}); } catch (e) { return (e as Error).message; }
+    if (keys && !keys.size) return this.noScope(o);
+    if (o.latest) return this.latest({...o, k}, keys, t0);
+    this.result.mode = 'search';
     const cand = this.rank(o.query, keys, o.since, o.until, o.session);
-    if (!cand.length) return `No passages matched. Try other words (the ones the user or agent would have typed), drop filters, or browse threads by project and date: ${this.name('threads')}`;
-    const out: Row[] = [];
-    const per = new Map<string, number>();
-    for (const r of cand) {
-      if ((per.get(r.skey) ?? 0) >= 2) continue;
-      per.set(r.skey, (per.get(r.skey) ?? 0) + 1);
-      out.push(r);
-      if (out.length >= k) break;
+    if (!cand.length) return this.noMatch(o);
+    const ts = uniq(terms(o.query).map(t => t.toLowerCase()));
+    // Per session: its candidate passages, coverage (every non-stopword term somewhere in its matching passages).
+    const bySess = new Map<string, (Row & {score: number})[]>();
+    for (const r of cand) { const l = bySess.get(r.skey); if (l) l.push(r); else bySess.set(r.skey, [r]); }
+    const sk = new Set(bySess.keys());
+    const covered = new Map<string, number>();
+    if (ts.length > 1) {
+      for (const t of ts) for (const key of this.sessionsMatching(`"${t.replace(/"/g, '')}"`, sk, o.since, o.until)) covered.set(key, (covered.get(key) ?? 0) + 1);
     }
-    const ts = terms(o.query);
+    const full = (key: string) => ts.length <= 1 || (covered.get(key) ?? 0) >= ts.length;
+    const rowCov = (r: Row) => { const low = r.body.toLowerCase(); return ts.filter(t => low.includes(stem(t))).length; };
+    type E = {s: S; score: number; tier: number; row: Row; more: number};
+    const entries: E[] = [];
+    for (const [key, rows] of bySess) {
+      const s = this.sessions.get(key);
+      if (!s) continue;
+      const top = Math.max(...rows.map(r => r.score));
+      // The shown passage: most terms, then USER/ASSISTANT over TOOL dumps, then score.
+      const row = [...rows].sort((a, b) => rowCov(b) - rowCov(a) || Number(a.role === 'TOOL') - Number(b.role === 'TOOL') || b.score - a.score)[0]!;
+      entries.push({s, score: top * this.prior(s), tier: full(key) ? 0 : 1, row, more: rows.length - 1});
+    }
+    entries.sort((a, b) => a.tier - b.tier || b.score - a.score);
     const lines: string[] = [];
-    out.forEach((r, i) => {
-      const s = this.sessions.get(r.skey)!;
-      lines.push(`[${i + 1}] ${this.head(s)}`);
+    const hits: Hit[] = [];
+    let shown = 0, idx = 0;
+    const emit = (e: E, indent: string) => {
+      const s = e.s, r = e.row;
       const rl = r.role === 'USER' && s.parent_kind === 'subagent' ? 'PROMPT-FROM-PARENT-AGENT' : r.role;
-      lines.push(`    t${r.n} ${rl}${r.tool ? ' ' + r.tool : ''} ${shortTs(r.ts)}: ${snippet(r.body, ts)}`);
-      lines.push(`    → ${this.readCall(s.id, Math.max(1, r.n - 2), r.n + 4)}`);
-    });
-    // The newest threads among the 20 best candidates (by last activity): ranking is by relevance, and the latest word on
-    // something is often in a later thread.
-    const newest = [...new Set(cand.slice(0, 20).map(r => r.skey))].map(k => this.sessions.get(k)!).filter(s => s && s.parent_kind !== 'subagent')
-      .sort((a, b) => ((b.end ?? '') < (a.end ?? '') ? -1 : (b.end ?? '') > (a.end ?? '') ? 1 : 0)).slice(0, 3);
-    if (newest.length > 1) lines.push(`Newest threads with these words: ${newest.map(s => `${s.id} (${s.harness}, last active ${(s.end ?? '?').slice(0, 10)}${(s.title ?? '').trim() ? `, "${(s.title ?? '').trim().slice(0, 50)}"` : ''})`).join('; ')}.`);
-    const threadsAll = new Set(cand.map(r => r.skey)).size, shown = new Set(out.map(r => r.skey)).size;
-    const more = threadsAll - shown;
-    lines.push(`(${out.length} hits shown; ${cand.length} candidates across ${threadsAll} threads${more > 0 ? `, ${more} more threads not shown` : ''}; ${Date.now() - t0} ms.) `
-      + 'If these miss: rephrase with words the hits use, or add project/since filters.');
-    const top = this.sessions.get(out[0]!.skey)!;
-    lines.push(`Next: ${this.readCall(top.id, Math.max(1, out[0]!.n - 2), out[0]!.n + 4)} reads around hit 1; ${this.grepCall(top.id, o.query.trim())} lists every match inside that thread.`);
+      const snip = snippet(r.body, ts);
+      const read = this.readCall(s.id, Math.max(1, r.n - 2), r.n + 4);
+      lines.push(`${indent}    t${r.n} ${rl}${r.tool ? ' ' + r.tool : ''} ${shortTs(r.ts)}: ${snip}`);
+      lines.push(`${indent}    → ${read}`);
+      if (e.more > 0) lines.push(`${indent}    +${e.more} more in this thread: ${this.grepCall(s.id, o.query.trim())}`);
+      hits.push(this.hitOf(s, r, snip, read));
+      shown++;
+    };
+    const tag = (e: E) => (e.tier ? ' (partial match)' : '');
+    if (o.includeSubagents || o.session) {
+      for (const e of entries) {
+        if (shown >= k) break;
+        lines.push(`[${++idx}]${tag(e)} ${this.head(e.s)}`);
+        emit(e, '');
+      }
+    } else {
+      // Families: a child and its root parent; at most two results per family, the parent first.
+      const fams = new Map<string, E[]>();
+      for (const e of entries) { const rk = this.rootOf(e.s).key; const l = fams.get(rk); if (l) l.push(e); else fams.set(rk, [e]); }
+      const done = new Set<string>();
+      for (const e of entries) {
+        if (shown >= k) break;
+        const rk = this.rootOf(e.s).key;
+        if (done.has(rk)) continue;
+        done.add(rk);
+        const fam = fams.get(rk)!;
+        let parent = fam.find(x => x.s.key === rk) ?? null;
+        if (!parent && rk !== e.s.key) {
+          // The parent matched outside the candidates: it is still shown first (its best passage), the child under it.
+          const root = this.sessions.get(rk);
+          const fq = ftsQuery(o.query);
+          if (root && fq && (!keys || keys.has(rk))) {
+            const rid = this.ctxRids(fq, new Set([rk]), o.since, o.until, 1)[0];
+            const row = rid === undefined ? undefined : this.db.prepare('select rid, skey, n, role, ts, tool, body from turns where rid=?').get(rid) as Row | undefined;
+            if (row) parent = {s: root, score: e.score, tier: e.tier, row, more: 0};
+          }
+        }
+        const kids = fam.filter(x => x !== parent);
+        if (parent) {
+          lines.push(`[${++idx}]${fam.every(x => x.tier) ? tag(parent) : ''} ${this.head(parent.s)}`);
+          emit(parent, '');
+          const c = kids[0];
+          if (c && shown < k) {
+            lines.push(`    ↳ ${c.s.parent_kind === 'delegated' ? 'delegated' : 'subagent'}: ${ttl(c.s) || c.s.id} (t${c.row.n}) · ${c.s.harness} ${c.s.id} · ${c.s.n_turns} turns${tag(c)}`);
+            emit(c, '    ');
+          }
+          if (kids.length > 1) lines.push(`    +${kids.length - 1} more child threads matched: ${this.call({parent: parent.s.id})}`);
+        } else {
+          // Only the child holds the words: it ranks on its own, labelled with its parent.
+          lines.push(`[${++idx}]${tag(e)} ${this.head(e.s)}`);
+          emit(e, '');
+          if (kids.length > 1) lines.push(`    +${kids.length - 1} more threads of the same parent matched: ${this.call({parent: e.s.parent ?? e.s.id})}`);
+        }
+      }
+    }
+    this.result.hits = hits;
+    this.result.partial = entries.length > 0 && entries[0]!.tier > 0;
+    const threadsAll = bySess.size;
+    lines.push(`(${hits.length} passages from ${idx} result groups; ${cand.length} candidates across ${threadsAll} threads; ${Date.now() - t0} ms.) If these miss: rephrase with words the hits use, or add project/since filters.`);
+    const first = hits[0]!;
+    const nexts = [first.read_cmd, this.grepCall(first.session, o.query.trim()), this.call({query: o.query.trim(), project: o.project, since: o.since, latest: true})];
+    this.result.next = nexts;
+    lines.push(`Next: ${nexts[0]} reads around hit 1; ${nexts[1]} lists every match inside that thread; ${nexts[2]} lists the threads with these words newest first.`);
     return lines.join('\n');
+  }
+
+  /** `--latest`: every eligible matching thread, newest last activity first, each with its LAST matching USER/ASSISTANT passage. */
+  private latest(o: {query: string; k: number; project?: string; since?: string; until?: string; includeSubagents?: boolean}, keys: Set<string> | null, t0: number): string {
+    this.result.mode = 'latest';
+    const ts = uniq(terms(o.query).map(t => t.toLowerCase()));
+    const fq = ftsQuery(o.query);
+    if (!fq) return this.noMatch(o);
+    let pool: Set<string> | null = null;
+    for (const t of ts) {
+      const m = this.sessionsMatching(`"${t.replace(/"/g, '')}"`, keys, o.since, o.until);
+      const prev = pool as Set<string> | null;
+      pool = prev ? new Set<string>([...prev].filter((x: string) => m.has(x))) : m;
+    }
+    let partial = false;
+    if (!pool || !pool.size) { pool = this.sessionsMatching(fq, keys, o.since, o.until); partial = ts.length > 1; }
+    if (!pool.size) return this.noMatch(o);
+    const ss = [...pool].map(k => this.sessions.get(k)!).filter(s => s && (o.includeSubagents || s.parent_kind !== 'subagent'))
+      .sort((a, b) => ((b.end ?? '') < (a.end ?? '') ? -1 : (b.end ?? '') > (a.end ?? '') ? 1 : 0));
+    const lastRow = (key: string, expr: string, chat: boolean) => {
+      const {where, args} = scopeSql(null, o.since, o.until);
+      try {
+        return this.db.prepare(`select t.rid, t.skey, t.n, t.role, t.ts, t.tool, t.body from ctx join turns t on t.rid = ctx.rowid where ctx match ? and t.skey = ?${chat ? ` and t.role in ('USER','ASSISTANT')` : ''}${where ? ` and ${where}` : ''} order by t.n desc limit 1`)
+          .get(expr, key, ...args) as Row | undefined;
+      } catch { return undefined; }
+    };
+    const fa = ftsQuery(o.query, 'and') ?? fq;
+    const lines = [`${ss.length} threads with ${partial ? 'some of' : 'all of'} these words, newest last activity first${partial ? ' (partial match)' : ''}:`];
+    const hits: Hit[] = [];
+    ss.slice(0, o.k).forEach((s, i) => {
+      const r = lastRow(s.key, fa, true) ?? lastRow(s.key, fq, true) ?? lastRow(s.key, fq, false);
+      lines.push(`[${i + 1}] ${this.head(s)}`);
+      if (!r) return;
+      const snip = snippet(r.body, ts);
+      const read = this.readCall(s.id, Math.max(1, r.n - 2), r.n + 4);
+      lines.push(`    last match t${r.n} ${r.role}${r.tool ? ' ' + r.tool : ''} ${shortTs(r.ts)}: ${snip}`);
+      lines.push(`    → ${read}`);
+      hits.push(this.hitOf(s, r, snip, read));
+    });
+    if (ss.length > o.k) lines.push(`(${ss.length - o.k} older threads not shown: add since/until or project.)`);
+    lines.push(`(${Date.now() - t0} ms.)`);
+    this.result.hits = hits;
+    this.result.partial = partial;
+    const nexts = hits.length ? [hits[0]!.read_cmd, this.call({session: hits[0]!.session, turns: '-30'})] : [];
+    this.result.next = nexts;
+    if (nexts.length) lines.push(`Next: ${nexts[0]} reads around the newest match; ${nexts[1]} reads that thread's end.`);
+    return lines.join('\n');
+  }
+
+  /** Filters that leave no thread: say so, with the closest projects and the cwd's basename. */
+  private noScope(o: {query?: string; project?: string; since?: string}): string {
+    const nexts: string[] = [];
+    if (o.project) {
+      for (const p of this.nearProjects([o.project, ...terms(o.query ?? '')])) if (p !== o.project) nexts.push(this.call({query: o.query, project: p, since: o.since}));
+      const cwd = path.basename(process.cwd());
+      if (cwd && cwd !== o.project && [...this.sessions.values()].some(s => (s.project ?? '').toLowerCase().includes(cwd.toLowerCase()))) nexts.push(this.call({query: o.query, project: cwd, since: o.since}));
+    }
+    nexts.push(o.query ? this.call({query: o.query}) : this.call({since: o.since}).replace(/\(\)$/, '(project=...)'));
+    this.result.next = uniq(nexts);
+    return `No threads match those filters (project/harness/time)${o.project ? `: no thread's working directory contains ${pyRepr(o.project)}` : ''}. Next: ${uniq(nexts).join('   or   ')}`;
   }
 
   // ------------------------------------------------------------ the one tool
@@ -286,34 +540,58 @@ export class Engine {
    *   query + session       every exact match inside that thread, then the best passages with the words
    *   neither               list threads, newest first (project/harness/since/until filter them)
    */
-  find(o: {query?: string; session?: string; turns?: string | number; project?: string; harness?: string; since?: string; until?: string; k?: number}): string {
+  find(o: FindArgs): string {
+    return this.findResult(o).text;
+  }
+
+  /** find() with its structured form. Every reply starts with the index age; the whole text is scrubbed once more. */
+  findResult(o: FindArgs): FindResult {
+    this.result = {mode: 'search', partial: false, hits: [], next: []};
+    let body: string;
+    try { body = this.find0(o); } catch (e) { this.result.mode = 'error'; body = `error: ${(e as Error).message}`; }
+    const text = scrub([`(${this.ageText()})`, ...this.notes, body].join('\n'));
+    return {...this.result, hits: this.result.hits.map(h => ({...h, snippet: scrub(h.snippet)})), indexed_at: this.indexedAt, text};
+  }
+
+  private find0(o: FindArgs): string {
     const text = (o.query ?? '').trim();
     const turns = o.turns === undefined || o.turns === null || o.turns === '' ? null : String(o.turns).trim();
+    if (o.parent && !o.session) {
+      this.result.mode = 'list';
+      return this.threads({parent: o.parent, include_subagents: true, text: text || undefined, limit: 60});
+    }
     if (o.session) {
       if (text) return this.inside(o.session, text);
+      this.result.mode = 'read';
       const r = parseTurns(turns);
       if (!r) return `turns must look like "120-160", "-30" (the last 30) or "120" (from turn 120). Example: ${this.call({session: o.session, turns: '-30'})}`;
       return this.read({session: o.session, from_turn: r.from, to_turn: r.to, from_char: r.char});
     }
     if (turns) return `turns needs a session. Example: ${this.call({session: '<id>', turns: '-30'})}`;
-    if (text) return this.search({query: text, k: o.k, project: o.project, harness: o.harness, since: o.since, until: o.until});
-    return this.list({project: o.project, harness: o.harness, since: o.since, until: o.until});
+    if (text) return this.search({query: text, k: o.k, project: o.project, harness: o.harness, since: o.since, until: o.until, latest: !!o.latest, includeSubagents: !!o.includeSubagents});
+    this.result.mode = 'list';
+    return this.list({project: o.project, harness: o.harness, since: o.since, until: o.until, includeSubagents: !!o.includeSubagents});
   }
 
   /** Threads newest first (up to 60), each with its opening ask; ends with the call that reads the newest one's end. */
-  list(o: {project?: string; harness?: string; since?: string; until?: string}): string {
-    const out = this.threads({...o, limit: 60}).split('\n').filter(l => !l.startsWith('[more: ') && !l.startsWith('    last: '));
+  list(o: {project?: string; harness?: string; since?: string; until?: string; includeSubagents?: boolean}): string {
+    const out = this.threads({...o, include_subagents: !!o.includeSubagents, limit: 60}).split('\n').filter(l => !l.startsWith('[more: ') && !l.startsWith('    last: '));
     const m = /^(\d+) threads/.exec(out[0] ?? '');
     const total = m ? Number(m[1]) : 0;
-    if (!total) return `No threads match those filters. Drop one, or search by words: ${this.name('search')}`;
+    if (!total) return this.noScope(o);
     if (total > 60) out.push(`(${total - 60} older threads not shown: narrow with since/until, or add a query.)`);
     const first = /^- (\S+) \|/.exec(out[1] ?? '');
-    if (first) out.push(`Next: ${this.call({session: first[1]!, turns: '-30'})} reads the end of the newest thread.`);
+    for (const l of out) {
+      const m2 = /^- (\S+) \| (\S+) \| (.*?) \| (\S+ \S+) → (\S+ \S+) \|/.exec(l);
+      if (m2) this.result.hits.push({session: m2[1]!, harness: m2[2]!, project: m2[3]!, parent: null, root: null, role: '', turn: 0, at: m2[5]!, snippet: '', read_cmd: this.call({session: m2[1]!, turns: '-30'})});
+    }
+    if (first) { this.result.next = [this.call({session: first[1]!, turns: '-30'})]; out.push(`Next: ${this.result.next[0]} reads the end of the newest thread.`); }
     return out.join('\n');
   }
 
   /** query + session: every exact (case-insensitive) match in reading order, then the best passages with the words. */
   inside(session: string, text: string): string {
+    this.result.mode = 'inside';
     const {s, err} = this.resolve(session);
     if (err || !s) return err!;
     const rx = new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
@@ -321,6 +599,7 @@ export class Engine {
     const MAX = 60;
     const parent = s.parent && this.hitParent ? `, ${relation(s.parent_kind, s.parent)}` : '';
     const out = [`${hits.length} exact matches for ${pyRepr(text)} in ${s.harness} ${s.id} (${s.n_turns} turns, reading order${parent}):`, ...hits.slice(0, MAX).map(h => h.line)];
+    this.result.hits = hits.slice(0, MAX).map(h => this.hitOf(s, {n: h.n, role: h.role, ts: h.ts, body: ''}, h.line, this.readCall(s.id, Math.max(1, h.n - 2), Math.min(s.n_turns, h.n + 4))));
     if (hits.length > MAX) out.push(`[${hits.length - MAX} more matches from t${hits[MAX]!.n} on: ${this.readCall(s.id, hits[MAX]!.n, Math.min(s.n_turns, hits[MAX]!.n + 39))}, or use more specific text]`);
     if (partial) out.push(`[partial scan: ${partial}.]`);
     let firstN = hits[0]?.n ?? 0;
@@ -448,6 +727,7 @@ export class Engine {
       try {
         const sub = s.harness === 'claude' && s.parent_kind === 'subagent' ? s.parent : null;
         const parsed = readSession(s.best, s.harness as Harness, sub, {text: Number.MAX_SAFE_INTEGER, output: Number.MAX_SAFE_INTEGER});
+        // Raw, uncapped text: grepHits scrubs every field it matches before a snippet is cut from it.
         if (parsed && parsed.turns.length >= s.n_turns) return {turns: parsed.turns, partial: null};
         why = 'its raw source no longer matches the record';
       } catch (e) {
@@ -462,19 +742,24 @@ export class Engine {
     return {turns, partial: `searched the record only (${why}); text the record shortens was not searched`};
   }
 
-  private grepHits(s: S, rx: RegExp): {hits: {n: number; line: string}[]; partial: string | null} {
-    const hits: {n: number; line: string}[] = [];
+  private grepHits(s: S, rx: RegExp): {hits: {n: number; role: string; ts: string | null; line: string}[]; partial: string | null} {
+    const hits: {n: number; role: string; ts: string | null; line: string}[] = [];
     const {turns, partial} = this.fullTurns(s);
     turns.slice(0, s.n_turns).forEach((t, i) => {
       for (const field of ['text', 'output'] as const) {
-        const v = (field === 'text' ? t.text : t.output) ?? '';
-        if (!v) continue;
+        const raw = (field === 'text' ? t.text : t.output) ?? '';
+        if (!raw) continue;
+        rx.lastIndex = 0;
+        if (!rx.test(raw)) continue;
+        // Secrets masked and binary elided before any snippet is cut (the raw source is uncapped and unredacted);
+        // the turn list is untouched, so turn numbers match the record.
+        const v = scrub(raw);
         rx.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = rx.exec(v))) {
           if (m[0] === '') { rx.lastIndex++; continue; }
           const a = Math.max(0, m.index - 140), b = Math.min(v.length, m.index + m[0].length + 140);
-          hits.push({n: i + 1, line: `t${i + 1} ${t.role}${t.role === 'TOOL' ? ' ' + (t.tool ?? '') : ''}${field === 'output' ? ' (output)' : ''} ${shortTs(t.ts)}: ` + (a ? '…' : '') + ws(v.slice(a, b)) + (b < v.length ? '…' : '')});
+          hits.push({n: i + 1, role: t.role, ts: t.ts, line: `t${i + 1} ${t.role}${t.role === 'TOOL' ? ' ' + (t.tool ?? '') : ''}${field === 'output' ? ' (output)' : ''} ${shortTs(t.ts)}: ` + (a ? '…' : '') + ws(v.slice(a, b)) + (b < v.length ? '…' : '')});
         }
       }
     });
@@ -517,4 +802,18 @@ export function parseTurns(t: string | null): {from: number | null; to: number |
   if (!m) return null;
   const from = Number(m[2]) * (m[1] ? -1 : 1);
   return {from, to: m[4] !== undefined && !m[1] ? Number(m[4]) : null, char: m[3] !== undefined ? Number(m[3]) : null};
+}
+
+export interface FindArgs {
+  query?: string; session?: string; turns?: string | number; project?: string; harness?: string; since?: string; until?: string; k?: number;
+  latest?: boolean; includeSubagents?: boolean; parent?: string;
+}
+
+/** `--project`: the working directory contains it (a path or any path segment), case-insensitively. */
+export function projectMatches(project: string | null, p: string): boolean {
+  const lp = (project ?? '').toLowerCase();
+  if (!p) return true;
+  if (lp.includes(p)) return true;
+  const segs = lp.split('/').filter(Boolean);
+  return p.split('/').filter(Boolean).every(x => segs.includes(x));
 }

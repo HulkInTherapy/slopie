@@ -14,7 +14,7 @@ export const MCP_INSTRUCTIONS = "slopie: search the user's past coding-agent ses
 export const MCP_TOOLS = [
   {
     name: 'search',
-    description: "Search everything the user and their agents did in past coding sessions (Claude Code, Codex, pi). "
+    description: "Search the user's past coding-agent sessions (Claude Code, Codex, pi). "
       + 'query finds passages; session + turns reads a thread; query + session searches inside one thread; project or since alone lists threads. Every reply ends with the exact next call.',
     inputSchema: {
       type: 'object',
@@ -25,6 +25,9 @@ export const MCP_TOOLS = [
         project: {type: 'string', description: 'Only threads whose working directory contains this, e.g. "my-app".'},
         since: {type: 'string', description: 'Only activity on or after this date, e.g. "2026-11-01".'},
         until: {type: 'string', description: 'Only activity on or before this date, e.g. "2026-11-07".'},
+        latest: {type: 'boolean', description: 'With query: the threads with these words, newest last activity first, each with its last matching passage, e.g. "true".'},
+        include_subagents: {type: 'boolean', description: 'List subagent threads as their own results (default: grouped under their parent), e.g. "true".'},
+        parent: {type: 'string', description: "A session id: list that thread's child threads (subagents, delegated tasks), e.g. \"9c4d2f18\"."},
       },
     },
   },

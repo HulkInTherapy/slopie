@@ -4,11 +4,15 @@
  */
 import {NOTE_B_TEMPLATE} from './spec.js';
 
-/** One line on the `slopie search` CLI (R6 measured the four-verb form as arm P2; this one-verb form is arm P3). */
-export const CLI_LINE = 'If the slopie command is on PATH, start with it rather than rg: it searches these same records faster and more cheaply. '
-  + 'slopie search <words> [--project P --since D] finds passages; slopie search <words> --session ID searches inside one thread; '
-  + 'slopie search --session ID --turns 120-160 reads turns (--turns -30 reads the end); slopie search --project P --since D lists threads. '
-  + 'Each reply ends with the exact next command. Use rg/sed on the files for anything else.';
+/**
+ * The `slopie search` recipes, first in the note (1.9.1): the three most useful calls before the format. R6 measured
+ * the four-verb form as arm P2; the one-verb form is arm P3.
+ */
+export const CLI_LINE = "Your past coding-agent sessions with the user (Claude Code, Codex, pi) are searchable. If the slopie command is on PATH, start with it rather than rg:\n"
+  + '- find: slopie search <words> [--project P --since D]  (add --session ID to search inside one thread)\n'
+  + "- read a session's end: slopie search --session ID --turns -30  (--turns 120-160 reads a range)\n"
+  + '- latest: slopie search <words> --latest  (threads with these words, newest activity first)\n'
+  + 'Each reply starts with the index age and ends with the exact next command. Use rg/sed on the files below for anything else.';
 
 /** R5 §7 (iii): guidance for roster and latest-decision questions. Evaluated on the hard set; see R6. */
 export const GUIDANCE = "For 'which threads' questions, include threads that dispatched, coordinated or tracked the work, and long threads that started before the window but were active in it. "
@@ -37,6 +41,7 @@ export interface NoteOptions {
 
 export function agentNote(recordsDir: string, o: NoteOptions = {}): string {
   let note = NOTE_B_TEMPLATE.split('{RECORDS}').join(recordsDir);
+  const cli = o.cli ?? true;
   if (o.sidecar) {
     const lines = note.split('\n');
     lines.splice(lines.length - 1, 0, SIDECAR_LINE);
@@ -44,6 +49,5 @@ export function agentNote(recordsDir: string, o: NoteOptions = {}): string {
   }
   if (o.protocol ?? true) note += '\n' + PROTOCOL;
   if (o.guidance) note += '\n' + GUIDANCE;
-  if (o.cli ?? true) note += '\n' + CLI_LINE;
-  return note;
+  return cli ? CLI_LINE + '\n\n' + note : note;
 }

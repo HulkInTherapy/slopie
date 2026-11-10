@@ -27,6 +27,7 @@ import {runJobs, type ParseJob, type ParseResult} from './worker.js';
 import {annotateRelay, delegEdges, relayLinks, type Deleg, type Relay} from './deleg.js';
 import {backlinks, type Later} from './refs.js';
 import {RecordIndex, parseRecordText} from './index-db.js';
+import {REDACT_VERSION, scrub, scrubRec} from './scrub.js';
 
 /** Bump when the rendered format changes: every record is rewritten once. */
 export const FORMAT_VERSION = 4;
@@ -75,6 +76,8 @@ export interface SyncResult {
   phases: Record<string, number>;
   /** Peak resident memory of the process (all parser threads included), MB. */
   maxRssMb: number;
+  /** Record files re-scrubbed in place by a redaction migration (absent when none ran). */
+  redacted?: number;
 }
 
 interface SourceState {
@@ -120,6 +123,8 @@ interface State {
   v: number;
   format: number;
   parse?: number;
+  /** REDACT_VERSION the records were last scrubbed with (absent: never, the pre-1.9.1 records). */
+  redact?: number;
   sidecar: boolean;
   sources: Record<string, SourceState>;
   sessions: Record<string, SessionState>;
@@ -255,6 +260,30 @@ function adoptRecordFiles(dir: string, prev: State): void {
       known.add(id);
     }
   }
+}
+
+/** One INDEX.tsv line, every field scrubbed (tabs never appear in a mask). */
+const scrubLine = (line: string) => line.split('\t').map(f => scrub(f)).join('\t');
+
+/**
+ * The redaction migration's file pass: every record and sidecar under the records root is scrubbed in place
+ * (atomically, mtime kept). Retained records whose sources are gone are re-redacted, never dropped; harness
+ * originals are never touched (they are not under the records root). Returns the number of files changed.
+ */
+function scrubRecordFiles(dir: string): number {
+  let changed = 0;
+  for (const h of ['claude', 'codex', 'pi']) {
+    for (const f of listFiles(path.join(dir, h), x => x.endsWith('.txt'))) {
+      let text: string, st: fs.Stats;
+      try { st = fs.statSync(f); text = fs.readFileSync(f, 'utf8'); } catch { continue; }
+      const clean = scrub(text);
+      if (clean === text) continue;
+      writeAtomic(f, clean);
+      try { fs.utimesSync(f, st.atime, st.mtime); } catch { /* best effort */ }
+      changed++;
+    }
+  }
+  return changed;
 }
 
 /** The title a prompt-only record carries. */
@@ -409,8 +438,13 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     state = {...state, sessions: Object.fromEntries(Object.entries(state.sessions).map(([k, v]) => [k, {...v, sig: ''}]))};
   }
   if (state && (state.parse ?? 1) !== PARSE_VERSION) state = {...state, sources: {}};
+  // Redaction migration: every record file on disk (retained ones whose sources are gone included) is
+  // re-scrubbed in place, every live one is rendered again, and the index is rebuilt from scratch.
+  const migrating = (state?.redact ?? 0) !== REDACT_VERSION;
+  const migrate = migrating ? scrubRecordFiles(dir) : 0;
+  if (state && migrating) state = {...state, sessions: Object.fromEntries(Object.entries(state.sessions).map(([k, v]) => [k, {...v, sig: '', line: scrubLine(v.line)}]))};
   const prev: State = state ?? {v: STATE_VERSION, format: FORMAT_VERSION, sidecar, sources: {}, sessions: {}};
-  const next: State = {v: STATE_VERSION, format: FORMAT_VERSION, parse: PARSE_VERSION, sidecar, sources: {}, sessions: {}};
+  const next: State = {v: STATE_VERSION, format: FORMAT_VERSION, parse: PARSE_VERSION, redact: REDACT_VERSION, sidecar, sources: {}, sessions: {}};
   adoptRecordFiles(dir, prev);
 
   // ---- 1. discover
@@ -633,10 +667,10 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     return `${real}/${path.basename(rel)}`;
   };
   const index = o.index === false ? null : RecordIndex.open(stateDir(dir));
-  if (index && o.full) index.clear();
+  if (index && (o.full || migrating)) index.clear();
   const indexed = index ? index.keys() : new Map<string, string>();
   const needParse: {s: Merged; sig: string}[] = [];
-  const sigOf = (s: Merged) => hash([FORMAT_VERSION, sidecar, s.best, s.best ? next.sources[s.best]?.size : 0, s.best ? next.sources[s.best]?.mtimeMs : 0, s.nTurns, s.sources, s.codexTitle ?? null,
+  const sigOf = (s: Merged) => hash([FORMAT_VERSION, REDACT_VERSION, sidecar, s.best, s.best ? next.sources[s.best]?.size : 0, s.best ? next.sources[s.best]?.mtimeMs : 0, s.nTurns, s.sources, s.codexTitle ?? null,
     s.parent, s.parentKind, (kids.get(s.id) ?? []).map(c => [c.id, c.kind]), s.archiveOnly, s.history ? s.history.length : -1, s.importCut ?? null, (s.later ?? []).map(x => x.id), (s.relays ?? []).map(r => [r.title, r.child])]);
   const writeOne = (s: Merged, rec: RecSession, sig: string) => {
     rec.parent = s.parent; rec.parentKind = s.parentKind;
@@ -647,6 +681,9 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
       rec.start = rec.turns[0]?.ts ?? rec.start;
     }
     if (s.harness === 'codex') rec.title = s.codexTitle || rec.title;
+    // Parsed turns were scrubbed before their caps (format.ts recTurn); titles and relay notes are scrubbed here.
+    rec.title = scrub(rec.title);
+    if (s.relays?.length) for (const t of rec.turns) if (t.role === 'USER' && t.text.startsWith('Delegated task ')) t.text = scrub(t.text);
     const rel = canonicalRel(recordRelPath(rec));
     const file = path.join(dir, rel);
     mkdirPrivate(path.dirname(file), dir);
@@ -680,14 +717,14 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
       next.sessions[s.key] = {...old, kept: true};
       if (index && !indexed.has(s.key)) {
         const rec = parseRecordText(fs.readFileSync(path.join(dir, old.rel), 'utf8'));
-        if (rec) index.put(s.key, rec.session, {...rec.header, rel: old.rel, best: null, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, old.sig);
+        if (rec) index.put(s.key, scrubRec(rec.session), {...rec.header, rel: old.rel, best: null, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, old.sig);
       }
       continue;
     }
     if (old && old.sig === sig && fileOk && index) {
       // Record unchanged, index row missing or stale: rebuild the row from the record text.
       const rec = parseRecordText(fs.readFileSync(path.join(dir, old.rel), 'utf8'));
-      if (rec) { index.put(s.key, rec.session, {...rec.header, rel: old.rel, best: s.best, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, sig); next.sessions[s.key] = old; continue; }
+      if (rec) { index.put(s.key, scrubRec(rec.session), {...rec.header, rel: old.rel, best: s.best, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, sig); next.sessions[s.key] = old; continue; }
     }
     if (s.history) {
       const rec: RecSession = {harness: 'claude', id: s.id, project: s.project, title: PROMPT_ONLY_TITLE, start: s.start, end: s.end, parent: null, parentKind: null,
@@ -713,7 +750,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     next.sessions[key] = {...ss, kept: true};
     if (index && !indexed.has(key)) {
       const rec = parseRecordText(fs.readFileSync(path.join(dir, ss.rel), 'utf8'));
-      if (rec) index.put(key, rec.session, {...rec.header, rel: ss.rel, best: null, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, ss.sig);
+      if (rec) index.put(key, scrubRec(rec.session), {...rec.header, rel: ss.rel, best: null, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, ss.sig);
     }
   }
   live.clear();
@@ -746,13 +783,14 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   }
   if (index) {
     for (const key of indexed.keys()) if (!next.sessions[key]) index.remove(key);
-    index.finish(!!o.full || result.written > 200);
+    index.finish(!!o.full || migrating || result.written > 200, migrating);
   }
 
   // ---- 6. INDEX.tsv and state
   const rows = Object.entries(next.sessions).sort(([ka, a], [kb, b]) => (a.start < b.start ? -1 : a.start > b.start ? 1 : ka < kb ? -1 : 1));
-  writeAtomic(path.join(dir, 'INDEX.tsv'), INDEX_HEADER + '\n' + rows.map(([, s]) => s.line).join('\n') + '\n');
+  writeAtomic(path.join(dir, 'INDEX.tsv'), INDEX_HEADER + '\n' + rows.map(([, s]) => (s.line = scrubLine(s.line))).join('\n') + '\n');
   writeAtomic(path.join(stateDir(dir), 'state.json'), JSON.stringify(next));
+  if (migrate) result.redacted = migrate;
   mark('index');
   for (const [, s] of rows) {
     result.byHarness[s.harness] = (result.byHarness[s.harness] ?? 0) + 1;

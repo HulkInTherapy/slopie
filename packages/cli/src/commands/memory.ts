@@ -3,11 +3,11 @@
  */
 import fs from 'node:fs';
 import process from 'node:process';
-import {spawn} from 'node:child_process';
+import {spawn, type ChildProcess} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {
   Engine, NoIndexError, SyncBusyError, VERSION, continuationPointer, hasRecord, isContinuation, parseHookInput, paths, readForgetList, legacyForgotten,
-  serveMcp, sourceId, syncRecords, writeForgetList, type ForgetEntry, type SyncResult,
+  scrub, serveMcp, sourceId, syncRecords, writeForgetList, type ForgetEntry, type SyncResult,
 } from '@potsherd/core';
 import {print, printJson, UserError, type GlobalOptions} from '../output.js';
 
@@ -65,7 +65,7 @@ function engine(o: RecordsOptions): Engine {
 function withEngine(o: RecordsOptions, fn: (e: Engine) => string): number {
   const e = engine(o);
   try {
-    const text = fn(e);
+    const text = scrub(fn(e));
     if (o.json) printJson({text}); else print(text);
     return 0;
   } finally {
@@ -76,8 +76,41 @@ function withEngine(o: RecordsOptions, fn: (e: Engine) => string): number {
 const num = (v: unknown) => (v === undefined || v === null || v === '' ? undefined : Number(v));
 
 /** `slopie search`: the one lookup verb (passages, a thread's turns, matches inside a thread, or a thread list). */
-export function runSearch(o: RecordsOptions & {query?: string; k?: unknown; project?: string; harness?: string; since?: string; until?: string; session?: string; turns?: string}): number {
-  return withEngine(o, e => e.find({query: o.query, k: num(o.k), project: o.project, harness: o.harness, since: o.since, until: o.until, session: o.session, turns: o.turns}));
+/**
+ * Before a search: an incremental sync with a hard budget (1.5 s), under the sync's own lock. The sync runs
+ * detached, so it is never killed mid-write: when it does not finish in time the search reads the index as it
+ * is and says so. Skipped when the index is under 60 s old, or with SLOPIE_NO_REFRESH=1.
+ */
+export async function refreshIndex(o: GlobalOptions & {recordsDir?: string}, budgetMs = 1500): Promise<string | null> {
+  if (process.env['SLOPIE_NO_REFRESH'] === '1' || process.env['SLOPIE_NO_SYNC'] === '1') return null;
+  const dir = paths.recordsDir(o.recordsDir);
+  const idx = `${dir}/.slopie/index.sqlite`;
+  try { if (Date.now() - fs.statSync(idx).mtimeMs < 60_000) return null; } catch { return null; }
+  const child = spawnBackgroundSync(o);
+  if (!child) return null;
+  const finished = await new Promise<boolean>(resolve => {
+    const t = setTimeout(() => resolve(false), budgetMs);
+    child.once('exit', () => { clearTimeout(t); resolve(true); });
+    child.once('error', () => { clearTimeout(t); resolve(true); });
+  });
+  if (finished) return null;
+  child.removeAllListeners();
+  return `(refresh did not finish in ${(budgetMs / 1000).toFixed(1)} s; searched the existing index. It keeps running in the background.)`;
+}
+
+export async function runSearch(o: RecordsOptions & {query?: string; k?: unknown; project?: string; harness?: string; since?: string; until?: string; session?: string; turns?: string;
+  latest?: boolean; includeSubagents?: boolean; parent?: string}): Promise<number> {
+  const note = await refreshIndex(o);
+  const e = engine(o);
+  try {
+    if (note) e.notes.push(note);
+    const r = e.findResult({query: o.query, k: num(o.k), project: o.project, harness: o.harness, since: o.since, until: o.until, session: o.session, turns: o.turns,
+      latest: o.latest, includeSubagents: o.includeSubagents, parent: o.parent});
+    if (o.json) printJson(r); else print(r.text);
+    return 0;
+  } finally {
+    e.close();
+  }
 }
 
 export function runRead(o: RecordsOptions & {session: string; from?: unknown; to?: unknown; maxChars?: unknown; fromChar?: unknown}): number {
@@ -93,21 +126,23 @@ export function runGrep(o: RecordsOptions & {session: string; pattern: string; r
 }
 
 export async function runMcp(o: RecordsOptions): Promise<number> {
-  await serveMcp({version: VERSION, ...(o.recordsDir ? {recordsDir: o.recordsDir} : {})});
+  await serveMcp({version: VERSION, ...(o.recordsDir ? {recordsDir: o.recordsDir} : {}), refresh: () => refreshIndex(o)});
   return 0;
 }
 
 /** Re-runs this CLI detached: `slopie sync --quiet --if-idle` (never blocks the caller). */
-export function spawnBackgroundSync(o: GlobalOptions & {recordsDir?: string} = {}): void {
-  if (process.env['SLOPIE_NO_SYNC'] === '1') return;
+export function spawnBackgroundSync(o: GlobalOptions & {recordsDir?: string} = {}): ChildProcess | null {
+  if (process.env['SLOPIE_NO_SYNC'] === '1') return null;
   const entry = process.argv[1];
-  if (!entry) return;
+  if (!entry) return null;
   const args = [entry, 'sync', '--quiet', '--if-idle'];
   for (const [flag, v] of [['--claude-dir', o.claudeDir], ['--codex-dir', o.codexDir], ['--pi-dir', o.piDir], ['--potsherd-dir', o.potsherdDir], ['--records-dir', o.recordsDir]] as const) if (v) args.push(flag, v);
   try {
     const child = spawn(process.execPath, args, {detached: true, stdio: 'ignore', env: {...process.env, POTSHERD_CLI_PUBLIC_NAME: 'slopie'}});
     child.unref();
+    return child;
   } catch { /* the audit never fails because of the records */ }
+  return null;
 }
 
 async function readStdin(timeoutMs = 2000): Promise<string> {
