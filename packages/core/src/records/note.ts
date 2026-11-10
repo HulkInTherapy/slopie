@@ -8,7 +8,7 @@ import {NOTE_B_TEMPLATE} from './spec.js';
  * The `slopie search` recipes, first in the note (1.9.1): the three most useful calls before the format. R6 measured
  * the four-verb form as arm P2; the one-verb form is arm P3.
  */
-export const CLI_LINE = "Your past coding-agent sessions with the user (Claude Code, Codex, pi) are searchable. If the slopie command is on PATH, start with it rather than rg:\n"
+export const CLI_LINE = "Your past coding-agent sessions with the user (Claude Code, Codex, pi; Antigravity titles, agent messages and plans, its prompts are encrypted) are searchable. If the slopie command is on PATH, start with it rather than rg:\n"
   + '- find: slopie search <words> [--project P --since D]  (add --session ID to search inside one thread)\n'
   + "- read a session's end: slopie search --session ID --turns -30  (--turns 120-160 reads a range)\n"
   + '- latest: slopie search <words> --latest  (threads with these words, newest activity first)\n'

@@ -11,7 +11,7 @@ import {zstdSupport, type NativeHarness} from '../analytics/extract.js';
 import {probeFile, type Probe} from '../analytics/copy-prune.js';
 import type {ScanJob} from '../analytics/scan-pool.js';
 import {claudeDesktopRoots, nativeAuditRoots} from '../analytics/native-census.js';
-import {ADAPTER_HARNESSES, discoverAdapter, type AdapterHarness} from '../analytics/adapter-facts.js';
+import {ADAPTER_HARNESSES, antigravityCensus, discoverAdapter, type AdapterHarness} from '../analytics/adapter-facts.js';
 import type {SessionSource} from '../adapters/types.js';
 import type {AuditHarness, AuditOverviewOptions} from '../analytics/contracts.js';
 
@@ -86,6 +86,13 @@ export function discover(harnesses: readonly AuditHarness[], options: AuditOverv
     }
   }
   for (const harness of harnesses) {
+    if (harness === 'antigravity') {
+      // Read after discovery (adapter-facts.ts antigravityFacts): only stats here.
+      const row = {...antigravityCensus(options), roots: 1};
+      result.census.set(harness, row);
+      onHarness?.(harness, row);
+      continue;
+    }
     if ((ADAPTER_HARNESSES as readonly string[]).includes(harness)) {
       const list = discoverAdapter(harness as AdapterHarness, options);
       result.adapters.set(harness as AdapterHarness, list);

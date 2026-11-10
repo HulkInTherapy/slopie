@@ -14,6 +14,8 @@ import type {SessionSource} from '../adapters/types.js';
 import {classifyText, FACTS_VERSION, finishExternalFacts, stripText, time, type SourceFacts} from './extract.js';
 import type {AuditOverviewOptions} from './contracts.js';
 import type {FactsCache} from './facts-cache.js';
+import {antigravityPresent, loadAntigravity} from '../adapters/antigravity.js';
+import * as paths from '../paths.js';
 
 export type AdapterHarness = 'cursor' | 'gemini' | 'copilot';
 export const ADAPTER_HARNESSES: readonly AdapterHarness[] = ['cursor', 'gemini', 'copilot'];
@@ -72,4 +74,44 @@ export async function readAdapterSources(harnesses: readonly AdapterHarness[], d
     } catch { failures.push(`${h}_source_unreadable`); }
   }
   return out;
+}
+
+/* ------------------------------------------------------------ Antigravity --- */
+
+/** Antigravity is read only when its directory was given or no native source directory was given explicitly. */
+export function antigravityWanted(options: AuditOverviewOptions): boolean {
+  const explicit = options.claudeDir ?? options.codexDir ?? options.piDir ?? options.opencodeDir ?? options.cursorDir ?? options.geminiDir ?? options.copilotDir;
+  if (!options.antigravityDir && explicit) return false;
+  return antigravityPresent({dir: options.antigravityDir, stateDb: options.antigravityStateDb});
+}
+
+/** Census of Antigravity's inputs (stats only). */
+export function antigravityCensus(options: AuditOverviewOptions): {files: number; bytes: number} {
+  if (!antigravityWanted(options)) return {files: 0, bytes: 0};
+  let files = 0, bytes = 0;
+  const dir = paths.antigravityDir(options.antigravityDir);
+  try {
+    for (const n of fs.readdirSync(`${dir}/conversations`)) if (n.endsWith('.pb')) { files++; try { bytes += fs.statSync(`${dir}/conversations/${n}`).size; } catch { /* raced */ } }
+  } catch { /* none */ }
+  try { const st = fs.statSync(paths.antigravityStateDb(options.antigravityStateDb)); files++; bytes += st.size; } catch { /* none */ }
+  return {files, bytes};
+}
+
+/**
+ * One facts row per Antigravity conversation: no prompts (they are encrypted on disk) and no usage, only
+ * the conversation's times (state timestamps, artifact updatedAt, transcript file times), title and project.
+ */
+export function antigravityFacts(options: AuditOverviewOptions, timezone: string, failures: string[]): SourceFacts[] {
+  if (!antigravityWanted(options)) return [];
+  const data = loadAntigravity({dir: options.antigravityDir, stateDb: options.antigravityStateDb});
+  failures.push(...data.gaps);
+  return data.sessions.filter(s => s.times.length).map(s => {
+    const file = s.pb ?? s.brain ?? `${s.state ?? 'antigravity'}#${s.id}`;
+    const facts: SourceFacts = {
+      v: FACTS_VERSION, harness: 'antigravity', file, size: 0, mtimeMs: s.times[s.times.length - 1]!, sessionId: s.id, parentId: null, child: false,
+      project: s.project, title: s.title, automated: false, excluded: false, startedAt: new Date(s.times[0]!).toISOString(),
+      firstAt: s.times[0]!, lastAt: s.times[s.times.length - 1]!, activity: [...s.times], usage: [], prompts: [], malformed: 0,
+    };
+    return finishExternalFacts(facts, {timezone});
+  });
 }

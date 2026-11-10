@@ -20,11 +20,11 @@ describe('A#6 Cursor, Gemini and Copilot are part of the audit', () => {
     expect(s.launch!.story!.totals.byHarness.cursor).toBeGreaterThan(0);
     expect(s.launch!.story!.spend.byHarness.find(h => h.harness === 'cursor')!.usd).toBe(0);
   });
-  it('lists all seven harnesses and never reads personal roots when other sources are explicit', async () => {
+  it('lists all eight harnesses and never reads personal roots when other sources are explicit', async () => {
     const {options} = home();
     const s = await run(options);
-    expect(s.sources.map(x => x.harness).sort()).toEqual(['claude', 'codex', 'copilot', 'cursor', 'gemini', 'opencode', 'pi']);
-    for (const h of ['cursor', 'gemini', 'copilot']) expect(s.sources.find(x => x.harness === h)!.state).toBe('absent');
+    expect(s.sources.map(x => x.harness).sort()).toEqual(['antigravity', 'claude', 'codex', 'copilot', 'cursor', 'gemini', 'opencode', 'pi']);
+    for (const h of ['cursor', 'gemini', 'copilot', 'antigravity']) expect(s.sources.find(x => x.harness === h)!.state).toBe('absent');
   });
   it('reads the Gemini and Copilot fixtures without crashing', async () => {
     const {options} = home();

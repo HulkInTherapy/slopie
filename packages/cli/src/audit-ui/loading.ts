@@ -20,8 +20,10 @@ import { boardData, crashDetail, isLoading } from './view-model.js';
 export const MIN_STORY_MS = 2400;
 const OUTRO_MS = 950;
 
-const ORDER = ['claude', 'codex', 'pi', 'opencode'] as const;
-const NAMES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', pi: 'pi', opencode: 'OpenCode' };
+const ORDER = ['claude', 'codex', 'pi', 'opencode', 'antigravity'] as const;
+const NAMES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', pi: 'pi', opencode: 'OpenCode', antigravity: 'Antigravity' };
+/** Shown only when present: their absence is not news. */
+const ONLY_WHEN_PRESENT = new Set<string>(['antigravity']);
 
 export interface HarnessRow {
   id: string;
@@ -59,6 +61,7 @@ export function loadingModel(snapshot: AuditSnapshot): LoadingModel {
     if (d) state = d.absent || (d.discovered !== false && d.files === 0 && (detail!.stage !== 'discovering' || d.discovered)) ? 'absent' : d.discovered === false ? 'searching' : 'found';
     else state = source!.state === 'checking' ? 'searching' : source!.state === 'absent' || source!.state === 'unsupported' ? 'absent' : 'found';
     if (state === 'searching' && !loading) state = source?.state === 'absent' ? 'absent' : 'found';
+    if (ONLY_WHEN_PRESENT.has(id) && state !== 'found') continue;
     let info = '';
     if (state === 'absent') info = 'not on this machine';
     else if (state === 'searching') info = 'looking…';
@@ -67,11 +70,14 @@ export function loadingModel(snapshot: AuditSnapshot): LoadingModel {
       const files = d?.files ?? source?.census?.files ?? source?.candidateFiles ?? null;
       const head = chats ? `${count(chats)} chats` : files ? `${count(files)} files` : 'found';
       const since = d?.firstAt ? ` · since ${monthYear(d.firstAt)}` : '';
-      info = head + since;
+      // Antigravity encrypts its transcripts: chats are counted, prompts cannot be.
+      info = id === 'antigravity' ? `${chats ? `${count(chats)} chats` : 'found'} (prompts encrypted by Antigravity)` : head + since;
     }
     const flowing = loading && state === 'found' && (!d || d.filesDone < d.files || detail?.stage === 'discovering');
     rows.push({ id, name: NAMES[id] ?? id, state, info, flowing });
   }
+  // A present extra agent (Antigravity) takes the place of an absent one.
+  while (rows.length > SLOTS) { const i = rows.map(r => r.state).lastIndexOf('absent'); if (i < 0) break; rows.splice(i, 1); }
   const totals = storyOf(snapshot)?.totals;
   const counts = {
     messages: detail?.counts.messages ?? null,
@@ -99,8 +105,8 @@ function caption(model: LoadingModel, shownPrompts: number): string {
 
 export const PRIVACY_LINE = 'all local · nothing leaves this machine';
 export const FIRST_CAPTION = 'finding your agents';
-/** Slots reserved for the agents (the layout never moves as they are found). */
-const SLOTS = ORDER.length;
+/** Slots reserved for the agents (the layout never moves as they are found): the four always listed. */
+const SLOTS = 4;
 
 /** Where things sit on the loading screen. Mirrored by bin/audit-splash.js (tested). */
 export function loadingGeometry(w: number, h: number) {

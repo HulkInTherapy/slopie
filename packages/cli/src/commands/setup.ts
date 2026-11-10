@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
-import { agentNote, paths } from '@potsherd/core';
+import { agentNote, antigravity, paths } from '@potsherd/core';
 import { confirm, fold, print, printJson, themeFrom, UserError, type GlobalOptions } from '../output.js';
 import { LEGACY_WHAT, legacyChanges, type LegacyTarget } from './setup-legacy.js';
 
@@ -264,7 +264,9 @@ export async function runSetup(o: SetupOptions): Promise<number> {
       const pending = plan({...o, remove: false}, [c]);
       return {client: c, detected: detected(o).includes(c), installed: pending.length === 0, missing: pending.map(p => p.what), refresh: refreshOf(o, c)};
     });
-    if (o.json) printJson({records: paths.recordsDir(), index: indexAge(), clients: rows});
+    // Read-only sources: synced from their files, no hook to install (Antigravity has no hook mechanism).
+    const readOnly = [{client: 'antigravity', detected: antigravity.antigravityPresent(), mode: 'read only'}];
+    if (o.json) printJson({records: paths.recordsDir(), index: indexAge(), clients: rows, readOnly});
     else {
       print(`  index   ${indexAge()}`);
     }
@@ -272,6 +274,7 @@ export async function runSetup(o: SetupOptions): Promise<number> {
       const text = (r.installed ? 'installed' : r.detected ? `missing: ${r.missing.join(', ')} (slopie setup --${r.client})` : 'not found on this machine') + (r.detected ? ` · ${r.refresh}` : '');
       fold(text, Math.max(20, t.width - 12)).forEach((row, i) => print(`  ${i ? ''.padEnd(8) : r.client.padEnd(8)}${row}`));
     }
+    if (!o.json && readOnly[0]!.detected) fold('read only: no hook; titles, agent messages and plans are synced, prompts are encrypted', Math.max(20, t.width - 16)).forEach((row, i) => print(`  ${i ? ''.padEnd(12) : 'antigravity '}${row}`));
     return 0;
   }
   if (!clients.length) {

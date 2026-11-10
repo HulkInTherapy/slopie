@@ -10,7 +10,7 @@
       "name": "potsherd",
       "source": "./plugins/claude-code",
       "description": "slopie — search your past coding-agent sessions. One skill, slopie, plus a session-start hook that keeps the records current.",
-      "version": "1.9.3",
+      "version": "1.9.4",
       "author": {
         "name": "HulkInTherapy",
         "url": "https://github.com/HulkInTherapy"

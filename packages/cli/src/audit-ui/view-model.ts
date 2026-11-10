@@ -56,6 +56,8 @@ export interface BoardData {
     streak: number | null;
   };
   personality: string | null;
+  /** Agents counted by chats because their prompts cannot be read (Antigravity encrypts them). */
+  chatOnly?: { harness: string; chats: number }[];
   /** API-equivalent value split by coding agent, largest first. */
   agentSplit: { name: string; share: number }[];
   models: { state: CardState; rows: ModelRow[]; more: { models: number; value: number | null; tokens: number | null } | null };
@@ -423,6 +425,7 @@ export function boardData(snapshot: AuditSnapshot): BoardData {
     progress: progressOf(snapshot, phase),
     sources,
     range: { from: activity.days[0]?.date ?? null, to: activity.days.at(-1)?.date ?? null },
+    chatOnly: snapshot.sources.filter(s => (s as { promptsReadable?: boolean }).promptsReadable === false && s.conversations > 0).map(s => ({ harness: s.harness, chats: s.conversations })),
     agents: [...snapshot.sources]
       .filter(source => source.conversations > 0 || (source.census?.files ?? 0) > 0)
       .sort((a, b) => b.conversations - a.conversations || (b.census?.files ?? 0) - (a.census?.files ?? 0))

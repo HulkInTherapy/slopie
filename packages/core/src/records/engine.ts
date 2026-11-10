@@ -166,7 +166,7 @@ export class Engine {
   // ------------------------------------------------------------ helpers
   resolve(sid: string | undefined | null): {s: S | null; err: string | null} {
     let id = (sid ?? '').trim();
-    if (id.split(':').length === 2 && ['claude', 'codex', 'pi'].includes(id.split(':')[0]!)) id = id.split(':')[1]!;
+    if (id.split(':').length === 2 && ['claude', 'codex', 'pi', 'antigravity'].includes(id.split(':')[0]!)) id = id.split(':')[1]!;
     if (!id) return {s: null, err: 'session is required'};
     let hits = [...this.sessions.values()].filter(s => s.id === id || s.key.endsWith(':' + id));
     if (!hits.length && id.length >= 6) hits = [...this.sessions.values()].filter(s => s.id.startsWith(id) || s.key.split(':').slice(1).join(':').startsWith(id));

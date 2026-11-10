@@ -24,7 +24,9 @@ export type Harness =
   | 'pi'
   | 'gemini'
   | 'opencode'
-  | 'copilot';
+  | 'copilot'
+  /** Antigravity: read-only metadata (records + audit), no L0 adapter (prompts are encrypted). */
+  | 'antigravity';
 
 /** Every harness potsherd knows about, in the order `doctor` reports them. */
 export const HARNESSES: readonly Harness[] = [

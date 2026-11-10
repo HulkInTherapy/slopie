@@ -66,6 +66,8 @@ export interface HarnessTotals {
   responses: number;
   costUsd: number;
   excluded: Record<string, number>;
+  /** Harnesses counted without prompts (Antigravity): days with activity, first/last day, distinct projects. */
+  activity?: {days: number; first: string | null; last: string | null; projects: number};
 }
 
 export interface Conversation {
@@ -178,7 +180,7 @@ export function aggregate(input: AggregateInput): Aggregate {
   const dayOf = dayFormatter(scope.timezone);
   const inRange = (at: number | null) => (scope.eventFrom === null || (at !== null && at >= scope.eventFrom)) && (scope.asOf === null || (at !== null && at <= scope.asOf));
   const projectAllowed = (p: string | null) => !policy.ignored(p) && (scope.project === null || normProject(p) === normProject(scope.project));
-  const harness = {claude: emptyHarness(), codex: emptyHarness(), pi: emptyHarness(), opencode: emptyHarness(), cursor: emptyHarness(), gemini: emptyHarness(), copilot: emptyHarness()} as Record<AuditHarness, HarnessTotals>;
+  const harness = {claude: emptyHarness(), codex: emptyHarness(), pi: emptyHarness(), opencode: emptyHarness(), cursor: emptyHarness(), gemini: emptyHarness(), copilot: emptyHarness(), antigravity: emptyHarness()} as Record<AuditHarness, HarnessTotals>;
 
   // ---- sources in scope, ordered so parents come before children and, among copies of one session
   // (live, archived_sessions/, compressed, potsherd archive), the most complete copy comes first.
@@ -395,7 +397,8 @@ export function aggregate(input: AggregateInput): Aggregate {
   for (const s of sources) {
     const id = sid(s.harness, s.sessionId);
     const inScopePrompt = s.prompts.some(p => inRange(p.at) && projectAllowed(p.project ?? s.project));
-    const active = scoped ? activeIds.has(id) || inScopePrompt
+    const inScopeActivity = !!s.activity?.some(t => inRange(t));
+    const active = scoped ? activeIds.has(id) || inScopePrompt || inScopeActivity
       : s.harness === 'claude' ? (s.child ? s.usage.length > 0 || s.prompts.length > 0 : (s.sessionIds?.length ?? 0) > 0) : true;
     if (!active || (!projectAllowed(s.project) && !inScopePrompt)) continue;
     const entry = conversationFor(s.harness, s.sessionId, s.child ? s.parentId : null, s.title, s.project, s.file);
@@ -414,6 +417,21 @@ export function aggregate(input: AggregateInput): Aggregate {
       countPrompt(s.harness, p);
       if (p.kind === 'human') addHuman(entry, s.harness, p, p.key, s.file, `${s.harness}_record`, s);
     }
+  }
+
+  // ---- harnesses counted without prompts (Antigravity): days, first/last day and projects from activity times
+  const actDays = new Map<AuditHarness, Set<string>>(), actProjects = new Map<AuditHarness, Set<string>>();
+  for (const s of sources) {
+    if (!s.activity?.length || !projectAllowed(s.project) || s.child) continue;
+    const ds = actDays.get(s.harness) ?? new Set<string>();
+    let any = false;
+    for (const t of s.activity) if (inRange(t)) { ds.add(dayOf(t)); any = true; }
+    actDays.set(s.harness, ds);
+    if (any && s.project) { const ps = actProjects.get(s.harness) ?? new Set<string>(); ps.add(normProject(s.project) ?? s.project); actProjects.set(s.harness, ps); }
+  }
+  for (const [h, ds] of actDays) {
+    const sorted = [...ds].sort();
+    harness[h].activity = {days: sorted.length, first: sorted[0] ?? null, last: sorted[sorted.length - 1] ?? null, projects: actProjects.get(h)?.size ?? 0};
   }
 
   // ---- Claude sessions known only from history.jsonl

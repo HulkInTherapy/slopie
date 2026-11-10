@@ -164,6 +164,28 @@ export function geminiPaths(dir = geminiDir()) {
   return { root: dir, tmp: path.join(dir, 'tmp') };
 }
 
+/**
+ * Antigravity (Google's agent IDE): `~/.gemini/antigravity` (conversations/*.pb, brain/<uuid>/),
+ * overridable by `SLOPIE_ANTIGRAVITY_DIR`.
+ */
+export function antigravityDir(override?: string): string {
+  if (override) return path.resolve(expandTilde(override));
+  const env = process.env['SLOPIE_ANTIGRAVITY_DIR'];
+  if (env && env.trim()) return path.resolve(expandTilde(env.trim()));
+  return path.join(home(), '.gemini', 'antigravity');
+}
+
+/** Antigravity's app state database (VS Code `globalStorage/state.vscdb`), overridable by `SLOPIE_ANTIGRAVITY_STATE`. */
+export function antigravityStateDb(override?: string): string {
+  if (override) return path.resolve(expandTilde(override));
+  const env = process.env['SLOPIE_ANTIGRAVITY_STATE'];
+  if (env && env.trim()) return path.resolve(expandTilde(env.trim()));
+  const tail = ['Antigravity', 'User', 'globalStorage', 'state.vscdb'];
+  if (process.platform === 'darwin') return path.join(home(), 'Library', 'Application Support', ...tail);
+  if (process.platform === 'win32') return path.join(process.env['APPDATA'] || path.join(home(), 'AppData', 'Roaming'), ...tail);
+  return path.join(process.env['XDG_CONFIG_HOME'] || path.join(home(), '.config'), ...tail);
+}
+
 /** Where gemini cli keeps its per-project checkpoint directories. */
 export function geminiTmpDir(override?: string): string {
   return geminiPaths(geminiDir(override)).tmp;
