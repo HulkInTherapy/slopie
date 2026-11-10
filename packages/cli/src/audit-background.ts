@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createAuditSession, type AuditSession, type AuditOverviewOptions, type AuditSnapshot, type AuditEvent} from '@potsherd/core';
 import {createScanPool} from '../../core/src/analytics/scan-pool.js';
+import {appendCrashLog, writeCrashLog} from './audit-crash-log.js';
 
 type Request = {kind: 'request'; id: number; op: string; args: unknown[]};
 type Pending = {op: string; resolve: (value: any) => void; reject: (error: Error) => void};
@@ -13,11 +14,108 @@ export function localScanPool(): ReturnType<typeof createScanPool> | undefined {
   return fs.existsSync(entry) ? createScanPool(entry) : undefined;
 }
 
+const STDERR_KEEP = 64 * 1024;
+
+type WorkerSession = AuditSession & {
+  /** The last ~64 KB the worker wrote to stderr. */
+  stderrTail(): string;
+  /** Resolves once the worker's stderr is closed (or shortly after it exits). */
+  drained(): Promise<void>;
+  /** Last op and progress stage, for the crash log. */
+  stage(): string;
+};
+
 /**
- * The interactive renderer owns this process; the audit runs in a child so
- * keystrokes stay responsive. Messages are framed IPC; the child prints nothing.
+ * The interactive renderer owns this process; the audit runs in a child so keystrokes stay
+ * responsive. If the child fails before delivering a result, the same audit re-runs in this
+ * process (the --plain code path), and a redacted crash log records what happened.
  */
-export function createBackgroundAuditSession(options: AuditOverviewOptions, entry = process.argv[1]!): AuditSession {
+export function createBackgroundAuditSession(options: AuditOverviewOptions, entry = process.argv[1]!): AuditSession & {logFile(): string | null} {
+  const worker = createWorkerSession(options, entry);
+  let local: AuditSession | null = null;
+  let localBase = 0;
+  let logFile: string | null = null;
+  let cancelled = false, disposed = false, nextAck = 0;
+  const acks = new Map<string, {resolve: () => void; reject: (error: Error) => void}>();
+  const shiftSnapshot = (snapshot: AuditSnapshot): AuditSnapshot => (localBase ? {...snapshot, sequence: snapshot.sequence + localBase} : snapshot);
+  const shiftEvent = (event: AuditEvent): AuditEvent =>
+    event.type === 'snapshot' ? {...event, snapshot: shiftSnapshot(event.snapshot)} : 'sequence' in event ? {...event, sequence: event.sequence + localBase} as AuditEvent : event;
+
+  const runLocal = async (callback: ((event: AuditEvent) => void) | undefined, workerError: unknown, maxSequence: number): Promise<AuditSnapshot> => {
+    await worker.drained();
+    logFile = writeCrashLog({stage: worker.stage(), error: workerError, stderr: worker.stderrTail(), notes: ['background worker failed before delivering a result; re-running the audit in-process']});
+    worker.dispose();
+    localBase = maxSequence + 1;
+    let stage = 'in-process fallback · starting';
+    try {
+      if (process.env['SLOPIE_TEST_INPROCESS_FAIL'] === '1') throw new Error('in-process audit failed (SLOPIE_TEST_INPROCESS_FAIL)');
+      local = createAuditSession({
+        ...options, signal: undefined, sessionIdentity: worker.snapshot().snapshotId, nativeScanExecutor: localScanPool(),
+        onTransfer: event => new Promise<void>((resolve, reject) => {
+          const ackId = `local-${++nextAck}`;
+          acks.set(ackId, {resolve, reject});
+          callback?.(shiftEvent({...event, ackId}));
+        }),
+      });
+      if (cancelled) local.cancel();
+      const result = await local.run(event => {
+        if (event.type === 'progress') stage = `in-process fallback · run · ${event.progress.stage}`;
+        if (event.type !== 'transfer') callback?.(shiftEvent(event));
+      });
+      appendCrashLog(logFile, {stage: 'in-process fallback', error: 'none', notes: [`in-process fallback finished with status ${result.status}`]});
+      return shiftSnapshot(result);
+    } catch (error) {
+      if (cancelled) return local ? shiftSnapshot(local.snapshot()) : worker.snapshot();
+      logFile = appendCrashLog(logFile, {stage, error, notes: ['in-process fallback failed too; showing the error screen']});
+      const failure = error instanceof Error ? error : new Error(String(error));
+      throw Object.assign(failure, {logFile, stage});
+    }
+  };
+
+  const cancel = () => {
+    if (cancelled) return;
+    cancelled = true;
+    worker.cancel();
+    local?.cancel();
+    for (const ack of acks.values()) ack.reject(new Error('audit_cancelled'));
+    acks.clear();
+  };
+  options.signal?.addEventListener('abort', cancel, {once: true});
+  const active = (): AuditSession => local ?? worker;
+
+  return {
+    snapshot: () => (local ? shiftSnapshot(local.snapshot()) : worker.snapshot()),
+    run: async callback => {
+      let maxSequence = worker.snapshot().sequence;
+      const seen = (event: AuditEvent) => {
+        maxSequence = Math.max(maxSequence, event.type === 'snapshot' ? event.snapshot.sequence : 'sequence' in event ? event.sequence : 0);
+        callback?.(event);
+      };
+      try {
+        return await worker.run(seen);
+      } catch (error) {
+        if (cancelled || disposed) return worker.snapshot();
+        return runLocal(callback, error, maxSequence);
+      }
+    },
+    analyzePeriod: async (period, callback) => (local ? shiftSnapshot(await local.analyzePeriod!(period, event => callback?.(shiftEvent(event)))) : worker.analyzePeriod!(period, callback)),
+    prompts: (...args) => active().prompts(...args),
+    evidence: route => active().evidence(route),
+    previewLaunch: () => active().previewLaunch!(),
+    preview: selection => active().preview!(selection),
+    classify: (selection, callback) => active().classify(selection, callback),
+    acknowledgeTransfer: ackId => {
+      const ack = acks.get(ackId);
+      if (ack) { acks.delete(ackId); ack.resolve(); return; }
+      worker.acknowledgeTransfer?.(ackId);
+    },
+    cancel,
+    dispose: () => { if (disposed) return; cancel(); disposed = true; worker.dispose(); local?.dispose(); },
+    logFile: () => logFile,
+  };
+}
+
+function createWorkerSession(options: AuditOverviewOptions, entry: string): WorkerSession {
   const seed = createAuditSession({...options, nativeScanExecutor: undefined, onTransfer: undefined, signal: undefined});
   let current: AuditSnapshot = seed.snapshot();
   seed.dispose();
@@ -26,6 +124,9 @@ export function createBackgroundAuditSession(options: AuditOverviewOptions, entr
   let events: ((event: AuditEvent) => void) | undefined;
   const pending = new Map<number, Pending>();
   let ready: Promise<void> | null = null;
+  let stderrTail = '', lastOp = 'start';
+  let resolveDrained: () => void = () => {};
+  const drainedPromise = new Promise<void>(resolve => { resolveDrained = resolve; });
   let resolveReady: () => void = () => {}, rejectReady: (error: Error) => void = () => {};
 
   const failAll = (error: Error) => {
@@ -51,7 +152,14 @@ export function createBackgroundAuditSession(options: AuditOverviewOptions, entr
     if (ready) return ready;
     ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
     ready.catch(() => {});
-    child = fork(path.resolve(entry), ['__audit_worker'], {stdio: ['ignore', 'ignore', 'ignore', 'ipc'], serialization: 'advanced'});
+    child = fork(path.resolve(entry), ['__audit_worker'], {stdio: ['ignore', 'ignore', 'pipe', 'ipc'], serialization: 'advanced'});
+    const stderr = child.stderr;
+    if (stderr) {
+      stderr.setEncoding('utf8');
+      stderr.on('data', (chunk: string) => { stderrTail = (stderrTail + chunk).slice(-STDERR_KEEP); });
+      stderr.once('close', () => resolveDrained());
+      stderr.on('error', () => resolveDrained());
+    } else resolveDrained();
     child.on('message', (raw: any) => {
       if (disposed || cancelled) return;
       if (raw?.kind === 'ready') { current = raw.snapshot; events?.({type: 'snapshot', snapshot: current}); resolveReady(); return; }
@@ -66,15 +174,21 @@ export function createBackgroundAuditSession(options: AuditOverviewOptions, entr
         const request = pending.get(raw.id);
         if (!request) return;
         pending.delete(raw.id);
-        if (raw.error) { request.reject(new Error(raw.error)); return; }
+        if (raw.error) { const error = new Error(raw.error); if (raw.stack) error.stack = raw.stack; request.reject(error); return; }
         if (request.op === 'run' || request.op === 'analyzePeriod') current = raw.value;
         request.resolve(raw.value);
       }
     });
     child.once('error', error => failAll(error));
-    child.once('exit', () => { if (!cancelled && !disposed) failAll(new Error('audit_background_worker_unavailable')); });
+    child.once('exit', (code, signal) => {
+      // Let stderr flush, but never hang on it.
+      setTimeout(resolveDrained, 250).unref();
+      if (!cancelled && !disposed) failAll(new Error(`audit_background_worker_unavailable (worker exited with ${signal ? `signal ${signal}` : `code ${code}`})`));
+    });
     const {signal: _signal, onTransfer: _onTransfer, nativeScanExecutor: _executor, ...serializable} = options;
-    child.send({kind: 'init', options: {...serializable, sessionIdentity: current.snapshotId}});
+    lastOp = 'init';
+    try { child.send({kind: 'init', options: {...serializable, sessionIdentity: current.snapshotId}}, error => { if (error) failAll(error); }); }
+    catch (error) { failAll(error as Error); }
     return ready;
   };
 
@@ -84,8 +198,10 @@ export function createBackgroundAuditSession(options: AuditOverviewOptions, entr
     if (disposed || cancelled) throw new Error('audit_cancelled');
     return new Promise((resolve, reject) => {
       const id = ++next;
+      lastOp = op;
       pending.set(id, {op, resolve, reject});
-      child!.send({kind: 'request', id, op, args} satisfies Request);
+      try { child!.send({kind: 'request', id, op, args} satisfies Request, error => { if (error) { pending.delete(id); reject(error); } }); }
+      catch (error) { pending.delete(id); reject(error as Error); }
     });
   };
 
@@ -118,12 +234,20 @@ export function createBackgroundAuditSession(options: AuditOverviewOptions, entr
     acknowledgeTransfer: ackId => { if (!cancelled && !disposed && child?.connected) child.send({kind: 'transfer_ack', ackId}); },
     cancel,
     dispose: () => { if (disposed) return; cancel(); disposed = true; events = undefined; },
+    stderrTail: () => stderrTail,
+    drained: () => (child ? Promise.race([drainedPromise, new Promise<void>(resolve => setTimeout(resolve, 300).unref())]) : Promise.resolve()),
+    stage: () => `background worker · ${lastOp} · ${current.progress?.stage ?? current.status}`,
   };
 }
 
 /** Private internal entry of the child process. */
 export async function runAuditWorkerHost(): Promise<void> {
   if (!process.send) throw new Error('audit_worker_requires_ipc');
+  const testFail = process.env['SLOPIE_TEST_WORKER_FAIL'];
+  if (testFail === 'exit') {
+    process.stderr.write('slopie test hook: audit worker exiting at startup (SLOPIE_TEST_WORKER_FAIL=exit)\n', () => process.exit(70));
+    return;
+  }
   let session: AuditSession | null = null, nextAck = 0;
   const acknowledgements = new Map<string, {resolve: () => void; reject: (error: Error) => void}>();
   const send = (value: unknown) => { if (process.connected) process.send!(value); };
@@ -155,6 +279,7 @@ export async function runAuditWorkerHost(): Promise<void> {
     const {id, op, args} = raw as Request;
     try {
       let value: unknown;
+      if (op === 'run' && testFail === 'throw') throw new Error('audit worker test failure (SLOPIE_TEST_WORKER_FAIL=throw)');
       if (op === 'run') value = await session.run(emit);
       else if (op === 'analyzePeriod') value = await session.analyzePeriod!(args[0] as any, emit);
       else if (op === 'classify') value = await session.classify(args[0] as any, emit);
@@ -162,7 +287,7 @@ export async function runAuditWorkerHost(): Promise<void> {
       else throw new Error('audit_worker_operation_unavailable');
       send({kind: 'result', id, value});
     } catch (error) {
-      send({kind: 'result', id, error: error instanceof Error ? error.message : 'audit_worker_failed'});
+      send({kind: 'result', id, error: error instanceof Error ? error.message : 'audit_worker_failed', stack: error instanceof Error ? error.stack : undefined});
     }
   });
   process.on('disconnect', () => { session?.dispose(); process.exit(0); });

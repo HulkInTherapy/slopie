@@ -24,7 +24,8 @@ import { buildDeck, type DeckCard } from './story/deck.js';
 import { sanitize } from './text.js';
 import { baseline, digestOf, historyDir, readHistory, sinceLast, writeDigest, type Since } from './history.js';
 import { wentOnline } from './story/source.js';
-import { detailLines } from './view-model.js';
+import { crashReason, detailLines, type AuditCrash } from './view-model.js';
+import { tildePath } from '../audit-crash-log.js';
 
 export interface TerminalIo {
   stdin: NodeJS.ReadStream;
@@ -50,6 +51,8 @@ export interface TerminalOptions {
 export interface TerminalResult {
   snapshot: AuditSnapshot;
   reason: 'quit' | 'cancelled' | 'complete';
+  /** The audit's failure, when it ended on the error screen (for --debug). */
+  error?: unknown;
 }
 
 export type Key = 'quit' | 'left' | 'right' | 'details' | 'back' | 'enter' | 'board' | 'share' | `guess${1 | 2 | 3 | 4}` | null;
@@ -589,6 +592,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
 
   paint();
 
+  let failure: unknown;
   const scan = Promise.resolve()
     .then(() => session.run(publish))
     .then(
@@ -596,10 +600,16 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
         settled = true;
         if (!view.revoked) view = { ...view, snapshot: final.snapshotId === view.snapshot.snapshotId && final.sequence >= view.snapshot.sequence ? final : view.snapshot };
       },
-      () => {
+      error => {
         settled = true;
+        if (!stopping) failure = error;
         const snapshot = view.snapshot;
-        view = { ...view, snapshot: { ...snapshot, status: stopping ? 'cancelled' : 'error', launch: snapshot.launch ? { ...snapshot.launch, stage: 'ready' } : undefined } };
+        const log = (error as { logFile?: unknown } | null)?.logFile;
+        const crash: AuditCrash | undefined = stopping ? undefined : {
+          reason: crashReason(sanitize(error instanceof Error ? error.message : String(error))),
+          log: typeof log === 'string' ? tildePath(log) : null,
+        };
+        view = { ...view, snapshot: { ...snapshot, status: stopping ? 'cancelled' : 'error', launch: snapshot.launch ? { ...snapshot.launch, stage: 'ready' } : undefined, ...(crash ? { crash } : {}) } as AuditSnapshot };
       },
     )
     .then(() => schedule());
@@ -621,6 +631,6 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   }
   if (!settled) session.cancel();
   await Promise.race([scan, new Promise(resolve => setTimeout(resolve, 2000).unref())]);
-  return { snapshot: view.revoked ?? view.snapshot, reason };
+  return { snapshot: view.revoked ?? view.snapshot, reason, ...(failure !== undefined ? { error: failure } : {}) };
 }
 

@@ -9,13 +9,13 @@
 import type { AuditSnapshot } from '../../../core/src/analytics/contracts.js';
 import type { Canvas } from './gfx/canvas.js';
 import { C, mix } from './gfx/color.js';
-import { textWidth } from './gfx/draw.js';
+import { textWidth, wrapText } from './gfx/draw.js';
 import { clamp01 } from './gfx/motion.js';
 import type { Caps } from './gfx/screen.js';
 import { count, monthYear } from './format.js';
 import { displayHeight, displayWidth, drawDisplay, fitDisplay } from './theme/display.js';
 import { progressDetailOf, storyOf } from './story/source.js';
-import { boardData, isLoading } from './view-model.js';
+import { boardData, crashDetail, isLoading } from './view-model.js';
 
 export const MIN_STORY_MS = 2400;
 const OUTRO_MS = 950;
@@ -40,6 +40,8 @@ export interface LoadingModel {
   progress: number | null;
   ready: boolean;
   failure: string | null;
+  /** Extra lines under a failure caption (log path, what to try). */
+  failureDetail: string[];
   /** Rows and counts came from the engine's progress detail (not the 1.7.x fallback). */
   fromDetail: boolean;
 }
@@ -81,7 +83,7 @@ export function loadingModel(snapshot: AuditSnapshot): LoadingModel {
       : board.phase === 'finding' ? 'discovering' : board.phase === 'finishing' ? 'aggregating' : 'reading';
   const progress = detail && detail.counts.files > 0 ? detail.counts.filesDone / detail.counts.files
     : board.progress?.total ? (board.progress.done ?? 0) / board.progress.total : null;
-  return { rows, counts, stage, progress: loading ? progress : 1, ready: !loading, failure: board.failure, fromDetail: Boolean(detail) };
+  return { rows, counts, stage, progress: loading ? progress : 1, ready: !loading, failure: board.failure, failureDetail: crashDetail(snapshot), fromDetail: Boolean(detail) };
 }
 
 function caption(model: LoadingModel, shownPrompts: number): string {
@@ -228,7 +230,13 @@ export class LoadingStory {
     // Progress: a thin line, determinate when the engine knows the total.
     const barW = Math.min(64, iw);
     const p = model.ready ? 1 : model.progress;
-    for (let i = 0; i < barW; i++) {
+    // An error screen: the reason (wrapped), then where the log is and what to try. It may rise
+    // into the progress line's rows so nothing is cut on a small terminal.
+    const crashed = !!(model.failure && model.ready && model.failureDetail.length);
+    const crashHead = crashed ? wrapText(model.failure!, iw) : [];
+    const crashLines = crashed ? [...crashHead, ...model.failureDetail.flatMap(line => wrapText(line, iw))] : [];
+    const crashY = Math.max(g.barY, Math.min(g.captionY, g.footY - 1 - crashLines.length));
+    for (let i = 0; i < barW && !(crashed && crashY <= g.barY); i++) {
       const filled = p !== null && i < Math.round(barW * p);
       // Indeterminate: a short segment travels along the line.
       const head = p === null && motion ? Math.abs(((t / 22) % (barW + 12)) - 6 - i) < 6 : false;
@@ -241,7 +249,10 @@ export class LoadingStory {
     if (text !== this.lastCaption) { this.lastCaption = text; this.captionAt = now; }
     const ca = motion && this.lastCaption !== FIRST_CAPTION ? clamp01((now - this.captionAt) / 260) : 1;
     if (ca < 1) busy = true;
-    c.text(g.mx, g.captionY, text, { fg: mix(C.bg, model.ready && !model.failure ? C.text : C.text2, ca), bg: C.bg, bold: model.ready && !model.failure }, iw);
+    if (crashed) {
+      const head = crashHead.length;
+      crashLines.forEach((line, i) => { if (crashY + i < g.footY) c.text(g.mx, crashY + i, line, { fg: i < head ? C.text : C.text2, bg: C.bg, bold: i < head }, iw); });
+    } else c.text(g.mx, g.captionY, text, { fg: mix(C.bg, model.ready && !model.failure ? C.text : C.text2, ca), bg: C.bg, bold: model.ready && !model.failure }, iw);
 
     // Privacy promise, always visible.
     put(g.mx, g.footY, uni ? '●' : '*', C.accent);
