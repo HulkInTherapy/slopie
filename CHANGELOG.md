@@ -2,6 +2,13 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
+## 1.9.4 — Antigravity, read as far as it can be read
+
+- Antigravity (Google's agent IDE) is a new source for the audit and for the records. What is read: each conversation's id and file times (`~/.gemini/antigravity/conversations/*.pb`), its title, workspace, timestamps, the agent's `notify_user` messages and task boundaries (from the app's `state.vscdb`, read from a temporary copy), and the plans, task lists and walkthroughs the agent wrote (`~/.gemini/antigravity/brain/<id>/`).
+- What is not read: your prompts and the full transcripts. Antigravity stores them encrypted in the `.pb` files; slopie never tries to decrypt them and never touches the keychain. The app state only keeps a conversation's recent steps, so older agent messages may be missing from a record.
+- Audit: Antigravity counts chats, active days, first/last day and projects. It has no prompts, so prompt cards (swearing, catchphrase, pet name, manners, prompt length, quiz) leave it out, and the agents split lists it by chats with a footnote. Its cost is unknown (`usage_not_recorded`), never $0. Streaks and the "your day" clock still come from typed prompts only.
+- Records: one record per conversation under `~/.slopie/records/antigravity/`, in INDEX.tsv and the search index (`slopie search --harness antigravity`), redacted like every other record. `setup --status` lists Antigravity as read only: it has no hook mechanism.
+
 ## 1.9.3 — Old potsherd stores no longer block the audit
 
 - A `~/.potsherd/potsherd.db` left by an older potsherd made every audit stop with "cannot read … the 1.8 forget list". Old stores without forget tables now count as nothing forgotten, and an unreadable old store is a warning instead of a stop. A broken current forget list still stops, as before.

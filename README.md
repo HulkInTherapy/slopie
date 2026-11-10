@@ -32,7 +32,7 @@ The audit runs entirely on your machine: it reads your session files and writes 
 
 ## How the numbers are made
 
-- **Supported agents:** Claude Code, Codex (including compressed `.jsonl.zst` sessions and archives), Claude Desktop agent sessions, pi, OpenCode, and Cursor/Gemini/Copilot prompts.
+- **Supported agents:** Claude Code, Codex (including compressed `.jsonl.zst` sessions and archives), Claude Desktop agent sessions, pi, OpenCode, Cursor/Gemini/Copilot prompts, and Antigravity (chats, days, titles, agent messages and plans; its prompts are encrypted by Antigravity, so they are not read).
 - **Each session counts once.** Copies, forks, resumes and archives of a session are deduplicated per session lineage, and divergent tails are merged. Codex sessions imported from Claude Code and `codex exec` automation runs aren't counted as chats.
 - **Spend has three parts, never added together:**
   - *measured*, from recorded token usage;

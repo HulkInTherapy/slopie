@@ -94,7 +94,7 @@ describe('protobuf wire reader', () => {
 describe('agentManagerInitState extractor', () => {
   it('groups titles, workspaces, timestamps and steps by conversation, and never surfaces the top-level tokens', () => {
     const gaps: string[] = [];
-    const convs = extractConversations(stateBlob('/home/u/.gemini/antigravity/brain'), gaps);
+    const convs = extractConversations(stateBlob('/work/ag/brain'), gaps);
     expect(gaps).toEqual([]);
     expect(convs.map(c => c.id)).toEqual([ID1, ID2]);
     const [a, b] = convs as [typeof convs[0], typeof convs[0]];
@@ -106,7 +106,7 @@ describe('agentManagerInitState extractor', () => {
     expect(a.steps[0]!.message).toBe('Finished the synthetic glacier fix pass');
     expect(a.steps[0]!.at).toBe(Date.parse('2026-09-01T09:40:00Z'));
     expect(a.steps[1]).toMatchObject({taskName: 'Verify synthetic build', taskStatus: 'done', mode: 'VERIFICATION'});
-    expect(a.artifacts).toEqual([`/home/u/.gemini/antigravity/brain/${ID1}/task.md`]);
+    expect(a.artifacts).toEqual([`/work/ag/brain/${ID1}/task.md`]);
     expect(JSON.stringify(convs)).not.toContain(TOKEN);
   });
   it('skips a malformed blob or a malformed conversation with a gap, keeping the rest', () => {
