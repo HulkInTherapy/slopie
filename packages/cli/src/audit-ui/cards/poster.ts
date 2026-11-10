@@ -425,9 +425,10 @@ function boardFooter(k: K, d: BoardSummary): number {
   const dot: [string, number][] = [[k.uni ? '●' : '*', tk.accent], [' ' + local, tk.text3]];
   if (s.share) return footer(k, { keys: [['slopie', 'audit']], right: [[INSTALL, tk.text], ['   ', tk.text3], ...dot] });
   const keys: [string, string, number?][] = [[k.uni ? '→' : '->', 'replay your story', tk.accent], [k.uni ? '←' : '<-', 'back'], ['s', 'share'], ['?', 'how'], ['q', 'quit']];
-  // Every key hint must fit: the install line gives way on narrow terminals.
+  // Every key hint must fit: the right side gives way first (the dot, then the install line).
   const need = keys.reduce((a, [key, word]) => a + textWidth(key) + 1 + textWidth(word) + 3, 0);
-  const withInstall = textWidth(INSTALL) + 3 + dot.reduce((a, [t]) => a + textWidth(t), 0);
-  const right = need + withInstall + 3 <= k.iw ? [[INSTALL, tk.text] as [string, number], ['   ', tk.text3] as [string, number], ...dot] : dot;
+  const install: [string, number] = [INSTALL, tk.text];
+  const options: [string, number][][] = [[install, ['   ', tk.text3], ...dot], [install], dot];
+  const right = options.find(r => need + r.reduce((a, [t]) => a + textWidth(t), 0) <= k.iw) ?? dot;
   return footer(k, { keys, right });
 }
