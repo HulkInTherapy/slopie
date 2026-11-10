@@ -972,8 +972,8 @@ var require_command = __commonJS({
   "node_modules/.pnpm/commander@12.1.0/node_modules/commander/lib/command.js"(exports) {
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
-    var path30 = __require("node:path");
-    var fs37 = __require("node:fs");
+    var path31 = __require("node:path");
+    var fs38 = __require("node:fs");
     var process10 = __require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -1905,11 +1905,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path30.resolve(baseDir, baseName);
-          if (fs37.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path30.extname(baseName))) return void 0;
+          const localBin = path31.resolve(baseDir, baseName);
+          if (fs38.existsSync(localBin)) return localBin;
+          if (sourceExt.includes(path31.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs37.existsSync(`${localBin}${ext}`)
+            (ext) => fs38.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -1921,21 +1921,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs37.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs38.realpathSync(this._scriptPath);
           } catch (err) {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path30.resolve(
-            path30.dirname(resolvedScriptPath),
+          executableDir = path31.resolve(
+            path31.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path30.basename(
+            const legacyName = path31.basename(
               this._scriptPath,
-              path30.extname(this._scriptPath)
+              path31.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -1946,7 +1946,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path30.extname(executableFile));
+        launchWithNode = sourceExt.includes(path31.extname(executableFile));
         let proc;
         if (process10.platform !== "win32") {
           if (launchWithNode) {
@@ -2786,7 +2786,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path30.basename(filename, path30.extname(filename));
+        this._name = path31.basename(filename, path31.extname(filename));
         return this;
       }
       /**
@@ -2800,9 +2800,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path31) {
-        if (path31 === void 0) return this._executableDir;
-        this._executableDir = path31;
+      executableDir(path32) {
+        if (path32 === void 0) return this._executableDir;
+        this._executableDir = path32;
         return this;
       }
       /**
@@ -3445,11 +3445,11 @@ function wrap(db) {
         Object.assign(variant, variants);
       return variants.default;
     },
-    loadExtension(path30) {
+    loadExtension(path31) {
       db.enableLoadExtension?.(true);
       if (!db.loadExtension)
         throw new Error("this sqlite cannot load extensions");
-      db.loadExtension(path30);
+      db.loadExtension(path31);
     },
     // 5. **`function()` registers an application-defined function.** Both
     //    drivers spell it the same way and both take the arity from
@@ -19984,7 +19984,7 @@ var VERSION;
 var init_version = __esm({
   "packages/core/dist/version.js"() {
     "use strict";
-    VERSION = "1.9.1";
+    VERSION = "1.9.2";
   }
 });
 
@@ -22422,6 +22422,68 @@ var init_scan_pool2 = __esm({
   }
 });
 
+// packages/cli/src/audit-crash-log.ts
+import fs28 from "node:fs";
+import os8 from "node:os";
+import path23 from "node:path";
+function crashLogDir() {
+  return process.env["SLOPIE_LOG_DIR"] || path23.join(os8.homedir(), ".slopie", "logs");
+}
+function tildePath(file) {
+  const home2 = os8.homedir();
+  return home2 && (file === home2 || file.startsWith(home2 + path23.sep)) ? "~" + file.slice(home2.length) : file;
+}
+function errorText(error) {
+  if (error instanceof Error) return { message: error.message || error.name, stack: error.stack ?? error.message };
+  return { message: String(error), stack: String(error) };
+}
+function section(report) {
+  const { message, stack } = errorText(report.error);
+  const lines = [`stage: ${report.stage}`, `error: ${message}`, "stack:", stack];
+  if (report.stderr?.trim()) lines.push("worker stderr (tail):", report.stderr.trimEnd());
+  for (const note of report.notes ?? []) lines.push(`note: ${note}`);
+  return lines.join("\n") + "\n";
+}
+function writeCrashLog(report, dir = crashLogDir(), now = /* @__PURE__ */ new Date()) {
+  try {
+    fs28.mkdirSync(dir, { recursive: true, mode: 448 });
+    try {
+      fs28.chmodSync(dir, 448);
+    } catch {
+    }
+    const head = [`slopie ${VERSION}`, `node ${process.version}`, `platform ${process.platform}/${process.arch}`, `time ${now.toISOString()}`, ""].join("\n");
+    const stamp = now.toISOString().replace(/[:.]/g, "-");
+    let file = path23.join(dir, `audit-${stamp}.log`);
+    for (let n = 2; fs28.existsSync(file); n++) file = path23.join(dir, `audit-${stamp}-${n}.log`);
+    fs28.writeFileSync(file, redactText(head + section(report)), { mode: 384, flag: "wx" });
+    prune(dir);
+    return file;
+  } catch {
+    return null;
+  }
+}
+function appendCrashLog(file, report) {
+  if (!file) return writeCrashLog(report);
+  try {
+    fs28.appendFileSync(file, redactText("\n" + section(report)), { mode: 384 });
+    return file;
+  } catch {
+    return file;
+  }
+}
+function prune(dir) {
+  const logs = fs28.readdirSync(dir).filter((name) => /^audit-.*\.log$/.test(name)).map((name) => ({ name, at: fs28.statSync(path23.join(dir, name)).mtimeMs })).sort((a, b2) => b2.at - a.at || (a.name < b2.name ? 1 : -1));
+  for (const old of logs.slice(KEEP)) fs28.rmSync(path23.join(dir, old.name), { force: true });
+}
+var KEEP;
+var init_audit_crash_log = __esm({
+  "packages/cli/src/audit-crash-log.ts"() {
+    "use strict";
+    init_dist();
+    KEEP = 10;
+  }
+});
+
 // packages/cli/src/audit-background.ts
 var audit_background_exports = {};
 __export(audit_background_exports, {
@@ -22430,13 +22492,106 @@ __export(audit_background_exports, {
   runAuditWorkerHost: () => runAuditWorkerHost
 });
 import { fork } from "node:child_process";
-import fs28 from "node:fs";
-import path23 from "node:path";
+import fs29 from "node:fs";
+import path24 from "node:path";
 function localScanPool() {
   const entry = new URL("./audit-native-worker.js", import.meta.url);
-  return fs28.existsSync(entry) ? createScanPool(entry) : void 0;
+  return fs29.existsSync(entry) ? createScanPool(entry) : void 0;
 }
 function createBackgroundAuditSession(options, entry = process.argv[1]) {
+  const worker = createWorkerSession(options, entry);
+  let local = null;
+  let localBase = 0;
+  let logFile = null;
+  let cancelled = false, disposed = false, nextAck = 0;
+  const acks = /* @__PURE__ */ new Map();
+  const shiftSnapshot = (snapshot2) => localBase ? { ...snapshot2, sequence: snapshot2.sequence + localBase } : snapshot2;
+  const shiftEvent = (event) => event.type === "snapshot" ? { ...event, snapshot: shiftSnapshot(event.snapshot) } : "sequence" in event ? { ...event, sequence: event.sequence + localBase } : event;
+  const runLocal = async (callback, workerError, maxSequence) => {
+    await worker.drained();
+    logFile = writeCrashLog({ stage: worker.stage(), error: workerError, stderr: worker.stderrTail(), notes: ["background worker failed before delivering a result; re-running the audit in-process"] });
+    worker.dispose();
+    localBase = maxSequence + 1;
+    let stage = "in-process fallback \xB7 starting";
+    try {
+      if (process.env["SLOPIE_TEST_INPROCESS_FAIL"] === "1") throw new Error("in-process audit failed (SLOPIE_TEST_INPROCESS_FAIL)");
+      local = createAuditSession({
+        ...options,
+        signal: void 0,
+        sessionIdentity: worker.snapshot().snapshotId,
+        nativeScanExecutor: localScanPool(),
+        onTransfer: (event) => new Promise((resolve, reject) => {
+          const ackId = `local-${++nextAck}`;
+          acks.set(ackId, { resolve, reject });
+          callback?.(shiftEvent({ ...event, ackId }));
+        })
+      });
+      if (cancelled) local.cancel();
+      const result = await local.run((event) => {
+        if (event.type === "progress") stage = `in-process fallback \xB7 run \xB7 ${event.progress.stage}`;
+        if (event.type !== "transfer") callback?.(shiftEvent(event));
+      });
+      appendCrashLog(logFile, { stage: "in-process fallback", error: "none", notes: [`in-process fallback finished with status ${result.status}`] });
+      return shiftSnapshot(result);
+    } catch (error) {
+      if (cancelled) return local ? shiftSnapshot(local.snapshot()) : worker.snapshot();
+      logFile = appendCrashLog(logFile, { stage, error, notes: ["in-process fallback failed too; showing the error screen"] });
+      const failure2 = error instanceof Error ? error : new Error(String(error));
+      throw Object.assign(failure2, { logFile, stage });
+    }
+  };
+  const cancel = () => {
+    if (cancelled) return;
+    cancelled = true;
+    worker.cancel();
+    local?.cancel();
+    for (const ack of acks.values()) ack.reject(new Error("audit_cancelled"));
+    acks.clear();
+  };
+  options.signal?.addEventListener("abort", cancel, { once: true });
+  const active2 = () => local ?? worker;
+  return {
+    snapshot: () => local ? shiftSnapshot(local.snapshot()) : worker.snapshot(),
+    run: async (callback) => {
+      let maxSequence = worker.snapshot().sequence;
+      const seen = (event) => {
+        maxSequence = Math.max(maxSequence, event.type === "snapshot" ? event.snapshot.sequence : "sequence" in event ? event.sequence : 0);
+        callback?.(event);
+      };
+      try {
+        return await worker.run(seen);
+      } catch (error) {
+        if (cancelled || disposed) return worker.snapshot();
+        return runLocal(callback, error, maxSequence);
+      }
+    },
+    analyzePeriod: async (period, callback) => local ? shiftSnapshot(await local.analyzePeriod(period, (event) => callback?.(shiftEvent(event)))) : worker.analyzePeriod(period, callback),
+    prompts: (...args) => active2().prompts(...args),
+    evidence: (route) => active2().evidence(route),
+    previewLaunch: () => active2().previewLaunch(),
+    preview: (selection) => active2().preview(selection),
+    classify: (selection, callback) => active2().classify(selection, callback),
+    acknowledgeTransfer: (ackId) => {
+      const ack = acks.get(ackId);
+      if (ack) {
+        acks.delete(ackId);
+        ack.resolve();
+        return;
+      }
+      worker.acknowledgeTransfer?.(ackId);
+    },
+    cancel,
+    dispose: () => {
+      if (disposed) return;
+      cancel();
+      disposed = true;
+      worker.dispose();
+      local?.dispose();
+    },
+    logFile: () => logFile
+  };
+}
+function createWorkerSession(options, entry) {
   const seed = createAuditSession({ ...options, nativeScanExecutor: void 0, onTransfer: void 0, signal: void 0 });
   let current = seed.snapshot();
   seed.dispose();
@@ -22445,6 +22600,12 @@ function createBackgroundAuditSession(options, entry = process.argv[1]) {
   let events;
   const pending = /* @__PURE__ */ new Map();
   let ready = null;
+  let stderrTail = "", lastOp = "start";
+  let resolveDrained = () => {
+  };
+  const drainedPromise = new Promise((resolve) => {
+    resolveDrained = resolve;
+  });
   let resolveReady = () => {
   }, rejectReady = () => {
   };
@@ -22474,7 +22635,16 @@ function createBackgroundAuditSession(options, entry = process.argv[1]) {
     });
     ready.catch(() => {
     });
-    child = fork(path23.resolve(entry), ["__audit_worker"], { stdio: ["ignore", "ignore", "ignore", "ipc"], serialization: "advanced" });
+    child = fork(path24.resolve(entry), ["__audit_worker"], { stdio: ["ignore", "ignore", "pipe", "ipc"], serialization: "advanced" });
+    const stderr = child.stderr;
+    if (stderr) {
+      stderr.setEncoding("utf8");
+      stderr.on("data", (chunk) => {
+        stderrTail = (stderrTail + chunk).slice(-STDERR_KEEP);
+      });
+      stderr.once("close", () => resolveDrained());
+      stderr.on("error", () => resolveDrained());
+    } else resolveDrained();
     child.on("message", (raw) => {
       if (disposed || cancelled) return;
       if (raw?.kind === "ready") {
@@ -22495,7 +22665,9 @@ function createBackgroundAuditSession(options, entry = process.argv[1]) {
         if (!request2) return;
         pending.delete(raw.id);
         if (raw.error) {
-          request2.reject(new Error(raw.error));
+          const error = new Error(raw.error);
+          if (raw.stack) error.stack = raw.stack;
+          request2.reject(error);
           return;
         }
         if (request2.op === "run" || request2.op === "analyzePeriod") current = raw.value;
@@ -22503,11 +22675,19 @@ function createBackgroundAuditSession(options, entry = process.argv[1]) {
       }
     });
     child.once("error", (error) => failAll(error));
-    child.once("exit", () => {
-      if (!cancelled && !disposed) failAll(new Error("audit_background_worker_unavailable"));
+    child.once("exit", (code, signal) => {
+      setTimeout(resolveDrained, 250).unref();
+      if (!cancelled && !disposed) failAll(new Error(`audit_background_worker_unavailable (worker exited with ${signal ? `signal ${signal}` : `code ${code}`})`));
     });
     const { signal: _signal, onTransfer: _onTransfer, nativeScanExecutor: _executor, ...serializable } = options;
-    child.send({ kind: "init", options: { ...serializable, sessionIdentity: current.snapshotId } });
+    lastOp = "init";
+    try {
+      child.send({ kind: "init", options: { ...serializable, sessionIdentity: current.snapshotId } }, (error) => {
+        if (error) failAll(error);
+      });
+    } catch (error) {
+      failAll(error);
+    }
     return ready;
   };
   const request = async (op, args = []) => {
@@ -22516,8 +22696,19 @@ function createBackgroundAuditSession(options, entry = process.argv[1]) {
     if (disposed || cancelled) throw new Error("audit_cancelled");
     return new Promise((resolve, reject) => {
       const id = ++next;
+      lastOp = op;
       pending.set(id, { op, resolve, reject });
-      child.send({ kind: "request", id, op, args });
+      try {
+        child.send({ kind: "request", id, op, args }, (error) => {
+          if (error) {
+            pending.delete(id);
+            reject(error);
+          }
+        });
+      } catch (error) {
+        pending.delete(id);
+        reject(error);
+      }
     });
   };
   const cancel = () => {
@@ -22569,11 +22760,19 @@ function createBackgroundAuditSession(options, entry = process.argv[1]) {
       cancel();
       disposed = true;
       events = void 0;
-    }
+    },
+    stderrTail: () => stderrTail,
+    drained: () => child ? Promise.race([drainedPromise, new Promise((resolve) => setTimeout(resolve, 300).unref())]) : Promise.resolve(),
+    stage: () => `background worker \xB7 ${lastOp} \xB7 ${current.progress?.stage ?? current.status}`
   };
 }
 async function runAuditWorkerHost() {
   if (!process.send) throw new Error("audit_worker_requires_ipc");
+  const testFail = process.env["SLOPIE_TEST_WORKER_FAIL"];
+  if (testFail === "exit") {
+    process.stderr.write("slopie test hook: audit worker exiting at startup (SLOPIE_TEST_WORKER_FAIL=exit)\n", () => process.exit(70));
+    return;
+  }
   let session = null, nextAck = 0;
   const acknowledgements = /* @__PURE__ */ new Map();
   const send = (value) => {
@@ -22613,6 +22812,7 @@ async function runAuditWorkerHost() {
     const { id, op, args } = raw;
     try {
       let value;
+      if (op === "run" && testFail === "throw") throw new Error("audit worker test failure (SLOPIE_TEST_WORKER_FAIL=throw)");
       if (op === "run") value = await session.run(emit);
       else if (op === "analyzePeriod") value = await session.analyzePeriod(args[0], emit);
       else if (op === "classify") value = await session.classify(args[0], emit);
@@ -22620,7 +22820,7 @@ async function runAuditWorkerHost() {
       else throw new Error("audit_worker_operation_unavailable");
       send({ kind: "result", id, value });
     } catch (error) {
-      send({ kind: "result", id, error: error instanceof Error ? error.message : "audit_worker_failed" });
+      send({ kind: "result", id, error: error instanceof Error ? error.message : "audit_worker_failed", stack: error instanceof Error ? error.stack : void 0 });
     }
   });
   process.on("disconnect", () => {
@@ -22628,11 +22828,14 @@ async function runAuditWorkerHost() {
     process.exit(0);
   });
 }
+var STDERR_KEEP;
 var init_audit_background = __esm({
   "packages/cli/src/audit-background.ts"() {
     "use strict";
     init_dist();
     init_scan_pool2();
+    init_audit_crash_log();
+    STDERR_KEEP = 64 * 1024;
   }
 });
 
@@ -23408,10 +23611,10 @@ function buildDetails(data, sections, options) {
   const content = Math.max(10, Math.min(100, columns2 - 4));
   const margin = Math.max(0, Math.floor((columns2 - content) / 2));
   const body = [];
-  for (const section of sections) {
+  for (const section2 of sections) {
     if (body.length) body.push([]);
-    body.push([seg(section.title.toUpperCase(), "title")]);
-    for (const text of section.lines) for (const row of wrap2(text, content)) body.push([seg(row, section.title.startsWith("Technical") ? "faint" : "text")]);
+    body.push([seg(section2.title.toUpperCase(), "title")]);
+    for (const text of section2.lines) for (const row of wrap2(text, content)) body.push([seg(row, section2.title.startsWith("Technical") ? "faint" : "text")]);
   }
   const perPage = Math.max(1, rows - 4);
   const chunks = [];
@@ -23670,7 +23873,22 @@ function personalityOf(snapshot2, data) {
   if (favourite && !data.loading) return `Most-used model: ${modelName(favourite.canonicalModel ?? favourite.model)}.`;
   return null;
 }
+function crashReason(message) {
+  let line2 = message.replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "") || "unknown error";
+  if (line2.length > 100) line2 = line2.slice(0, 99).trimEnd() + "\u2026";
+  return line2;
+}
+function crashDetail(snapshot2) {
+  const crash = snapshot2.crash;
+  if (!crash || snapshot2.status !== "error") return [];
+  return [
+    ...crash.log ? [`Details: ${crash.log}`] : [],
+    "Try: npx slopie audit --plain   (or send that log to the author)"
+  ];
+}
 function failureOf(snapshot2) {
+  const crash = snapshot2.crash;
+  if (crash && snapshot2.status === "error") return `The audit hit an error: ${crash.reason}.`;
   const gaps = /* @__PURE__ */ new Set([...snapshot2.coverage.gapCodes, ...snapshot2.sources.flatMap((source) => source.gapCodes)]);
   for (const [code, text] of LOCAL_FAILURES) if (gaps.has(code)) return text;
   if ([...gaps].some((code) => code.startsWith("audit_sqlite_"))) return "One history database couldn't be read safely.";
@@ -25173,9 +25391,9 @@ function buildDeck(snapshot2) {
   const awardIds = new Set((story?.awards ?? []).map((a) => a.id));
   const pool = (story?.cards ?? []).filter((c) => !CONSUMED.has(c.id) && !awardIds.has(c.id)).sort((a, b2) => a.rank - b2.rank);
   let extrasLeft = MAX_EXTRAS;
-  const extra = (section) => {
+  const extra = (section2) => {
     if (extrasLeft <= 0) return null;
-    const i = pool.findIndex((c) => c.section === section);
+    const i = pool.findIndex((c) => c.section === section2);
     if (i < 0) return null;
     extrasLeft--;
     return safe(() => insight(pool.splice(i, 1)[0]));
@@ -25423,9 +25641,9 @@ function renderPlain(snapshot2, options = {}, transfers = []) {
   while (lines.length && !lines.at(-1).trim()) lines.pop();
   const out = [...story, ...lines, ""];
   if (data.footnote) out.push("  " + data.footnote, "");
-  for (const section of detailLines(snapshot2, transfers)) {
-    out.push("  " + section.title.toUpperCase());
-    for (const text2 of section.lines) for (const row of wrap2(text2, width - 4)) out.push("  " + row);
+  for (const section2 of detailLines(snapshot2, transfers)) {
+    out.push("  " + section2.title.toUpperCase());
+    for (const text2 of section2.lines) for (const row of wrap2(text2, width - 4)) out.push("  " + row);
     out.push("");
   }
   const text = out.join("\n").trimEnd() + "\n";
@@ -26172,10 +26390,10 @@ function footer(k, opts = {}) {
   let rx = mx + iw - rw;
   for (const [t, col2] of right) rx += txt(k, rx, y, t, col2);
   let x = mx;
-  for (const [key3, word] of keys2) {
+  for (const [key3, word, keyColor] of keys2) {
     const need = textWidth(key3) + (word ? 1 + textWidth(word) : 0);
     if (x + need > mx + iw - rw - 3) break;
-    x += txt(k, x, y, key3, tk.text2);
+    x += txt(k, x, y, key3, keyColor ?? tk.text2);
     if (word) x += 1 + txt(k, x + 1, y, word, tk.faint);
     x += 3;
   }
@@ -26480,7 +26698,8 @@ function posterBody(s, d) {
   const meta = [d.range, d.code].filter(Boolean).join("  \xB7  ");
   const top = header(k, textWidth(meta) + 14 <= k.iw ? meta : d.code ?? "");
   const footY = boardFooter(k, d);
-  const avail = footY - 2 - top;
+  const banner = !s.share && d.replay ? replayBanner(k, footY - 1) : false;
+  const avail = footY - (banner ? 3 : 2) - top;
   const plan2 = { label: true, bigTitle: true, tagline: true, bigPrice: true, day: true, diagrams: true, nFacts: 6, factGap: true, awards: true, memory: true, ticker: !!d.sinceLast && !s.share };
   let pieces = build(k, d, plan2);
   for (const step of STEPS) {
@@ -26786,14 +27005,29 @@ function memoryPiece(k) {
     }
   };
 }
+function replayBanner(k, y) {
+  const text = k.uni ? REPLAY_BANNER : REPLAY_BANNER.replace("\u2192", "->").replace("\xB7", "-");
+  if (textWidth(text) > k.iw) return false;
+  const arrow = k.uni ? "\u2192" : "->";
+  const [head, tail] = text.split(arrow);
+  let x = k.mx + txt(k, k.mx, y, head, k.tk.text2);
+  x += txt(k, x, y, arrow, k.tk.accent, { bold: true });
+  txt(k, x, y, tail, k.tk.text2);
+  return true;
+}
 function boardFooter(k, d) {
   const { tk, s } = k;
   const local = s.online ? "online \xB7 Jev" : "all local";
-  const right = [[INSTALL, tk.text], ["   ", tk.text3], [k.uni ? "\u25CF" : "*", tk.accent], [" " + local, tk.text3]];
-  if (s.share) return footer(k, { keys: [["slopie", "audit"]], right });
-  return footer(k, { keys: [[k.uni ? "\u2190" : "<", d.replay ? "replay your story" : "story"], ["s", "share"], ["?", "how"], ["q", "quit"]], right });
+  const dot = [[k.uni ? "\u25CF" : "*", tk.accent], [" " + local, tk.text3]];
+  if (s.share) return footer(k, { keys: [["slopie", "audit"]], right: [[INSTALL, tk.text], ["   ", tk.text3], ...dot] });
+  const keys2 = [[k.uni ? "\u2192" : "->", "replay your story", tk.accent], [k.uni ? "\u2190" : "<-", "back"], ["s", "share"], ["?", "how"], ["q", "quit"]];
+  const need = keys2.reduce((a, [key3, word]) => a + textWidth(key3) + 1 + textWidth(word) + 3, 0);
+  const install = [INSTALL, tk.text];
+  const options = [[install, ["   ", tk.text3], ...dot], [install], dot];
+  const right = options.find((r3) => need + r3.reduce((a, [t]) => a + textWidth(t), 0) <= k.iw) ?? dot;
+  return footer(k, { keys: keys2, right });
 }
-var INSTALL, MEMORY_LINE, PRINT_MS, DIAG_AT, DIAG_STEP, DIAG_DUR, SETTLED_MS, COUNT_FROM, TIER, STEPS, gapOf2;
+var INSTALL, MEMORY_LINE, PRINT_MS, DIAG_AT, DIAG_STEP, DIAG_DUR, SETTLED_MS, COUNT_FROM, TIER, STEPS, gapOf2, REPLAY_BANNER;
 var init_poster = __esm({
   "packages/cli/src/audit-ui/cards/poster.ts"() {
     "use strict";
@@ -26856,6 +27090,7 @@ var init_poster = __esm({
       }
     ];
     gapOf2 = (p, prev) => p.rule || prev.rule || p.air ? 1 : 0;
+    REPLAY_BANNER = "opened on your poster \xB7 press \u2192 to watch your story from the start";
   }
 });
 
@@ -28399,7 +28634,7 @@ function loadingModel(snapshot2) {
   };
   const stage = !loading ? "ready" : detail ? detail.stage === "enriching" || detail.stage === "ready" ? "detecting" : detail.stage : board.phase === "finding" ? "discovering" : board.phase === "finishing" ? "aggregating" : "reading";
   const progress = detail && detail.counts.files > 0 ? detail.counts.filesDone / detail.counts.files : board.progress?.total ? (board.progress.done ?? 0) / board.progress.total : null;
-  return { rows, counts, stage, progress: loading ? progress : 1, ready: !loading, failure: board.failure, fromDetail: Boolean(detail) };
+  return { rows, counts, stage, progress: loading ? progress : 1, ready: !loading, failure: board.failure, failureDetail: crashDetail(snapshot2), fromDetail: Boolean(detail) };
 }
 function caption(model, shownPrompts) {
   if (model.failure && model.ready) return model.failure;
@@ -28548,7 +28783,11 @@ var init_loading = __esm({
         }
         const barW = Math.min(64, iw);
         const p = model.ready ? 1 : model.progress;
-        for (let i = 0; i < barW; i++) {
+        const crashed = !!(model.failure && model.ready && model.failureDetail.length);
+        const crashHead = crashed ? wrapText(model.failure, iw) : [];
+        const crashLines = crashed ? [...crashHead, ...model.failureDetail.flatMap((line2) => wrapText(line2, iw))] : [];
+        const crashY = Math.max(g2.barY, Math.min(g2.captionY, g2.footY - 1 - crashLines.length));
+        for (let i = 0; i < barW && !(crashed && crashY <= g2.barY); i++) {
           const filled = p !== null && i < Math.round(barW * p);
           const head = p === null && motion ? Math.abs(t / 22 % (barW + 12) - 6 - i) < 6 : false;
           c.put(g2.mx + i, g2.barY, uni ? filled || head ? "\u2501" : "\u2500" : filled || head ? "=" : "-", filled ? C.accent : head ? C.text3 : C.rule, C.bg, 0);
@@ -28561,7 +28800,12 @@ var init_loading = __esm({
         }
         const ca = motion && this.lastCaption !== FIRST_CAPTION ? clamp01((now - this.captionAt) / 260) : 1;
         if (ca < 1) busy = true;
-        c.text(g2.mx, g2.captionY, text, { fg: mix(C.bg, model.ready && !model.failure ? C.text : C.text2, ca), bg: C.bg, bold: model.ready && !model.failure }, iw);
+        if (crashed) {
+          const head = crashHead.length;
+          crashLines.forEach((line2, i) => {
+            if (crashY + i < g2.footY) c.text(g2.mx, crashY + i, line2, { fg: i < head ? C.text : C.text2, bg: C.bg, bold: i < head }, iw);
+          });
+        } else c.text(g2.mx, g2.captionY, text, { fg: mix(C.bg, model.ready && !model.failure ? C.text : C.text2, ca), bg: C.bg, bold: model.ready && !model.failure }, iw);
         put2(g2.mx, g2.footY, uni ? "\u25CF" : "*", C.accent);
         put2(g2.mx + 2, g2.footY, this.privacyLine, C.text3);
         if (model.ready && !this.done(now)) busy = true;
@@ -28762,13 +29006,13 @@ var init_share = __esm({
 
 // packages/cli/src/audit-ui/history.ts
 import crypto3 from "node:crypto";
-import fs29 from "node:fs";
-import os8 from "node:os";
-import path24 from "node:path";
+import fs30 from "node:fs";
+import os9 from "node:os";
+import path25 from "node:path";
 function historyDir(env = process.env) {
   if (env["SLOPIE_AUDIT_HISTORY_DIR"]) return env["SLOPIE_AUDIT_HISTORY_DIR"];
-  const root = env["POTSHERD_DIR"] || path24.join(os8.homedir(), ".potsherd");
-  return path24.join(root, "audit-history");
+  const root = env["POTSHERD_DIR"] || path25.join(os9.homedir(), ".potsherd");
+  return path25.join(root, "audit-history");
 }
 function scopeKey(snapshot2) {
   const s = snapshot2.scope;
@@ -28807,7 +29051,7 @@ function isDigest(x) {
 }
 function readHistory2(snapshot2, dir = historyDir()) {
   try {
-    const text = fs29.readFileSync(path24.join(dir, `${scopeKey(snapshot2)}.jsonl`), "utf8");
+    const text = fs30.readFileSync(path25.join(dir, `${scopeKey(snapshot2)}.jsonl`), "utf8");
     const out = [];
     for (const line2 of text.split("\n")) {
       if (!line2.trim()) continue;
@@ -28824,13 +29068,13 @@ function readHistory2(snapshot2, dir = historyDir()) {
 }
 function writeDigest(snapshot2, digest3, dir = historyDir()) {
   try {
-    fs29.mkdirSync(dir, { recursive: true, mode: 448 });
-    const file = path24.join(dir, `${scopeKey(snapshot2)}.jsonl`);
+    fs30.mkdirSync(dir, { recursive: true, mode: 448 });
+    const file = path25.join(dir, `${scopeKey(snapshot2)}.jsonl`);
     const prior = readHistory2(snapshot2, dir);
     const lines = [...prior, digest3].slice(-MAX_LINES).map((d) => JSON.stringify(d));
     const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
-    fs29.writeFileSync(tmp, lines.join("\n") + "\n", { mode: 384 });
-    fs29.renameSync(tmp, file);
+    fs30.writeFileSync(tmp, lines.join("\n") + "\n", { mode: 384 });
+    fs30.renameSync(tmp, file);
     return true;
   } catch {
     return false;
@@ -28880,8 +29124,8 @@ var init_history = __esm({
 });
 
 // packages/cli/src/audit-ui/terminal.ts
-import fs30 from "node:fs";
-import path25 from "node:path";
+import fs31 from "node:fs";
+import path26 from "node:path";
 function splitKeys(chunk) {
   const out = [];
   for (const part of chunk.split(/(?=\x1b)/)) {
@@ -28904,6 +29148,7 @@ function decodeKey(chunk) {
     case "\x1B[C":
     case "\x1BOC":
     case "l":
+    case "n":
     case " ":
       return "right";
     case "\x1B[D":
@@ -29044,15 +29289,16 @@ async function runWallboard(session, options = {}) {
   }
   function drawNotes(c, card, w, h) {
     const pw = Math.min(76, w - 6);
-    const sections = [{ title: "HOW WE KNOW", lines: card.notes }];
+    const keys2 = card.kind === "board" ? ["Press \u2192 to watch your story from the first card; b brings you back to this board."] : [];
+    const sections = [{ title: "HOW WE KNOW", lines: [...keys2, ...card.notes] }];
     if (card.kind === "board" || card.kind === "bill" || card.kind === "scale") {
-      for (const section of detailLines(view.snapshot, transfers)) sections.push({ title: section.title.toUpperCase(), lines: section.lines });
+      for (const section2 of detailLines(view.snapshot, transfers)) sections.push({ title: section2.title.toUpperCase(), lines: section2.lines });
     }
     const all = [];
-    for (const section of sections) {
+    for (const section2 of sections) {
       if (all.length) all.push({ text: "", title: false });
-      all.push({ text: section.title, title: true });
-      for (const line2 of section.lines) for (const row of wrapText(sanitize(line2), pw - 4)) all.push({ text: row, title: false });
+      all.push({ text: section2.title, title: true });
+      for (const line2 of section2.lines) for (const row of wrapText(sanitize(line2), pw - 4)) all.push({ text: row, title: false });
     }
     const perPage = Math.max(3, h - 8);
     const pages = Math.max(1, Math.ceil(all.length / perPage));
@@ -29160,6 +29406,7 @@ async function runWallboard(session, options = {}) {
   let history = null;
   let digestWritten = false;
   let openedOnBoard = false;
+  let bannerOn = false;
   function loadHistory(snapshot2) {
     if (history || histDir === false) return;
     const digest3 = digestOf(snapshot2);
@@ -29175,13 +29422,14 @@ async function runWallboard(session, options = {}) {
     const since = history.since;
     const records = since?.records ?? [];
     const awards3 = records.length ? [{ title: "New Personal Best", value: `${records[0].metric}: ${records[0].to}`, publicValue: `${records[0].metric}: ${records[0].to}`, tier: "gold" }, ...last.data.awards].slice(0, 6) : last.data.awards;
-    const board = { ...last, data: { ...last.data, sinceLast: since?.line ?? null, firstRun: history.firstRun, replay: openedOnBoard, awards: awards3 } };
+    const board = { ...last, data: { ...last.data, sinceLast: since?.line ?? null, firstRun: history.firstRun, replay: openedOnBoard && bannerOn, awards: awards3 } };
     return [...cards.slice(0, -1), board];
   }
   function startDeck(now) {
     deckSnapshot = view.snapshot;
     loadHistory(view.snapshot);
     openedOnBoard = !!history && !history.firstRun;
+    bannerOn = openedOnBoard;
     deck = decorate(buildDeck(view.snapshot));
     mode = "deck";
     index = openedOnBoard ? deck.length - 1 : 0;
@@ -29299,6 +29547,10 @@ async function runWallboard(session, options = {}) {
       } else if (key3 === "back") stop();
       return;
     }
+    if (bannerOn) {
+      bannerOn = false;
+      deck = decorate(buildDeck(view.snapshot));
+    }
     const card = current();
     if (!card) return;
     if (notes) {
@@ -29322,16 +29574,14 @@ async function runWallboard(session, options = {}) {
         share();
         return;
       case "left":
-        if (openedOnBoard && card.kind === "board") {
-          openedOnBoard = false;
-          deck = decorate(buildDeck(view.snapshot));
-          go(0);
-          return;
-        }
         go(index - 1);
         return;
       case "right":
       case "enter": {
+        if (card.kind === "board" && index === deck.length - 1) {
+          go(0);
+          return;
+        }
         if (card.kind === "archetype" && caps.motion && !revealDone((now - enteredAt) * CARD_SPEED)) {
           enteredAt = now - T2.settle / CARD_SPEED - 1;
           paint();
@@ -29373,9 +29623,9 @@ async function runWallboard(session, options = {}) {
       const dir = options.shareDir ?? process.cwd();
       let file = "";
       for (let n = 1; n < 100 && !file; n++) {
-        const candidate = path25.join(dir, n === 1 ? "slopie-wrapped.svg" : `slopie-wrapped-${n}.svg`);
+        const candidate = path26.join(dir, n === 1 ? "slopie-wrapped.svg" : `slopie-wrapped-${n}.svg`);
         try {
-          fs30.writeFileSync(candidate, svg, { flag: "wx", mode: 420 });
+          fs31.writeFileSync(candidate, svg, { flag: "wx", mode: 420 });
           file = candidate;
         } catch (error) {
           if (error.code !== "EEXIST") throw error;
@@ -29385,7 +29635,7 @@ async function runWallboard(session, options = {}) {
         flash("too many slopie-wrapped files here already");
         return;
       }
-      flash(`saved ${path25.basename(file)} \xB7 no project names, none of your words`, 2600);
+      flash(`saved ${path26.basename(file)} \xB7 no project names, none of your words`, 2600);
     } catch (error) {
       flash(`couldn't save: ${error instanceof Error ? sanitize(error.message).slice(0, 60) : "unknown error"}`);
     }
@@ -29407,15 +29657,22 @@ async function runWallboard(session, options = {}) {
     resolveDone();
   }
   paint();
+  let failure2;
   const scan2 = Promise.resolve().then(() => session.run(publish)).then(
     (final) => {
       settled = true;
       if (!view.revoked) view = { ...view, snapshot: final.snapshotId === view.snapshot.snapshotId && final.sequence >= view.snapshot.sequence ? final : view.snapshot };
     },
-    () => {
+    (error) => {
       settled = true;
+      if (!stopping) failure2 = error;
       const snapshot2 = view.snapshot;
-      view = { ...view, snapshot: { ...snapshot2, status: stopping ? "cancelled" : "error", launch: snapshot2.launch ? { ...snapshot2.launch, stage: "ready" } : void 0 } };
+      const log = error?.logFile;
+      const crash = stopping ? void 0 : {
+        reason: crashReason(sanitize(error instanceof Error ? error.message : String(error))),
+        log: typeof log === "string" ? tildePath(log) : null
+      };
+      view = { ...view, snapshot: { ...snapshot2, status: stopping ? "cancelled" : "error", launch: snapshot2.launch ? { ...snapshot2.launch, stage: "ready" } : void 0, ...crash ? { crash } : {} } };
     }
   ).then(() => schedule());
   try {
@@ -29435,7 +29692,7 @@ async function runWallboard(session, options = {}) {
   }
   if (!settled) session.cancel();
   await Promise.race([scan2, new Promise((resolve) => setTimeout(resolve, 2e3).unref())]);
-  return { snapshot: view.revoked ?? view.snapshot, reason };
+  return { snapshot: view.revoked ?? view.snapshot, reason, ...failure2 !== void 0 ? { error: failure2 } : {} };
 }
 var PASTE_START, PASTE_END, InputParser, FRAME_MS, CARD_SPEED, TRANSFER_LINGER_MS;
 var init_terminal = __esm({
@@ -29456,6 +29713,7 @@ var init_terminal = __esm({
     init_history();
     init_source3();
     init_view_model();
+    init_audit_crash_log();
     PASTE_START = "\x1B[200~";
     PASTE_END = "\x1B[201~";
     InputParser = class {
@@ -29569,7 +29827,7 @@ __export(fixture_session_exports, {
   createFixtureSession: () => createFixtureSession,
   recordAuditSession: () => recordAuditSession
 });
-import fs31 from "node:fs";
+import fs32 from "node:fs";
 function isRecording(value) {
   return Boolean(value && typeof value === "object" && value.kind === "slopie-audit-recording");
 }
@@ -29593,13 +29851,13 @@ function recordAuditSession(session, file) {
         onEvent?.(event);
       });
       const recording = { kind: "slopie-audit-recording", version: 1, initial, events, final };
-      fs31.writeFileSync(file, JSON.stringify(recording), { mode: 384 });
+      fs32.writeFileSync(file, JSON.stringify(recording), { mode: 384 });
       return final;
     }
   };
 }
 function createFixtureSession(file, speed = Number(process.env["SLOPIE_AUDIT_FIXTURE_SPEED"] ?? 1)) {
-  const parsed = JSON.parse(fs31.readFileSync(file, "utf8"));
+  const parsed = JSON.parse(fs32.readFileSync(file, "utf8"));
   const recording = isRecording(parsed) ? parsed : { kind: "slopie-audit-recording", version: 1, initial: parsed, events: [], final: parsed };
   const factor = Number.isFinite(speed) && speed > 0 ? speed : 1;
   let current = recording.initial;
@@ -29665,12 +29923,12 @@ var audit_overview_exports = {};
 __export(audit_overview_exports, {
   runAuditOverview: () => runAuditOverview
 });
-import fs32 from "node:fs";
-import path26 from "node:path";
+import fs33 from "node:fs";
+import path27 from "node:path";
 async function runAuditOverview(o) {
   const harnesses = o.harness ? [...new Set(o.harness.split(",").map((h) => h.trim()))] : void 0;
   if (harnesses?.some((h) => !["claude", "codex", "pi", "opencode", "cursor", "gemini", "copilot"].includes(h))) throw new UserError("Choose overview sources from claude,codex,pi,opencode,cursor,gemini,copilot.");
-  if (o.export && path26.extname(o.export).toLowerCase() !== ".svg") throw new UserError("Use a .svg path for the safe share preview.");
+  if (o.export && path27.extname(o.export).toLowerCase() !== ".svg") throw new UserError("Use a .svg path for the safe share preview.");
   if (o.tone && !["elegant", "witty", "chaotic", "roast"].includes(o.tone)) throw new UserError("Choose a tone: elegant, witty, chaotic, roast.");
   if (o.online) process.env["SLOPIE_ONLINE"] = "1";
   let options = {
@@ -29711,14 +29969,14 @@ async function runAuditOverview(o) {
         const ui2 = await Promise.resolve().then(() => (init_audit_ui(), audit_ui_exports));
         print(ui2.renderLaunchPlain(snapshot2, { ascii: o.ascii, width }));
         if (o.export) {
-          const file = path26.resolve(o.export);
-          fs32.writeFileSync(file, ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
+          const file = path27.resolve(o.export);
+          fs33.writeFileSync(file, ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
           print(`Saved safe share preview: ${file}`);
         }
       }
       if (o.json && o.export) {
         const ui2 = await Promise.resolve().then(() => (init_audit_ui(), audit_ui_exports));
-        fs32.writeFileSync(path26.resolve(o.export), ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
+        fs33.writeFileSync(path27.resolve(o.export), ui2.renderAuditShareSvg(snapshot2, { width }), { flag: "wx" });
       }
       return snapshot2.status === "cancelled" ? 130 : snapshot2.status === "error" ? 1 : 0;
     } finally {
@@ -29747,6 +30005,8 @@ async function runAuditOverview(o) {
         options = { ...options, harnesses: scope.harnesses, project: scope.project ?? void 0, since: scope.eventFrom ?? void 0, until: scope.asOf ?? void 0, timezone: scope.timezone };
         continue;
       }
+      if (o.debug && result.error) process.stderr.write(`${result.error instanceof Error ? result.error.stack ?? result.error.message : String(result.error)}
+`);
       return result.reason === "cancelled" ? 130 : result.snapshot.status === "error" ? 1 : 0;
     } finally {
       session.dispose();
@@ -29759,8 +30019,8 @@ async function createSession(options) {
   const { createBackgroundAuditSession: createBackgroundAuditSession2 } = await Promise.resolve().then(() => (init_audit_background(), audit_background_exports));
   if (fixture || record2) {
     const dev = await Promise.resolve().then(() => (init_fixture_session(), fixture_session_exports));
-    if (fixture) return dev.createFixtureSession(path26.resolve(fixture));
-    return dev.recordAuditSession(createBackgroundAuditSession2(options), path26.resolve(record2));
+    if (fixture) return dev.createFixtureSession(path27.resolve(fixture));
+    return dev.recordAuditSession(createBackgroundAuditSession2(options), path27.resolve(record2));
   }
   return createBackgroundAuditSession2(options);
 }
@@ -30047,22 +30307,22 @@ async function runAudit(o) {
 // packages/cli/src/commands/doctor.ts
 init_dist();
 init_output();
-import fs35 from "node:fs";
-import path29 from "node:path";
+import fs36 from "node:fs";
+import path30 from "node:path";
 import process8 from "node:process";
 
 // packages/cli/src/commands/setup.ts
 init_dist();
 init_output();
-import fs34 from "node:fs";
-import os9 from "node:os";
-import path28 from "node:path";
+import fs35 from "node:fs";
+import os10 from "node:os";
+import path29 from "node:path";
 import process7 from "node:process";
 
 // packages/cli/src/commands/setup-legacy.ts
 init_dist();
-import fs33 from "node:fs";
-import path27 from "node:path";
+import fs34 from "node:fs";
+import path28 from "node:path";
 import process6 from "node:process";
 var LEGACY_WHAT = "remove the potsherd 1.x MCP server (its program is gone)";
 var NAME3 = "potsherd";
@@ -30165,18 +30425,18 @@ function tomlTransform(text) {
 }
 function read(file) {
   try {
-    return fs33.readFileSync(file, "utf8");
+    return fs34.readFileSync(file, "utf8");
   } catch {
     return null;
   }
 }
 function claudeJsons(claudeDirOpt) {
   const override = claudeDirOpt ?? (process6.env["CLAUDE_CONFIG_DIR"]?.trim() || void 0);
-  return [.../* @__PURE__ */ new Set([...override ? [path27.join(paths_exports.claudeDir(override), ".claude.json")] : [], path27.join(paths_exports.home(), ".claude.json")])];
+  return [.../* @__PURE__ */ new Set([...override ? [path28.join(paths_exports.claudeDir(override), ".claude.json")] : [], path28.join(paths_exports.home(), ".claude.json")])];
 }
 function opencodeConfig() {
   const xdg = process6.env["XDG_CONFIG_HOME"]?.trim();
-  return path27.join(xdg ? path27.resolve(paths_exports.expandTilde(xdg)) : path27.join(paths_exports.home(), ".config"), "opencode", "opencode.json");
+  return path28.join(xdg ? path28.resolve(paths_exports.expandTilde(xdg)) : path28.join(paths_exports.home(), ".config"), "opencode", "opencode.json");
 }
 function legacyChanges(targets, o = {}) {
   const out = [];
@@ -30186,17 +30446,17 @@ function legacyChanges(targets, o = {}) {
   };
   for (const t of targets) {
     if (t === "claude") for (const file of claudeJsons(o.claudeDir)) json3(t, file, "mcpServers");
-    else if (t === "cursor") json3(t, path27.join(paths_exports.cursorDir(), "mcp.json"), "mcpServers");
-    else if (t === "gemini") json3(t, path27.join(paths_exports.geminiDir(), "settings.json"), "mcpServers");
-    else if (t === "copilot") json3(t, path27.join(paths_exports.copilotDir(), "mcp-config.json"), "mcpServers");
+    else if (t === "cursor") json3(t, path28.join(paths_exports.cursorDir(), "mcp.json"), "mcpServers");
+    else if (t === "gemini") json3(t, path28.join(paths_exports.geminiDir(), "settings.json"), "mcpServers");
+    else if (t === "copilot") json3(t, path28.join(paths_exports.copilotDir(), "mcp-config.json"), "mcpServers");
     else if (t === "opencode") json3(t, opencodeConfig(), "mcp");
     else if (t === "codex") {
-      const file = path27.join(paths_exports.codexDir(o.codexDir), "config.toml");
+      const file = path28.join(paths_exports.codexDir(o.codexDir), "config.toml");
       const text = read(file);
       if (text !== null && tomlOwnTable(text)) out.push({ client: t, file, transform: tomlTransform });
       if (text !== null && tomlHookBlocks(text).length) out.push({ client: t, file, transform: tomlHookTransform, what: LEGACY_HOOK_WHAT });
     } else if (t === "pi") {
-      const file = path27.join(paths_exports.piDir(o.piDir), "agent", "extensions", "potsherd.ts");
+      const file = path28.join(paths_exports.piDir(o.piDir), "agent", "extensions", "potsherd.ts");
       const text = read(file);
       if (text !== null && (text.startsWith(PI_MARK) || text === PI_STUB)) out.push({ client: t, file, transform: () => null });
     }
@@ -30228,9 +30488,9 @@ ${SKILL_DESCRIPTION}
 ${agentNote(recordsDir2)}`;
 }
 function slopieArgv() {
-  const onPath = (process7.env["PATH"] ?? "").split(path28.delimiter).some((d) => d && fs34.existsSync(path28.join(d, "slopie")));
+  const onPath = (process7.env["PATH"] ?? "").split(path29.delimiter).some((d) => d && fs35.existsSync(path29.join(d, "slopie")));
   const entry = process7.argv[1] ?? "";
-  return onPath || !entry ? ["slopie"] : [process7.execPath, path28.resolve(entry)];
+  return onPath || !entry ? ["slopie"] : [process7.execPath, path29.resolve(entry)];
 }
 var sh = (a) => /^[A-Za-z0-9_./:@+-]+$/.test(a) ? a : JSON.stringify(a);
 function hookCommand(harness) {
@@ -30238,7 +30498,7 @@ function hookCommand(harness) {
 }
 function read2(file) {
   try {
-    return fs34.readFileSync(file, "utf8");
+    return fs35.readFileSync(file, "utf8");
   } catch {
     return null;
   }
@@ -30335,7 +30595,7 @@ function plan(o, clients, others = false) {
     if (before !== after && !(before === null && after === null)) out.push({ client, file, what, before, after });
   };
   const oldSkill = (client, skills) => {
-    const file = path28.join(skills, OLD_SKILL, "SKILL.md");
+    const file = path29.join(skills, OLD_SKILL, "SKILL.md");
     const before = read2(file);
     if (before !== null && before.startsWith(`---
 name: ${OLD_SKILL}
@@ -30344,22 +30604,22 @@ name: ${OLD_SKILL}
   for (const c of clients) {
     if (c === "claude") {
       const dir = paths_exports.claudeDir(o.claudeDir);
-      add(c, path28.join(dir, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
-      oldSkill(c, path28.join(dir, "skills"));
-      const settings = path28.join(dir, "settings.json");
+      add(c, path29.join(dir, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
+      oldSkill(c, path29.join(dir, "skills"));
+      const settings = path29.join(dir, "settings.json");
       add(c, settings, "SessionStart hook" + (hasLegacyHook(read2(settings)) ? "; remove stale potsherd 1.x hooks" : ""), claudeSettings(read2(settings), o.remove ? null : hookCommand("claude")));
     } else if (c === "codex") {
       const home2 = paths_exports.codexDir(o.codexDir);
-      const file = path28.join(home2, "AGENTS.md");
+      const file = path29.join(home2, "AGENTS.md");
       add(c, file, "AGENTS.md slopie block", withBlock(read2(file), o.remove ? null : agentsBlock(records)));
-      const hooksFile = path28.join(home2, "hooks.json");
+      const hooksFile = path29.join(home2, "hooks.json");
       const ht = read2(hooksFile);
       if (ht !== null && isHooksJson(ht)) add(c, hooksFile, "SessionStart hook" + (hasLegacyHook(ht) ? "; remove stale potsherd 1.x hooks" : ""), withHooks(ht, hooksFile, "codex", o.remove ? null : hookCommand("codex")));
     } else {
-      const root = path28.join(paths_exports.piDir(o.piDir), "agent");
-      add(c, path28.join(root, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
-      oldSkill(c, path28.join(root, "skills"));
-      add(c, path28.join(root, "extensions", "slopie.ts"), "extension", o.remove ? null : piExtension());
+      const root = path29.join(paths_exports.piDir(o.piDir), "agent");
+      add(c, path29.join(root, "skills", SKILL, "SKILL.md"), "skill", o.remove ? null : skillText(records));
+      oldSkill(c, path29.join(root, "skills"));
+      add(c, path29.join(root, "extensions", "slopie.ts"), "extension", o.remove ? null : piExtension());
     }
   }
   const legacyOpts = { ...o.claudeDir ? { claudeDir: o.claudeDir } : {}, ...o.codexDir ? { codexDir: o.codexDir } : {}, ...o.piDir ? { piDir: o.piDir } : {} };
@@ -30380,13 +30640,13 @@ function isHooksJson(text) {
   }
 }
 function refreshOf(o, c) {
-  if (c === "claude") return (read2(path28.join(paths_exports.claudeDir(o.claudeDir), "settings.json")) ?? "").includes("hook session-start --harness claude") ? "refresh hook" : "note only";
-  if (c === "codex") return (read2(path28.join(paths_exports.codexDir(o.codexDir), "hooks.json")) ?? "").includes("hook session-start --harness codex") ? "refresh hook" : "note only";
-  return fs34.existsSync(path28.join(paths_exports.piDir(o.piDir), "agent", "extensions", "slopie.ts")) ? "refresh hook" : "note only";
+  if (c === "claude") return (read2(path29.join(paths_exports.claudeDir(o.claudeDir), "settings.json")) ?? "").includes("hook session-start --harness claude") ? "refresh hook" : "note only";
+  if (c === "codex") return (read2(path29.join(paths_exports.codexDir(o.codexDir), "hooks.json")) ?? "").includes("hook session-start --harness codex") ? "refresh hook" : "note only";
+  return fs35.existsSync(path29.join(paths_exports.piDir(o.piDir), "agent", "extensions", "slopie.ts")) ? "refresh hook" : "note only";
 }
 function indexAge() {
   try {
-    const s = Math.round((Date.now() - fs34.statSync(path28.join(paths_exports.recordsDir(), ".slopie", "index.sqlite")).mtimeMs) / 1e3);
+    const s = Math.round((Date.now() - fs35.statSync(path29.join(paths_exports.recordsDir(), ".slopie", "index.sqlite")).mtimeMs) / 1e3);
     return s < 60 ? `${s} s old` : s < 3600 ? `${Math.round(s / 60)} min old` : s < 172800 ? `${Math.round(s / 3600)} h old` : `${Math.round(s / 86400)} days old`;
   } catch {
     return "not built yet (slopie sync)";
@@ -30394,9 +30654,9 @@ function indexAge() {
 }
 function detected(o) {
   const found = [];
-  if (fs34.existsSync(paths_exports.claudeDir(o.claudeDir))) found.push("claude");
-  if (fs34.existsSync(paths_exports.codexDir(o.codexDir))) found.push("codex");
-  if (fs34.existsSync(paths_exports.piDir(o.piDir))) found.push("pi");
+  if (fs35.existsSync(paths_exports.claudeDir(o.claudeDir))) found.push("claude");
+  if (fs35.existsSync(paths_exports.codexDir(o.codexDir))) found.push("codex");
+  if (fs35.existsSync(paths_exports.piDir(o.piDir))) found.push("pi");
   return found;
 }
 function diff(before, after) {
@@ -30465,27 +30725,27 @@ async function runSetup(o) {
       c.after = c.transform(now);
       if (c.after === now) continue;
     }
-    const ours = [SKILL, OLD_SKILL].some((k) => c.file.includes(`${path28.sep}${k}${path28.sep}`)) || c.file.endsWith(`${path28.sep}slopie.ts`);
-    if (c.before !== null && !ours) fs34.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
+    const ours = [SKILL, OLD_SKILL].some((k) => c.file.includes(`${path29.sep}${k}${path29.sep}`)) || c.file.endsWith(`${path29.sep}slopie.ts`);
+    if (c.before !== null && !ours) fs35.copyFileSync(c.file, `${c.file}.slopie-bak-${stamp}`);
     if (c.after === null) {
-      fs34.rmSync(c.file, { force: true });
-      const dir = path28.dirname(c.file);
-      if ([SKILL, OLD_SKILL].includes(path28.basename(dir))) fs34.rmSync(dir, { recursive: true, force: true });
+      fs35.rmSync(c.file, { force: true });
+      const dir = path29.dirname(c.file);
+      if ([SKILL, OLD_SKILL].includes(path29.basename(dir))) fs35.rmSync(dir, { recursive: true, force: true });
     } else {
-      fs34.mkdirSync(path28.dirname(c.file), { recursive: true });
+      fs35.mkdirSync(path29.dirname(c.file), { recursive: true });
       if (c.transform) {
         const tmp = `${c.file}.slopie-tmp-${process7.pid}`;
-        fs34.writeFileSync(tmp, c.after, { mode: fs34.statSync(c.file).mode & 511 });
-        fs34.renameSync(tmp, c.file);
+        fs35.writeFileSync(tmp, c.after, { mode: fs35.statSync(c.file).mode & 511 });
+        fs35.renameSync(tmp, c.file);
       } else {
-        fs34.writeFileSync(c.file, c.after);
+        fs35.writeFileSync(c.file, c.after);
       }
     }
   }
   if (o.json) printJson({ written: changes.map((c) => c.file) });
   else {
     print(`${o.remove ? "removed" : "done"}: ${changes.length} file${changes.length === 1 ? "" : "s"}.`);
-    if (!o.remove && !fs34.existsSync(path28.join(paths_exports.recordsDir(), "INDEX.tsv"))) print(`next:  slopie sync   ${t.dim("(writes the records the note points at)")}`);
+    if (!o.remove && !fs35.existsSync(path29.join(paths_exports.recordsDir(), "INDEX.tsv"))) print(`next:  slopie sync   ${t.dim("(writes the records the note points at)")}`);
   }
   return 0;
 }
@@ -30499,26 +30759,26 @@ async function runDoctor(o) {
   const records = paths_exports.recordsDir();
   const state = (() => {
     try {
-      return JSON.parse(fs35.readFileSync(path29.join(stateDir(records), "state.json"), "utf8"));
+      return JSON.parse(fs36.readFileSync(path30.join(stateDir(records), "state.json"), "utf8"));
     } catch {
       return null;
     }
   })();
-  const index = path29.join(stateDir(records), "index.sqlite");
+  const index = path30.join(stateDir(records), "index.sqlite");
   let mode = null;
   try {
-    mode = (fs35.statSync(records).mode & 511).toString(8);
+    mode = (fs36.statSync(records).mode & 511).toString(8);
   } catch {
   }
   const policy = loadPolicy(paths_exports.potsherdDir(o.potsherdDir));
   const legacy = paths_exports.potsherdDir(o.potsherdDir);
-  const legacyParts = ["potsherd.db", "archive", "models", "cards"].filter((p) => fs35.existsSync(path29.join(legacy, p)));
+  const legacyParts = ["potsherd.db", "archive", "models", "cards"].filter((p) => fs36.existsSync(path30.join(legacy, p)));
   const report = {
     version: VERSION,
     node: process8.version,
     sqlite: sqliteDriverName(),
     sources: census,
-    records: { dir: records, built: !!state, sessions: state?.sessions ? Object.keys(state.sessions).length : 0, mode, index: fs35.existsSync(index) ? fs35.statSync(index).size : 0 },
+    records: { dir: records, built: !!state, sessions: state?.sessions ? Object.keys(state.sessions).length : 0, mode, index: fs36.existsSync(index) ? fs36.statSync(index).size : 0 },
     privacy: {
       ignored: policy.ignoredList,
       forgotten: policy.forgotten.size,
@@ -30570,12 +30830,12 @@ async function runDoctor(o) {
 // packages/cli/src/commands/ignore.ts
 init_dist();
 init_output();
-import fs36 from "node:fs";
+import fs37 from "node:fs";
 async function runIgnore(o) {
   const verb = o.remove ? "unignore" : "ignore";
   const root = paths_exports.slopieDir();
   const legacy = paths_exports.potsherdDir(o.potsherdDir);
-  const fresh = fs36.existsSync(paths_exports.configPath(root));
+  const fresh = fs37.existsSync(paths_exports.configPath(root));
   const before = readIgnoreConfig(fresh ? root : legacy);
   if (before.error) throw new UserError(`${paths_exports.tildify(before.file)}: ${before.error}`, "open it and fix it, or delete it; slopie will write a new one");
   const named = o.project?.trim();
