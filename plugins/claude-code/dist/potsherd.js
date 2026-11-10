@@ -13431,6 +13431,12 @@ import path12 from "node:path";
 function assertPolicy(policy) {
   if (policy.error)
     throw new PolicyError(policy.error, policy.errorDetail ?? policy.error);
+  if (policy.warnings.length && !warned && !process.stdout.isTTY) {
+    warned = true;
+    for (const w of policy.warnings)
+      process.stderr.write(`slopie: ${w}
+`);
+  }
 }
 function legacyForgotten(potsherdRoot) {
   const ids = /* @__PURE__ */ new Set();
@@ -13440,10 +13446,19 @@ function legacyForgotten(potsherdRoot) {
   try {
     const db = openDatabase(dbFile, { readonly: true, fileMustExist: true });
     try {
-      const rows = db.prepare(`SELECT source_id FROM memory_sources WHERE availability='forgotten'
-        UNION SELECT source_id FROM forget_tombstones WHERE state<>'reversed' AND source_id IS NOT NULL`).all();
-      for (const row of rows)
-        ids.add(row.source_id);
+      const tables = new Set(db.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all().map((r3) => r3.name));
+      const columns2 = (table2) => new Set(db.prepare(`PRAGMA table_info(${table2})`).all().map((r3) => r3.name));
+      if (tables.has("memory_sources") && columns2("memory_sources").has("availability") && columns2("memory_sources").has("source_id")) {
+        for (const row of db.prepare(`SELECT source_id FROM memory_sources WHERE availability='forgotten'`).all())
+          if (row.source_id)
+            ids.add(row.source_id);
+      }
+      if (tables.has("forget_tombstones") && columns2("forget_tombstones").has("source_id")) {
+        const hasState = columns2("forget_tombstones").has("state");
+        const sql = `SELECT source_id FROM forget_tombstones WHERE source_id IS NOT NULL${hasState ? " AND state<>'reversed'" : ""}`;
+        for (const row of db.prepare(sql).all())
+          ids.add(row.source_id);
+      }
     } finally {
       db.close();
     }
@@ -13483,7 +13498,7 @@ function writeForgetList(list3, slopieRoot = slopieDir()) {
   fs16.renameSync(tmp, file);
 }
 function loadPolicy(potsherdRoot, slopieRoot = slopieDir()) {
-  const policy = { ignoredList: [], forgotten: /* @__PURE__ */ new Set(), ignored: () => false, error: null, errorDetail: null };
+  const policy = { ignoredList: [], forgotten: /* @__PURE__ */ new Set(), ignored: () => false, error: null, errorDetail: null, warnings: [] };
   const fail3 = (code, detail) => {
     if (!policy.error) {
       policy.error = code;
@@ -13520,11 +13535,11 @@ function loadPolicy(potsherdRoot, slopieRoot = slopieDir()) {
     for (const id of legacy.ids)
       policy.forgotten.add(id);
     if (legacy.error)
-      fail3("forget_list_unreadable", `${dbPath(potsherdRoot)} (the 1.8 forget list)`);
+      policy.warnings.push(`could not read ${dbPath(potsherdRoot)} (an old potsherd store); any forget choices made there are not applied. Move it aside to silence this.`);
   }
   return policy;
 }
-var PolicyError;
+var PolicyError, warned;
 var init_policy = __esm({
   "packages/core/dist/sources/policy.js"() {
     "use strict";
@@ -13541,6 +13556,7 @@ var init_policy = __esm({
         this.detail = detail;
       }
     };
+    warned = false;
   }
 });
 
@@ -19984,7 +20000,7 @@ var VERSION;
 var init_version = __esm({
   "packages/core/dist/version.js"() {
     "use strict";
-    VERSION = "1.9.2";
+    VERSION = "1.9.3";
   }
 });
 
