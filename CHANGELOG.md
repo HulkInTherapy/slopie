@@ -2,6 +2,11 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
+## 1.9.2 — The board leads into the story; the audit never fails silently
+
+- Re-runs still open on your poster, but now say so: a one-line banner, a `→ replay your story` hint, and `→` (or `l`, space, enter, `n`) on the board restarts the story at the cover. `←` steps back a card; `b` still jumps to the board.
+- If the interactive audit's background worker fails, the same audit re-runs in-process instead of stopping. If that fails too, the error screen gives the reason, a redacted log in `~/.slopie/logs/`, and what to try (`npx slopie audit --plain`); `--debug` prints the stack.
+
 ## 1.9.1 — Secrets fixed, main threads first
 
 - **Secrets no longer reach your agent.** Every string that enters a record is redacted before it is written, indexed or searched: messages, tool input and output, titles, first asks, last answers, `INDEX.tsv`, sidecars and the session cards. Raw re-reads (exact matches inside a thread) are redacted too. Masks read `[REDACTED:<type>]` and keep the variable name (`TAVILY_API_KEY=[REDACTED:tavily]`). Base64 images and other binary bulk are elided first.

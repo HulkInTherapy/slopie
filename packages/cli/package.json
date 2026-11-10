@@ -1,6 +1,6 @@
 {
   "name": "slopie",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "slopie — search your past coding-agent sessions. Plus `slopie audit`, a Wrapped of your year.",
   "type": "module",
   "license": "MIT",

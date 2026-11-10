@@ -44,7 +44,9 @@ describe('final board (personality poster)', () => {
       for (const row of rows) expect([...row].length).toBeLessThanOrEqual(w);
       expect(text, `${w}×${h}`).not.toContain('…');
       expect(text).not.toMatch(/\w\.\.\.(?!\.)/); // no ASCII ellipsis either (dot leaders start after a space)
-      expect(text).toContain('npx slopie audit');
+      // The key hints win on narrow terminals; the install line stays from 100 columns up.
+      if (w >= 100) expect(text).toContain('npx slopie audit');
+      expect(text).toContain('→ replay your story');
       // The default poster keeps the price, the prompts/days box, the catchphrase and all six core facts.
       expect(text).toContain('AT API PRICES');
       expect(text).toMatch(/\bPROMPTS\b/);
@@ -107,7 +109,8 @@ describe('final board (personality poster)', () => {
     const accented = new Set<number>();
     for (let i = 0; i < c.fg.length; i++) if (c.fg[i] === C.accent && c.ch[i] !== ' ') accented.add(Math.floor(i / 120));
     const words = [...accented].map(y => [...c.row(y)].filter((_, x) => c.fg[y * 120 + x] === C.accent).join('').trim());
-    expect(words).toContain('●');
+    expect(words.some(w => w.includes('●'))).toBe(true);
+    expect(words.some(w => w.startsWith('→'))).toBe(true);
     expect(words.some(w => /^[▁▂▃▄▅▆▇█▌]+$/.test(w))).toBe(true);
     // The rarity is a filled chip: the accent as its background.
     const chipRow = [...Array(40).keys()].find(y => c.row(y).includes(' EPIC '))!;

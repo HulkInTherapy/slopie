@@ -1,6 +1,6 @@
 {
   "name": "potsherd",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "slopie — search your past coding-agent sessions. One skill, slopie, that your agent uses whenever you mention earlier work. Plus `slopie audit`, a Wrapped of your year.",
   "author": {
     "name": "HulkInTherapy",

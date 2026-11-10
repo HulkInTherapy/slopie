@@ -69,6 +69,7 @@ export async function runAuditOverview(o: AuditOptions): Promise<number> {
         options = {...options, harnesses: scope.harnesses, project: scope.project ?? undefined, since: scope.eventFrom ?? undefined, until: scope.asOf ?? undefined, timezone: scope.timezone};
         continue;
       }
+      if (o.debug && result.error) process.stderr.write(`${result.error instanceof Error ? result.error.stack ?? result.error.message : String(result.error)}\n`);
       return result.reason === 'cancelled' ? 130 : result.snapshot.status === 'error' ? 1 : 0;
     } finally {
       session.dispose();

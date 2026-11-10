@@ -234,6 +234,7 @@ describe('keys, colours and diffing', () => {
     expect(decodeKey('?')).toBe('details');
     expect(decodeKey('\x1b')).toBe('back');
     expect(decodeKey(' ')).toBe('right');
+    expect(decodeKey('n')).toBe('right');
     expect(decodeKey('b')).toBe('board');
     expect(decodeKey('s')).toBe('share');
     expect(decodeKey('3')).toBe('guess3');

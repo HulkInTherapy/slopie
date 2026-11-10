@@ -362,7 +362,30 @@ const LOCAL_FAILURES: [string, string][] = [
   ['raw_lane_policy_hold', 'Your saved history is on hold by its privacy settings.'],
 ];
 
+/** Attached by the terminal when the audit (and its in-process fallback) failed. */
+export interface AuditCrash { reason: string; log: string | null }
+export type CrashedSnapshot = AuditSnapshot & { crash?: AuditCrash };
+
+/** One line, ≤ 100 chars, no trailing full stop. */
+export function crashReason(message: string): string {
+  let line = message.replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '') || 'unknown error';
+  if (line.length > 100) line = line.slice(0, 99).trimEnd() + '…';
+  return line;
+}
+
+/** The lines under the error caption: where the log is and what to try. */
+export function crashDetail(snapshot: AuditSnapshot): string[] {
+  const crash = (snapshot as CrashedSnapshot).crash;
+  if (!crash || snapshot.status !== 'error') return [];
+  return [
+    ...(crash.log ? [`Details: ${crash.log}`] : []),
+    'Try: npx slopie audit --plain   (or send that log to the author)',
+  ];
+}
+
 function failureOf(snapshot: AuditSnapshot): string | null {
+  const crash = (snapshot as CrashedSnapshot).crash;
+  if (crash && snapshot.status === 'error') return `The audit hit an error: ${crash.reason}.`;
   const gaps = new Set([...snapshot.coverage.gapCodes, ...snapshot.sources.flatMap(source => source.gapCodes)]);
   for (const [code, text] of LOCAL_FAILURES) if (gaps.has(code)) return text;
   if ([...gaps].some(code => code.startsWith('audit_sqlite_'))) return "One history database couldn't be read safely.";
