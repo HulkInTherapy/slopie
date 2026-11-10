@@ -2,6 +2,10 @@
 
 Public releases use package versions. Internal development phase numbers are planning milestones, not product versions. This public release consolidates a development snapshot; the original private development branches are preserved separately.
 
+## 1.9.3 — Old potsherd stores no longer block the audit
+
+- A `~/.potsherd/potsherd.db` left by an older potsherd made every audit stop with "cannot read … the 1.8 forget list". Old stores without forget tables now count as nothing forgotten, and an unreadable old store is a warning instead of a stop. A broken current forget list still stops, as before.
+
 ## 1.9.2 — The board leads into the story; the audit never fails silently
 
 - Re-runs still open on your poster, but now say so: a one-line banner, a `→ replay your story` hint, and `→` (or `l`, space, enter, `n`) on the board restarts the story at the cover. `←` steps back a card; `b` still jumps to the board.
