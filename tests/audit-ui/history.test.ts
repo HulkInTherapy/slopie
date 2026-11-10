@@ -9,6 +9,7 @@ import { runWallboard } from '../../packages/cli/src/audit-ui/terminal.js';
 import { startingSnapshot } from './fixture.js';
 import { storySnapshot } from './story-fixture.js';
 import { Screen } from './screen.js';
+import { buildDeck } from '../../packages/cli/src/audit-ui/story/deck.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'slopie-history-'));
 
@@ -41,12 +42,12 @@ describe('run history', () => {
     expect(since.archetypeChanged).toBe('The Sailor');
   });
 
-  it('a re-run opens on the board with the ticker lit; ← replays the story', async () => {
+  for (const [cols, rows] of [[120, 40], [80, 24]] as const) it(`a re-run opens on the board with a replay banner; → restarts at the cover, ← steps back (${cols}×${rows})`, async () => {
     const dir = tmp();
     const snapshot = storySnapshot();
     writeDigest(snapshot, { ...digestOf(snapshot, new Date('2026-09-01T00:00:00Z'))!, prompts: 2700 }, dir);
     class In extends EventEmitter { isTTY = true; setRawMode() { return this; } setEncoding() { return this; } resume() { return this; } pause() { return this; } }
-    class Out extends EventEmitter { isTTY = true; columns = 120; rows = 40; chunks: string[] = []; write(c: string, cb?: () => void) { this.chunks.push(c); setImmediate(() => cb?.()); return true; } }
+    class Out extends EventEmitter { isTTY = true; columns = cols; rows = rows; chunks: string[] = []; write(c: string, cb?: () => void) { this.chunks.push(c); setImmediate(() => cb?.()); return true; } }
     const stdin = new In(), stdout = new Out();
     let finish: (s: AuditSnapshot) => void = () => {};
     const session = { snapshot: () => startingSnapshot(), run: () => new Promise<AuditSnapshot>(r => { finish = r; }), cancel: vi.fn(), prompts: vi.fn(), evidence: vi.fn(), classify: vi.fn(), dispose: vi.fn() } as unknown as AuditSession;
@@ -54,14 +55,27 @@ describe('run history', () => {
     await new Promise(r => setTimeout(r, 5));
     finish({ ...snapshot, sequence: 20 });
     await new Promise(r => setTimeout(r, 40));
-    const screen = () => new Screen(120, 40).feed(stdout.chunks.join('')).text();
-    expect(screen()).toContain('SINCE LAST RUN');
-    expect(screen()).toContain('+204 prompts');
-    expect(screen()).toContain('replay your story');
-    stdin.emit('data', '\x1b[D');
-    await new Promise(r => setTimeout(r, 60));
+    const screen = () => new Screen(cols, rows).feed(stdout.chunks.join('')).text();
+    const total = buildDeck(snapshot).length;
+    const press = async (key: string) => { stdin.emit('data', key); await new Promise(r => setTimeout(r, 60)); };
+    if (cols === 120) { expect(screen()).toContain('SINCE LAST RUN'); expect(screen()).toContain('+204 prompts'); }
+    expect(screen()).toContain('opened on your poster · press → to watch your story from the start');
+    for (const hint of ['→ replay your story', '← back', 's share', '? how', 'q quit']) expect(screen()).toContain(hint);
+    await press('\x1b[D');
+    expect(screen()).toContain(`${total - 1} / ${total}`);
+    expect(screen()).not.toContain('opened on your poster');
+    await press('b');
+    expect(screen()).toContain('→ replay your story');
+    expect(screen()).not.toContain('opened on your poster');
+    await press('\x1b[C');
     expect(screen()).toContain('You were someone this year.');
-    stdin.emit('data', 'q');
+    for (const key of ['l', ' ', '\r', 'n']) {
+      await press('b');
+      expect(screen()).toContain('→ replay your story');
+      await press(key);
+      expect(screen()).toContain('You were someone this year.');
+    }
+    await press('q');
     await result;
     expect(readHistory(snapshot, dir)).toHaveLength(2);
   });

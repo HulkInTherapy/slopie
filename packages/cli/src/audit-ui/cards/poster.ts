@@ -82,8 +82,9 @@ export function posterBody(s: Scene, d: BoardSummary): boolean {
   const meta = [d.range, d.code].filter(Boolean).join('  ·  ');
   const top = header(k, textWidth(meta) + 14 <= k.iw ? meta : d.code ?? '');
   const footY = boardFooter(k, d);
-  // One quiet row above the footer.
-  const avail = footY - 2 - top;
+  // One quiet row above the footer (the replay banner, when shown, sits on it and takes one more).
+  const banner = !s.share && d.replay ? replayBanner(k, footY - 1) : false;
+  const avail = footY - (banner ? 3 : 2) - top;
   const plan: Plan = { label: true, bigTitle: true, tagline: true, bigPrice: true, day: true, diagrams: true, nFacts: 6, factGap: true, awards: true, memory: true, ticker: !!d.sinceLast && !s.share };
   let pieces = build(k, d, plan);
   for (const step of STEPS) { if (height(pieces, k.L) <= avail) break; step(plan); pieces = build(k, d, plan); }
@@ -404,10 +405,29 @@ function memoryPiece(k: K): Piece {
   };
 }
 
+export const REPLAY_BANNER = 'opened on your poster · press → to watch your story from the start';
+
+/** One line above the footer on a re-run that opened on the board; gone after the first key. */
+function replayBanner(k: K, y: number): boolean {
+  const text = k.uni ? REPLAY_BANNER : REPLAY_BANNER.replace('→', '->').replace('·', '-');
+  if (textWidth(text) > k.iw) return false;
+  const arrow = k.uni ? '→' : '->';
+  const [head, tail] = text.split(arrow) as [string, string];
+  let x = k.mx + txt(k, k.mx, y, head, k.tk.text2);
+  x += txt(k, x, y, arrow, k.tk.accent, { bold: true });
+  txt(k, x, y, tail, k.tk.text2);
+  return true;
+}
+
 function boardFooter(k: K, d: BoardSummary): number {
   const { tk, s } = k;
   const local = s.online ? 'online · Jev' : 'all local';
-  const right: [string, number][] = [[INSTALL, tk.text], ['   ', tk.text3], [k.uni ? '●' : '*', tk.accent], [' ' + local, tk.text3]];
-  if (s.share) return footer(k, { keys: [['slopie', 'audit']], right });
-  return footer(k, { keys: [[k.uni ? '←' : '<', d.replay ? 'replay your story' : 'story'], ['s', 'share'], ['?', 'how'], ['q', 'quit']], right });
+  const dot: [string, number][] = [[k.uni ? '●' : '*', tk.accent], [' ' + local, tk.text3]];
+  if (s.share) return footer(k, { keys: [['slopie', 'audit']], right: [[INSTALL, tk.text], ['   ', tk.text3], ...dot] });
+  const keys: [string, string, number?][] = [[k.uni ? '→' : '->', 'replay your story', tk.accent], [k.uni ? '←' : '<-', 'back'], ['s', 'share'], ['?', 'how'], ['q', 'quit']];
+  // Every key hint must fit: the install line gives way on narrow terminals.
+  const need = keys.reduce((a, [key, word]) => a + textWidth(key) + 1 + textWidth(word) + 3, 0);
+  const withInstall = textWidth(INSTALL) + 3 + dot.reduce((a, [t]) => a + textWidth(t), 0);
+  const right = need + withInstall + 3 <= k.iw ? [[INSTALL, tk.text] as [string, number], ['   ', tk.text3] as [string, number], ...dot] : dot;
+  return footer(k, { keys, right });
 }

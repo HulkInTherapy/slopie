@@ -138,21 +138,21 @@ export function header(k: K, right?: string): number {
 }
 
 /** Footer: key hints left (key secondary, word tertiary), "● all local" right. */
-export function footer(k: K, opts: { keys?: [string, string][]; right?: [string, Rgb][] } = {}): number {
+export function footer(k: K, opts: { keys?: [string, string, Rgb?][]; right?: [string, Rgb][] } = {}): number {
   const { s, tk, mx, iw } = k;
   const y = k.L ? k.H - 2 : k.H - 1;
   const arrows = k.uni ? '← →' : '< >';
-  const keys = opts.keys ?? [[arrows, k.L || k.W >= 80 ? 'move' : ''], ['b', 'board'], ['s', 'share'], ['?', 'how'], ['q', 'quit']];
+  const keys: [string, string, Rgb?][] = opts.keys ?? [[arrows, k.L || k.W >= 80 ? 'move' : ''], ['b', 'board'], ['s', 'share'], ['?', 'how'], ['q', 'quit']];
   const local = s.online ? 'online · Jev' : 'all local';
   const right: [string, Rgb][] = opts.right ?? [[k.uni ? '●' : '*', tk.accent], [' ' + local, tk.text3]];
   const rw = right.reduce((a, [t]) => a + textWidth(t), 0);
   let rx = mx + iw - rw;
   for (const [t, col] of right) rx += txt(k, rx, y, t, col);
   let x = mx;
-  for (const [key, word] of keys) {
+  for (const [key, word, keyColor] of keys) {
     const need = textWidth(key) + (word ? 1 + textWidth(word) : 0);
     if (x + need > mx + iw - rw - 3) break;
-    x += txt(k, x, y, key, tk.text2);
+    x += txt(k, x, y, key, keyColor ?? tk.text2);
     if (word) x += 1 + txt(k, x + 1, y, word, tk.faint);
     x += 3;
   }

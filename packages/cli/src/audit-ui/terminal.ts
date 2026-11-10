@@ -3,7 +3,7 @@
  *
  * - Cell-diff rendering, one synchronized write per frame, 30 fps only while something moves.
  *   When everything is still, no timer runs (the next paint waits for a key, a resize or data).
- * - ←/→ (h/l, space, enter) page; b board; s save share SVG; ? method notes; 1–4 guess; q/Ctrl-C quit.
+ * - ←/→ (h/l, space, enter, n) page; on the board → restarts the story at the cover; b board; s save share SVG; ? method notes; 1–4 guess; q/Ctrl-C quit.
  * - Alt screen, cursor, raw mode and bracketed paste are always restored (quit, signals, crashes).
  * - A transfer notice is acknowledged only after the frame showing it in full has been flushed.
  */
@@ -76,7 +76,7 @@ export function splitKeys(chunk: string): string[] {
 export function decodeKey(chunk: string): Key {
   switch (chunk) {
     case '\x03': case 'q': case 'Q': return 'quit';
-    case '\x1b[C': case '\x1bOC': case 'l': case ' ': return 'right';
+    case '\x1b[C': case '\x1bOC': case 'l': case 'n': case ' ': return 'right';
     case '\x1b[D': case '\x1bOD': case 'h': return 'left';
     case '?': return 'details';
     case '\x1b': return 'back';
@@ -273,7 +273,8 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
 
   function drawNotes(c: Canvas, card: DeckCard, w: number, h: number): void {
     const pw = Math.min(76, w - 6);
-    const sections: { title: string; lines: string[] }[] = [{ title: 'HOW WE KNOW', lines: card.notes }];
+    const keys = card.kind === 'board' ? ['Press → to watch your story from the first card; b brings you back to this board.'] : [];
+    const sections: { title: string; lines: string[] }[] = [{ title: 'HOW WE KNOW', lines: [...keys, ...card.notes] }];
     if (card.kind === 'board' || card.kind === 'bill' || card.kind === 'scale') {
       for (const section of detailLines(view.snapshot, transfers)) sections.push({ title: section.title.toUpperCase(), lines: section.lines });
     }
@@ -378,6 +379,8 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   let history: { since: Since | null; firstRun: boolean } | null = null;
   let digestWritten = false;
   let openedOnBoard = false;
+  /** The "press → to watch your story" banner, until the first keypress. */
+  let bannerOn = false;
 
   function loadHistory(snapshot: AuditSnapshot): void {
     if (history || histDir === false) return;
@@ -398,7 +401,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
     const awards = records.length
       ? [{ title: 'New Personal Best', value: `${records[0]!.metric}: ${records[0]!.to}`, publicValue: `${records[0]!.metric}: ${records[0]!.to}`, tier: 'gold' as const }, ...last.data.awards].slice(0, 6)
       : last.data.awards;
-    const board = { ...last, data: { ...last.data, sinceLast: since?.line ?? null, firstRun: history.firstRun, replay: openedOnBoard, awards } };
+    const board = { ...last, data: { ...last.data, sinceLast: since?.line ?? null, firstRun: history.firstRun, replay: openedOnBoard && bannerOn, awards } };
     return [...cards.slice(0, -1), board];
   }
 
@@ -407,8 +410,9 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
   function startDeck(now: number): void {
     deckSnapshot = view.snapshot;
     loadHistory(view.snapshot);
-    // Re-runs open on the verdict; ← replays the story.
+    // Re-runs open on the verdict (the screenshot); → replays the story from the cover.
     openedOnBoard = !!history && !history.firstRun;
+    bannerOn = openedOnBoard;
     deck = decorate(buildDeck(view.snapshot));
     mode = 'deck';
     index = openedOnBoard ? deck.length - 1 : 0;
@@ -500,6 +504,7 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
       else if (key === 'back') stop();
       return;
     }
+    if (bannerOn) { bannerOn = false; deck = decorate(buildDeck(view.snapshot)); }
     const card = current();
     if (!card) return;
     if (notes) {
@@ -515,10 +520,11 @@ export async function runWallboard(session: AuditSession, options: TerminalOptio
       case 'board': go(deck.length - 1); return;
       case 'share': share(); return;
       case 'left':
-        if (openedOnBoard && card.kind === 'board') { openedOnBoard = false; deck = decorate(buildDeck(view.snapshot)); go(0); return; }
         go(index - 1);
         return;
       case 'right': case 'enter': {
+        // The board leads back into the story: the next step from the last card is the cover.
+        if (card.kind === 'board' && index === deck.length - 1) { go(0); return; }
         // The archetype ceremony is skippable: the first key jumps to its final frame.
         if (card.kind === 'archetype' && caps.motion && !revealDone((now - enteredAt) * CARD_SPEED)) {
           enteredAt = now - T.settle / CARD_SPEED - 1;
