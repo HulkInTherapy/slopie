@@ -80,7 +80,7 @@ function main(argv: string[]): void {
       .option('--plain', 'print the new overview without interactive controls')
       .option('--no-motion', 'keep the new terminal view still')
       .option('--private', 'show project names in the new private explorer')
-      .option('--harness <list>', 'scope the overview to claude,codex,pi,opencode,cursor,gemini,copilot')
+      .option('--harness <list>', 'scope the overview to claude,codex,pi,opencode,cursor,gemini,copilot,antigravity')
       .option('--project <path>', 'scope the overview to this project')
       .option('--since <when>', 'overview events on or after this date')
       .option('--until <when>', 'overview events on or before this date')

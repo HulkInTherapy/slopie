@@ -15,7 +15,7 @@ import type {AuditHarness} from './contracts.js';
 export const STORY_VERSION = 'story-v1';
 
 /** Where a prompt came from. `claude_hist` = Claude session known only from ~/.claude/history.jsonl. */
-export type StoryHarness = 'claude' | 'claude_hist' | 'codex' | 'pi' | 'opencode' | 'cursor' | 'gemini' | 'copilot';
+export type StoryHarness = 'claude' | 'claude_hist' | 'codex' | 'pi' | 'opencode' | 'cursor' | 'gemini' | 'copilot' | 'antigravity';
 
 /** v19 spend breakdown (measured / recovered / estimated are never added together silently). */
 export interface StorySpend {

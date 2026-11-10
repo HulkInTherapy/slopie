@@ -89,7 +89,7 @@ export function boardPlain(b: BoardSummary): string[] {
   }
   const bars = (title: string, list: BarRow[]) => { if (list.length) rows.push(`${title}: ` + list.map(r => `${r.label} ${r.value}${r.tags?.includes('fav') ? ' (favourite)' : ''}${r.tags?.includes('nemesis') ? ' (nemesis)' : ''}`).join(' · ')); };
   if (b.models) { bars(`models (${b.models.basis})`, b.models.rows); if (b.models.unknown) rows.push(`${count(b.models.unknown)} older prompts have no recorded model`); }
-  if (b.agents) { bars(`agents (${b.agents.basis})`, b.agents.rows); if (b.agents.automated) rows.push(`+ ${count(b.agents.automated)} automated runs (not counted as chats)`); }
+  if (b.agents) { bars(`agents (${b.agents.basis})`, b.agents.rows); if (b.agents.automated) rows.push(`+ ${count(b.agents.automated)} automated runs (not counted as chats)`); if (b.agents.footnote) rows.push(b.agents.footnote); }
   if (b.time?.peak) rows.push(`peak: ${b.time.peak}${b.time.lines.length ? ' · ' + b.time.lines.join(' · ') : ''}`);
   for (const v of b.voice) rows.push(`${v.label}: ${v.quoted ? `“${v.value}”` : v.value}${v.count !== null ? ` ×${count(v.count)}` : ''}`);
   if (b.awards.length) rows.push('awards: ' + b.awards.map(a => `${a.title} (${a.value})`).join(' · '));

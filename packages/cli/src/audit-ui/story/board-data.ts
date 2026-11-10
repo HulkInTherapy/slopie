@@ -86,7 +86,7 @@ export interface BoardSummary {
   /** Legacy single total for snapshots without a story. */
   bill: number | null;
   models: { basis: string; rows: BarRow[]; more: number; unknown: number | null; facts: string[] } | null;
-  agents: { basis: string; rows: BarRow[]; money: string | null; automated: number | null } | null;
+  agents: { basis: string; rows: BarRow[]; money: string | null; automated: number | null; footnote?: string | null } | null;
   time: { grid: number[][] | null; peak: string | null; lines: string[] } | null;
   voice: VoiceLine[];
   work: { rows: BarRow[]; lines: string[] } | null;
@@ -230,16 +230,21 @@ function agentsPanel(story: AuditStory | null, board: BoardData, spend: Spend | 
   if (spend && spend.byHarness.length) for (const h of spend.byHarness) add(h.harness, h.prompts, h.usd);
   else if (story) for (const [h, n] of Object.entries(story.totals.byHarness)) if (typeof n === 'number') add(h, n, 0);
   const entries = [...merged.entries()].filter(([, v]) => v.prompts > 0).sort((a, b) => b[1].prompts - a[1].prompts);
+  // Agents whose prompts cannot be read (Antigravity): listed by chats, outside the prompt shares.
+  const chatOnly = (board.chatOnly ?? []).filter(c => c.chats > 0);
+  const chatRows: BarRow[] = chatOnly.map(c => ({ label: `${harnessName(c.harness)}*`, pct: 0, value: `${count(c.chats)} chats`, note: 'chats' }));
+  const footnote = chatOnly.length ? `* counted by chats: ${chatOnly.map(c => harnessName(c.harness)).join(', ')} encrypts its prompts` : null;
   if (entries.length) {
     const pcts = tenths(entries.map(([, v]) => v.prompts));
     const priced = entries.filter(([, v]) => v.usd > 0);
     return {
       basis: 'by prompts',
-      rows: entries.map(([h, v], i) => ({ label: harnessName(h), pct: pcts[i]!, value: shareText(pcts[i]!), note: count(v.prompts) })),
+      rows: [...entries.map(([h, v], i) => ({ label: harnessName(h), pct: pcts[i]!, value: shareText(pcts[i]!), note: count(v.prompts) })), ...chatRows],
       money: priced.length ? priced.slice(0, 2).map(([h, v]) => `${money(v.usd)} ${harnessName(h)}`).join(' · ') : null,
-      automated,
+      automated, footnote,
     };
   }
+  if (chatRows.length && !board.agentSplit.length) return { basis: 'by chats', rows: chatRows, money: null, automated, footnote };
   if (board.agentSplit.length) {
     const pcts = tenths(board.agentSplit.map(a => a.share));
     return { basis: 'share of spend', rows: board.agentSplit.map((a, i) => ({ label: a.name, pct: pcts[i]!, value: shareText(pcts[i]!) })), money: null, automated };

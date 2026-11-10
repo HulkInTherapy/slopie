@@ -31,7 +31,7 @@ import {StreamHashes} from './copy-prune.js';
  */
 export const FACTS_VERSION = 8;
 
-export type NativeHarness = Exclude<AuditHarness, 'opencode' | 'cursor' | 'gemini' | 'copilot'>;
+export type NativeHarness = Exclude<AuditHarness, 'opencode' | 'cursor' | 'gemini' | 'copilot' | 'antigravity'>;
 
 export interface UsageFact {
   /** De-duplication key (see `aggregate.ts`); null when the record has no stable identity. */
@@ -121,6 +121,8 @@ export interface SourceFacts {
   archived?: boolean;
   firstAt: number | null;
   lastAt: number | null;
+  /** Activity timestamps of a harness counted without prompts (Antigravity), epoch ms. */
+  activity?: number[];
   usage: UsageFact[];
   prompts: PromptFact[];
   malformed: number;

@@ -30,7 +30,7 @@ import {bundledModelCatalog} from './model-catalog.js';
 import {cachedPublicCatalog, refreshPublicCatalog} from './catalog-service.js';
 import {FactsCache} from './facts-cache.js';
 import {inlineScanExecutor, type ScanExecutor, type ScanJob, type ScanResult} from './scan-pool.js';
-import {ADAPTER_HARNESSES, adapterKey, readAdapterSources} from './adapter-facts.js';
+import {ADAPTER_HARNESSES, adapterKey, antigravityFacts, readAdapterSources} from './adapter-facts.js';
 import {discover} from '../sources/discover.js';
 import {assertPolicy, loadPolicy, type Policy} from '../sources/policy.js';
 import {extractOpenCodeDatabase, extractOpenCodeJson} from './opencode-facts.js';
@@ -53,8 +53,8 @@ import type {
 export * from './contracts.js';
 export {composeJevJudgments} from './jev-session.js';
 
-const HARNESSES: AuditHarness[] = ['claude', 'codex', 'pi', 'opencode', 'cursor', 'gemini', 'copilot'];
-const LAUNCH_ORDER: AuditHarness[] = ['codex', 'claude', 'opencode', 'pi', 'cursor', 'gemini', 'copilot'];
+const HARNESSES: AuditHarness[] = ['claude', 'codex', 'pi', 'opencode', 'cursor', 'gemini', 'copilot', 'antigravity'];
+const LAUNCH_ORDER: AuditHarness[] = ['codex', 'claude', 'opencode', 'pi', 'cursor', 'gemini', 'copilot', 'antigravity'];
 /** Appended tails up to this size are parsed on the main thread; bigger ones go to the pool. */
 const RESUME_MAX_BYTES = 64 * 1024 * 1024;
 /**
@@ -435,6 +435,9 @@ class LocalAuditSession implements AuditSession {
       const adapterStats = {parsed: 0};
       extra.push(...await readAdapterSources(ADAPTER_HARNESSES.filter(h => harnesses.includes(h)), found.adapters, tz, failures, cache, adapterStats));
       this.timings['adapterSourcesParsed'] = adapterStats.parsed;
+      if (harnesses.includes('antigravity') && found.census.get('antigravity')?.files) {
+        try { extra.push(...antigravityFacts(this.options, tz, failures)); } catch { failures.push('antigravity_source_unreadable'); }
+      }
       for (const f of extra) this.count(f, 0);
       const historyData = mergeHistories(harnesses.includes('claude') ? found.historyFiles.map(file => ({file, data: cache.history(file, tz, (f, previous) => readHistory(f, {timezone: tz}, previous))})) : []);
       this.historyData = historyData;
@@ -598,6 +601,15 @@ class LocalAuditSession implements AuditSession {
       const h = a.harness[s.harness];
       const promptOnly = (ADAPTER_HARNESSES as readonly string[]).includes(s.harness);
       const hasData = h.files > 0 || h.conversations > 0;
+      if (s.harness === 'antigravity') {
+        // Chats and days only: Antigravity encrypts its transcripts, so no prompts and no usage are read.
+        const act = h.activity;
+        return {...s, state: hasData ? 'available' : 'absent', conversations: h.conversations, humanPrompts: null, humanOrigin: 'unverified',
+          evidence: 'unavailable', usage: 'unavailable', firstUnsupportedStep: hasData ? 'prompts' : null,
+          gapCodes: hasData ? ['prompts_encrypted', 'usage_not_recorded', ...new Set(run.failures.filter(f => f.startsWith('antigravity_')))] : [],
+          childConversations: 0, slashCommands: 0, userMessages: 0, excluded: {}, promptsReadable: false,
+          activeDays: act?.days ?? 0, firstDay: act?.first ?? null, lastDay: act?.last ?? null, projects: act?.projects ?? 0} as AuditSourceCapability;
+      }
       return {
         ...s, state: hasData ? 'available' : s.candidateFiles ? 'available' : 'absent',
         conversations: h.conversations, humanPrompts: h.humanPrompts, humanOrigin: promptOnly ? 'projection' : 'native_marker',
