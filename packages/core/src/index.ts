@@ -32,6 +32,7 @@ export * as cursor from './adapters/cursor.js';
 export * as gemini from './adapters/gemini.js';
 export * as opencode from './adapters/opencode.js';
 export * as copilot from './adapters/copilot.js';
+export * as antigravity from './adapters/antigravity.js';
 export { cursorAdapter } from './adapters/cursor.js';
 export { geminiAdapter } from './adapters/gemini.js';
 export { opencodeAdapter } from './adapters/opencode.js';

@@ -45,7 +45,7 @@ export async function runSync(o: RecordsOptions & {full?: boolean; sidecar?: boo
   if (o.json) { printJson(r); return r.errors.length && !r.sessions ? 1 : 0; }
   if (o.quiet) return 0;
   const h = r.byHarness;
-  print(`slopie sync: ${r.sessions} sessions (${h['claude'] ?? 0} claude, ${h['codex'] ?? 0} codex, ${h['pi'] ?? 0} pi; ${r.subagents} subagents, ${r.promptOnly} prompt-only, ${r.kept} kept after their source was deleted)`);
+  print(`slopie sync: ${r.sessions} sessions (${h['claude'] ?? 0} claude, ${h['codex'] ?? 0} codex, ${h['pi'] ?? 0} pi${h['antigravity'] ? `, ${h['antigravity']} antigravity` : ''}; ${r.subagents} subagents, ${r.promptOnly} prompt-only, ${r.kept} kept after their source was deleted)`);
   print(`  ${r.sources} source files, ${r.parsed} parsed this run, ${r.written} records written, ${r.removed} removed, ${r.seconds.toFixed(1)} s`);
   print(`  records: ${r.recordsDir}  (${mb(r.recordBytes)}; search index ${mb(r.indexBytes)})`);
   if (r.excludedByPolicy) print(`  ${r.excludedByPolicy} sessions left out by your ignore / forget lists`);
@@ -202,8 +202,8 @@ export async function runForget(o: RecordsOptions & {session?: string; remove?: 
     return 0;
   }
   const raw = o.session.trim();
-  const [h, id] = raw.includes(':') && ['claude', 'codex', 'pi'].includes(raw.split(':')[0]!) ? [raw.split(':')[0]!, raw.split(':').slice(1).join(':')] : [null, raw];
-  let harnesses = h ? [h] : ['claude', 'codex', 'pi'];
+  const [h, id] = raw.includes(':') && ['claude', 'codex', 'pi', 'antigravity'].includes(raw.split(':')[0]!) ? [raw.split(':')[0]!, raw.split(':').slice(1).join(':')] : [null, raw];
+  let harnesses = h ? [h] : ['claude', 'codex', 'pi', 'antigravity'];
   let full = id;
   // Resolve a prefix against the records index when there is one.
   try {

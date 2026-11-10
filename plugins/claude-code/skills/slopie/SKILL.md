@@ -3,7 +3,13 @@ name: slopie
 description: "Search your past coding-agent sessions with the user (Claude Code, Codex, pi). Use it whenever the user mentions earlier work, asks what happened before, or you continue a session."
 ---
 
-The user's agent history (Claude Code, Codex, Pi; all projects; including sessions the harness deleted) is exported as plain text records under ~/.slopie/records:
+Your past coding-agent sessions with the user (Claude Code, Codex, pi; Antigravity titles, agent messages and plans, its prompts are encrypted) are searchable. If the slopie command is on PATH, start with it rather than rg:
+- find: slopie search <words> [--project P --since D]  (add --session ID to search inside one thread)
+- read a session's end: slopie search --session ID --turns -30  (--turns 120-160 reads a range)
+- latest: slopie search <words> --latest  (threads with these words, newest activity first)
+Each reply starts with the index age and ends with the exact next command. Use rg/sed on the files below for anything else.
+
+The user's agent history (Claude Code, Codex, Pi, Antigravity (titles, agent messages and plans; prompts are encrypted); all projects; including sessions the harness deleted) is exported as plain text records under ~/.slopie/records:
 - INDEX.tsv: one line per session: harness, id, project (working dir), start, end (last activity), turns, parent, title, first user message, file, active (every UTC date with a turn, so rg '2026-07-14' INDEX.tsv lists every thread active that day, including long threads that started earlier), later (later threads that name this one, where the work or a decision often continued).
 - <harness>/<project-slug>/<start-date>_<session-id>.txt: one file per session. Header lines start with "## " (session, project, title, time, parent, children, later threads that mention it, raw source paths).
 - Every content line starts with its turn tag: "t12 USER 2026-08-20 20:26 | text", "t13 ASSISTANT ...", "t14 TOOL Bash 20:27 | command", tool output lines "t14 > ...", continuation lines "t12 | ...". SYSTEM turns are injected/harness text.
@@ -11,4 +17,3 @@ The user's agent history (Claude Code, Codex, Pi; all projects; including sessio
 - Subagent sessions have "parent: subagent of <id>"; their files are named <date>_<parent-id>__agent-*.txt. Tasks another thread dispatched have "parent: delegated by <id>" (that thread briefed, tracked and applied the work, and lists them under children).
 Search with rg (e.g. rg -n -i 'term' ~/.slopie/records, rg -l, rg 'pattern' INDEX.tsv) and read ranges with sed -n 'a,bp' file. Times are UTC. A record's modification time is its last activity, so rg -l --sortr modified 'term' ~/.slopie/records lists the most recently active threads first: decisions often change in a later thread or the other harness.
 Before you answer: cite the thread where the fact was produced, not one that pasted it, re-read it from a file, or received it as a relay ("Delegated task … [from delegated thread <id>]" names the thread that did the work). For a current, final or latest value, or the result of a step, read on past the first hit to the end of that step and check later threads ("## mentioned later in", rg -l --sortr modified) for a change. For which-threads questions, list every candidate thread in scope (no head), check each, and count the thread that dispatched the work ("parent: delegated by <id>") and long threads active in the window.
-If the slopie command is on PATH, start with it rather than rg: it searches these same records faster and more cheaply. slopie search <words> [--project P --since D] finds passages; slopie search <words> --session ID searches inside one thread; slopie search --session ID --turns 120-160 reads turns (--turns -30 reads the end); slopie search --project P --since D lists threads. Each reply ends with the exact next command. Use rg/sed on the files for anything else.

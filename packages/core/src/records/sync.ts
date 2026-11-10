@@ -28,6 +28,8 @@ import {annotateRelay, delegEdges, relayLinks, type Deleg, type Relay} from './d
 import {backlinks, type Later} from './refs.js';
 import {RecordIndex, parseRecordText} from './index-db.js';
 import {REDACT_VERSION, scrub, scrubRec} from './scrub.js';
+import {antigravityInputs} from '../adapters/antigravity.js';
+import {agRecords} from './antigravity.js';
 
 /** Bump when the rendered format changes: every record is rewritten once. */
 export const FORMAT_VERSION = 4;
@@ -44,6 +46,9 @@ export interface SyncOptions {
   piDir?: string;
   potsherdDir?: string;
   slopieDir?: string;
+  /** Antigravity's `~/.gemini/antigravity` and its state.vscdb (defaults: the platform's). */
+  antigravityDir?: string;
+  antigravityStateDb?: string;
   /** Worker entry (bundle); null parses inline. */
   workerUrl?: URL | null;
   threads?: number;
@@ -128,6 +133,8 @@ interface State {
   sidecar: boolean;
   sources: Record<string, SourceState>;
   sessions: Record<string, SessionState>;
+  /** Antigravity: signature of its inputs (file sizes and mtimes) when its records were last built. */
+  ag?: string;
 }
 
 interface Src {
@@ -141,7 +148,7 @@ interface Src {
 
 interface Merged {
   key: string;
-  harness: Harness;
+  harness: Harness | 'antigravity';
   id: string;
   parent: string | null;
   parentKind: string | null;
@@ -163,6 +170,9 @@ interface Merged {
   /** Prompt-only turns; `rec` is a turn carried over from the previous record as written. */
   history?: {ts: string | null; text: string; ref: string; rec?: RecTurn}[];
   sources: string[];
+  /** Antigravity: the record, built up front, and a hash of it. */
+  ag?: RecSession;
+  agSig?: string;
 }
 
 export function stateDir(recordsDir: string): string {
@@ -579,14 +589,33 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   for (const [id, l] of backlinks(sessions.map(b => ({id: b.id, harness: b.harness, start: b.start, parentKind: b.parentKind, refs: b.best ? next.sources[b.best]?.refs : undefined})))) {
     for (const b of sessions) if (b.id === id) b.later = l;
   }
+  // Antigravity: rebuilt only when one of its inputs (.pb files, brain dirs, state.vscdb) changed.
+  const agOpts = {dir: o.antigravityDir, stateDb: o.antigravityStateDb};
+  // Explicit source directories never fall through to personal roots (as in the audit).
+  const agIn = !o.antigravityDir && (o.claudeDir || o.codexDir || o.piDir) ? [] : antigravityInputs(agOpts);
+  const agKey = agIn.length ? hash([agIn, FORMAT_VERSION, REDACT_VERSION, sidecar]) : undefined;
+  const agCarry = !!agKey && !o.full && !migrating && prev.ag === agKey;
+  if (agKey) next.ag = agKey;
+  if (agKey && !agCarry) {
+    try {
+      const {records, gaps} = agRecords(agOpts, sidecar);
+      result.errors.push(...gaps);
+      for (const {rec, sources: srcs} of records) {
+        sessions.push({key: `antigravity:${rec.id}`, harness: 'antigravity', id: rec.id, parent: null, parentKind: null, nTurns: rec.turns.length, size: 0, start: rec.start, end: rec.end,
+          project: rec.project, best: null, paths: [], archiveOnly: false, sources: srcs.sort(), ag: rec, agSig: hash(rec)});
+      }
+    } catch { result.errors.push('antigravity_source_unreadable'); next.ag = undefined; }
+  }
   // Sessions whose sources have all gone keep their records (unless forgotten / ignored).
   const present = new Set(sessions.map(s => s.key));
   const kept: [string, SessionState][] = [];
+  const agCarried: [string, SessionState][] = [];
   const presentIds = new Set(sessions.map(s => `${s.harness}:${s.id}`));
   // Prompt-only records are an archive too: kept when history.jsonl shrinks or goes, merged when it has more.
   const promptOnlyPrev = new Map<string, SessionState>();
   for (const [key, ss] of Object.entries(prev.sessions)) {
     if (present.has(key) || presentIds.has(`${ss.harness}:${ss.id}`)) continue;
+    if (agCarry && ss.harness === 'antigravity') { if (fs.existsSync(path.join(dir, ss.rel))) agCarried.push([key, ss]); continue; }
     if (ss.harness === 'codex' && meta.imported.has(ss.id) && ss.parentKind !== 'import') continue;
     if (!fs.existsSync(path.join(dir, ss.rel))) continue;
     if (ss.history) promptOnlyPrev.set(ss.id, ss);
@@ -638,6 +667,8 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const keep = (h: string, id: string, parent: string | null, project: string | null) => !policy.ignored(project) && !isForgotten(policy, h, id, parent);
   const final = sessions.filter(s => keep(s.harness, s.id, s.parent, s.project));
   const finalKept = kept.filter(([, s]) => keep(s.harness, s.id, s.parent, s.project));
+  // Unchanged Antigravity records stay as written (not 'kept': their sources are still there).
+  const finalCarried = agCarried.filter(([, s]) => keep(s.harness, s.id, s.parent, s.project));
   result.excludedByPolicy = sessions.length - final.length + kept.length - finalKept.length;
   const kids = new Map<string, {id: string; kind: string; start: string}[]>();
   const ids = new Set([...final.map(s => s.id), ...finalKept.map(([, s]) => s.id)]);
@@ -671,7 +702,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
   const indexed = index ? index.keys() : new Map<string, string>();
   const needParse: {s: Merged; sig: string}[] = [];
   const sigOf = (s: Merged) => hash([FORMAT_VERSION, REDACT_VERSION, sidecar, s.best, s.best ? next.sources[s.best]?.size : 0, s.best ? next.sources[s.best]?.mtimeMs : 0, s.nTurns, s.sources, s.codexTitle ?? null,
-    s.parent, s.parentKind, (kids.get(s.id) ?? []).map(c => [c.id, c.kind]), s.archiveOnly, s.history ? s.history.length : -1, s.importCut ?? null, (s.later ?? []).map(x => x.id), (s.relays ?? []).map(r => [r.title, r.child])]);
+    s.parent, s.parentKind, (kids.get(s.id) ?? []).map(c => [c.id, c.kind]), s.archiveOnly, s.history ? s.history.length : -1, s.importCut ?? null, (s.later ?? []).map(x => x.id), (s.relays ?? []).map(r => [r.title, r.child]), s.agSig ?? null]);
   const writeOne = (s: Merged, rec: RecSession, sig: string) => {
     rec.parent = s.parent; rec.parentKind = s.parentKind;
     if (s.relays?.length) for (const t of rec.turns) if (t.role === 'USER' && t.text.startsWith('Delegated task ')) t.text = annotateRelay(t.text, t.ts, s.relays);
@@ -713,7 +744,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
     if (old && old.sig === sig && fileOk && (!index || indexed.get(s.key) === sig)) { next.sessions[s.key] = old; continue; }
     // A record never loses turns: when the copy it was written from is gone and only a shorter one is left
     // (e.g. an older archive snapshot), the record is kept as written.
-    if (old && fileOk && !old.history && !s.history && (old.n ?? 0) > s.nTurns) {
+    if (old && fileOk && !old.history && !s.history && !s.ag && (old.n ?? 0) > s.nTurns) {
       next.sessions[s.key] = {...old, kept: true};
       if (index && !indexed.has(s.key)) {
         const rec = parseRecordText(fs.readFileSync(path.join(dir, old.rel), 'utf8'));
@@ -726,6 +757,7 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
       const rec = parseRecordText(fs.readFileSync(path.join(dir, old.rel), 'utf8'));
       if (rec) { index.put(s.key, scrubRec(rec.session), {...rec.header, rel: old.rel, best: s.best, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, sig); next.sessions[s.key] = old; continue; }
     }
+    if (s.ag) { writeOne(s, s.ag, sig); continue; }
     if (s.history) {
       const rec: RecSession = {harness: 'claude', id: s.id, project: s.project, title: PROMPT_ONLY_TITLE, start: s.start, end: s.end, parent: null, parentKind: null,
         turns: s.history.map(t => t.rec ?? recTurn({role: 'USER', ts: t.ts, text: t.text, textLen: cpLen(t.text), ref: t.ref}))};
@@ -745,6 +777,13 @@ async function syncLocked(o: SyncOptions): Promise<SyncResult> {
       if (r.status === 'ok') writeOne(x.s, r.session, x.sig);
       else if (prev.sessions[x.s.key]) next.sessions[x.s.key] = prev.sessions[x.s.key]!;
     }, o.workerUrl ?? null, o.threads);
+  }
+  for (const [key, ss] of finalCarried) {
+    next.sessions[key] = ss;
+    if (index && !indexed.has(key)) {
+      const rec = parseRecordText(fs.readFileSync(path.join(dir, ss.rel), 'utf8'));
+      if (rec) index.put(key, scrubRec(rec.session), {...rec.header, rel: ss.rel, best: null, firstUser: firstUser(rec.session), lastAssistant: lastAssistant(rec.session)}, ss.sig);
+    }
   }
   for (const [key, ss] of finalKept) {
     next.sessions[key] = {...ss, kept: true};

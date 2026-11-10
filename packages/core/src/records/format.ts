@@ -47,7 +47,7 @@ export interface RecTurn {
 }
 
 export interface RecSession {
-  harness: Session['harness'];
+  harness: Session['harness'] | 'antigravity';
   id: string;
   project: string | null;
   title: string | null;

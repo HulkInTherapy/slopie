@@ -367,7 +367,8 @@ export function loadAntigravity(o: AntigravityOptions = {}): AntigravityData {
     const s = get(m[1]!.toLowerCase());
     s.pb = file;
     inputs.push({file, size: st.size, mtimeMs: st.mtimeMs});
-    for (const t of [st.birthtimeMs, st.mtimeMs]) if (t > 0) s.times.push(Math.round(t));
+    // Creation time only when it is not after the last write (copied or restored files).
+    for (const t of st.birthtimeMs > 0 && st.birthtimeMs <= st.mtimeMs ? [st.birthtimeMs, st.mtimeMs] : [st.mtimeMs]) if (t > 0) s.times.push(Math.round(t));
   }
   for (const name of list(path.join(dir, 'brain'))) {
     if (!UUID.test(name)) continue;
@@ -403,4 +404,33 @@ export function loadAntigravity(o: AntigravityOptions = {}): AntigravityData {
   for (const s of out) s.times = [...new Set(s.times)].sort((a, b) => a - b);
   out.sort((a, b) => (a.times[0] ?? 0) - (b.times[0] ?? 0) || (a.id < b.id ? -1 : 1));
   return {sessions: out, gaps: [...new Set(gaps)], inputs};
+}
+
+/** Stats of every Antigravity input (no content read): what incremental sync compares. */
+export function antigravityInputs(o: AntigravityOptions = {}): AntigravityData['inputs'] {
+  const out: AntigravityData['inputs'] = [];
+  const dir = paths.antigravityDir(o.dir);
+  const list = (d: string) => { try { return fs.readdirSync(d).sort(); } catch { return []; } };
+  for (const name of list(path.join(dir, 'conversations'))) {
+    if (!name.endsWith('.pb')) continue;
+    const st = stat(path.join(dir, 'conversations', name));
+    if (st?.isFile()) out.push({file: path.join(dir, 'conversations', name), size: st.size, mtimeMs: st.mtimeMs});
+  }
+  for (const name of list(path.join(dir, 'brain'))) {
+    if (!UUID.test(name)) continue;
+    const bdir = path.join(dir, 'brain', name);
+    const st = stat(bdir);
+    if (!st?.isDirectory()) continue;
+    let newest = st.mtimeMs, n = 0;
+    for (const f of list(bdir)) { const s = stat(path.join(bdir, f)); if (s) { n++; if (s.mtimeMs > newest) newest = s.mtimeMs; } }
+    out.push({file: bdir, size: n, mtimeMs: newest});
+  }
+  const db = paths.antigravityStateDb(o.stateDb);
+  const st = stat(db);
+  if (st?.isFile()) {
+    out.push({file: db, size: st.size, mtimeMs: st.mtimeMs});
+    const wal = stat(db + '-wal');
+    if (wal) out.push({file: db + '-wal', size: wal.size, mtimeMs: wal.mtimeMs});
+  }
+  return out;
 }
